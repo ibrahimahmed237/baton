@@ -50,6 +50,22 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Claude desktop: prompt hooks run and their text reaches the agent. Seen in use.
 - Codex: documented to do the same (`hookSpecificOutput.additionalContext`, plus `systemMessage` for a user-facing notice). A new hook runs only after the user trusts it once with `/hooks`. Not yet run live.
 
+**Catch-up through a prompt hook (Q4, Q11, Q12): it works on both sides**
+- Test: `spike/m0_hook.py` registered as a prompt hook in this folder. When the prompt mentions "codeword" it attaches one pretend missed turn and returns a short notice.
+- Claude: the agent answered with the attached codeword in a chat that was already open, in an old chat after the app was relaunched, and in a brand-new chat.
+- Codex: the agent answered with the attached codeword in a new chat, after the hook was trusted once.
+- What the hook receives. Claude: `session_id`, `transcript_path`, `prompt`, `prompt_id`, `session_title`, `cwd`, `permission_mode`, `scratchpad_dir`. Codex: `session_id`, `transcript_path`, `prompt`, `turn_id`, `model`, `cwd`, `permission_mode`. The session ID is there on both sides, which is what the real hook needs to find the link.
+- How it is stored. Claude writes the attached text as an attachment record of type `hook_additional_context` and the notice as `hook_system_message`; the user's prompt record stays clean. Codex writes the attached text as its own `developer` message next to the prompt; the notice is not stored in the rollout.
+- The notice: Claude shows it as a "Claude Code notice" line above the reply. Not yet seen whether Codex Desktop displays it.
+
+**An appended turn on a dead branch is shown but not known**
+- After the Claude app was relaunched, the old test chat displayed the turn that had been appended while it was open, in file order. The agent still did not have it: the later prompt had bypassed it.
+- So the chat view follows the file, the agent follows the parent chain. A turn written to an open chat can end up visible to the user and unknown to the agent, which is worse than not being there.
+
+**Chat processes start when a chat is opened**
+- After the relaunch only the three chats opened since had a process. Quitting the app ends all of them.
+- The project folder also holds session files that are not chats in the sidebar (short background sessions). Baton takes its list of chats from the sidebar entries, not from the files.
+
 **Codex is strict about what a hook prints**
 - Seen in the Codex hooks panel for a new chat: a plugin written for Claude ran three hooks. `UserPromptSubmit` completed. `SessionStart` failed with "hook returned invalid session start JSON output" and `Stop` failed with "hook returned invalid stop hook JSON output".
 - So hooks do run in Codex Desktop, per event, and the app shows each run and its result.
@@ -67,4 +83,12 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 
 **Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
 
-**Catch-up hook (Q11, Q12).** Set up, not observed yet. `spike/m0_hook.py` is registered as a prompt hook for both tools in this folder only: `.claude/settings.local.json` for Claude and `.codex/hooks.json` for Codex, neither in the repo because they hold an absolute path. It acts only when the prompt mentions "codeword": it attaches one pretend missed turn and a short notice, and logs what the app passed in to `.baton-spike/hook-log.jsonl`. Codex needs the hook trusted once with `/hooks`. To observe in a new chat on each side: does the agent know the codeword, is the notice shown, and is the session ID in the hook input.
+**Catch-up hook (Q11, Q12).** Done, see above. The test hook is still registered for this folder (`.claude/settings.local.json`, `.codex/hooks.json`, neither in the repo) and should be removed once the real hook replaces it.
+
+**Still open after M0**
+- Append to a Claude chat that has no live process, then open it: does the agent have the turn? Everything observed points to yes; no clean run yet.
+- What makes Codex release a thread, other than quitting the app.
+- Turn-end hooks: do they fire in both desktop apps with the session ID, and what must each print.
+- Whether Codex Desktop displays a hook's notice.
+- Opening either app at a specific chat.
+- Writing a brief with the headless runners without leaving a chat behind.
