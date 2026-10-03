@@ -1,6 +1,9 @@
 # Local Claude Code settings for this machine
 .claude/settings.local.json
 
+# Spike hook config for Codex: points at an absolute path on this machine
+.codex/
+
 # Spike backups and journals: copies of real chat files, never to be pushed
 .baton-spike/
 
