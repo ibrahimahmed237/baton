@@ -92,14 +92,14 @@ Example: "add login" in Claude, synced. "add logout" in Codex. Back in the still
 
 Rules for catch-up:
 - The ledger records those turns as delivered to that chat, so they are never appended there again.
-- The attached block is wrapped in a Baton marker. When that message is later pushed to the other side, the marker and its contents are stripped: the other side already has those turns.
+- The attached text never goes back to the other side, which already has those turns. Both tools store it apart from the user's prompt (Claude as an attachment record of type `hook_additional_context`, Codex as its own `developer` message), so the adapters skip it by record type. The block is also wrapped in a `<baton-catch-up>` marker as a second guard.
 - Order is truthful: the agent is told afterwards, with times, about turns it did not see. Nothing is rewritten to look as if it had seen them.
 - If the catch-up text would be very large, the hook attaches a brief of the missing turns plus the path of the full transcript.
 - If the hook cannot run, the message is sent as usual and the link may become a conflict.
 
-How it is delivered: both tools run a hook when the user submits a prompt, pass it the session ID and the prompt, and add the text the hook returns to the model's context (`hookSpecificOutput.additionalContext`). Confirmed in use in the Claude desktop app; confirmed for Codex in its hooks documentation, not yet run live.
+How it is delivered: both tools run a hook when the user submits a prompt, pass it the session ID and the prompt, and add the text the hook returns to the model's context (`hookSpecificOutput.additionalContext`). Confirmed live in both desktop apps (see SPIKE-M0.md): the agent answered from the attached turn in an open chat, a reopened chat and a new chat on the Claude side, and in a new chat on the Codex side. Both pass `session_id` and `transcript_path` to the hook.
 
-Notice shown or hidden (a setting, default shown): the attached turns always reach the agent. When the setting is on, the hook also returns a short user-facing notice (`systemMessage`), for example "Baton attached 1 turn from Codex: add logout". When off, nothing extra is shown. Both tools document this field; how each desktop app displays it is a spike question.
+Notice shown or hidden (a setting, default shown): the attached turns always reach the agent. When the setting is on, the hook also returns a short user-facing notice (`systemMessage`), for example "Baton attached 1 turn from Codex: add logout". When off, nothing extra is shown. Claude shows it as a notice line above the reply. Whether Codex Desktop displays it is not yet seen.
 
 Codex runs a new hook only after the user reviews and trusts it once (`/hooks` in Codex). Baton never writes that trust entry itself.
 
