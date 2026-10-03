@@ -51,7 +51,7 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Append to a real chat (Q1, Q2).** `spike/m0_append.py` is ready and passed a dry run on a sandbox copy (append on both sides, shapes checked, undo restores the original size). The automated permission check declined to let the assistant write into real chat files, so these two runs are done by hand:
 
 - Claude test chat, while its process is alive and idle: done, see above.
-- Codex test chat, once Codex releases it: does the appended turn show up after reopening, and does the agent know it? Waiting for a release; quitting the ChatGPT app is the sure way to get one.
+- Codex test chat, once Codex releases it: the append is done, the result is not in yet. Quitting the ChatGPT app released every thread lock at once. The turn was written twice because the command was run twice; both copies have clean, contiguous ordinals. Codex's projection still points at the byte where the first copy starts, so it has not read them yet. Open question: after reopening, does the chat show the turn and does the agent know it?
 
 **Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
 
