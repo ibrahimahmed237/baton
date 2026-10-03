@@ -1,0 +1,14 @@
+# Local Claude Code settings for this machine
+.claude/settings.local.json
+
+# Spike backups and journals: copies of real chat files, never to be pushed
+.baton-spike/
+
+# Third-party checkout kept only to study the session formats
+reference/
+
+__pycache__/
+*.pyc
+.venv/
+build/
+.DS_Store
