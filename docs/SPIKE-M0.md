@@ -50,6 +50,11 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Claude desktop: prompt hooks run and their text reaches the agent. Seen in use.
 - Codex: documented to do the same (`hookSpecificOutput.additionalContext`, plus `systemMessage` for a user-facing notice). A new hook runs only after the user trusts it once with `/hooks`. Not yet run live.
 
+**Codex is strict about what a hook prints**
+- Seen in the Codex hooks panel for a new chat: a plugin written for Claude ran three hooks. `UserPromptSubmit` completed. `SessionStart` failed with "hook returned invalid session start JSON output" and `Stop` failed with "hook returned invalid stop hook JSON output".
+- So hooks do run in Codex Desktop, per event, and the app shows each run and its result.
+- Consequence: Baton's hooks must print exactly what each tool accepts for each event. A turn-end hook for Codex prints valid JSON and nothing else. One script per tool, or one script that knows which tool called it.
+
 **Headless runners (Q10)**
 - Both exist. The ChatGPT app bundles the Codex CLI at `Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`, same version as the desktop engine, with `exec --ephemeral`.
 
@@ -62,4 +67,4 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 
 **Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
 
-**Catch-up hook (Q11, Q12).** Not started. Needs a test hook in this folder and one trust step in Codex.
+**Catch-up hook (Q11, Q12).** Set up, not observed yet. `spike/m0_hook.py` is registered as a prompt hook for both tools in this folder only: `.claude/settings.local.json` for Claude and `.codex/hooks.json` for Codex, neither in the repo because they hold an absolute path. It acts only when the prompt mentions "codeword": it attaches one pretend missed turn and a short notice, and logs what the app passed in to `.baton-spike/hook-log.jsonl`. Codex needs the hook trusted once with `/hooks`. To observe in a new chat on each side: does the agent know the codeword, is the notice shown, and is the session ID in the hook input.
