@@ -69,10 +69,13 @@ def journal(entry):
         fh.write(json.dumps(entry) + "\n")
 
 
-def append_lines(path, records):
+def serialize(records):
+    return "".join(json.dumps(rec, ensure_ascii=False) + "\n" for rec in records)
+
+
+def append_text(path, text):
     with open(path, "a") as fh:
-        for rec in records:
-            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        fh.write(text)
 
 
 # ---------------------------------------------------------------- Claude
@@ -146,11 +149,12 @@ def do_claude(args):
     })
 
     size = os.path.getsize(path)
+    text = serialize([user, assistant])
     dest = backup([path])
-    journal({"side": "claude", "path": path, "size_before": size, "backup": dest,
-             "held_by_live_process": bool(live), "leaf_before": leaf,
+    journal({"side": "claude", "path": path, "size_before": size, "size_after": size + len(text.encode()),
+             "backup": dest, "held_by_live_process": bool(live), "leaf_before": leaf,
              "wrote": [user["uuid"], assistant["uuid"]]})
-    append_lines(path, [user, assistant])
+    append_text(path, text)
     print(json.dumps({"appended_to": path, "size_before": size, "size_after": os.path.getsize(path),
                       "held_by_live_process": bool(live), "process_status": (live or {}).get("status"),
                       "parent": leaf, "backup": dest}, indent=1))
@@ -214,11 +218,13 @@ def do_codex(args):
     records = [{"timestamp": stamp, "ordinal": ordinal + i, "type": t, "payload": p} for i, (t, p) in enumerate(payloads)]
 
     size = os.path.getsize(path)
+    text = serialize(records)
     dest = backup([path], sqlite_paths=[CODEX_DB])
-    journal({"side": "codex", "path": path, "size_before": size, "backup": dest, "thread": args.thread,
+    journal({"side": "codex", "path": path, "size_before": size, "size_after": size + len(text.encode()),
+             "backup": dest, "thread": args.thread,
              "threads_row_before": {"updated_at": row[1], "updated_at_ms": row[2], "recency_at": row[3], "recency_at_ms": row[4]},
              "first_ordinal": ordinal, "waited_seconds": waited})
-    append_lines(path, records)
+    append_text(path, text)
     rw = sqlite3.connect(CODEX_DB, timeout=10)
     rw.execute("update threads set updated_at=?, updated_at_ms=?, recency_at=?, recency_at_ms=? where id=?",
                (ms // 1000, ms, ms // 1000, ms, args.thread))
@@ -236,6 +242,12 @@ def do_undo(_args):
     entries = read_jsonl(JOURNAL)
     for entry in reversed(entries):
         if entry.get("undone"):
+            continue
+        # Cutting back is only safe while the appended turn is still the end of the file.
+        # Once the app has written after it, truncating would delete real turns.
+        if os.path.getsize(entry["path"]) != entry.get("size_after"):
+            print("skipped %s: the file changed after this append, cutting it back would remove later turns"
+                  % entry["path"])
             continue
         with open(entry["path"], "r+") as fh:
             fh.truncate(entry["size_before"])
