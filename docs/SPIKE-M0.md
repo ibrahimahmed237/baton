@@ -24,6 +24,13 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Consequences: a link must be keyed on the sidebar entry, which is the stable identity of a chat, and follow `cliSessionId`. Message IDs survive the move, so the ledger's per-message tracking still holds.
 - The same event shows the app does load a chat's history from disk when its process starts. Appending to a chat with no live process should therefore work; that is still to be tested cleanly.
 
+**Appending to a closed Codex chat (Q2): it works**
+- Test: with the ChatGPT app quit, one turn appended to the test thread's rollout in the shape Codex uses for its own Claude imports, and the `threads` row's timestamps bumped. Then the app reopened.
+- The chat showed the appended turn as a normal turn, with its own time.
+- Asked "what is the codeword?", the agent answered with it. The appended turn was in its context.
+- Codex's own data agrees: it projected the appended turns as completed turns, continued its ordinals after them, and wrote the next real turn into the same rollout file.
+- The turn appears twice only because the command was run twice. Baton's ledger exists to prevent exactly that.
+
 **How long a Codex chat stays open (Q3)**
 - The test thread was still held 14 minutes after its last reply, after the user had moved to other chats. Codex held five threads at once at that point. Like Claude, it keeps chats loaded after you leave them.
 - Codex keeps a lock file per thread in `~/.codex/thread-writer-locks/` and holds it with a file lock while the thread is loaded. The test thread was still held several minutes after its last reply.
@@ -51,7 +58,7 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Append to a real chat (Q1, Q2).** `spike/m0_append.py` is ready and passed a dry run on a sandbox copy (append on both sides, shapes checked, undo restores the original size). The automated permission check declined to let the assistant write into real chat files, so these two runs are done by hand:
 
 - Claude test chat, while its process is alive and idle: done, see above.
-- Codex test chat, once Codex releases it: the append is done, the result is not in yet. Quitting the ChatGPT app released every thread lock at once. The turn was written twice because the command was run twice; both copies have clean, contiguous ordinals. Codex's projection still points at the byte where the first copy starts, so it has not read them yet. Open question: after reopening, does the chat show the turn and does the agent know it?
+- Codex test chat, once Codex releases it: done, see above. Quitting the ChatGPT app released every thread lock at once; what else releases a thread is still unknown.
 
 **Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
 
