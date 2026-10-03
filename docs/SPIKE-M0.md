@@ -18,6 +18,12 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - The new prompt was written with the old last message as its parent, not the appended turn. The appended turn is left on a dead side branch of the history, so a later reload would not pick it up either.
 - Conclusion: never append to a chat whose process is alive. This is the rule already in the design; it is now observed, not assumed.
 
+**A Claude chat can change its session ID without compaction (Q8)**
+- Observed on a normal chat when its working folder was changed: the app restarted the chat's process and continued it under a new session ID, in a new file. 494 message IDs are shared between the old and the new file, so the history was carried across with the same IDs.
+- Nothing inside the new file points back at the old session. The only link is the desktop sidebar entry (`claude-code-sessions/.../local_*.json`): its own `sessionId` stayed the same and its `cliSessionId` now names the new file.
+- Consequences: a link must be keyed on the sidebar entry, which is the stable identity of a chat, and follow `cliSessionId`. Message IDs survive the move, so the ledger's per-message tracking still holds.
+- The same event shows the app does load a chat's history from disk when its process starts. Appending to a chat with no live process should therefore work; that is still to be tested cleanly.
+
 **How long a Codex chat stays open (Q3)**
 - The test thread was still held 14 minutes after its last reply, after the user had moved to other chats. Codex held five threads at once at that point. Like Claude, it keeps chats loaded after you leave them.
 - Codex keeps a lock file per thread in `~/.codex/thread-writer-locks/` and holds it with a file lock while the thread is loaded. The test thread was still held several minutes after its last reply.
