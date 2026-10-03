@@ -11,7 +11,15 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Only chats used since the app started have a process: 4 of 36 sidebar chats.
 - Consequence: on the Claude side, the chat you hand back to is almost always still open. Catch-up at send is the main path there. Appending to the file applies to chats that have not been opened since the app started.
 
+**Appending to an open Claude chat (Q1): it does not work, and the turn is lost**
+- Test: one turn appended to the test chat's file while its process was alive and idle, then "what is the codeword?" sent in the app.
+- The app did not show the appended turn.
+- The agent did not know the codeword. It answered from memory, not from the file.
+- The new prompt was written with the old last message as its parent, not the appended turn. The appended turn is left on a dead side branch of the history, so a later reload would not pick it up either.
+- Conclusion: never append to a chat whose process is alive. This is the rule already in the design; it is now observed, not assumed.
+
 **How long a Codex chat stays open (Q3)**
+- The test thread was still held 14 minutes after its last reply, after the user had moved to other chats. Codex held five threads at once at that point. Like Claude, it keeps chats loaded after you leave them.
 - Codex keeps a lock file per thread in `~/.codex/thread-writer-locks/` and holds it with a file lock while the thread is loaded. The test thread was still held several minutes after its last reply.
 - Lock files of older threads disappeared between two listings, so a missing lock file means the thread is released.
 - Not yet known: what makes Codex release a thread (leaving it, a timeout, closing the window).
@@ -36,7 +44,9 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 
 **Append to a real chat (Q1, Q2).** `spike/m0_append.py` is ready and passed a dry run on a sandbox copy (append on both sides, shapes checked, undo restores the original size). The automated permission check declined to let the assistant write into real chat files, so these two runs are done by hand:
 
-- Claude test chat, while its process is alive and idle: does the appended turn show up, and does the agent know it?
-- Codex test chat, once Codex releases it: does the appended turn show up after reopening, and does the agent know it?
+- Claude test chat, while its process is alive and idle: done, see above.
+- Codex test chat, once Codex releases it: does the appended turn show up after reopening, and does the agent know it? Waiting for a release; quitting the ChatGPT app is the sure way to get one.
+
+**Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
 
 **Catch-up hook (Q11, Q12).** Not started. Needs a test hook in this folder and one trust step in Codex.
