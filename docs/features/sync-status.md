@@ -35,6 +35,7 @@ A **turn** is one of the user's messages and the reply to it. For each turn, eac
 | **Attached** | Baton gave it to this app's agent together with one of the user's messages. The agent has it. It is not shown as a message, and never will be in this chat. |
 | **Waiting** | It has not reached this side yet. |
 | **Skipped** | The user chose to keep the other side's version in a conflict. It stays only where it was written. |
+| **Kept back** | The user marked the turn to stay on the side it was written ([working-across.md](working-across.md), W12). It is not waiting and will not be sent. |
 
 Per side, two things follow from these:
 
@@ -84,6 +85,8 @@ All of these are in the first version unless marked later.
 **R7. Chats linked with the history attached.** Their status makes the hidden part explicit.
 - Before the first message in the new chat: the history is listed as waiting, with "will be attached to your first message".
 - After it: the history is listed as attached, and the side's summary says the agent has it and the chat does not show it.
+
+Each side's status also shows how full its agent's context is and what the other agent did since the user was last there. Those are specified in [working-across.md](working-across.md), W5 to W8.
 
 **R8. Setup state per side.** Each side's status shows whether Baton's hooks are installed and trusted there. Without them that side cannot receive attached turns or report a finished reply, and the status says which step fixes it.
 
