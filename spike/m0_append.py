@@ -178,6 +178,32 @@ def codex_lock_held(thread_id):
         os.close(fd)
 
 
+def codex_turn(thread_id, first_ordinal, prompt, reply):
+    """One finished turn in the shape Codex writes for its own Claude imports.
+
+    Codex builds the chat view from the task and item events, and the model's
+    context from the response_item messages, so a turn needs both.
+    """
+    stamp, ms = now_iso(), int(time.time() * 1000)
+    turn = "baton-turn-" + uuid.uuid4().hex[:12]
+    payloads = [
+        ("event_msg", {"type": "task_started", "turn_id": turn, "started_at": ms // 1000,
+                       "model_context_window": None, "collaboration_mode_kind": "default"}),
+        ("event_msg", {"type": "item_completed", "thread_id": thread_id, "turn_id": turn, "completed_at_ms": ms,
+                       "item": {"type": "UserMessage", "id": "baton-" + uuid.uuid4().hex[:12],
+                                "content": [{"type": "text", "text": prompt, "text_elements": []}]}}),
+        ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text", "text": prompt}]}),
+        ("event_msg", {"type": "item_completed", "thread_id": thread_id, "turn_id": turn, "completed_at_ms": ms,
+                       "item": {"type": "AgentMessage", "id": "baton-" + uuid.uuid4().hex[:12],
+                                "content": [{"type": "Text", "text": reply}]}}),
+        ("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": reply}]}),
+        ("event_msg", {"type": "task_complete", "turn_id": turn, "last_agent_message": reply,
+                       "started_at": ms // 1000, "completed_at": ms // 1000}),
+    ]
+    return [{"timestamp": stamp, "ordinal": first_ordinal + i, "type": t, "payload": p}
+            for i, (t, p) in enumerate(payloads)]
+
+
 def do_codex(args):
     db = sqlite3.connect("file:%s?mode=ro" % CODEX_DB, uri=True, timeout=5)
     row = db.execute("select rollout_path, updated_at, updated_at_ms, recency_at, recency_at_ms from threads where id=?",
@@ -197,25 +223,11 @@ def do_codex(args):
 
     recs = read_jsonl(path)
     ordinal = max((r["ordinal"] for r in recs if isinstance(r.get("ordinal"), int)), default=-1) + 1
-    stamp, ms = now_iso(), int(time.time() * 1000)
-    turn = "baton-turn-" + uuid.uuid4().hex[:12]
-    prompt = "[Baton spike: this turn was appended from outside the app] Remember this codeword: %s." % args.codeword
-    reply = "Noted. The codeword is %s." % args.codeword
-    payloads = [
-        ("event_msg", {"type": "task_started", "turn_id": turn, "started_at": ms // 1000,
-                       "model_context_window": None, "collaboration_mode_kind": "default"}),
-        ("event_msg", {"type": "item_completed", "thread_id": args.thread, "turn_id": turn, "completed_at_ms": ms,
-                       "item": {"type": "UserMessage", "id": "baton-" + uuid.uuid4().hex[:12],
-                                "content": [{"type": "text", "text": prompt, "text_elements": []}]}}),
-        ("response_item", {"type": "message", "role": "user", "content": [{"type": "input_text", "text": prompt}]}),
-        ("event_msg", {"type": "item_completed", "thread_id": args.thread, "turn_id": turn, "completed_at_ms": ms,
-                       "item": {"type": "AgentMessage", "id": "baton-" + uuid.uuid4().hex[:12],
-                                "content": [{"type": "Text", "text": reply}]}}),
-        ("response_item", {"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": reply}]}),
-        ("event_msg", {"type": "task_complete", "turn_id": turn, "last_agent_message": reply,
-                       "started_at": ms // 1000, "completed_at": ms // 1000}),
-    ]
-    records = [{"timestamp": stamp, "ordinal": ordinal + i, "type": t, "payload": p} for i, (t, p) in enumerate(payloads)]
+    ms = int(time.time() * 1000)
+    records = codex_turn(
+        args.thread, ordinal,
+        "[Baton spike: this turn was appended from outside the app] Remember this codeword: %s." % args.codeword,
+        "Noted. The codeword is %s." % args.codeword)
 
     size = os.path.getsize(path)
     text = serialize(records)
