@@ -19,7 +19,8 @@ Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `
 | Turns that ran at the same time | Ordered by start time; a warning when both changed the same file |
 | App shape | Menu-bar app plus a full window |
 | Stack | SwiftUI shell, Python engine |
-| Linking | From the menu-bar list |
+| Linking | From the menu-bar list. Two ways, chosen each time, each explained before the user confirms: copy the full history, or start now with the history attached |
+| Messages to the user | Every notice, warning and error says what happened, why, and what to do, in plain words |
 | Chats Codex already imported (70) | Shown as suggestions; linking aligns turns by content first |
 | Extra feature | Size and cost preview before a hand-off |
 | Agent | Not in the sync path. Both brief writers ship in the first version: agent-written and offline, offline as fallback |
@@ -121,8 +122,14 @@ Other choices offered in the preview:
 **History changed** (a known message disappeared, e.g. rewind or edit): flag and ask; never auto-repair.
 
 **Linking**
-- New link from one side: create the counterpart under the same session ID, record every message in the ledger.
-- Linking an existing pair (the 70 suggestions): align both turn lists by content hash, show what matches and what would be pushed, then record. No blind cursor.
+The user picks one of two ways each time they link a chat. The dialog says what each will do before they confirm.
+
+- *Copy the full history.* Baton creates the twin chat itself, with every turn as a normal message, and records every message in the ledger. Codex shows the new chat straight away. Claude lists new chats only when it starts, so the user relaunches Claude once to see it. That relaunch is needed once, when the chat is created, not for later syncs.
+- *Start now, history attached.* The user starts a new chat in the other tool and Baton links it. The history is attached to the first message there through the prompt hook. The agent knows it; it is never shown as separate messages, also not after a relaunch. No relaunch needed.
+
+After linking, both kinds behave the same: a closed chat gets new turns as normal messages, an open chat gets them attached to the next message.
+
+Linking an existing pair (the 70 suggestions): align both turn lists by content hash, show what matches and what would be pushed, then record. No blind cursor.
 
 **Compaction**
 - Compaction never deletes saved history. It adds a marker and a summary record; the app then sends the model only what follows the marker. Baton reads the file, so it still sees every turn.
@@ -197,6 +204,40 @@ Synced chats get a short title tag on the other side (`[Claude]`, `[Codex]`), co
 - Text contrast stays at 4.5:1 or better on glass in both themes.
 
 Build note: the target machine has Command Line Tools only, no Xcode. The app is built as a Swift package and bundled by script, or Xcode is installed first.
+
+## 7a. Messages to the user
+
+Rules for every notice, warning and error:
+1. Say what happened, then why in one clause, then what to do.
+2. Say whether anything was changed. A warning that leaves the user guessing about their chats is a bad warning.
+3. Buttons name the action ("Relaunch Claude", "Remove 2 turns"), never "OK" or "Yes".
+4. One word per thing, everywhere: *chat*, *turn* (one of your messages and the reply to it), *linked*, *attached*, *relaunch*. No internal words such as ledger, rollout or session ID.
+5. Never show a raw error. Keep the technical detail behind "Show details".
+
+The wording Baton starts with:
+
+| Where | Message |
+|---|---|
+| Link dialog, full history, to Claude | **Copy the full history.** Baton creates a new Claude chat with every turn shown as normal messages. Claude only lists new chats when it starts, so you relaunch Claude once to see it. Button: *Create chat with full history* |
+| Link dialog, full history, to Codex | **Copy the full history.** Baton creates a new Codex chat with every turn shown as normal messages. It appears in Codex right away. Button: *Create chat with full history* |
+| Link dialog, history attached | **Start now, history attached.** You start a new chat and Baton links it. The history is attached to your first message: the agent knows it, but it is never shown as separate messages. No relaunch. Button: *Link a new chat* |
+| After creating a Claude chat | Chat created. Relaunch Claude to see "*title*" in the sidebar. You only need to do this once for this chat. Buttons: *Relaunch Claude*, *Later* |
+| Relaunch while Claude is replying | Claude is still replying in "*title*". Relaunching now would stop that reply. Relaunch when it has finished. Buttons: *Relaunch anyway*, *Wait* |
+| After linking with history attached | Linked. The history will be attached to your first message in this chat. The agent will know it; it won't appear as separate messages. |
+| Chat state: other side is open | Waiting. The Codex chat is open, so these 2 turns will be attached to your next message there. To get them as normal messages instead, leave that chat first. |
+| Notice when turns were attached | Baton attached 2 turns from Codex to this message: "add logout", "fix the tests". |
+| Both sides have new turns | **Both chats have new turns.** Claude has 2 turns Codex never received, and Codex has 1 that Claude never received. Nothing has been changed yet. Buttons: *Merge by time*, *Keep Claude's*, *Keep Codex's*, *Split into two chats* |
+| Merge needs a new chat | Merging by time puts these turns in the middle of the Codex chat. Baton does not rewrite a chat, so it will create a merged copy as a new Codex chat and link that one. The old chat stays as it is. |
+| Both agents changed one file | Both agents changed `src/auth/login.ts` at about the same time (14:02 to 14:09). Baton does not merge files. Check that file. |
+| Large chat | This chat is large, about 310k tokens. Sending all of it would fill most of Codex's context. Baton suggests a brief in a new chat instead. Buttons: *Write a brief*, *Send in full* |
+| Brief fell back | Codex couldn't write the brief because it has reached its usage limit. Baton used the offline summary instead. |
+| Claude background runs unavailable | **Claude can't write briefs yet.** The `claude` command on this Mac is not logged in. Open Terminal, run `claude`, then type `/login`. Until then, Codex writes your briefs. |
+| Codex hooks not trusted | **Codex has not approved Baton's hooks.** In Codex, type `/hooks` and trust the two entries from Baton. Until then, Baton can't tell when a Codex reply finishes or attach turns to your Codex messages. |
+| Hooks not installed | Baton's hooks are not installed in Claude, so chats there won't stay in sync. Button: *Install hooks* |
+| App format changed | **Syncing is paused.** Codex was updated and now saves chats in a way Baton doesn't know yet. Nothing was written. Update Baton to continue. Button: *Check for updates* |
+| A write failed | **Couldn't add 2 turns to the Codex chat.** Codex's chat list was busy and refused the change. Baton removed what it had started to write, so the chat is as it was. Button: *Try again* |
+| Undo | **Remove the 2 turns Baton added at 14:10?** This only works while nothing has been written after them. Buttons: *Remove 2 turns*, *Keep them* |
+| Undo not possible | Can't undo. Codex has written to this chat since, and removing those turns now would also remove what came after. |
 
 ## 8. Milestones
 
