@@ -214,7 +214,7 @@ def do_codex(args):
     path = row[0]
 
     waited, deadline = 0, time.time() + args.wait_released
-    while codex_lock_held(args.thread):
+    while codex_lock_held(args.thread) and not args.allow_held:
         if time.time() >= deadline:
             print(json.dumps({"appended": False, "reason": "thread still held by Codex", "waited_seconds": waited}))
             sys.exit(3)
@@ -290,6 +290,7 @@ def main():
     x.add_argument("--thread", required=True)
     x.add_argument("--codeword", required=True)
     x.add_argument("--wait-released", type=int, default=0, help="seconds to wait for Codex to release the thread")
+    x.add_argument("--allow-held", action="store_true", help="write even though Codex holds the thread")
     x.set_defaults(fn=do_codex)
     u = sub.add_parser("undo")
     u.set_defaults(fn=do_undo)
