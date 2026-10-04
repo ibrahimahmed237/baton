@@ -36,10 +36,12 @@ A **turn** is one of the user's messages and the reply to it. For each turn, eac
 
 Per side, two positions follow from these:
 
-- **Knows up to**: the last turn the agent has, by any of the first three states.
-- **Shows up to**: the last turn visible in the chat, written here or shown.
+- **What the agent has**: every turn that is written here, shown or attached. Its last one is the message this side is synced up to.
+- **What the chat shows**: the turns that are written here or shown.
 
-"In sync" means both sides know every turn. A side can be in sync and still show less than it knows.
+"In sync" means both agents have every turn. A side can be in sync and still show fewer turns than its agent has.
+
+In the app these are said in full, never as bare labels: "Claude's agent has all 16 turns. The chat shows 12 of them; 4 were attached and are not shown."
 
 ## User stories
 
@@ -69,9 +71,9 @@ Per side, two positions follow from these:
 - Given the chat is open, then Baton says the turns will be attached to the next message sent there.
 
 **R5. How to see them as normal messages.** Whenever turns are waiting because a chat is open, Baton names the step that makes them arrive as normal messages instead of attached, per app:
-- Claude: relaunch Claude before sending a message in that chat.
-- Codex: leave that chat (open another one) before sending a message in it.
-- Baton also says that this is optional: without it, the turns are attached and the agent still knows them.
+- Claude: relaunch Claude before sending a message in that chat. A Claude chat stays open until the app quits.
+- Codex: relaunch Codex, or wait until Codex has let go of that chat. Codex keeps a chat open for a while after the user leaves it (more than 40 minutes observed), so leaving the chat is not enough by itself. Once Codex has let go, added turns show as soon as the chat is opened again, with no relaunch; this was tested on the running app.
+- Baton also says that this is optional: without it, the turns are attached and the agent still has them.
 
 **R6. Which app needs a relaunch.** If a relaunch would change what a chat shows, Baton names the app, in the chat's status and in its menu-bar line.
 - Given a full-copy twin was just created for Claude, then the chat is marked "Relaunch Claude to see this chat" until Claude has been relaunched.
@@ -96,9 +98,22 @@ Per side, two positions follow from these:
 
 **R12. Full copy on demand.** From a chat whose side shows less than it knows, the user can create a new twin that shows everything ("Create a full copy"). The link moves to the new chat; the old one is left as it is. Same rule as a brief or a merge: a changed view starts a new chat.
 
-**R13. Relaunch from Baton.** A "Relaunch Claude" button that does it in the safe order: quit Claude, add the waiting turns to the now-closed chats, reopen Claude. If Claude is in the middle of a reply, Baton warns first and names the chat.
+**R13. Relaunch from Baton.** A "Relaunch Claude" and a "Relaunch Codex" button that do it in the safe order: quit the app, add the waiting turns to the now-closed chats, reopen the app.
+- If any chat in that app is in the middle of a reply, Baton warns first, names those chats, says that relaunching stops those replies, and does nothing until the user confirms.
+- The warning also offers "Relaunch when idle": Baton waits until no chat in that app is replying, then relaunches.
+- If the app could not be reopened, Baton says so and that the waiting turns were still added.
 
 **R14. Open the chat.** From a side's line, a button opens that app at that chat.
+
+**R17. "If you send here now."** Each side's status says what will happen on the next message there: nothing extra, or "2 turns from Codex are attached first", with their first lines and an estimate of their size in tokens.
+
+**R18. Sync meter.** Above the turn list, one strip per side with a block per turn, coloured by state, so the two sides can be compared at a glance and the first turn that differs is easy to find.
+
+**R19. Filter the turn list.** All, waiting, attached.
+
+**R20. Pause a link.** The user can pause syncing for one chat and resume it later. While paused nothing is delivered either way, and the status says so. Resuming goes through the normal rules, including the merge when both sides moved on.
+
+**R21. Setup state per side.** Each side's status shows whether Baton's hooks are installed and trusted there. Without them that side cannot receive attached turns or report a finished reply, and the status says which step fixes it.
 
 ### Later (P2)
 
@@ -115,7 +130,8 @@ Each is a test: set up the two chats and Baton's record, then check the status B
 | S1 | Full copy; the Claude chat is open; two new turns are written in Codex | nothing else happens | Claude: 2 waiting, reason "chat is open", marked "Relaunch Claude to show 2 turns". Codex: in order. |
 | S2 | S1 | the user sends a message in the Claude chat | The 2 turns are attached on Claude. Claude knows all, shows 2 fewer. The relaunch mark clears. |
 | S3 | S1 | the user relaunches Claude first | The 2 turns are shown on Claude. Claude knows all and shows all. |
-| S4 | Full copy; the Codex chat is not on screen; a new turn is written in Claude | Baton syncs | The turn is shown on Codex, no relaunch needed. |
+| S4 | Full copy; Codex has let go of the chat; a new turn is written in Claude | Baton syncs | The turn is shown on Codex, no relaunch needed. |
+| S4b | Full copy; Codex still holds the chat although the user left it; a new turn is written in Claude | Baton syncs | Codex: 1 waiting, reason "Codex still has this chat open", with the two ways to get it shown. |
 | S5 | Linked with history attached, 12 earlier turns; no message sent yet in the new chat | — | New side: 12 waiting, "will be attached to your first message". |
 | S6 | S5 | the user sends the first message | New side: knows 12, shows 0 of those 12; each listed as attached. |
 | S7 | Both sides have turns the other never received | — | Both sides list waiting turns, reason "a decision is needed"; menu-bar line says so. |
@@ -137,6 +153,6 @@ For every linked chat, for every turn, for each side: its state, when it got the
 
 | Question | Who | Blocking? |
 |---|---|---|
-| Should Baton relaunch Claude itself when asked (R13), or only tell the user to? | You | No, R13 is P1 |
-| How quickly does Codex let go of a chat after the user leaves it? The wording of R5 for Codex depends on it. | Engineering, by measuring | No |
-| Are "knows" and "shows" the right two words for the user, or should the app say it differently? | You | No, wording only |
+| How long does Codex hold a chat it is no longer showing? More than 40 minutes was observed, and two chats were released within 8 hours. A watch is running to narrow it down. | Engineering, by measuring | No |
+
+Settled: Baton relaunches the app itself when asked, and asks for confirmation whenever a chat there is replying (R13).
