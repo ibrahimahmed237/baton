@@ -148,7 +148,8 @@ The feature specs listed five things to confirm on throwaway chats. All five wer
 - The throwaway chat was opened in Codex, so Codex held it, and one turn was appended from outside.
 - Codex did not show the turn, and its agent did not have it: asked for every codeword, it listed the earlier ones only.
 - Codex then wrote its own next records with the same position numbers the appended turn had used, so the file now has six numbers used twice.
-- So the rule stands for Codex as for Claude, now measured for both: never write into a chat the app holds. A held chat is reached by attaching the turns to the user's next message, which works and leaves the file alone.
+- After Codex was relaunched, the turn was shown and the agent listed its codeword. So unlike Claude, where such a turn stays unknown to the agent, Codex picks it up at the next start. Until then it is neither shown nor known, and the file keeps the doubled numbers.
+- So the rule stands for Codex as for Claude, now measured for both: do not write into a chat the app holds as the normal path. A held chat is reached by attaching the turns to the user's next message, which works and leaves the file alone.
 
 `spike/m0_cut.py` did the cuts. It copies the whole file first and refuses while the chat is held.
 

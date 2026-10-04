@@ -98,6 +98,32 @@ Asked and settled 2026-10-04. This holds for every tool.
 
 So attaching is always available and never loses anything, but what was attached stays invisible in that chat for good. To see the turns as messages they have to be added as real turns, which for an open chat means closing or relaunching first (except OpenCode). The notes say which of the two will happen and offer the other.
 
+## Best delivery per tool
+
+The aim, in this order: the turn is shown and known now; if that cannot be, known now and shown after the smallest step; never unknown. Baton picks the first line that applies and the note says what the user has to do to get the better one.
+
+| Tool, and state of the chat | What Baton does | Agent has it | Chat shows it | Offer in the note |
+|---|---|---|---|---|
+| OpenCode, any state | adds real turns | next message | when the chat is opened again | none needed |
+| Codex, not holding the chat | adds real turns | yes | at once | none needed |
+| Codex, holding the chat | attaches to the next message | with that message | no | *Close Codex, sync, reopen* to get them as messages |
+| Claude, app closed | adds real turns | yes | yes | none needed |
+| Claude, chat open and idle | releases that chat, adds real turns (by button, or automatically if set) | next message | after a relaunch | *Relaunch Claude* to see them |
+| Claude, chat replying | attaches to the next message; adds real turns once the reply ends if set to automatic | with that message | no, unless added later | *Sync when the reply has finished* |
+| Cursor, closed | adds real turns | yes | yes | none needed |
+| Cursor, running | attaches to the next message | with that message | no | *Close Cursor, sync, reopen* to get them as messages |
+
+Attached text is never shown, also not after a relaunch: it is not a message in the chat. To make attached turns visible later they have to be added as real turns as well, at the right position and without the agent getting them twice. Whether that can be done is open per tool:
+
+| Tool | "Attach now, show later" in the same chat | State |
+|---|---|---|
+| OpenCode | not needed; real turns can always be added | settled |
+| Cursor | likely: its messages are an ordered list, so turns can be placed before the message they were attached to, while Cursor is closed | to test |
+| Codex | one run worked: a turn written into a held chat was shown and known after a relaunch, in the right place, but the file's numbering was doubled | to test further before relying on it |
+| Claude | releasing the idle chat already gives this. For a turn attached to a message, adding it later would land after that message | use "Create a full copy" |
+
+Where it cannot be done in the same chat, "Create a full copy" (link-actions.md, A4) gives a chat that shows everything in order.
+
 ## What is known per tool
 
 "Yes" and "no" are measured (SPIKE-M0.md). "To verify" has not been run.
