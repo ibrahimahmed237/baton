@@ -194,6 +194,19 @@ def do_cut(args):
     print(json.dumps({"cut": True, "kept_turns": args.keep_turns, "removed_messages": len(gone), "saved": keep_path}))
 
 
+def do_rename(args):
+    """Change the test chat's name in the database, to see whether the app shows it."""
+    entry = [e for e in base.read_jsonl(base.JOURNAL)
+             if e.get("side") == "opencode" and e.get("kind") == "create" and not e.get("removed")][-1]
+    db = sqlite3.connect(DB, timeout=10)
+    before = db.execute("select title from session where id=?", (entry["session"],)).fetchone()[0]
+    with db:
+        db.execute("update session set title=?, time_updated=? where id=?",
+                   (args.title, int(time.time() * 1000), entry["session"]))
+    db.close()
+    print(json.dumps({"renamed": True, "before": before, "after": args.title}))
+
+
 def do_remove(_args):
     entries = base.read_jsonl(base.JOURNAL)
     db = sqlite3.connect(DB, timeout=10)
@@ -231,6 +244,9 @@ def main():
     k = sub.add_parser("cut")
     k.add_argument("--keep-turns", type=int, required=True)
     k.set_defaults(fn=do_cut)
+    n = sub.add_parser("rename")
+    n.add_argument("--title", required=True)
+    n.set_defaults(fn=do_rename)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()

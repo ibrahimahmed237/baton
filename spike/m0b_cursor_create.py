@@ -203,6 +203,25 @@ def do_cut(args):
     print(json.dumps({"cut": True, "chat": args.chat, "kept_turns": args.keep_turns, "removed_messages": len(gone)}))
 
 
+def do_rename(args):
+    """Change a chat's name in both places Cursor keeps it, while Cursor is closed."""
+    if running():
+        sys.exit("Cursor is running; it keeps chats in memory and would write over this. Quit Cursor first.")
+    db = sqlite3.connect(DB, timeout=20)
+    data = json.loads(db.execute("select value from cursorDiskKV where key=?",
+                                 ("composerData:" + args.chat,)).fetchone()[0])
+    header = json.loads(db.execute("select value from composerHeaders where composerId=?",
+                                   (args.chat,)).fetchone()[0])
+    before = data.get("name")
+    data["name"] = header["name"] = args.title
+    with db:
+        db.execute("insert into cursorDiskKV(key, value) values(?,?)", ("composerData:" + args.chat, json.dumps(data)))
+        db.execute("update composerHeaders set value=? where composerId=?", (json.dumps(header), args.chat))
+    db.close()
+    base.journal({"side": "cursor", "kind": "rename", "chat": args.chat, "before": before, "after": args.title})
+    print(json.dumps({"renamed": True, "before": before, "after": args.title}))
+
+
 def do_remove(_args):
     if running():
         sys.exit("Cursor is running; quit it first.")
@@ -243,6 +262,10 @@ def main():
     k.add_argument("--chat", required=True)
     k.add_argument("--keep-turns", type=int, required=True)
     k.set_defaults(fn=do_cut)
+    n = sub.add_parser("rename")
+    n.add_argument("--chat", required=True)
+    n.add_argument("--title", required=True)
+    n.set_defaults(fn=do_rename)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()
