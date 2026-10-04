@@ -11,7 +11,7 @@ The same conversation is worth continuing in more than two coding agents. Baton 
 - **A link still joins exactly two chats, from two different tools.** Any two: Claude with Codex, Claude with OpenCode, Codex with Cursor, and so on. One conversation across three or four tools at once is not offered; merge and undo stay as designed.
 - **A chat is in one link at a time**, whatever the tool (link-actions.md, A0).
 - **A chat can be copied from any tool to any tool** without linking, and the dialog says whether the target tool has to be relaunched to show it.
-- **Cursor: the chats to sync are the ones the user sees in the Cursor app.** Whether chats made with the `cursor-agent` command are those same chats is checked first; see "Known so far".
+- **Cursor: the chats to sync are the ones the user sees in the Cursor app.** Chats made with the `cursor-agent` command were checked and are not those chats; see "Which Cursor".
 - **Adding real turns to an idle Claude chat is a setting with both choices**: only when the user presses "Add them now" (default), or automatically whenever the chat is not replying.
 
 ## Requirements
