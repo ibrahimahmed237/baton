@@ -162,7 +162,10 @@ Brief is the recommended mode when the history is over the size threshold, and a
 
 Briefs are cached per chat and updated from the new turns only.
 
-Headless runners on the target machine: both exist. `claude` is installed, and the ChatGPT app bundles the Codex CLI at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex` (0.159.2, the same version as the desktop engine, with `exec --ephemeral`). Baton finds and calls that bundled binary. No second copy is installed: a separately installed CLI at a different version would share `~/.codex` with the desktop app.
+Headless runners on the target machine (tested, see SPIKE-M0.md):
+- Codex works. The ChatGPT app bundles the Codex CLI at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`, always the same version as the desktop engine, and it uses the app's login. `exec --ephemeral` wrote a brief in 20 seconds and left nothing behind. Baton finds and calls that bundled binary. No second copy is installed: a separately installed CLI at a different version would share `~/.codex` with the desktop app.
+- Claude does not work yet. Run outside the app, both the app's engine and the installed `claude` command report "Not logged in". Options: the user logs the `claude` command in once, or a Claude-written brief is produced inside the new chat as its first reply. Until one is chosen, briefs are written by Codex in both directions, with the offline brief as fallback.
+- A headless agent is never pointed at a linked chat's own session. It runs in a separate session that is not saved.
 
 **Size and cost preview:** turns to send, estimated tokens of history, and the recommended mode, shown before a hand-off.
 

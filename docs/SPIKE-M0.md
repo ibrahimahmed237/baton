@@ -35,7 +35,26 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - The test thread was still held 14 minutes after its last reply, after the user had moved to other chats. Codex held five threads at once at that point. Like Claude, it keeps chats loaded after you leave them.
 - Codex keeps a lock file per thread in `~/.codex/thread-writer-locks/` and holds it with a file lock while the thread is loaded. The test thread was still held several minutes after its last reply.
 - Lock files of older threads disappeared between two listings, so a missing lock file means the thread is released.
-- Not yet known: what makes Codex release a thread (leaving it, a timeout, closing the window).
+- Eight hours later, with the app still running: the two test threads the user had left were released (no lock file), and the last one opened was still held. So Codex lets go of chats that are no longer on screen and keeps the one that is. How soon after leaving is not measured.
+
+**How long a Claude chat stays open, measured again**
+- Three chats sat idle for over eight hours and all still had a live process. There is no idle timeout at that scale: a Claude chat that was opened stays open until the app quits.
+
+**Creating a chat from outside (the twin)**
+- Codex: `spike/m0_create.py codex` wrote a new rollout and one row in `threads`, copying settings and base instructions from the user's newest thread. A second turn was then appended. Codex's own engine, run headless, resumed the thread and listed both codewords. The running desktop app loaded the thread when its link was opened. Works.
+- Claude: `spike/m0_create.py claude` wrote a new session file and a sidebar entry. The engine resumed the file and continued its chain, so the file is accepted. The running app does not notice a new sidebar entry: the chat was absent from its list and its link did nothing. It needs an app relaunch, and the in-app check is still to do.
+
+**Opening an app at a chat**
+- Codex: `open codex://threads/<thread id>` made the running app load that thread within two seconds (its lock appeared).
+- Claude: `open claude://claude.ai/epitaxy/<sidebar id>` switched the app to that chat (its last-focused time updated). The ID is the sidebar entry's, not the session's.
+
+**Running the agents headless**
+- Codex: the CLI bundled in the ChatGPT app uses the app's login. `exec resume <id> "<prompt>"` continued a thread, and `exec --ephemeral` wrote a good four-part hand-off brief from a small transcript in 20 seconds for about 14k tokens, leaving no thread and no file behind.
+- Claude: not available as things stand. Neither the desktop app's own engine nor the installed `claude` command is logged in when run outside the app ("Not logged in"). A Claude-written brief needs a one-time `claude` login by the user, or has to be written inside the chat instead.
+- A failed headless Claude resume still wrote about 30 records into the session it was pointed at. Baton must never run a headless agent against a linked chat's own session; briefs run in a separate session that is not saved.
+
+**Hook trust in Codex is per entry, not per script**
+- The trusted prompt hook kept running after its script was edited. A newly added turn-end entry did not run until trusted.
 
 **How Codex shows a chat's history**
 - The rollout file is not read directly by the UI. `~/.codex/thread_history_1.sqlite` holds a projection of it (`thread_turns`, `thread_items`) and remembers how far it has read (`thread_history_projection_state`: next byte offset and next ordinal).
@@ -86,9 +105,7 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Catch-up hook (Q11, Q12).** Done, see above. The test hook is still registered for this folder (`.claude/settings.local.json`, `.codex/hooks.json`, neither in the repo) and should be removed once the real hook replaces it.
 
 **Still open after M0**
-- Append to a Claude chat that has no live process, then open it: does the agent have the turn? Everything observed points to yes; no clean run yet.
-- What makes Codex release a thread, other than quitting the app.
-- Turn-end hooks: do they fire in both desktop apps with the session ID, and what must each print.
+- Claude, in the app: a chat created from outside and then appended to while closed ("Baton clean test", codewords APRICOT-4 then MELON-7). After a relaunch, does it appear in the sidebar and does the agent know both? The engine accepts the file; the app-level check needs the relaunch.
+- Turn-end hooks: the test hook now logs them. Claude's entry is installed; Codex's needs one trust click. Then: do they fire in both desktop apps with the session ID.
 - Whether Codex Desktop displays a hook's notice.
-- Opening either app at a specific chat.
-- Writing a brief with the headless runners without leaving a chat behind.
+- How a Claude-written brief gets produced, given headless Claude is not logged in.
