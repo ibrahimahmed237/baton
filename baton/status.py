@@ -29,6 +29,7 @@ class SideCondition:
     """What is true of one side's chat right now."""
     exists: bool = True
     open: bool = False
+    replying: bool = False
     hooks_ready: bool = True
 
 

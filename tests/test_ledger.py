@@ -8,8 +8,8 @@ from baton.ledger import (ADDED, ATTACHED, CLAUDE, CODEX, FULL_COPY, KEPT_BACK, 
 from baton.model import PROMPT, REPLY, Message, Turn
 
 
-def make_turn(turn_id, text="", at="", reply=""):
-    messages = (Message(id=turn_id + "-reply", kind=REPLY, text=reply),) if reply else ()
+def make_turn(turn_id, text="", at="", reply="", ended=""):
+    messages = (Message(id=turn_id + "-reply", kind=REPLY, text=reply, at=ended),) if reply or ended else ()
     return Turn(Message(id=turn_id, kind=PROMPT, text=text or turn_id, at=at), messages)
 
 
@@ -141,6 +141,13 @@ class TurnTest(LedgerCase):
         self.ledger.skip(self.link.id, ids[0], CLAUDE)
         self.assertEqual(self.states(CLAUDE), [SKIPPED])
         self.assertEqual(self.states(CODEX), [WRITTEN_HERE])
+
+    def test_the_order_of_turns_can_be_changed(self):
+        claude = self.ledger.record_turns(self.link.id, CLAUDE, make_turns("c", 2))
+        codex = self.ledger.record_turns(self.link.id, CODEX, make_turns("x", 1))
+        self.ledger.set_order(self.link.id, [claude[0], codex[0], claude[1]])
+        self.assertEqual([turn.origin_id for turn in self.ledger.turns(self.link.id)], ["c1", "x1", "c2"])
+        self.assertEqual([turn.seq for turn in self.ledger.turns(self.link.id)], [1, 2, 3])
 
     def test_pinning(self):
         ids = self.ledger.record_turns(self.link.id, CLAUDE, make_turns("c", 2))

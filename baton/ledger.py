@@ -77,6 +77,7 @@ create table if not exists turns(
   origin text not null,
   origin_id text not null,
   started_at text not null default '',
+  ended_at text not null default '',
   first_line text not null default '',
   size integer not null default 0,
   pinned integer not null default 0,
@@ -129,6 +130,7 @@ class LedgerTurn:
     origin: str
     origin_id: str
     started_at: str
+    ended_at: str
     first_line: str
     size: int
     pinned: bool
@@ -262,9 +264,9 @@ class Ledger:
                 known.add(turn.id)
                 seq += 1
                 cur = self.db.execute(
-                    "insert into turns(link_id, seq, origin, origin_id, started_at, first_line, size)"
-                    " values(?,?,?,?,?,?,?)",
-                    (link_id, seq, side, turn.id, turn.started_at,
+                    "insert into turns(link_id, seq, origin, origin_id, started_at, ended_at, first_line, size)"
+                    " values(?,?,?,?,?,?,?,?)",
+                    (link_id, seq, side, turn.id, turn.started_at, turn.ended_at,
                      turn.prompt.text.strip()[:_FIRST_LINE_CHARS], _size(turn)))
                 self.db.executemany(
                     "insert into turn_states(turn_id, side, state, local_id) values(?,?,?,?)",
@@ -282,8 +284,21 @@ class Ledger:
             states.setdefault(row["turn_id"], {})[row["side"]] = row["state"]
         rows = self.db.execute("select * from turns where link_id=? order by seq", (link_id,))
         return [LedgerTurn(row["id"], row["seq"], row["origin"], row["origin_id"], row["started_at"],
-                           row["first_line"], row["size"], bool(row["pinned"]), states.get(row["id"], {}))
+                           row["ended_at"], row["first_line"], row["size"], bool(row["pinned"]), states.get(row["id"], {}))
                 for row in rows]
+
+    def set_order(self, link_id: int, turn_ids: Sequence[int]) -> None:
+        """Put these turns in the given order, in the places they hold in the conversation now."""
+        seqs = []
+        for turn_id in turn_ids:
+            row = self.db.execute("select seq from turns where id=? and link_id=?", (turn_id, link_id)).fetchone()
+            if row is None:
+                raise KeyError("turn %d is not part of link %d" % (turn_id, link_id))
+            seqs.append(row["seq"])
+        if len(set(turn_ids)) != len(turn_ids):
+            raise ValueError("a turn is named twice")
+        with self.db:
+            self.db.executemany("update turns set seq=? where id=?", list(zip(sorted(seqs), turn_ids)))
 
     def deliver(self, link_id: int, side: str, turn_ids: Sequence[int], state: str, kind: str,
                 at: str = "", local_ids: Sequence[str] = (), detail: dict[str, Any] | None = None) -> int:
