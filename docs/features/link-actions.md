@@ -72,6 +72,7 @@ The same dialog offers "Copy and link" for the user who wants them kept in sync 
 
 **A9. Undo back to any point.** The user can pick any entry in the history and take the chat back to how it was just before it. How this is done depends on the app, because Codex does not accept a chat that became shorter ([SPIKE-M0.md](../SPIKE-M0.md)):
 - **A Claude chat is cut back.** This is the one action that removes messages from a chat.
+- **An OpenCode or Cursor chat is cut back too**, as on Claude: OpenCode at any time (the chat shows it once opened again), Cursor while it is closed.
 - **A Codex chat is replaced by a shorter one.** Baton creates a new Codex chat that ends at the chosen point and moves the link to it. The chat as it is now stays untouched, is no longer linked and is marked as an earlier copy. Nothing is removed.
 - Before anything happens, Baton shows **exactly which turns the chat will no longer have**: the turns Baton added at and after that point, and every message written in that chat after them, each by its first line and time. It also states the message the chat will end at afterwards.
 - Messages that exist only in that chat (never delivered to the other side) are called out separately: "these 2 exist only in Codex".

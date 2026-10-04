@@ -118,7 +118,7 @@ Attached text is never shown, also not after a relaunch: it is not a message in 
 | Tool | "Attach now, show later" in the same chat | State |
 |---|---|---|
 | OpenCode | not needed; real turns can always be added | settled |
-| Cursor | likely: its messages are an ordered list, so turns can be placed before the message they were attached to, while Cursor is closed | to test |
+| Cursor | yes: a turn placed before the message it was attached to, while Cursor was closed, was shown at that position. Cursor did not add it to the agent a second time, which is what is wanted, since the agent already has it from the attachment | settled |
 | Codex | one run worked: a turn written into a held chat was shown and known after a relaunch, in the right place, but the file's numbering was doubled | to test further before relying on it |
 | Claude | releasing the idle chat already gives this. For a turn attached to a message, adding it later would land after that message | use "Create a full copy" |
 
@@ -136,7 +136,7 @@ Where it cannot be done in the same chat, "Create a full copy" (link-actions.md,
 | Attach turns to the next message | yes | yes | yes, through a plugin | yes |
 | Tells when a reply finishes | yes | yes | yes, through a plugin | yes |
 | Open and replying can be told | yes | yes | yes, through the plugin | running or not: yes; replying: through hooks |
-| Chat can be made shorter | yes | no; a shorter chat is created | not tested; a shorter chat is created | not tested; a shorter chat is created |
+| Chat can be made shorter | yes | no; a shorter chat is created | yes | yes, while closed |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
 | Records limits and context | yes; context size not recorded | yes | token counts yes; a failed reply carries the provider's error and status code, no reset time | context with size and percentage; a turn that ended on a limit says so in the transcript's end-of-turn line, no reset time |
 | Opens at a given chat | yes | yes | no; Baton opens the folder and names the chat to pick | no; Baton opens the folder and names the chat to pick |
@@ -205,10 +205,12 @@ What this means for a link with Cursor: every way of linking works. "Copy the fu
 | 6 | Background run, read-only | not available: the command is damaged here | not available: `cursor-agent` is signed out |
 | 7 | Open the app at a given chat | no link to a chat exists. `opencode://open-project?directory=…` opens the folder; `opencode://new-session?directory=…&prompt=…` starts a new chat there | no link to a chat exists. The `cursor` command opens the folder |
 | 8 | Name: where, and changed from outside | in the chat's row; change not tested | in the chat list row; change not tested |
-| 9 | Chat made shorter | not tested | not tested |
+| 9 | Chat made shorter | yes, while running: gone on reopening the chat, and the agent no longer has it | yes, written while closed: the removed turns are gone from the chat. That the agent forgot them is likely but was not proven, since the removed turns held nothing only the agent knew |
 | 10 | `cursor-agent` same as the app? | n/a | no, separate; the app is the one to link |
 
-What is left (6 to 9) does not block starting: briefs fall back to the other tool or the offline brief (G4), "Open chat" falls back to bringing the app to the front, names are only read, and undo on these tools creates a shorter chat as on Codex until a cut is proven safe.
+What is left does not block starting: background runs need the user's repair or sign-in (6), and renaming from outside was not tried (8), so names are only read. Undo cuts the chat on OpenCode and Cursor, as on Claude.
+
+One more thing these tests showed: an OpenCode chat that is on screen keeps showing its old content, after an add and after a cut, until the chat is opened again. The note for OpenCode says so in both cases.
 
 ## Acceptance scenarios
 
