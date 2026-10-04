@@ -112,7 +112,7 @@ The complete list. Nothing is in the first version unless it is here. "Spec" say
 | Feature | Spec | Built in | Screen |
 |---|---|---|---|
 | Sync history per link | A8 | M1, M3 | History |
-| Undo back to any point, listing exactly what the chat will no longer have. Claude: the chat is cut. Codex: a shorter chat is created and linked | A9 | M1, M3 | History, Undo to a sync point |
+| Undo back to any point, listing exactly what the chat will no longer have. Claude and OpenCode: the chat is cut. Codex and Cursor: a shorter chat is created and linked | A9 | M1, M3 | History, Undo to a sync point |
 | Nothing lost for 30 days: restore a cut, or go back to the earlier chat | A10 | M1, M3 | History |
 | Relaunch an app from Baton, confirmed when a chat is replying, or when idle | A6 | M2, M3 | Relaunch warning |
 

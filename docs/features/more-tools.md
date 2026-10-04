@@ -73,7 +73,18 @@ Requirement G4a in words. Every dialog that links, copies or syncs has a "What w
 | A way of linking is not available | Shown greyed out with the reason and what would make it available. | none |
 | Tool's command or hooks are missing | *What is missing*, what it stops Baton from doing, and the fix. Buttons: the fix, *Check again* | Setup: 1 step left |
 | A tool's first use of Baton's hooks | Codex: type /hooks and trust Baton's two entries. OpenCode: restart OpenCode once so Baton's plugin loads. Claude and Cursor: nothing to do. | Setup: 1 step left |
-| Undo on Codex | Codex can't make a chat shorter, so Baton creates a shorter chat and links it. Your current chat stays as it is. | Earlier chat kept |
+| Undo on Claude | This removes *n* turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days. Buttons: *Remove n turns from the Claude chat*, *Cancel* | Relaunch Claude to stop seeing the removed turns |
+| Undo on OpenCode | This removes *n* turns from the OpenCode chat, listed below. If the chat is on screen, open it again to see the change. A copy is kept for 30 days. Buttons: *Remove n turns from the OpenCode chat*, *Cancel* | Open the chat again to see the change |
+| Undo on Codex | Codex can't make a chat shorter, so Baton creates a shorter chat and links it. Your current chat stays as it is. Buttons: *Create the shorter Codex chat*, *Cancel* | Earlier chat kept |
+| Undo on Cursor | Cursor's agent would keep turns that are only hidden, so Baton creates a shorter Cursor chat and links it. Cursor is closed while it is created. Your current chat stays as it is. Buttons: *Close Cursor, create the shorter chat, reopen*, *Cancel* | Earlier chat kept |
+| Turns added to or removed from an OpenCode chat that is on screen | OpenCode keeps showing the chat as it was until you open it again. The agent already has the change. | Open the chat again to see the change |
+| Use one name on both sides | Per tool: OpenCode shows the new name right away. Codex shows it after a relaunch. Claude and Cursor are renamed while closed; Baton offers to close, rename and reopen. | Relaunch *tool* to see the new name |
+| Open the chat, in OpenCode or Cursor | *Tool* can't be opened at a chat. Baton opens the folder; pick "*title*" in the list. | none |
+| A limit was reached in OpenCode or Cursor | *Tool* has reached its usage limit. It did not say when it resets. Continue this chat in *other tool*? | *Tool* is at its limit |
+| Merged copy as a new chat | A new chat is created in *tool* with the merged order, and the link moves to it. Your current chat stays as it is. Plus that tool's "new chat" note above. | Earlier chat kept |
+| Copy a chat without linking | A new chat is created in *tool* with all *n* turns. The two chats will not be kept in sync. Plus that tool's "new chat" note above. | none |
+| Second opinion or brief | *Tool* gets a brief and can read the project folder. It cannot change anything. About *n* tokens. | none |
+| Pause, remove link, keep a turn here, pin | What stops or stays, and that no chat is changed. | Paused; Kept in *tool*; Pinned |
 
 Rules for these notes: one sentence on what happens, one on what the user has to do, the app named every time, and a count where there is one. The confirm button names the action. Nothing unusual is ever learned afterwards.
 
@@ -119,7 +130,7 @@ Attached text is never shown, also not after a relaunch: it is not a message in 
 |---|---|---|
 | OpenCode | not needed; real turns can always be added | settled |
 | Cursor | yes: a turn placed before the message it was attached to, while Cursor was closed, was shown at that position. Cursor did not add it to the agent a second time, which is what is wanted, since the agent already has it from the attachment | settled |
-| Codex | one run worked: a turn written into a held chat was shown and known after a relaunch, in the right place, but the file's numbering was doubled | to test further before relying on it |
+| Codex | not used. One run worked (shown and known after a relaunch, in the right place) but it doubled the file's numbering, so Baton never writes to a chat Codex holds. It attaches, and offers close, sync, reopen | settled |
 | Claude | releasing the idle chat already gives this. For a turn attached to a message, adding it later would land after that message | use "Create a full copy" |
 
 Where it cannot be done in the same chat, "Create a full copy" (link-actions.md, A4) gives a chat that shows everything in order.
