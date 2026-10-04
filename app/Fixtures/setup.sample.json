@@ -35,9 +35,9 @@
         }
       ],
       "facts": {
-        "write_window": "CLOSED_OR_RELEASED",
-        "new_chat_visible": "AFTER_RELAUNCH",
-        "added_turn_visible": "AFTER_RELAUNCH",
+        "write_window": "closed_or_released",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
         "can_cut": true,
         "can_place": false,
         "can_release_chat": true,
@@ -85,9 +85,9 @@
         }
       ],
       "facts": {
-        "write_window": "NOT_HELD",
-        "new_chat_visible": "AT_ONCE",
-        "added_turn_visible": "AT_ONCE",
+        "write_window": "not_held",
+        "new_chat_visible": "at_once",
+        "added_turn_visible": "at_once",
         "can_cut": false,
         "can_place": false,
         "can_release_chat": false,
@@ -135,9 +135,9 @@
         }
       ],
       "facts": {
-        "write_window": "ANY_TIME",
-        "new_chat_visible": "AT_ONCE",
-        "added_turn_visible": "ON_REOPEN_CHAT",
+        "write_window": "any_time",
+        "new_chat_visible": "at_once",
+        "added_turn_visible": "on_reopen_chat",
         "can_cut": true,
         "can_place": true,
         "can_release_chat": false,
@@ -185,9 +185,9 @@
         }
       ],
       "facts": {
-        "write_window": "APP_CLOSED",
-        "new_chat_visible": "AFTER_RELAUNCH",
-        "added_turn_visible": "AFTER_RELAUNCH",
+        "write_window": "app_closed",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
         "can_cut": false,
         "can_place": true,
         "can_release_chat": false,

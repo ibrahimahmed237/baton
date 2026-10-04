@@ -35,9 +35,9 @@
         }
       ],
       "facts": {
-        "write_window": "CLOSED_OR_RELEASED",
-        "new_chat_visible": "AFTER_RELAUNCH",
-        "added_turn_visible": "AFTER_RELAUNCH",
+        "write_window": "closed_or_released",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
         "can_cut": true,
         "can_place": false,
         "can_release_chat": true,

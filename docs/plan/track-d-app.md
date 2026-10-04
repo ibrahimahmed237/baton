@@ -111,6 +111,7 @@ Rules for this track:
 **Board.** Second opinion. **From.** W9 to W11; V9, V10.
 **Shows.** The turn, the question, token estimate, read-only note, the answer, add / copy / ask again / discard, and the cannot-run note.
 **Fixture states.** before running; answer; cannot run (limit, command missing, signed out).
+**Carry-over from CP0.** The contract gained `answer_id` on `ask` after the models were written; add it to the `ask` result type and its sample here. Also replace the `facts` dictionary in the setup models by a typed `Capabilities` now that its JSON is fixed.
 
 ## D11. Setup and settings
 
