@@ -11,11 +11,12 @@ Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `
 | Usage | Hand-off, one tool at a time |
 | History sent across | Two hand-off modes: full sync into the same linked chat, or a brief that starts a new chat on the other side |
 | Scope | Only chats the user links |
+| Links | One Claude chat with one Codex chat. A chat is in one link at a time; the link can be changed to another chat at any time, which removes the old link first |
 | Audience | Built for one Mac first, polish for release later |
 | Codebase | Written fresh in its own repo; the upstream tool is a reference, not a base |
 | Trigger | Automatic at turn end (hooks, file watching as fallback) plus a Continue button |
 | Open chat that is behind | Catch up, then send: the missing turns are attached to the user's message with their times. No closing, no reopening. A setting chooses whether a notice is shown when that happens |
-| Conflicts | Merged in time order. A side that would need turns in the middle gets a merged copy as a new chat. Asked once with a preview, then remembered; changeable in Settings |
+| Conflicts | The user sees both sides' unsynced messages and decides the order, starting from time order. A side that would need turns in the middle gets a merged copy as a new chat. Asked with a preview; can be remembered, changeable in Settings |
 | Turns that ran at the same time | Ordered by start time; a warning when both changed the same file |
 | App shape | Menu-bar app plus a full window |
 | Stack | SwiftUI shell, Python engine |
@@ -114,7 +115,7 @@ Default merge: time order, never a rewrite.
 - A side that would need turns placed in the middle gets a merged copy as a new chat on that side, in time order, and the link moves to it. The old chat is left untouched and marked as an earlier copy. Same rule as a brief: a changed context starts a new chat.
 - Turns that ran at the same time in both tools are ordered by start time and marked as overlapping. If two overlapping turns changed the same file, the file is flagged for the user to check. Baton does not merge file contents.
 
-Asking: the first conflict shows a preview (merged order, which side gets a new chat, flagged files) and waits. "Always do this" makes later ones automatic. The choice can be changed at any time in Settings.
+Asking: the conflict screen shows both sides' unsynced turns as messages in the proposed order, lets the user move a turn up or down past the other app's turns (one app's own turns keep their order), and says for each app what it will end up with: its own chat, or a merged copy as a new chat, and whether a relaunch is needed. "Always merge by time without asking" makes later ones automatic. The choice can be changed at any time in Settings. Requirements: [features/merge.md](features/merge.md).
 
 Other choices offered in the preview:
 - Add at the end, labelled: no new chat; the two sides end in different order.
@@ -192,6 +193,7 @@ Headless runners on the target machine (tested, see SPIKE-M0.md):
 - Detail: the sync status of the chat. Both chats' names; for each side, which message it has reached, what its chat shows and what its agent has without showing, what is waiting and why, and which app to relaunch to see it. Then the conversation itself, as messages, each turn marked with its state on each side. Requirements: [features/sync-status.md](features/sync-status.md).
 - Actions on a link: pause and resume, remove, copy a chat across without linking, relaunch an app, use one name on both sides, and a history of every sync with undo back to any point. Each says what it will change before it runs. Requirements: [features/link-actions.md](features/link-actions.md).
 - Size and cost preview panel.
+- In the first version, from the sync status spec: the "if you send here now" line per side, the turn-by-turn strip, the filter on the conversation (all, waiting, attached), pause and resume per link, and the setup state per side.
 - Conflict sheet: preview of the time-ordered merge (order, which side gets a new chat, flagged files), the other choices, and "always do this".
 - Activity log with Undo on the last write per chat. Catch-ups are listed too: which turns were attached to which message.
 - Setup status: for each tool, whether its hooks are installed and trusted and whether its background runner is logged in, each with the step to fix it.
@@ -249,12 +251,14 @@ The wording Baton starts with:
 | | Goal | Done when |
 |---|---|---|
 | M0 | Spike on the real apps with one throwaway chat | The questions in section 9 are answered |
-| M1 | Engine core | Ledger, planner, turn filter, session-chain following, safety rules, offline brief, test suite built from the sandbox fixtures; upstream bugs covered by failing-then-passing tests |
-| M2 | CLI, hooks, agent brief | `link`, `plan`, `sync`, `continue`, `brief`, `undo`, `notify`, `catch-up`; turn-end and prompt hooks installed in both tools; agent brief with offline fallback |
-| M3 | Baton.app | Menu-bar popover, window, conflict sheet with time-ordered merge preview, mode switch, glass light and dark-gray themes |
+| M1 | Engine core | Readers for both chats (done); ledger with a state per turn per side; status computed from it (what each agent has, what each chat shows, what is waiting and why, what happens on the next message); planner including the merge with a user-chosen order; one link per chat; pause; sync history; session-chain following; safety rules; offline brief; tests from made-up chats covering the scenarios in the three feature specs |
+| M2 | CLI, hooks, agent brief | `link`, `relink`, `unlink`, `pause`, `resume`, `copy`, `status`, `plan`, `sync`, `merge`, `continue`, `brief`, `history`, `undo`, `notify`, `catch-up`, `setup`; turn-end and prompt hooks installed in both tools; setup check per side; agent brief with offline fallback; relaunch of an app in the safe order |
+| M3 | Baton.app | Menu-bar popover; window with the sync status screen (both names, a card per app with the send-here-now line and relaunch offer, turn-by-turn strip, conversation as messages with filter), link actions (pause, history, remove, copy, change link), the merge screen with reordering, the undo and relaunch confirmations, setup state; glass light and dark-gray themes |
 | M4 | Release polish | Signing, docs; report the merge bug to the upstream author |
 
 M1 to M3 are the first version.
+
+Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md). Ideas not yet agreed: [features/ideas.md](features/ideas.md).
 
 ## 9. Open questions for the spike (M0)
 
