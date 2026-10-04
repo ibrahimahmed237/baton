@@ -2,7 +2,7 @@
 
 Hand a conversation from Claude Code to Codex and back, and keep working in the same chat on each side.
 
-**Status:** design agreed, nothing usable yet. The first milestone is a spike against the real desktop apps.
+**Status:** nothing usable yet. The design is agreed and the spike against the real desktop apps is finished ([findings](docs/SPIKE-M0.md)). The engine is being built; so far it can read a chat from either tool into turns.
 
 ## What it does
 
@@ -18,11 +18,19 @@ The full design, with the decisions behind it and what is still unverified, is i
 
 | Path | Contents |
 |---|---|
+| `baton/` | The engine. Python, standard library only |
+| `tests/` | Engine tests. They build made-up chats; no real conversation is stored here |
 | `docs/` | Design and spike findings |
-| `spike/` | Throwaway scripts that test real app behaviour before the engine is written |
+| `spike/` | Throwaway scripts that tested real app behaviour before the engine was written |
 | `reference/` | Not in the repo. A local checkout of another tool, kept to study the session formats |
 
-Planned: a Python engine with a CLI, hooks for both tools, and a SwiftUI menu-bar app.
+Still to come: the rest of the engine with a CLI, hooks for both tools, and a SwiftUI menu-bar app.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s tests -t .
+```
 
 ## Credit
 
