@@ -41,7 +41,7 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 
 **G4a. Anything unusual is said before it happens, and confirmed.** Whenever a link, a copy or a sync will not behave the usual way for the tool involved, Baton says so in the dialog, before the user confirms, and the confirm button is only enabled once the note has been shown. This covers at least: a way of linking that the tool does not support (shown greyed out with the reason, not hidden); history that the agent will know but the chat will not show, or that the chat will show but the agent will only get with the first message; a chat that will appear only after a relaunch, naming the app; a tool whose background run is missing, so another tool writes the brief. The same note stays on the link's status afterwards, so it is not a one-time message.
 
-**G4b. A chat that does not exist yet is created by the sync.** When the other tool has no chat for this link, Baton creates it, and says for that tool whether it appears at once or after a relaunch: Claude after a relaunch, Codex at once, OpenCode at once, Cursor still being tested.
+**G4b. A chat that does not exist yet is created by the sync.** When the other tool has no chat for this link, Baton creates it, and says for that tool whether it appears at once or after a relaunch: Claude after a relaunch, Codex at once, OpenCode at once, Cursor after a relaunch.
 
 **G5. Copy from any tool to any tool.** "Copy to…" on a chat lists the other tools. The dialog states, for the chosen tool, whether the new chat appears at once or after a relaunch of that tool, and whether the two chats will be kept in sync (they will not, unless the user chooses "Copy and link").
 
@@ -61,11 +61,11 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 
 | | Claude | Codex | OpenCode | Cursor |
 |---|---|---|---|---|
-| Closed chat takes new turns | yes | yes | to verify | not planned; the format is closed |
-| Chat created from outside appears | after a relaunch | at once | at once, with the app running | not planned |
+| Closed chat takes new turns | yes | yes | to verify | to verify; creating a chat works |
+| Chat created from outside appears | after a relaunch | at once | at once, with the app running | after a relaunch (written while Cursor is closed); shown and known to the agent |
 | Added turn appears | after a relaunch; the agent has it at once | at once if Codex let go of the chat, else after a relaunch | to verify | to verify |
-| Attach turns to the next message | yes | yes | likely, through a plugin | yes |
-| Tells when a reply finishes | yes | yes | likely, through a plugin | yes |
+| Attach turns to the next message | yes | yes | yes, through a plugin | yes |
+| Tells when a reply finishes | yes | yes | yes, through a plugin | yes |
 | Open and replying can be told | yes | yes | to verify | to verify |
 | Chat can be made shorter | yes | no; a shorter chat is created | to verify | to verify |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
@@ -107,7 +107,9 @@ A test hook was registered for the Baton folder and run on two chats (`spike/m0b
 - **Cursor says when a reply finishes, and in which chat.** The hooks after a reply and at the end of a turn pass the chat's ID, the path of its transcript, the model, a status and the token counts of the turn.
 - Hooks were picked up while Cursor was running, with no restart and no approval step.
 
-What this means for a link with Cursor: reading, catch-up at send and automatic sync all work, so "Start now, history attached" and a brief are fully supported. "Copy the full history" into Cursor is not offered, and the link dialog says why (G4). Turns written in Cursor reach the other tool as normal messages like any others.
+**A chat created from outside is accepted, shown, and known to the agent.** `spike/m0b_cursor_create.py` wrote only the display records of a new chat (one question and answer) while Cursor was closed, with the agent's state left empty. After Cursor was opened, the chat was listed and showed both messages, and asked for the codeword the agent gave it without using any tool. Cursor builds the agent's state from the displayed messages when there is none. The first assumption, that copied history could not be shown in Cursor, was wrong.
+
+What this means for a link with Cursor: every way of linking works. "Copy the full history" creates the chat while Cursor is closed, so it needs one relaunch of Cursor, as Claude does. Reading, catch-up at send and automatic sync work as tested. Still to test: adding turns to an existing Cursor chat that already has an agent state, where the display and the state could disagree.
 
 ## OpenCode on this Mac (checked 2026-10-04)
 
@@ -115,6 +117,7 @@ What this means for a link with Cursor: reading, catch-up at send and automatic 
 - The OpenCode app runs a local server, but it asks for a password that the app makes up at each start. Baton does not go around that.
 - So the only way in from outside is the database. A throwaway chat was created there by `spike/m0b_opencode.py` with the app running: one project row, one chat, one finished question and answer, in the shapes OpenCode itself writes. The database stayed healthy and the script's `remove` takes exactly those rows out again.
 - **It worked.** The user opened the folder in OpenCode: the chat was listed, its turn was shown as normal messages, and asked for the codeword the agent answered with it. OpenCode then added the new question and answer after Baton's rows and left those rows as they were. The app was running when the chat was created, so a chat made from outside needs no relaunch here.
+- **Attaching at send and the finished-reply signal both work**, through a plugin in the folder's `.opencode/plugins` (loaded when OpenCode starts). The plugin added a text part to the user's message; the agent answered from it; OpenCode stores that part marked as inserted, so a reader leaves it out. OpenCode reports a chat going busy and idle with the chat's ID.
 - This is different from the other tools in a useful way: the database takes writes from outside while the app is running without breaking, where a chat file does not. Whether a turn added to a chat the app has on screen appears there, and whether the agent has it, is still to test.
 - Useful details in the format: a user message records which files its turn changed; a reply records its token counts including the total; text the app inserted itself is marked as such, so it can be left out of prompts; chats that are sub-agent runs have a parent.
 - OpenCode has been used little here: 34 chats, the newest from May 2026.
