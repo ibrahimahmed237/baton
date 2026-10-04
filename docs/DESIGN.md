@@ -189,7 +189,8 @@ Headless runners on the target machine (tested, see SPIKE-M0.md):
 
 **Window**
 - Sidebar: Linked, Needs attention, Suggestions, All Claude, All Codex, Activity.
-- Detail: the sync status of the chat. For each side, which message it has reached, what its chat shows and what its agent knows without showing, what is waiting and why, and which app to relaunch to see it. Then every turn in one list with its state on each side. Requirements: [features/sync-status.md](features/sync-status.md).
+- Detail: the sync status of the chat. Both chats' names; for each side, which message it has reached, what its chat shows and what its agent has without showing, what is waiting and why, and which app to relaunch to see it. Then the conversation itself, as messages, each turn marked with its state on each side. Requirements: [features/sync-status.md](features/sync-status.md).
+- Actions on a link: pause and resume, remove, copy a chat across without linking, relaunch an app, use one name on both sides, and a history of every sync with undo back to any point. Each says what it will change before it runs. Requirements: [features/link-actions.md](features/link-actions.md).
 - Size and cost preview panel.
 - Conflict sheet: preview of the time-ordered merge (order, which side gets a new chat, flagged files), the other choices, and "always do this".
 - Activity log with Undo on the last write per chat. Catch-ups are listed too: which turns were attached to which message.
