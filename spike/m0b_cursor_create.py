@@ -10,6 +10,7 @@ state, to see whether the app lists it and shows the messages.
 Run only while Cursor is closed. `remove` deletes exactly the rows `create` added.
 
     m0b_cursor_create.py create --like CHAT_ID --codeword W
+    m0b_cursor_create.py append --chat CHAT_ID --codeword W   # one more turn in an existing chat
     m0b_cursor_create.py remove
 """
 import argparse
@@ -89,6 +90,47 @@ def do_create(args):
     print(json.dumps({"created": True, "chat": new, "rows": len(rows) + 1}))
 
 
+def do_append(args):
+    """Add one question and answer to the display records of a chat whose agent already has a state.
+
+    The agent's state is left as it is, so this shows whether Cursor notices
+    that the chat displays more than its agent was given.
+    """
+    if running():
+        sys.exit("Cursor is running; it keeps chats in memory and would write over this. Quit Cursor first.")
+    db = sqlite3.connect(DB, timeout=20)
+
+    def get(key):
+        return json.loads(db.execute("select value from cursorDiskKV where key=?", (key,)).fetchone()[0])
+
+    data = get("composerData:" + args.chat)
+    heads = data["fullConversationHeadersOnly"]
+    user_head = [h for h in heads if h["type"] == 1][-1]
+    reply_head = [h for h in heads if h["type"] == 2 and h.get("grouping", {}).get("hasText")][-1]
+    now = int(time.time() * 1000)
+    texts = ["[Baton spike: this turn was added from outside the app] Remember this codeword: %s." % args.codeword,
+             "Noted. The codeword is %s." % args.codeword]
+    rows = {}
+    for head, text, at in zip((user_head, reply_head), texts, (now, now + 2000)):
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(at / 1000))
+        bubble = dict(get("bubbleId:%s:%s" % (args.chat, head["bubbleId"])), bubbleId=str(uuid.uuid4()),
+                      text=text, createdAt=stamp)
+        bubble.pop("checkpointId", None)
+        if "richText" in bubble:
+            bubble["richText"] = rich_text(text)
+        rows["bubbleId:%s:%s" % (args.chat, bubble["bubbleId"])] = bubble
+        heads.append(dict(head, bubbleId=bubble["bubbleId"], createdAt=stamp,
+                          grouping=dict(head.get("grouping", {}), textPreview=text[:80])))
+    data["lastUpdatedAt"] = now + 2000
+    with db:
+        for key, row in rows.items():
+            db.execute("insert into cursorDiskKV(key, value) values(?,?)", (key, json.dumps(row)))
+        db.execute("insert into cursorDiskKV(key, value) values(?,?)", ("composerData:" + args.chat, json.dumps(data)))
+    db.close()
+    base.journal({"side": "cursor", "kind": "append", "chat": args.chat, "keys": list(rows)})
+    print(json.dumps({"appended": True, "chat": args.chat, "messages_now": len(heads)}))
+
+
 def do_remove(_args):
     if running():
         sys.exit("Cursor is running; quit it first.")
@@ -116,6 +158,10 @@ def main():
     c.add_argument("--like", required=True, help="ID of an existing throwaway chat to copy the record shapes from")
     c.add_argument("--codeword", required=True)
     c.set_defaults(fn=do_create)
+    a = sub.add_parser("append")
+    a.add_argument("--chat", required=True)
+    a.add_argument("--codeword", required=True)
+    a.set_defaults(fn=do_append)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()

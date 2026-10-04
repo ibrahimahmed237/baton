@@ -11,6 +11,7 @@ The whole database is copied first. `remove` deletes exactly the rows `create`
 added.
 
     m0b_opencode.py create --codeword FIG-3 [--cwd DIR] [--title T]
+    m0b_opencode.py append --codeword PEAR-1     # one more turn in the chat `create` made
     m0b_opencode.py remove
 """
 import argparse
@@ -121,6 +122,49 @@ def do_create(args):
                       "foreign_key_problems": len(broken)}, indent=1))
 
 
+def do_append(args):
+    """Add one finished question and answer to the test chat, whether or not the app has it on screen."""
+    entry = [e for e in base.read_jsonl(base.JOURNAL)
+             if e.get("side") == "opencode" and e.get("kind") == "create" and not e.get("removed")][-1]
+    session_id, cwd = entry["session"], entry["cwd"]
+    db = sqlite3.connect(DB, timeout=10)
+    db.row_factory = sqlite3.Row
+    last = json.loads(db.execute(
+        "select data from message where session_id=? and json_extract(data,'$.role')='assistant'"
+        " order by time_created desc limit 1", (session_id,)).fetchone()["data"])
+    model = {"providerID": last["providerID"], "modelID": last["modelID"]}
+    now = int(time.time() * 1000)
+    user_id, assistant_id = new_id("msg", now + 1), new_id("msg", now + 2000)
+    zero = {"total": 0, "input": 0, "output": 0, "reasoning": 0, "cache": {"write": 0, "read": 0}}
+    rows = [
+        (user_id, now + 1, {"role": "user", "time": {"created": now + 1}, "agent": "build", "model": model,
+                            "summary": {"diffs": []}},
+         [{"type": "text", "text": "[Baton spike: this turn was added from outside the app] "
+                                   "Remember this codeword: %s." % args.codeword}]),
+        (assistant_id, now + 2000, {"parentID": user_id, "role": "assistant", "mode": "build", "agent": "build",
+                                    "path": {"cwd": cwd, "root": cwd}, "cost": 0, "tokens": zero,
+                                    "modelID": model["modelID"], "providerID": model["providerID"],
+                                    "time": {"created": now + 2000, "completed": now + 3000}, "finish": "stop"},
+         [{"type": "step-start"},
+          {"type": "text", "text": "Noted. The codeword is %s." % args.codeword,
+           "time": {"start": now + 2100, "end": now + 2900}},
+          {"type": "step-finish", "reason": "stop", "tokens": zero, "cost": 0}]),
+    ]
+    with db:
+        for message_id, at, data, parts in rows:
+            db.execute("insert into message(id, session_id, time_created, time_updated, data) values(?,?,?,?,?)",
+                       (message_id, session_id, at, at, json.dumps(data)))
+            for offset, part in enumerate(parts):
+                db.execute("insert into part(id, message_id, session_id, time_created, time_updated, data)"
+                           " values(?,?,?,?,?,?)",
+                           (new_id("prt", at + offset), message_id, session_id, at + offset, at + offset,
+                            json.dumps(part)))
+        db.execute("update session set time_updated=? where id=?", (now + 3000, session_id))
+    db.close()
+    base.journal({"side": "opencode", "kind": "append", "session": session_id, "messages": [user_id, assistant_id]})
+    print(json.dumps({"appended": True, "session": session_id, "messages": [user_id, assistant_id]}))
+
+
 def do_remove(_args):
     entries = base.read_jsonl(base.JOURNAL)
     db = sqlite3.connect(DB, timeout=10)
@@ -152,6 +196,9 @@ def main():
     c.add_argument("--cwd", default=os.getcwd())
     c.add_argument("--title", default="Baton test (safe to delete)")
     c.set_defaults(fn=do_create)
+    a = sub.add_parser("append")
+    a.add_argument("--codeword", required=True)
+    a.set_defaults(fn=do_append)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()

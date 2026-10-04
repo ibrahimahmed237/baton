@@ -55,6 +55,25 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 
 **G10. A new tool does not change Baton's record.** Sides are named by tool in the record (done in `baton/ledger.py`), so adding a tool adds a reader, a writer and its hooks, and nothing else.
 
+## Notes the user always sees
+
+Requirement G4a in words. Every dialog that links, copies or syncs has a "What will happen" block, built from what is known for the tool being written to. It is never left out, also when everything is ordinary; then it says so. The same lines stay on the link's status until they no longer apply.
+
+| Situation | Note shown before confirming | Stays on the status as |
+|---|---|---|
+| New chat in Codex or OpenCode | The new chat appears in *tool* right away. No relaunch. | nothing |
+| New chat in Claude or Cursor | *Tool* shows a new chat only after it restarts. Baton creates it now; relaunch *tool* once to see it. You only do this once for this chat. Buttons: *Create and relaunch tool*, *Create, I relaunch later* | Relaunch *tool* to see this chat |
+| New chat in Cursor, Cursor is open | Cursor has to be closed while Baton creates the chat. Baton closes Cursor, creates the chat and opens Cursor again. Unsaved editor changes are kept by Cursor. Buttons: *Close Cursor and create*, *Cancel* | none |
+| Start now, history attached | The agent gets the history with your first message. The chat will never show it as separate messages. | Agent has *n* turns the chat does not show |
+| Turns for a chat that is open | These *n* turns will be attached to your next message there. To get them as normal messages, relaunch *tool*. | *n* turns waiting, attached on next message |
+| Tool cannot run in the background | *Tool* can't write the brief here (*reason*). *Other tool* writes it instead. | none |
+| A way of linking is not available | Shown greyed out with the reason and what would make it available. | none |
+| Tool's command or hooks are missing | *What is missing*, what it stops Baton from doing, and the fix. Buttons: the fix, *Check again* | Setup: 1 step left |
+| A tool's first use of Baton's hooks | Codex: type /hooks and trust Baton's two entries. OpenCode: restart OpenCode once so Baton's plugin loads. Claude and Cursor: nothing to do. | Setup: 1 step left |
+| Undo on Codex | Codex can't make a chat shorter, so Baton creates a shorter chat and links it. Your current chat stays as it is. | Earlier chat kept |
+
+Rules for these notes: one sentence on what happens, one on what the user has to do, the app named every time, and a count where there is one. The confirm button names the action. Nothing unusual is ever learned afterwards.
+
 ## What is known per tool
 
 "Yes" and "no" are measured (SPIKE-M0.md). "To verify" has not been run.

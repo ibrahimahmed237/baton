@@ -342,6 +342,8 @@ Build note: the target machine has Command Line Tools only, no Xcode. The app is
 
 ## 7a. Messages to the user
 
+Every dialog that links, copies or syncs carries a "What will happen" block for the tool it writes to, also when nothing is unusual. The lines and when each is shown are in [features/more-tools.md](features/more-tools.md), "Notes the user always sees".
+
 Rules for every notice, warning and error:
 1. Say what happened, then why in one clause, then what to do.
 2. Say whether anything was changed. A warning that leaves the user guessing about their chats is a bad warning.
