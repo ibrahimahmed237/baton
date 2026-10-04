@@ -118,8 +118,10 @@ Following the message rules in the design (section 7a).
 | V13 | Two pinned turns in a long chat | a brief is written | The brief contains both turns in full besides its summary. |
 | V14 | A turn that is pinned and kept in Claude | a brief is written for Codex | The brief does not contain it. |
 
-## To verify before building
+## Verified before building
 
-- **How each tool records a limit.** What the turn-end hook and the chat file contain when a reply ends on a usage limit, and whether a reset time is included. Needs a real limit event or the tools' documentation.
-- **Where the token numbers are.** Codex records token counts and a context size per turn; Claude records usage per reply. Which fields give "tokens in context now" on each side has to be confirmed against a chat whose size is known.
-- **Read-only background runs.** That each tool's runner can be limited to reading, and what it does when asked to change something.
+All three were checked against real chats; field names and details in [SPIKE-M0.md](../SPIKE-M0.md).
+
+- **How each tool records a limit.** Both write it into the chat file with the reset time: Claude as a marked error reply with the reset time and the kind of limit, Codex as limit figures on every turn, including how much of each limit is used before it is reached. W1 to W3 read these.
+- **Where the token numbers are.** Claude: the usage of the latest reply, summed; it matches what Claude itself records when it summarises a chat. Codex: the last turn's token usage, with the context size next to it. Claude does not record the size, so W5 shows a percentage for Claude only where Baton knows the size for the model.
+- **Read-only background runs.** Both runners can be limited to reading, and both refused to create a file when asked. W9 uses that.

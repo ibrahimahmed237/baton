@@ -51,7 +51,7 @@ The same dialog offers "Copy and link" for the user who wants them kept in sync 
 
 ### Names
 
-**A5. Use one name on both sides.** When the two chats' names differ, the user can pick one and Baton renames the other to match. The action says whether the app has to be relaunched to show the new name. Baton never does this by itself: by default it only follows the names ([sync-status.md](sync-status.md), R14).
+**A5. Use one name on both sides.** When the two chats' names differ, the user can pick one and Baton renames the other to match. The action says what it takes for the new name to show: Codex shows it after a relaunch; Claude takes a new name only while it is closed (a running Claude writes its own name back), so renaming the Claude chat is done as part of a relaunch. Baton never does this by itself: by default it only follows the names ([sync-status.md](sync-status.md), R14).
 
 ### Relaunch
 
@@ -66,15 +66,17 @@ The same dialog offers "Copy and link" for the user who wants them kept in sync 
 
 **A8. Sync history.** Each link has a list of everything Baton did to it, newest first: when, in which direction, which turns, and how (added as messages, attached to a message, twin created, merged).
 
-**A9. Undo back to any point.** The user can pick any entry in the history and take the chat back to how it was just before it. This cuts a chat back; it is the one action that removes messages, so:
-- Before anything happens, Baton shows **exactly what will be removed and from which chat**: the turns Baton added at and after that point, and every message written in that chat after them, each by its first line and time. It also states the message the chat will end at afterwards.
-- Messages that exist only in the chat being cut (never delivered to the other side) are called out separately: "these 2 exist only in Codex".
-- The confirmation button names the action and the count: "Remove 5 turns from the Codex chat". Nothing happens until it is pressed.
-- A turn that was attached cannot be taken back by itself. Undoing it means cutting that chat back to before the message it was attached to; the dialog says so and lists that message too.
-- A chat can only be cut back while it is closed. If it is open, Baton says so and offers the relaunch of A6, doing the cut while the app is closed.
+**A9. Undo back to any point.** The user can pick any entry in the history and take the chat back to how it was just before it. How this is done depends on the app, because Codex does not accept a chat that became shorter ([SPIKE-M0.md](../SPIKE-M0.md)):
+- **A Claude chat is cut back.** This is the one action that removes messages from a chat.
+- **A Codex chat is replaced by a shorter one.** Baton creates a new Codex chat that ends at the chosen point and moves the link to it. The chat as it is now stays untouched, is no longer linked and is marked as an earlier copy. Nothing is removed.
+- Before anything happens, Baton shows **exactly which turns the chat will no longer have**: the turns Baton added at and after that point, and every message written in that chat after them, each by its first line and time. It also states the message the chat will end at afterwards.
+- Messages that exist only in that chat (never delivered to the other side) are called out separately: "these 2 exist only in Codex".
+- The confirmation button names the action and the count: "Remove 5 turns from the Claude chat", "Create the shorter Codex chat". Nothing happens until it is pressed.
+- A turn that was attached cannot be taken back by itself. Undoing it means going back to before the message it was attached to; the dialog says so and lists that message too.
+- A Claude chat is cut only while it is not replying. If it is replying, Baton says so and offers to do it when the reply has finished. Baton closes that one chat's background process, cuts the file, and Claude loads it again on the next message; no relaunch. The agent stops having the removed turns at once. The chat still displays them until Claude is relaunched, and the dialog says so.
 - The other chat is not changed. The turns become "waiting" again and the link is paused, so they are not delivered straight back.
 
-**A10. Saved copy before every cut.** Before cutting, Baton saves what it removes. For 30 days the history entry offers "Restore", which puts the turns back if nothing has been written to the chat since.
+**A10. Nothing is lost for 30 days.** Before cutting a Claude chat, Baton saves what it removes; "Restore" on the history entry puts the turns back if nothing has been written to the chat since. For Codex, "Go back to the earlier chat" moves the link back to the chat that was left untouched.
 
 ### Later
 
@@ -96,9 +98,11 @@ Following the message rules in the design (section 7a).
 | Remove a link | **Remove the link between "*Claude name*" and "*Codex name*"?** Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered. Buttons: *Remove link*, *Keep link* |
 | Copy to Codex | **Copy "*name*" to Codex?** Baton creates a new Codex chat with all 16 turns as normal messages. It appears in Codex right away. The two chats will not be kept in sync. Buttons: *Copy to Codex*, *Copy and link*, *Cancel* |
 | Copy to Claude | **Copy "*name*" to Claude?** Baton creates a new Claude chat with all 16 turns as normal messages. Claude lists new chats only when it starts, so relaunch Claude once to see it. The two chats will not be kept in sync. Buttons: *Copy to Claude*, *Copy and link*, *Cancel* |
-| Undo to a point | **Take the Codex chat back to 14:10?** This removes 5 turns from the Codex chat: 3 that Baton added ("Add logout", "Fix the failing test", "Add refresh tokens") and 2 that you wrote there afterwards ("Store them in Redis", "Add a rate limit"). Those 2 exist only in Codex. Afterwards the Codex chat ends at "Add a login endpoint", 13:40. The Claude chat is not changed. Baton keeps a copy of what it removes for 30 days. Buttons: *Remove 5 turns from the Codex chat*, *Cancel* |
-| Undo while the chat is open | **The Codex chat is open, so it can't be cut back right now.** Relaunch Codex and Baton does it while the app is closed. Buttons: *Relaunch Codex and undo*, *Cancel* |
-| After an undo | Removed 5 turns from the Codex chat. It now ends at "Add a login endpoint". The link is paused so they are not sent back. Buttons: *Restore*, *Resume sync* |
+| Undo to a point, Claude | **Take the Claude chat back to 14:10?** This removes 5 turns from the Claude chat: 3 that Baton added ("Add logout", "Fix the failing test", "Add refresh tokens") and 2 that you wrote there afterwards ("Store them in Redis", "Add a rate limit"). Those 2 exist only in Claude. Afterwards the Claude chat ends at "Add a login endpoint", 13:40. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. The Codex chat is not changed. Baton keeps a copy of what it removes for 30 days. Buttons: *Remove 5 turns from the Claude chat*, *Cancel* |
+| Undo to a point, Codex | **Take the Codex side back to 14:10?** Codex can't make a chat shorter, so Baton creates a new Codex chat that ends at "Add a login endpoint", 13:40, and links it. The new chat will not have these 5 turns: 3 that Baton added ("Add logout", "Fix the failing test", "Add refresh tokens") and 2 that you wrote there afterwards ("Store them in Redis", "Add a rate limit"). Those 2 exist only in Codex. Your current Codex chat stays exactly as it is, with everything in it, and is no longer linked. The Claude chat is not changed. Buttons: *Create the shorter Codex chat*, *Cancel* |
+| Undo while Claude is replying | **Claude is replying in this chat, so it can't be taken back right now.** Baton can do it as soon as the reply has finished. Buttons: *Undo when the reply has finished*, *Cancel* |
+| After an undo, Claude | Removed 5 turns from the Claude chat. It now ends at "Add a login endpoint". The chat still displays them until you relaunch Claude. The link is paused so they are not sent back. Buttons: *Restore*, *Relaunch Claude*, *Resume sync* |
+| After an undo, Codex | Created "*name*" in Codex, ending at "Add a login endpoint", and linked it. Your earlier Codex chat is unchanged. The link is paused so the turns are not sent back. Buttons: *Go back to the earlier chat*, *Resume sync* |
 | Names differ | Claude calls this chat "*name A*". Codex calls it "*name B*". Buttons: *Use "name A" on both*, *Use "name B" on both*, *Keep both* |
 
 ## Acceptance scenarios
@@ -113,14 +117,16 @@ Following the message rules in the design (section 7a).
 | T5 | Claude is replying in two chats | the user presses "Relaunch Claude" | A warning names both chats; nothing is quit until the user confirms. |
 | T6 | T5 | the user chooses "Relaunch when idle" | Baton relaunches only after both replies have finished. |
 | T7 | Three syncs into the Codex chat, then two turns written in Codex | the user picks the second sync in the history and "Undo" | The dialog lists the turns Baton added in the second and third syncs and the two written afterwards, calls out the two as existing only in Codex, and names the message the chat will end at. |
-| T8 | T7, confirmed, Codex chat closed | — | The Codex chat ends at the named message; the removed part is saved; the link is paused; the Claude chat is unchanged. |
-| T9 | T8 | "Restore" with nothing written since | The Codex chat is back to what it was before the undo. |
-| T10 | T7, but the Codex chat is open | the user confirms | Nothing is cut; Baton offers "Relaunch Codex and undo". |
+| T8 | T7, confirmed | — | A new Codex chat ends at the named message and is linked; the earlier Codex chat is byte-for-byte unchanged, unlinked and marked as an earlier copy; the link is paused; the Claude chat is unchanged. |
+| T9 | T8 | "Go back to the earlier chat" | The link points at the earlier Codex chat again; the shorter chat is left as it is, unlinked. |
+| T10 | Two syncs into the Claude chat, then one turn written in Claude; the chat is open and not replying | the user undoes the first sync and confirms | That chat's process is closed, the file ends at the named message, the removed part is saved, the link is paused, and the status says the chat displays the removed turns until Claude is relaunched. |
+| T10b | T10, but Claude is replying in that chat | the user confirms | Nothing is cut; Baton offers "Undo when the reply has finished". |
+| T10c | T10 | "Restore" with nothing written since | The Claude chat file is byte-for-byte what it was before the undo. |
 | T11 | A turn was attached to a message in Claude | the user undoes that sync | The dialog says the Claude chat will be cut back to before that message, and lists it. |
 
-## To verify before building
+## Verified before building
 
-These touch app behaviour not covered by the spike. Each needs one run on a throwaway chat.
+Both were run on throwaway chats; details in [SPIKE-M0.md](../SPIKE-M0.md).
 
-- **Cutting a chat back after the app has loaded the later part.** Claude: does the app open a chat whose file is shorter than what it last saw? Codex: its own record of the chat points past the new end of the file; does it rebuild or fail? If either app does not accept it, undo creates a copy that ends at the chosen point and moves the link to it, instead of cutting.
-- **Renaming a chat from outside.** Where each app keeps the name, whether a running app picks up a change, and whether it writes its own name back over it.
+- **Cutting a chat back after the app has loaded the later part.** Claude follows the shorter file once that chat's process has been restarted; its view catches up at the next relaunch. Codex does not: its own index keeps pointing past the new end and the chat keeps displaying the removed turns. So undo cuts on Claude and creates a shorter chat on Codex (A9).
+- **Renaming a chat from outside.** Codex shows it after a relaunch. A running Claude ignores it and writes its own name back, so Claude is renamed while closed (A5).

@@ -32,6 +32,7 @@ A **turn** is one of the user's messages and the reply to it. For each turn, eac
 |---|---|
 | **Written here** | The turn was created in this app. |
 | **Shown** | Baton added it to this app's chat. It appears there as a normal message. |
+| **Added, shown after a relaunch** | Baton added it to this app's chat while the app was running (a chat created for Claude, or "Add them now", R5). The agent has it. It appears as a normal message the next time the app starts, and its state then becomes Shown. |
 | **Attached** | Baton gave it to this app's agent together with one of the user's messages. The agent has it. It is not shown as a message, and never will be in this chat. |
 | **Waiting** | It has not reached this side yet. |
 | **Skipped** | The user chose to keep the other side's version in a conflict. It stays only where it was written. |
@@ -39,7 +40,7 @@ A **turn** is one of the user's messages and the reply to it. For each turn, eac
 
 Per side, two things follow from these:
 
-- **What the agent has**: every turn that is written here, shown or attached. Its last one is the message this side is synced up to.
+- **What the agent has**: every turn that is written here, shown, added or attached. Its last one is the message this side is synced up to.
 - **What the chat shows**: the turns that are written here or shown.
 
 "In sync" means both agents have every turn. A side can be in sync and still show fewer turns than its agent has.
@@ -75,6 +76,7 @@ All of these are in the first version unless marked later.
 
 **R5. How to see them as normal messages.** Whenever turns are waiting because a chat is open, Baton names the step that makes them arrive as normal messages instead of attached, per app:
 - Claude: relaunch Claude before sending a message in that chat. A Claude chat stays open until the app quits.
+- Claude, without a relaunch: "Add them now". While the chat is not replying, Baton closes that one chat's background process and adds the turns; Claude loads the chat again on the next message. The agent then has them as real turns, and the chat shows them the next time Claude starts. Until then their state reads "added, shown after a relaunch", which is different from attached: attached turns are never shown.
 - Codex: relaunch Codex. Leaving the chat is not enough: chats left idle for hours were still held. If Codex does let go by itself, Baton adds the turns straight away and they show when the chat is opened, with no relaunch.
 - Baton also says that this is optional: without it, the turns are attached and the agent still has them.
 

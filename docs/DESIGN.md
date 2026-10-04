@@ -255,7 +255,9 @@ Linking an existing pair (the 70 suggestions): align both turn lists by content 
 ## 5. Safety rules
 
 1. Never write to the file of a session that is open: Claude session registry (live pid), Codex writer locks, and a recent-write window. An open chat is reached through catch-up at send, not through its file.
-2. Journal first: record target path and its size before writing. Undo = truncate back to that size and remove the database row Baton added.
+2. Journal first: record target path and its size before writing. A write that failed is taken back by truncating to that size and removing the database row Baton added.
+2a. A chat is made shorter only where the app accepts it (SPIKE-M0.md). Claude: only while no process holds the chat, after saving the removed part. Codex: only while Codex's own index has not read past the cut point; otherwise never, and undo creates a shorter chat instead.
+2b. Baton ends a Claude chat's background process only while that chat is not replying, and only for a linked chat.
 3. Order for a new Codex thread: write file, verify it parses, insert database row, commit ledger. Any failure rolls back the earlier steps.
 4. Dry run for every action; the app shows the plan before the first write to any chat.
 5. Only linked chats are ever written. Unlinked sessions are read-only.
@@ -340,7 +342,7 @@ The wording Baton starts with:
 | After creating a Claude chat | Chat created. Relaunch Claude to see "*title*" in the sidebar. You only need to do this once for this chat. Buttons: *Relaunch Claude*, *Later* |
 | Relaunch while Claude is replying | Claude is still replying in "*title*". Relaunching now would stop that reply. Relaunch when it has finished. Buttons: *Relaunch anyway*, *Wait* |
 | After linking with history attached | Linked. The history will be attached to your first message in this chat. The agent will know it; it won't appear as separate messages. |
-| Chat state: Claude side is open | Waiting. This chat is open in Claude, so these 2 turns will be attached to your next message there. To get them as normal messages instead, relaunch Claude first. Button: *Relaunch Claude* |
+| Chat state: Claude side is open | Waiting. This chat is open in Claude, so these 2 turns will be attached to your next message there. To get them as normal messages instead, relaunch Claude first. Or add them now: the agent gets them as real turns, and the chat shows them the next time Claude starts. Buttons: *Relaunch Claude*, *Add them now* |
 | Chat state: Codex side is open | Waiting. Codex still has this chat open, so these 2 turns will be attached to your next message there. To get them as normal messages instead, relaunch Codex first. Button: *Relaunch Codex* |
 | Relaunch while a chat is replying | **Relaunch Claude?** Claude is replying in 2 chats right now: "*title*" and "*title*". Relaunching stops those replies where they are; what was already written stays. Buttons: *Relaunch when Claude is idle*, *Relaunch now*, *Cancel* |
 | Notice when turns were attached | Baton attached 2 turns from Codex to this message: "add logout", "fix the tests". |
