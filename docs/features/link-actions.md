@@ -23,6 +23,15 @@ Linking two chats is not the end of it. The user wants to stop for a while, stop
 
 All of these are in the first version unless marked later.
 
+### One chat, one link
+
+**A0. A chat is linked to exactly one other chat.** A link is always one Claude chat and one Codex chat. A chat cannot be in two links, and there are no links of three.
+- Trying to link a chat that is already linked does not create a second link. Baton says which chat it is linked to and offers to change the link.
+- *Change the link*: the user picks which side to replace, Claude's or Codex's, and the chat to put there (an existing one, or a new one by either way of linking). The old link is removed first, as in A2: both of its chats stay as they are. Then the new link is made.
+- A chat that was left behind by a change, a merge, a brief or a full copy is shown as an earlier copy: not linked, not synced, never deleted.
+
+Reason: with one partner per chat the user always knows where a turn goes and what "in sync" means. With three, every turn would need a rule for who gets it and every difference would be three-way.
+
 ### Pause, resume, remove
 
 **A1. Pause and resume.** The user can pause one link. While paused, nothing is delivered either way and no hook attaches anything for that chat; the status says "Paused" and counts what is waiting. Resuming goes through the normal rules, including the merge when both sides moved on.
@@ -81,6 +90,8 @@ Following the message rules in the design (section 7a).
 
 | Where | Message |
 |---|---|
+| Linking a chat that is already linked | **"*name*" is already linked to "*other name*" in Codex.** A chat can be linked to one chat at a time. Buttons: *Change the link*, *Cancel* |
+| Change the link | **Link "*name*" to "*new name*" instead?** The link to "*other name*" is removed first. That chat stays exactly as it is and is no longer synced. Buttons: *Change the link*, *Keep the current link* |
 | Paused | **Syncing is paused for this chat.** Nothing is sent either way until you resume. 2 turns are waiting. Button: *Resume* |
 | Remove a link | **Remove the link between "*Claude name*" and "*Codex name*"?** Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered. Buttons: *Remove link*, *Keep link* |
 | Copy to Codex | **Copy "*name*" to Codex?** Baton creates a new Codex chat with all 16 turns as normal messages. It appears in Codex right away. The two chats will not be kept in sync. Buttons: *Copy to Codex*, *Copy and link*, *Cancel* |
@@ -94,6 +105,7 @@ Following the message rules in the design (section 7a).
 
 | # | Given | When | Then |
 |---|---|---|---|
+| T0 | Claude chat A is linked to Codex chat B | the user tries to link A to Codex chat C | No second link is made; Baton names B and offers "Change the link". On confirm, A is linked to C, and B is unchanged and unlinked. |
 | T1 | A link with 2 turns waiting for Claude | the user pauses it, then a reply finishes in Codex | Nothing is delivered and no hook attaches anything; the status reads "Paused, 3 waiting". |
 | T2 | A link | the user removes it | Both chat files are byte-for-byte unchanged; the link is gone from Baton. |
 | T3 | A Claude chat with 16 turns, not linked | "Copy to Codex" | A new Codex chat holds 16 turns; no link exists; the dialog said no relaunch is needed. |
