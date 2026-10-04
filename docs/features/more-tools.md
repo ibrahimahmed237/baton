@@ -68,9 +68,39 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 | Records limits and context | yes; context size not recorded | yes | token counts yes; limits to verify | to verify |
 | Opens at a given chat | yes | yes | to verify | to verify |
 
+## Which Cursor: the app, not `cursor-agent` (checked 2026-10-04)
+
+They are two separate stores, and the app's is the one in use.
+
+| | Cursor app | `cursor-agent` command |
+|---|---|---|
+| Where chats are kept | `state.vscdb`, one database for everything | `~/.cursor/chats/<folder>/<chat>/store.db`, one per chat |
+| Chats on this Mac | 426, from April 2025 to 30 September 2026 | 2, from August and September 2025 |
+| Signed in | yes | no; it asks to sign in |
+| Version | 3.21.18 | a build from August 2025 |
+
+- The two `cursor-agent` chats are not in the app's database, by ID or by name. This was checked again with the app freshly started: still not listed.
+- A new `cursor-agent` chat could not be made for a live check, because the command is signed out and Baton does not sign in for the user.
+- **Decision to take: Baton links the Cursor app's chats.** `cursor-agent` is not a second place the same conversations appear; it is a different product surface with its own chats. It could later serve as Cursor's background runner (briefs, second opinion) if the user signs it in and updates it; it is not needed for syncing.
+
+What the app offers for reading and for hooks:
+
+- Besides the database, the app writes each newer chat as a plain transcript: `~/.cursor/projects/<folder>/agent-transcripts/<chat>/<chat>.jsonl`, one line per message with its role and content (text and tool calls). 107 of the 426 chats have one. This is the safe way to read a Cursor chat. It is the app's own export, so writing to it would not change the chat.
+- The app knows hook events for a submitted prompt, a finished reply, the end of a turn, session start and end, and compaction, and its code names fields for extra context and for a follow-up message. So attaching turns and noticing a finished reply look possible; both need a live run.
+- Adding turns to a Cursor chat as normal messages would mean writing into the 3.8 GB database in a format that is not documented. Expect Cursor to work with "Start now, history attached" only, at least at first (G4).
+
+## OpenCode on this Mac (checked 2026-10-04)
+
+- The `opencode` command is damaged: macOS stops it at launch because its signature is no longer valid. Reinstalling it fixes that; Baton's setup check has to detect it and say so.
+- The OpenCode app runs a local server, but it asks for a password that the app makes up at each start. Baton does not go around that.
+- So the only way in from outside is the database. A throwaway chat was created there by `spike/m0b_opencode.py` with the app running: one project row, one chat, one finished question and answer, in the shapes OpenCode itself writes. The database stayed healthy and the script's `remove` takes exactly those rows out again.
+- Still to look at in the app: whether that chat is listed, shows its turn, and whether the agent knows the codeword when asked.
+- Useful details in the format: a user message records which files its turn changed; a reply records its token counts including the total; text the app inserted itself is marked as such, so it can be left out of prompts; chats that are sub-agent runs have a parent.
+- OpenCode has been used little here: 34 chats, the newest from May 2026.
+
 ## Known so far (read-only look, 2026-10-04)
 
-Both tools are installed on the target Mac. Nothing was written and no chat was started.
+Both tools are installed on the target Mac. This first look wrote nothing and started no chat.
 
 **OpenCode**
 - Chats are in one database, `~/.local/share/opencode/opencode.db`: `session` (title, folder, parent session, token totals, cost), `message` (one row per message, role `user` or `assistant`) and `part` (the pieces of a message: text, reasoning, tool call with its state, step start and finish with token counts). 34 sessions here.
