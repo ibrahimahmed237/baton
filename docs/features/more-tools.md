@@ -62,8 +62,10 @@ Requirement G4a in words. Every dialog that links, copies or syncs has a "What w
 | Situation | Note shown before confirming | Stays on the status as |
 |---|---|---|
 | New chat in Codex or OpenCode | The new chat appears in *tool* right away. No relaunch. | nothing |
-| New chat in Claude or Cursor | *Tool* shows a new chat only after it restarts. Baton creates it now; relaunch *tool* once to see it. You only do this once for this chat. Buttons: *Create and relaunch tool*, *Create, I relaunch later* | Relaunch *tool* to see this chat |
-| New chat in Cursor, Cursor is open | Cursor has to be closed while Baton creates the chat. Baton closes Cursor, creates the chat and opens Cursor again. Unsaved editor changes are kept by Cursor. Buttons: *Close Cursor and create*, *Cancel* | none |
+| New chat in Claude | Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat. Buttons: *Close Claude, sync, reopen*, *Sync now, I relaunch later*, *Cancel* | Relaunch Claude to see this chat |
+| New chat or new turns in Cursor | Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it. Buttons: *Close Cursor, sync, reopen*, *Attach instead*, *Cancel* | *n* turns waiting until Cursor is closed |
+| Closing an app while a chat is replying | *Tool* is replying in "*title*". Closing now stops that reply. Buttons: *Wait until it has finished*, *Close anyway*, *Cancel* | Will sync when *tool* is idle |
+| Tool saved chats in a version Baton has not checked | *Tool* was updated and saves chats differently (version *n*). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated. | *Tool*: reading only |
 | Start now, history attached | The agent gets the history with your first message. The chat will never show it as separate messages. | Agent has *n* turns the chat does not show |
 | Turns for a chat that is open (Claude, Codex, Cursor) | These *n* turns will be attached to your next message there. To get them as normal messages, relaunch *tool*. | *n* turns waiting, attached on next message |
 | Turns for an OpenCode chat, open or not | Baton adds these *n* turns now. If the chat is on screen, open it again to see them. | Open the chat again to see *n* new turns |
@@ -75,13 +77,22 @@ Requirement G4a in words. Every dialog that links, copies or syncs has a "What w
 
 Rules for these notes: one sentence on what happens, one on what the user has to do, the app named every time, and a count where there is one. The confirm button names the action. Nothing unusual is ever learned afterwards.
 
+## When a tool changes its format
+
+A future update cannot be tested ahead of time. What the existing chats show for Cursor: its chat record carries a version number, and across this Mac's 426 chats it went from 1 to 18 in eighteen months, about one change a month. The parts Baton relies on were stable through most of that: the ordered message list and the one-record-per-message layout since version 3, the agent's state since version 11. Cursor also re-saves old chats in the newest version.
+
+So the rule (G8) for every tool that has a version in its format:
+- Baton knows which versions it was checked against (Cursor: 18).
+- Before every write it reads the version. A version it does not know means no creating and no adding in that tool. Reading (Cursor's transcript files do not depend on the record version) and attaching at send keep working.
+- The user is told which tool changed, what still works, and that a Baton update is needed. Nothing is written on a guess.
+
 ## What is known per tool
 
 "Yes" and "no" are measured (SPIKE-M0.md). "To verify" has not been run.
 
 | | Claude | Codex | OpenCode | Cursor |
 |---|---|---|---|---|
-| Closed chat takes new turns | yes | yes | yes, also while the app is running | yes, while Cursor is closed |
+| Closed chat takes new turns | yes | yes, also while Codex runs, as long as Codex is not holding that chat | yes, also while the app is running | yes, while Cursor is closed |
 | Chat created from outside appears | after a relaunch | at once | at once, with the app running | after a relaunch (written while Cursor is closed); shown and known to the agent |
 | Added turn appears | after a relaunch; the agent has it at once | at once if Codex let go of the chat, else after a relaunch | when the chat is opened again; no relaunch | after a relaunch (written while closed) |
 | Attach turns to the next message | yes | yes | yes, through a plugin | yes |
