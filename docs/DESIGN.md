@@ -84,6 +84,8 @@ Claude desktop ── Stop hook ──┐                    ┌── stop hook
 
 **States per link:** in sync, Claude ahead, Codex ahead, conflict, history changed, side missing, target open (queued).
 
+**States per turn, per side:** written here, shown (added to the chat as a normal message), attached (given to the agent with a message, not shown), waiting, skipped. The ledger records one of these for every turn on each side, with when and how. A side's position is then two things: the last turn its agent knows and the last turn its chat shows. See [features/sync-status.md](features/sync-status.md).
+
 **Two ways a turn reaches the other side**
 
 1. *Closed chat: append.* The real turns are appended to the saved chat. They show as normal turns when the chat is opened.
@@ -187,7 +189,7 @@ Headless runners on the target machine (tested, see SPIKE-M0.md):
 
 **Window**
 - Sidebar: Linked, Needs attention, Suggestions, All Claude, All Codex, Activity.
-- Detail: both sides' turns in one timeline, each marked with where it was written and whether it has crossed.
+- Detail: the sync status of the chat. For each side, which message it has reached, what its chat shows and what its agent knows without showing, what is waiting and why, and which app to relaunch to see it. Then every turn in one list with its state on each side. Requirements: [features/sync-status.md](features/sync-status.md).
 - Size and cost preview panel.
 - Conflict sheet: preview of the time-ordered merge (order, which side gets a new chat, flagged files), the other choices, and "always do this".
 - Activity log with Undo on the last write per chat. Catch-ups are listed too: which turns were attached to which message.
