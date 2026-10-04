@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""M0 spike: a prompt hook that attaches one pretend "missed turn" to the user's message.
+"""M0 spike: a test hook for the prompt and the turn-end events of both tools.
 
-Throwaway code. It stands in for the real catch-up hook so three things can be
-observed in the desktop apps (docs/DESIGN.md section 9, questions 11 and 12):
+Throwaway code. It stands in for the real hooks so these can be observed in the
+desktop apps (docs/DESIGN.md section 9):
 
-  - does text returned by the hook reach the agent,
-  - what does the app pass to the hook (is the session ID there),
-  - how is the optional notice shown to the user.
+  - does text returned by the prompt hook reach the agent,
+  - what does each app pass to each hook (is the session ID there),
+  - how is the optional notice shown to the user,
+  - does the turn-end hook fire, and what output does each app accept.
 
-It only acts when the prompt mentions "codeword", so ordinary chats in this
-folder are left alone. Everything it receives is logged to .baton-spike/.
+On a prompt it only acts when the text contains "hook test", so ordinary chats
+in this folder are left alone. At turn end it only logs. Everything it receives
+is logged to .baton-spike/hook-log.jsonl.
 
     m0_hook.py claude|codex      (hook input arrives as JSON on stdin)
 """
@@ -20,6 +22,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG = os.path.join(ROOT, ".baton-spike", "hook-log.jsonl")
+TRIGGER = "hook test"
 
 # What each side is told happened on the other side.
 MISSED = {
@@ -35,8 +38,9 @@ def main():
         data = json.loads(raw) if raw.strip() else {}
     except ValueError:
         data = {"unparsed": raw[:200]}
+    event = data.get("hook_event_name") or ""
     prompt = data.get("prompt") or ""
-    attach = "codeword" in prompt.lower()
+    attach = event != "Stop" and TRIGGER in prompt.lower()
 
     os.makedirs(os.path.dirname(LOG), exist_ok=True)
     with open(LOG, "a") as fh:
@@ -45,13 +49,20 @@ def main():
             "side": side,
             "keys": sorted(data.keys()),
             "session_id": data.get("session_id"),
-            "hook_event_name": data.get("hook_event_name"),
+            "hook_event_name": event,
             "cwd": data.get("cwd"),
             "transcript_path": data.get("transcript_path"),
             "prompt_preview": prompt[:60],
+            "last_assistant_message_preview": (data.get("last_assistant_message") or "")[:60],
+            "stop_hook_active": data.get("stop_hook_active"),
             "attached": attach,
         }) + "\n")
 
+    if event == "Stop":
+        # Codex accepts only JSON here; Claude accepts no output at all.
+        if side == "codex":
+            print("{}")
+        return
     if not attach:
         return
     missed = MISSED.get(side, MISSED["claude"])
