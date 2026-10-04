@@ -89,12 +89,12 @@ The features in DESIGN.md section 1a are written once and hold for any two tools
 | New turns as real messages | closed, or idle chat released | when not held | any time | while closed |
 | Seeing them | after relaunch | at once | on reopening the chat | after relaunch |
 | Merge with a merged copy | new chat, relaunch | new chat | new chat | new chat, Cursor closed |
-| Undo | cut | shorter chat | cut | cut, while closed |
+| Undo | cut | shorter chat | cut | shorter chat |
 | Brief by this tool's agent; second opinion | yes | yes | needs its command repaired | needs `cursor-agent` signed in; else the other tool |
 | Context in use | tokens; percent when size known | tokens and percent | tokens | tokens and percent |
 | Usage limit and reset time | yes | yes | limit yes, reset time no | limit yes, reset time no |
 | Relaunch from Baton | yes | yes | not needed | yes |
-| Names followed; rename | read; rename while closed | read; shows after relaunch | read | read |
+| Names followed; rename | read; rename while closed | read; shows after relaunch | read; rename shows while running | read; rename while closed |
 | Pause, remove link, history, keep back, pin, status | same for all | same for all | same for all | same for all |
 
 Where a cell says something cannot be done, the dialog says so before the user confirms and offers the next best (more-tools.md, G4 and G4a).
@@ -104,7 +104,7 @@ Where a cell says something cannot be done, the dialog says so before the user c
 | Open | Meanwhile |
 |---|---|
 | "Attach now, show later" in the same chat | Settled for Cursor: works, placed at the right position while Cursor is closed. Codex: one run worked but doubled the file's numbering, so Baton attaches and offers close, sync, reopen |
-| Cutting an OpenCode or Cursor chat shorter | Settled: both accept it (Cursor while closed). Undo cuts there, as on Claude |
+| Cutting an OpenCode or Cursor chat shorter | Settled: OpenCode accepts it. Cursor hides the turns but its agent keeps them, so undo on Cursor creates a shorter chat |
 | Opening OpenCode or Cursor at a given chat | Settled: neither has a link to a chat. Baton opens the folder in the app and names the chat to pick |
 | Usage limits in OpenCode and Cursor | Settled: both record a failed turn with the reason, without a reset time. The limit offer is shown without "available again at" |
 | What makes Codex let go of a chat by itself | Check before every write |

@@ -136,7 +136,7 @@ Where it cannot be done in the same chat, "Create a full copy" (link-actions.md,
 | Attach turns to the next message | yes | yes | yes, through a plugin | yes |
 | Tells when a reply finishes | yes | yes | yes, through a plugin | yes |
 | Open and replying can be told | yes | yes | yes, through the plugin | running or not: yes; replying: through hooks |
-| Chat can be made shorter | yes | no; a shorter chat is created | yes | yes, while closed |
+| Chat can be made shorter | yes | no; a shorter chat is created | yes | no; a shorter chat is created (its agent is built from what the new chat shows) |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
 | Records limits and context | yes; context size not recorded | yes | token counts yes; a failed reply carries the provider's error and status code, no reset time | context with size and percentage; a turn that ended on a limit says so in the transcript's end-of-turn line, no reset time |
 | Opens at a given chat | yes | yes | no; Baton opens the folder and names the chat to pick | no; Baton opens the folder and names the chat to pick |
@@ -204,11 +204,11 @@ What this means for a link with Cursor: every way of linking works. "Copy the fu
 | 5 | Signal when a reply finishes, with chat ID | yes | yes |
 | 6 | Background run, read-only | not available: the command is damaged here | not available: `cursor-agent` is signed out |
 | 7 | Open the app at a given chat | no link to a chat exists. `opencode://open-project?directory=…` opens the folder; `opencode://new-session?directory=…&prompt=…` starts a new chat there | no link to a chat exists. The `cursor` command opens the folder |
-| 8 | Name: where, and changed from outside | in the chat's row; change not tested | in the chat list row; change not tested |
-| 9 | Chat made shorter | yes, while running: gone on reopening the chat, and the agent no longer has it | yes, written while closed: the removed turns are gone from the chat. That the agent forgot them is likely but was not proven, since the removed turns held nothing only the agent knew |
+| 8 | Name: where, and changed from outside | in the chat's row; a change is shown while OpenCode runs | in the chat list row and the chat record; a change made while Cursor is closed is shown |
+| 9 | Chat made shorter | yes, while running: gone on reopening the chat, and the agent no longer has it | **no.** Removing the display records hides the turns, but the agent still has them: a codeword given in a turn that was then cut was still listed afterwards, with no tool used. So undo creates a shorter chat, as on Codex |
 | 10 | `cursor-agent` same as the app? | n/a | no, separate; the app is the one to link |
 
-What is left does not block starting: background runs need the user's repair or sign-in (6), and renaming from outside was not tried (8), so names are only read. Undo cuts the chat on OpenCode and Cursor, as on Claude.
+What is left does not block starting: background runs need the user's repair or sign-in (6). Undo cuts the chat on OpenCode, as on Claude, and creates a shorter chat on Cursor and Codex.
 
 One more thing these tests showed: an OpenCode chat that is on screen keeps showing its old content, after an add and after a cut, until the chat is opened again. The note for OpenCode says so in both cases.
 
