@@ -340,7 +340,7 @@ Synced chats get a short title tag on the other side (`[Claude]`, `[Codex]`), co
 
 Build note: the target machine has Command Line Tools only, no Xcode. The app is built as a Swift package and bundled by script, or Xcode is installed first.
 
-**Colour carries meaning, and the same meaning everywhere.** The dark theme is Graphite (mid-gray). Within it, things that differ never share a colour: green for turns added as messages and "in sync", amber for attached or waiting, violet for a merge, blue for link changes and the main action, red for undo, conflicts and anything that removes or needs the user. Lists such as the sync history mark every row with its kind in that colour (a tag and a side bar) and show a legend, so an important entry cannot hide among similar-looking ones. Colour is never the only signal: each row also says its kind in words.
+**Colour carries meaning, and the same meaning everywhere.** The dark theme is Graphite (mid-gray). Within it, things that differ never share a colour: green for turns added as messages and "in sync", amber for attached or waiting, violet for a merge, blue for link changes and the main action, red for undo, conflicts and anything that removes or needs the user. Lists such as the sync history mark every row with its kind in that colour (a tag and a side bar) and show a legend, so an important entry cannot hide among similar-looking ones. Colour is never the only signal: each row also says its kind in words. Each tool also has its own identity colour, shown as a dot next to its name wherever it appears: Claude coral, Codex teal, OpenCode yellow, Cursor sky blue. Steps that close an app are red, steps that write are green, steps that reopen are blue.
 
 ## 7a. Messages to the user
 
