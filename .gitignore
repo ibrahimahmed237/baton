@@ -17,3 +17,6 @@ __pycache__/
 .venv/
 build/
 .DS_Store
+
+# Swift build output
+.build/
