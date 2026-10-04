@@ -39,6 +39,10 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 
 **G4. A tool that cannot do something degrades in the open.** Examples: no way to attach turns means turns for an open chat wait until it is closed, and the status says so; no background run means the other tool writes the brief, or the offline brief is used. The user is told which and why. Nothing is skipped silently.
 
+**G4a. Anything unusual is said before it happens, and confirmed.** Whenever a link, a copy or a sync will not behave the usual way for the tool involved, Baton says so in the dialog, before the user confirms, and the confirm button is only enabled once the note has been shown. This covers at least: a way of linking that the tool does not support (shown greyed out with the reason, not hidden); history that the agent will know but the chat will not show, or that the chat will show but the agent will only get with the first message; a chat that will appear only after a relaunch, naming the app; a tool whose background run is missing, so another tool writes the brief. The same note stays on the link's status afterwards, so it is not a one-time message.
+
+**G4b. A chat that does not exist yet is created by the sync.** When the other tool has no chat for this link, Baton creates it, and says for that tool whether it appears at once or after a relaunch: Claude after a relaunch, Codex at once, OpenCode at once, Cursor still being tested.
+
 **G5. Copy from any tool to any tool.** "Copy to…" on a chat lists the other tools. The dialog states, for the chosen tool, whether the new chat appears at once or after a relaunch of that tool, and whether the two chats will be kept in sync (they will not, unless the user chooses "Copy and link").
 
 **G6. One link per chat, across tools.** Linking a chat that is already linked, to a chat in any tool, names the current partner and its tool and offers "Change the link".
