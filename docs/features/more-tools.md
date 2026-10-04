@@ -126,7 +126,7 @@ Where it cannot be done in the same chat, "Create a full copy" (link-actions.md,
 
 ## What is known per tool
 
-"Yes" and "no" are measured (SPIKE-M0.md). "To verify" has not been run.
+"Yes" and "no" are measured (SPIKE-M0.md and the sections below). Anything else says what Baton does in the meantime.
 
 | | Claude | Codex | OpenCode | Cursor |
 |---|---|---|---|---|
@@ -135,11 +135,11 @@ Where it cannot be done in the same chat, "Create a full copy" (link-actions.md,
 | Added turn appears | after a relaunch; the agent has it at once | at once if Codex let go of the chat, else after a relaunch | when the chat is opened again; no relaunch | after a relaunch (written while closed) |
 | Attach turns to the next message | yes | yes | yes, through a plugin | yes |
 | Tells when a reply finishes | yes | yes | yes, through a plugin | yes |
-| Open and replying can be told | yes | yes | to verify | to verify |
-| Chat can be made shorter | yes | no; a shorter chat is created | to verify | to verify |
+| Open and replying can be told | yes | yes | yes, through the plugin | running or not: yes; replying: through hooks |
+| Chat can be made shorter | yes | no; a shorter chat is created | not tested; a shorter chat is created | not tested; a shorter chat is created |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
 | Records limits and context | yes; context size not recorded | yes | token counts yes; limits to verify | context yes, with size and percentage; limits to verify |
-| Opens at a given chat | yes | yes | to verify | to verify |
+| Opens at a given chat | yes | yes | not looked at; the app is brought to the front | not looked at; the app is brought to the front |
 
 ## Which Cursor: the app, not `cursor-agent` (checked 2026-10-04)
 
@@ -159,13 +159,13 @@ They are two separate stores, and the app's is the one in use.
 What the app offers for reading and for hooks:
 
 - Besides the database, the app writes each newer chat as a plain transcript: `~/.cursor/projects/<folder>/agent-transcripts/<chat>/<chat>.jsonl`, one line per message with its role and content (text and tool calls). 107 of the 426 chats have one. This is the safe way to read a Cursor chat. It is the app's own export, so writing to it would not change the chat.
-- The app knows hook events for a submitted prompt, a finished reply, the end of a turn, session start and end, and compaction, and its code names fields for extra context and for a follow-up message. So attaching turns and noticing a finished reply look possible; both need a live run.
-- Adding turns to a Cursor chat as normal messages would mean writing into the 3.8 GB database in a format that is not documented. Expect Cursor to work with "Start now, history attached" only, at least at first (G4).
+- The app knows hook events for a submitted prompt, a finished reply, the end of a turn, session start and end, and compaction, and its code names fields for extra context and for a follow-up message. Both were then confirmed live (below).
+- The database is large and its format is not documented, but writing a chat's display records while Cursor is closed works (tested below).
 
 A throwaway chat made in the app, in the Baton folder, shows how a chat is saved:
 
 - The list of chats has one row per chat with its name, folder, times and how full its context is.
-- The chat itself is one record that lists its messages in order, and one record per message with its text, time and token count. The record also holds an encryption key for part of its state, which is another reason not to write there.
+- The chat itself is one record that lists its messages in order, and one record per message with its text, time and token count. The record also holds an encoded agent state with an encryption key; Baton never writes that part, only the display records, and Cursor rebuilds the state from them.
 - The transcript file appeared at once, in the folder named after the project: the prompt wrapped in a time stamp and a query marker, the reply, and a line marking the end of the turn. That end-of-turn line is a second way to notice a finished reply.
 - The chat record carries the context in use, the limit and the percentage, so "how full is this side" needs no arithmetic for Cursor.
 
@@ -193,37 +193,22 @@ What this means for a link with Cursor: every way of linking works. "Copy the fu
 - Useful details in the format: a user message records which files its turn changed; a reply records its token counts including the total; text the app inserted itself is marked as such, so it can be left out of prompts; chats that are sub-agent runs have a parent.
 - OpenCode has been used little here: 34 chats, the newest from May 2026.
 
-## Known so far (read-only look, 2026-10-04)
+## Spike M0b: where each question stands
 
-Both tools are installed on the target Mac. This first look wrote nothing and started no chat.
+| # | Question | OpenCode | Cursor |
+|---|---|---|---|
+| 1 | Turn added to an existing chat: shown and known? | yes, while running; shown on reopening the chat | yes, written while closed |
+| 2 | Chat created from outside appears | at once | after a relaunch |
+| 3 | What marks a chat as open or replying | busy and idle events through the plugin; from outside the app: to build | hooks say when a turn starts and ends; whether Cursor is running is a process check |
+| 4 | Attach text to the next message | yes, stored marked as inserted | yes, not stored in the transcript |
+| 5 | Signal when a reply finishes, with chat ID | yes | yes |
+| 6 | Background run, read-only | not available: the command is damaged here | not available: `cursor-agent` is signed out |
+| 7 | Open the app at a given chat | not looked at | not looked at |
+| 8 | Name: where, and changed from outside | in the chat's row; change not tested | in the chat list row; change not tested |
+| 9 | Chat made shorter | not tested | not tested |
+| 10 | `cursor-agent` same as the app? | n/a | no, separate; the app is the one to link |
 
-**OpenCode**
-- Chats are in one database, `~/.local/share/opencode/opencode.db`: `session` (title, folder, parent session, token totals, cost), `message` (one row per message, role `user` or `assistant`) and `part` (the pieces of a message: text, reasoning, tool call with its state, step start and finish with token counts). 34 sessions here.
-- A session can have a parent session; those are sub-agent runs and are not chats to link.
-- The database also has newer, still empty tables (`session_message`, `session_input`, `event`), so the format is moving. The format check (G8) matters here.
-- It has plugins. The installed plugin interface offers a hook when the user sends a message, one that can change the messages sent to the model, and one at compaction. These are the candidates for attaching turns and for noticing a finished reply.
-- All chats share one database file that the app keeps open, so "never write into an open chat" needs its own answer here: either through OpenCode's own commands or server, or only while it is not running.
-
-**Cursor**
-- The Cursor app keeps its chats in `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`, a 3.8 GB database with 426 chats listed. The format is not documented.
-- The `cursor-agent` command keeps its chats elsewhere: `~/.cursor/chats/<folder>/<chat>/store.db`, one small database per chat (`meta` with the chat's name, model and newest entry; `blobs` with the content). It can print a reply without a window and resume a chat by ID.
-- The two `cursor-agent` chats on this Mac are **not** in the app's database. So on this Mac, with this version, they look like two separate stores, and nearly all conversations are in the app's. This is checked live before anything is built: start a `cursor-agent` chat and look for it in the app.
-- No Cursor hooks are installed. Whether Cursor can attach text to a message or tell when a reply ends is to verify.
-
-## To verify with a live run (spike M0b)
-
-Per tool, on throwaway chats made in the Baton folder, the same questions as the first spike:
-
-1. Add a turn to a closed chat: is it shown, and does the agent have it?
-2. Create a chat from outside: does it appear at once or after a relaunch?
-3. What marks a chat as open or replying?
-4. Can text be attached to the user's next message, and how is it stored?
-5. Is there a signal when a reply finishes, with the chat's ID?
-6. Background run: can it be limited to reading, and does it leave a chat behind?
-7. Can the app be opened at a given chat?
-8. Where is the chat's name, and is a change from outside picked up?
-9. Does a chat made shorter get accepted?
-10. Cursor only: are `cursor-agent` chats and app chats the same chats?
+What is left (6 to 9) does not block starting: briefs fall back to the other tool or the offline brief (G4), "Open chat" falls back to bringing the app to the front, names are only read, and undo on these tools creates a shorter chat as on Codex until a cut is proven safe.
 
 ## Acceptance scenarios
 

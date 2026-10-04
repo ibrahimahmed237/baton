@@ -4,7 +4,7 @@ Hand a conversation from one coding agent to another and back. Each linked chat 
 
 The first pair, and the first version, is Claude Code with Codex; this document names those two throughout. OpenCode and Cursor come next, and every rule here applies to any two tools ([features/more-tools.md](features/more-tools.md)).
 
-Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
+Status: design agreed 2026-10-04; both spikes done; engine core started. What to build next, in order: [PLAN.md](PLAN.md). Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
 
 ## 1. Decisions
 
@@ -32,7 +32,7 @@ Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `
 | Visual style | Light glass, system materials; light and dark themes; dark is mid-gray, not near-black |
 | Name | Baton |
 
-Surfaces in scope: Claude desktop app (Code tab) and Codex Desktop. No CLI or VS Code sessions exist on the target machine. SDK script sessions (`sdk-py`) are hidden by default.
+Surfaces in scope: Claude desktop app (Code tab) and Codex Desktop in the first version; the OpenCode app and the Cursor app after it (not `cursor-agent`, which keeps separate chats). No CLI or VS Code sessions exist on the target machine. SDK script sessions (`sdk-py`) are hidden by default.
 
 ## 1a. Everything in the first version
 
@@ -272,6 +272,7 @@ Linking an existing pair (the 70 suggestions): align both turn lists by content 
 ## 5. Safety rules
 
 1. Never write to the file of a session that is open: Claude session registry (live pid), Codex writer locks, and a recent-write window. An open chat is reached through catch-up at send, not through its file.
+1a. What "open" means is per tool, as measured: Claude, a live process for the chat (an idle one may be released); Codex, a chat it holds; Cursor, the app running at all; OpenCode, never, its database takes writes while it runs. The planner asks the adapter; it does not assume.
 2. Journal first: record target path and its size before writing. A write that failed is taken back by truncating to that size and removing the database row Baton added.
 2a. A chat is made shorter only where the app accepts it (SPIKE-M0.md). Claude: only while no process holds the chat, after saving the removed part. Codex: only while Codex's own index has not read past the cut point; otherwise never, and undo creates a shorter chat instead.
 2b. Baton ends a Claude chat's background process only while that chat is not replying, and only for a linked chat.
@@ -389,9 +390,9 @@ The wording Baton starts with:
 | M2 | CLI, hooks, agent brief | `link`, `relink`, `unlink`, `pause`, `resume`, `copy`, `status`, `plan`, `sync`, `merge`, `continue`, `brief`, `history`, `undo`, `notify`, `catch-up`, `setup`; `ask` (second opinion); turn-end and prompt hooks installed in both tools; noticing a usage limit at turn end; setup check per side; agent brief with offline fallback; read-only background runs for a second opinion; relaunch of an app in the safe order |
 | M3 | Baton.app | Menu-bar popover; window with the sync status screen (both names, a card per app with the send-here-now line and relaunch offer, turn-by-turn strip, conversation as messages with filter), link actions (pause, history, remove, copy, change link), the merge screen with reordering, the link and hand-off dialogs, the limit offer, the second opinion panel, the sync history with undo and restore, the relaunch confirmation, setup and settings; glass light and dark-gray themes |
 | M4 | Release polish | Signing, docs; report the merge bug to the upstream author |
-| M0b | Spike on OpenCode and Cursor with throwaway chats | The ten questions in [features/more-tools.md](features/more-tools.md) are answered for each tool. Run now, alongside M1 |
+| M0b | Spike on OpenCode and Cursor with throwaway chats | Done 2026-10-04 for everything that decides the design; the rest is listed in [features/more-tools.md](features/more-tools.md) with what Baton does meanwhile |
 | M5 | OpenCode | OpenCode adapter with its answers to G3; linking and copying between any two tools; tool picker in the link dialog; a Setup card per tool; per-tool format guard |
-| M6 | Cursor | Cursor adapter for the chats shown in the Cursor app, as far as M0b shows is safe |
+| M6 | Cursor | Cursor adapter for the chats shown in the Cursor app: read from transcripts, write display records while Cursor is closed, hooks for attach and reply-finished, version check before every write |
 
 M1 to M3 are the first version. M5 and M6 follow it.
 

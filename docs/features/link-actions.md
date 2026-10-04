@@ -43,7 +43,11 @@ Reason: with one partner per chat the user always knows where a turn goes and wh
 
 **A3. Copy a chat without linking.** From any chat in either app, "Copy to Codex" or "Copy to Claude" creates a new chat on the other side with every turn as a normal message, and does not link the two. With more tools this is "Copy to…" with a choice of tool, from any tool to any tool, and the relaunch note is the one known for the chosen tool ([more-tools.md](more-tools.md), G5). Before it runs, Baton says whether a relaunch is needed to see the copy:
 - to Codex: none, the copy appears right away;
-- to Claude: one relaunch, because Claude lists new chats only when it starts.
+- to OpenCode: none, also while OpenCode is running;
+- to Claude: one relaunch, because Claude lists new chats only when it starts. Baton offers to close Claude, create the copy and open Claude again;
+- to Cursor: Cursor has to be closed while the copy is made. Baton offers to close Cursor, create the copy and open it again.
+
+Every action in this document (pause, remove, copy, full copy, names, relaunch, history, undo) applies to a link between any two tools. Where a tool behaves differently, the difference is the one listed in [more-tools.md](more-tools.md), "Best delivery per tool" and "Notes the user always sees".
 
 The same dialog offers "Copy and link" for the user who wants them kept in sync after all.
 
