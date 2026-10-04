@@ -56,7 +56,7 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 
 **Running the agents headless**
 - Codex: the CLI bundled in the ChatGPT app uses the app's login. `exec resume <id> "<prompt>"` continued a thread, and `exec --ephemeral` wrote a good four-part hand-off brief from a small transcript in 20 seconds for about 14k tokens, leaving no thread and no file behind.
-- Claude: not available as things stand. Neither the desktop app's own engine nor the installed `claude` command is logged in when run outside the app ("Not logged in"). A Claude-written brief needs a one-time `claude` login by the user, or has to be written inside the chat instead.
+- Claude: works once the `claude` command is logged in. Before that, both the desktop app's own engine and the installed command answered "Not logged in" when run outside the app; the app's login is not shared. After the user logged in once, `claude -p --no-session-persistence --setting-sources project --allowedTools Read` wrote a good four-part brief from the same transcript in 10 seconds, leaving no session file and no sidebar entry. `--setting-sources project` keeps the user's plugins and hooks out of the run, so the brief is not shaped by them.
 - A failed headless Claude resume still wrote about 30 records into the session it was pointed at. Baton must never run a headless agent against a linked chat's own session; briefs run in a separate session that is not saved.
 
 **Hook trust in Codex is per entry, not per script**
@@ -118,4 +118,4 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Still open after M0**
 Nothing that needs another test run. Two design choices came out of the spike:
 - A twin chat written by Baton shows up in Claude only after a relaunch. The alternative that needs no relaunch: the user starts a new chat in Claude, Baton links it, and the history arrives through the prompt hook on the first message.
-- How a Claude-written brief gets produced, given headless Claude is not logged in: a one-time `claude` login, or a brief written inside the new chat.
+- Claude-written briefs: settled. They use the `claude` command after a one-time login, and Baton checks for that login and says what to do when it is missing.

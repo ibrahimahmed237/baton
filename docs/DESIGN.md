@@ -164,7 +164,8 @@ Briefs are cached per chat and updated from the new turns only.
 
 Headless runners on the target machine (tested, see SPIKE-M0.md):
 - Codex works. The ChatGPT app bundles the Codex CLI at `/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`, always the same version as the desktop engine, and it uses the app's login. `exec --ephemeral` wrote a brief in 20 seconds and left nothing behind. Baton finds and calls that bundled binary. No second copy is installed: a separately installed CLI at a different version would share `~/.codex` with the desktop app.
-- Claude does not work yet. Run outside the app, both the app's engine and the installed `claude` command report "Not logged in". Options: the user logs the `claude` command in once, or a Claude-written brief is produced inside the new chat as its first reply. Until one is chosen, briefs are written by Codex in both directions, with the offline brief as fallback.
+- Claude works through the installed `claude` command, which needs its own one-time login; the desktop app's login is not shared with it. With that login, `claude -p --no-session-persistence --setting-sources project` wrote a brief in 10 seconds and left nothing behind.
+- Readiness check: Baton tests both runners. When one is missing or not logged in, it says which, and the exact step to fix it (for Claude: run `claude`, then `/login`). Until then the other tool writes the brief, and the offline brief is the last fallback.
 - A headless agent is never pointed at a linked chat's own session. It runs in a separate session that is not saved.
 
 **Size and cost preview:** turns to send, estimated tokens of history, and the recommended mode, shown before a hand-off.
@@ -183,7 +184,8 @@ Headless runners on the target machine (tested, see SPIKE-M0.md):
 - Size and cost preview panel.
 - Conflict sheet: preview of the time-ordered merge (order, which side gets a new chat, flagged files), the other choices, and "always do this".
 - Activity log with Undo on the last write per chat. Catch-ups are listed too: which turns were attached to which message.
-- Settings: hooks installed or not, catch-up notice (shown or hidden), conflict behaviour (ask, or the remembered choice, changeable any time), summary threshold, hidden session types, title tag.
+- Setup status: for each tool, whether its hooks are installed and trusted and whether its background runner is logged in, each with the step to fix it.
+- Settings: catch-up notice (shown or hidden), conflict behaviour (ask, or the remembered choice, changeable any time), summary threshold, hidden session types, title tag.
 
 Synced chats get a short title tag on the other side (`[Claude]`, `[Codex]`), configurable.
 
