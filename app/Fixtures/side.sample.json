@@ -1,0 +1,101 @@
+{
+  "tool": "claude",
+  "chat": {
+    "tool": "claude",
+    "id": "sample-a",
+    "name": "Imaginary orchard",
+    "folder": "/tmp/baton-sample",
+    "updated_at": "2026-10-04T14:05:00Z",
+    "linked": true
+  },
+  "condition": {
+    "exists": true,
+    "open": false,
+    "replying": false,
+    "hooks_ready": true
+  },
+  "total": 1,
+  "agent_has": 1,
+  "chat_shows": 1,
+  "added": 1,
+  "attached": 0,
+  "waiting": 0,
+  "kept_elsewhere": 0,
+  "skipped": 0,
+  "synced_up_to": {
+    "id": 41,
+    "seq": 1,
+    "origin": "codex",
+    "first_line": "Describe an imaginary orchard.",
+    "started_at": "2026-10-04T14:00:00Z",
+    "ended_at": "2026-10-04T14:01:00Z",
+    "tokens": 1600,
+    "pinned": false,
+    "states": {
+      "claude": "added",
+      "codex": "written_here"
+    },
+    "messages": [
+      {
+        "kind": "prompt",
+        "text": "Describe an imaginary orchard."
+      },
+      {
+        "kind": "reply",
+        "text": "Silver pears grow beneath a violet sky."
+      },
+      {
+        "kind": "tool_call",
+        "text": "List fictional trees.",
+        "tool": "sample-tool"
+      },
+      {
+        "kind": "tool_result",
+        "text": "Silver pear.",
+        "tool": "sample-tool"
+      }
+    ]
+  },
+  "waiting_reason": null,
+  "next_message": {
+    "turns": 0,
+    "tokens": 0
+  },
+  "usage": {
+    "tokens": 1600,
+    "size": 200000,
+    "percent": 0.8,
+    "limit": null
+  },
+  "since_you_left": {
+    "turns": 1,
+    "files": 2,
+    "commands": 3,
+    "since": "2026-10-04T13:00:00Z"
+  },
+  "notes": [
+    {
+      "id": "fixture.links.ready",
+      "tone": "ok",
+      "values": {
+        "turns": 2,
+        "context": {
+          "invented": true
+        }
+      },
+      "text": "The sample chats are in sync.",
+      "buttons": [
+        {
+          "id": "open",
+          "label": "Open sample chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel"
+        }
+      ],
+      "status_line": "Sample ready"
+    }
+  ]
+}

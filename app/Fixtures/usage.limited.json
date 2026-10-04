@@ -1,0 +1,8 @@
+{
+  "tokens": 10,
+  "size": 100,
+  "percent": 10,
+  "limit": {
+    "resets_at": "2026-10-04T15:00:00Z"
+  }
+}

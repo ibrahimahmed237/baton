@@ -1,0 +1,63 @@
+{
+  "tool": "claude",
+  "chat": {
+    "tool": "claude",
+    "id": "sample-a",
+    "name": "Imaginary orchard",
+    "folder": "/tmp/baton-sample",
+    "updated_at": "2026-10-04T14:05:00Z",
+    "linked": true
+  },
+  "condition": {
+    "exists": true,
+    "open": false,
+    "replying": false,
+    "hooks_ready": true
+  },
+  "total": 1,
+  "agent_has": 1,
+  "chat_shows": 1,
+  "added": 1,
+  "attached": 0,
+  "waiting": 0,
+  "kept_elsewhere": 0,
+  "skipped": 0,
+  "synced_up_to": null,
+  "waiting_reason": null,
+  "next_message": {
+    "turns": 0,
+    "tokens": 0
+  },
+  "usage": {
+    "tokens": 1600,
+    "size": 200000,
+    "percent": 0.8,
+    "limit": null
+  },
+  "since_you_left": null,
+  "notes": [
+    {
+      "id": "fixture.links.ready",
+      "tone": "ok",
+      "values": {
+        "turns": 2,
+        "context": {
+          "invented": true
+        }
+      },
+      "text": "The sample chats are in sync.",
+      "buttons": [
+        {
+          "id": "open",
+          "label": "Open sample chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel"
+        }
+      ],
+      "status_line": "Sample ready"
+    }
+  ]
+}

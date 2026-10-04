@@ -1,0 +1,37 @@
+{
+  "turn": {
+    "id": 41,
+    "seq": 1,
+    "origin": "codex",
+    "first_line": "Describe an imaginary orchard.",
+    "started_at": "2026-10-04T14:00:00Z",
+    "ended_at": "2026-10-04T14:01:00Z",
+    "tokens": 1600,
+    "pinned": false,
+    "states": {
+      "claude": "added",
+      "codex": "written_here"
+    },
+    "messages": [
+      {
+        "kind": "prompt",
+        "text": "Describe an imaginary orchard."
+      },
+      {
+        "kind": "reply",
+        "text": "Silver pears grow beneath a violet sky."
+      },
+      {
+        "kind": "tool_call",
+        "text": "List fictional trees.",
+        "tool": "sample-tool"
+      },
+      {
+        "kind": "tool_result",
+        "text": "Silver pear.",
+        "tool": "sample-tool"
+      }
+    ]
+  },
+  "only_here": true
+}

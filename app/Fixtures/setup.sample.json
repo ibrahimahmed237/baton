@@ -1,0 +1,204 @@
+{
+  "tools": [
+    {
+      "tool": "claude",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [
+        {
+          "id": "sample.ready",
+          "ok": true,
+          "note": {
+            "id": "fixture.links.ready",
+            "tone": "ok",
+            "values": {
+              "turns": 2,
+              "context": {
+                "invented": true
+              }
+            },
+            "text": "The sample chats are in sync.",
+            "buttons": [
+              {
+                "id": "open",
+                "label": "Open sample chat",
+                "primary": true
+              },
+              {
+                "id": "cancel",
+                "label": "Cancel"
+              }
+            ],
+            "status_line": "Sample ready"
+          }
+        }
+      ],
+      "facts": {
+        "write_window": "CLOSED_OR_RELEASED",
+        "new_chat_visible": "AFTER_RELAUNCH",
+        "added_turn_visible": "AFTER_RELAUNCH",
+        "can_cut": true,
+        "can_place": false,
+        "can_release_chat": true,
+        "opens_at_chat": true,
+        "limit_has_reset_time": true,
+        "context_size_known": true,
+        "hooks_need": "none",
+        "checked_versions": [
+          "sample-1"
+        ]
+      }
+    },
+    {
+      "tool": "codex",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [
+        {
+          "id": "sample.ready",
+          "ok": true,
+          "note": {
+            "id": "fixture.links.ready",
+            "tone": "ok",
+            "values": {
+              "turns": 2,
+              "context": {
+                "invented": true
+              }
+            },
+            "text": "The sample chats are in sync.",
+            "buttons": [
+              {
+                "id": "open",
+                "label": "Open sample chat",
+                "primary": true
+              },
+              {
+                "id": "cancel",
+                "label": "Cancel"
+              }
+            ],
+            "status_line": "Sample ready"
+          }
+        }
+      ],
+      "facts": {
+        "write_window": "NOT_HELD",
+        "new_chat_visible": "AT_ONCE",
+        "added_turn_visible": "AT_ONCE",
+        "can_cut": false,
+        "can_place": false,
+        "can_release_chat": false,
+        "opens_at_chat": true,
+        "limit_has_reset_time": true,
+        "context_size_known": true,
+        "hooks_need": "trust once",
+        "checked_versions": [
+          "sample-1"
+        ]
+      }
+    },
+    {
+      "tool": "opencode",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [
+        {
+          "id": "sample.ready",
+          "ok": true,
+          "note": {
+            "id": "fixture.links.ready",
+            "tone": "ok",
+            "values": {
+              "turns": 2,
+              "context": {
+                "invented": true
+              }
+            },
+            "text": "The sample chats are in sync.",
+            "buttons": [
+              {
+                "id": "open",
+                "label": "Open sample chat",
+                "primary": true
+              },
+              {
+                "id": "cancel",
+                "label": "Cancel"
+              }
+            ],
+            "status_line": "Sample ready"
+          }
+        }
+      ],
+      "facts": {
+        "write_window": "ANY_TIME",
+        "new_chat_visible": "AT_ONCE",
+        "added_turn_visible": "ON_REOPEN_CHAT",
+        "can_cut": true,
+        "can_place": true,
+        "can_release_chat": false,
+        "opens_at_chat": false,
+        "limit_has_reset_time": false,
+        "context_size_known": false,
+        "hooks_need": "restart once",
+        "checked_versions": [
+          "sample-1"
+        ]
+      }
+    },
+    {
+      "tool": "cursor",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [
+        {
+          "id": "sample.ready",
+          "ok": true,
+          "note": {
+            "id": "fixture.links.ready",
+            "tone": "ok",
+            "values": {
+              "turns": 2,
+              "context": {
+                "invented": true
+              }
+            },
+            "text": "The sample chats are in sync.",
+            "buttons": [
+              {
+                "id": "open",
+                "label": "Open sample chat",
+                "primary": true
+              },
+              {
+                "id": "cancel",
+                "label": "Cancel"
+              }
+            ],
+            "status_line": "Sample ready"
+          }
+        }
+      ],
+      "facts": {
+        "write_window": "APP_CLOSED",
+        "new_chat_visible": "AFTER_RELAUNCH",
+        "added_turn_visible": "AFTER_RELAUNCH",
+        "can_cut": false,
+        "can_place": true,
+        "can_release_chat": false,
+        "opens_at_chat": false,
+        "limit_has_reset_time": false,
+        "context_size_known": true,
+        "hooks_need": "none",
+        "checked_versions": [
+          "sample-1"
+        ]
+      }
+    }
+  ]
+}

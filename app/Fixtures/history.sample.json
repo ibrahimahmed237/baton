@@ -1,0 +1,16 @@
+{
+  "events": [
+    {
+      "id": 1,
+      "at": "2026-10-04T14:02:00Z",
+      "kind": "sync",
+      "tool": "claude",
+      "turns": [
+        41
+      ],
+      "text": "The sample turn was added.",
+      "can_undo": true,
+      "can_restore": false
+    }
+  ]
+}

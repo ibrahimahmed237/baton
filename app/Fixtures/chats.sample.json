@@ -1,0 +1,20 @@
+{
+  "chats": [
+    {
+      "tool": "claude",
+      "id": "sample-a",
+      "name": "Imaginary orchard",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": true
+    },
+    {
+      "tool": "codex",
+      "id": "sample-b",
+      "name": "Imaginary orchard",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": true
+    }
+  ]
+}

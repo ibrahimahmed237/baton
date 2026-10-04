@@ -1,0 +1,14 @@
+{
+  "settings": {
+    "notice_on_attach": true,
+    "offer_relaunch": true,
+    "add_to_idle_claude": "on_button",
+    "offer_switch_at_limit": true,
+    "merge": "ask",
+    "brief_threshold_tokens": 150000,
+    "hide_script_chats": true,
+    "title_tag": true,
+    "theme": "system",
+    "glass": 62
+  }
+}

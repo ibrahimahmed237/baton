@@ -1,0 +1,50 @@
+{
+  "tool": "claude",
+  "installed": true,
+  "ready": true,
+  "version": "sample-1",
+  "findings": [
+    {
+      "id": "sample.ready",
+      "ok": true,
+      "note": {
+        "id": "fixture.links.ready",
+        "tone": "ok",
+        "values": {
+          "turns": 2,
+          "context": {
+            "invented": true
+          }
+        },
+        "text": "The sample chats are in sync.",
+        "buttons": [
+          {
+            "id": "open",
+            "label": "Open sample chat",
+            "primary": true
+          },
+          {
+            "id": "cancel",
+            "label": "Cancel"
+          }
+        ],
+        "status_line": "Sample ready"
+      }
+    }
+  ],
+  "facts": {
+    "write_window": "CLOSED_OR_RELEASED",
+    "new_chat_visible": "AFTER_RELAUNCH",
+    "added_turn_visible": "AFTER_RELAUNCH",
+    "can_cut": true,
+    "can_place": false,
+    "can_release_chat": true,
+    "opens_at_chat": true,
+    "limit_has_reset_time": true,
+    "context_size_known": true,
+    "hooks_need": "none",
+    "checked_versions": [
+      "sample-1"
+    ]
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "plan_id": "p_sample",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "claude",
+      "action": "add",
+      "turns": [
+        41
+      ],
+      "reason": "sample",
+      "needs": [],
+      "notes": [
+        {
+          "id": "fixture.links.ready",
+          "tone": "ok",
+          "values": {
+            "turns": 2,
+            "context": {
+              "invented": true
+            }
+          },
+          "text": "The sample chats are in sync.",
+          "buttons": [
+            {
+              "id": "open",
+              "label": "Open sample chat",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel"
+            }
+          ],
+          "status_line": "Sample ready"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "fixture.links.ready",
+      "tone": "ok",
+      "values": {
+        "turns": 2,
+        "context": {
+          "invented": true
+        }
+      },
+      "text": "The sample chats are in sync.",
+      "buttons": [
+        {
+          "id": "open",
+          "label": "Open sample chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel"
+        }
+      ],
+      "status_line": "Sample ready"
+    }
+  ],
+  "removes": [
+    {
+      "turn": {
+        "id": 41,
+        "seq": 1,
+        "origin": "codex",
+        "first_line": "Describe an imaginary orchard.",
+        "started_at": "2026-10-04T14:00:00Z",
+        "ended_at": "2026-10-04T14:01:00Z",
+        "tokens": 1600,
+        "pinned": false,
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "messages": [
+          {
+            "kind": "prompt",
+            "text": "Describe an imaginary orchard."
+          },
+          {
+            "kind": "reply",
+            "text": "Silver pears grow beneath a violet sky."
+          },
+          {
+            "kind": "tool_call",
+            "text": "List fictional trees.",
+            "tool": "sample-tool"
+          },
+          {
+            "kind": "tool_result",
+            "text": "Silver pear.",
+            "tool": "sample-tool"
+          }
+        ]
+      },
+      "only_here": true
+    }
+  ],
+  "ends_at": {
+    "id": 41,
+    "seq": 1,
+    "origin": "codex",
+    "first_line": "Describe an imaginary orchard.",
+    "started_at": "2026-10-04T14:00:00Z",
+    "ended_at": "2026-10-04T14:01:00Z",
+    "tokens": 1600,
+    "pinned": false,
+    "states": {
+      "claude": "added",
+      "codex": "written_here"
+    },
+    "messages": [
+      {
+        "kind": "prompt",
+        "text": "Describe an imaginary orchard."
+      },
+      {
+        "kind": "reply",
+        "text": "Silver pears grow beneath a violet sky."
+      },
+      {
+        "kind": "tool_call",
+        "text": "List fictional trees.",
+        "tool": "sample-tool"
+      },
+      {
+        "kind": "tool_result",
+        "text": "Silver pear.",
+        "tool": "sample-tool"
+      }
+    ]
+  }
+}

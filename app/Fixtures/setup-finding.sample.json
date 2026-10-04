@@ -1,0 +1,27 @@
+{
+  "id": "sample.ready",
+  "ok": true,
+  "note": {
+    "id": "fixture.links.ready",
+    "tone": "ok",
+    "values": {
+      "turns": 2,
+      "context": {
+        "invented": true
+      }
+    },
+    "text": "The sample chats are in sync.",
+    "buttons": [
+      {
+        "id": "open",
+        "label": "Open sample chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel"
+      }
+    ],
+    "status_line": "Sample ready"
+  }
+}
