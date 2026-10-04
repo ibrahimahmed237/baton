@@ -35,7 +35,9 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - The test thread was still held 14 minutes after its last reply, after the user had moved to other chats. Codex held five threads at once at that point. Like Claude, it keeps chats loaded after you leave them.
 - Codex keeps a lock file per thread in `~/.codex/thread-writer-locks/` and holds it with a file lock while the thread is loaded. The test thread was still held several minutes after its last reply.
 - Lock files of older threads disappeared between two listings, so a missing lock file means the thread is released.
-- Eight hours later, with the app still running: the two test threads the user had left were released (no lock file), and the last one opened was still held. So Codex lets go of chats that are no longer on screen and keeps the one that is. How soon after leaving is not measured.
+- Eight hours later, with the app still running: the two test threads the user had left were released (no lock file), and the last one opened was still held.
+- That did not turn out to be a rule. In a later 27-minute watch nothing was released, and chats idle for 67, 70, 105 and 581 minutes were all still held, including ones no longer on screen. What released the first two is not known. In practice a Codex chat that was opened stays held until the app is relaunched, and Baton checks the lock before every write instead of assuming.
+- A turn added to a released chat while the app was running showed up as soon as the chat was reopened, with no relaunch. The user saw it in the app.
 
 **How long a Claude chat stays open, measured again**
 - Three chats sat idle for over eight hours and all still had a live process. There is no idle timeout at that scale: a Claude chat that was opened stays open until the app quits.

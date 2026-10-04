@@ -72,7 +72,7 @@ In the app these are said in full, never as bare labels: "Claude's agent has all
 
 **R5. How to see them as normal messages.** Whenever turns are waiting because a chat is open, Baton names the step that makes them arrive as normal messages instead of attached, per app:
 - Claude: relaunch Claude before sending a message in that chat. A Claude chat stays open until the app quits.
-- Codex: relaunch Codex, or wait until Codex has let go of that chat. Codex keeps a chat open for a while after the user leaves it (more than 40 minutes observed), so leaving the chat is not enough by itself. Once Codex has let go, added turns show as soon as the chat is opened again, with no relaunch; this was tested on the running app.
+- Codex: relaunch Codex. Leaving the chat is not enough: chats left idle for 67, 70, 105 and 581 minutes were all still held, and a 27-minute watch saw none released. Codex did release two chats once without a relaunch, for a reason not found, so Baton does not rely on it: it checks each time, and when Codex has let go, it adds the turns straight away and they show as soon as the chat is opened, with no relaunch. That part was tested on the running app.
 - Baton also says that this is optional: without it, the turns are attached and the agent still has them.
 
 **R6. Which app needs a relaunch.** If a relaunch would change what a chat shows, Baton names the app, in the chat's status and in its menu-bar line.
@@ -153,6 +153,6 @@ For every linked chat, for every turn, for each side: its state, when it got the
 
 | Question | Who | Blocking? |
 |---|---|---|
-| How long does Codex hold a chat it is no longer showing? More than 40 minutes was observed, and two chats were released within 8 hours. A watch is running to narrow it down. | Engineering, by measuring | No |
+| What makes Codex let go of a chat without a relaunch? It happened to two chats once; chats idle for up to 581 minutes were otherwise still held. Baton does not depend on the answer, since it checks whether a chat is held before every write. | Engineering | No |
 
 Settled: Baton relaunches the app itself when asked, and asks for confirmation whenever a chat there is replying (R13).
