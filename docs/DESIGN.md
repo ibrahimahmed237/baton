@@ -340,6 +340,8 @@ Synced chats get a short title tag on the other side (`[Claude]`, `[Codex]`), co
 
 Build note: the target machine has Command Line Tools only, no Xcode. The app is built as a Swift package and bundled by script, or Xcode is installed first.
 
+**Colour carries meaning, and the same meaning everywhere.** The dark theme is Graphite (mid-gray). Within it, things that differ never share a colour: green for turns added as messages and "in sync", amber for attached or waiting, violet for a merge, blue for link changes and the main action, red for undo, conflicts and anything that removes or needs the user. Lists such as the sync history mark every row with its kind in that colour (a tag and a side bar) and show a legend, so an important entry cannot hide among similar-looking ones. Colour is never the only signal: each row also says its kind in words.
+
 ## 7a. Messages to the user
 
 Every dialog that links, copies or syncs carries a "What will happen" block for the tool it writes to, also when nothing is unusual. The lines and when each is shown are in [features/more-tools.md](features/more-tools.md), "Notes the user always sees".
