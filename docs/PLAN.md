@@ -1,6 +1,6 @@
 # Baton — build plan
 
-What gets built, in what order, and when each piece counts as done. The design is in [DESIGN.md](DESIGN.md); section 1a there is the list of every feature. This file is the order of work.
+What gets built, in what order, and when each piece counts as done. This page is the overview. The low-level plan, with every work package, its files, tests and checkpoints, split into tracks that can be worked on at the same time, is in [plan/](plan/README.md). The design is in [DESIGN.md](DESIGN.md); section 1a there is the list of every feature. This file is the order of work.
 
 ## Where things stand (2026-10-04)
 
