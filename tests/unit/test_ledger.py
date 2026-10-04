@@ -2,10 +2,12 @@ import os
 import tempfile
 import unittest
 
-from baton import ledger
-from baton.ledger import (ADDED, ATTACHED, CLAUDE, CODEX, FULL_COPY, KEPT_BACK, SHOWN, SKIPPED, WAITING,
-                          WRITTEN_HERE, AlreadyDelivered, AlreadyLinked, Ledger)
-from baton.model import PROMPT, REPLY, Message, Turn
+from baton.domain import link as link_states
+from baton.domain.link import (ADDED, ATTACHED, CLAUDE, CODEX, FULL_COPY, KEPT_BACK, SHOWN, SKIPPED, WAITING,
+                          WRITTEN_HERE)
+from baton.domain.errors import AlreadyDelivered, AlreadyLinked
+from baton.ledger.sqlite_store import Ledger
+from baton.domain.model import PROMPT, REPLY, Message, Turn
 
 
 def make_turn(turn_id, text="", at="", reply="", ended=""):
@@ -174,7 +176,7 @@ class HistoryTest(LedgerCase):
         self.assertEqual(history[0].turn_ids, tuple(second))
         self.assertEqual(history[0].detail, {"message": "x9"})
         self.assertEqual(history[1].turn_ids, tuple(first))
-        self.assertEqual(history[2].detail, {"mode": ledger.FULL_COPY})
+        self.assertEqual(history[2].detail, {"mode": link_states.FULL_COPY})
 
 
 if __name__ == "__main__":

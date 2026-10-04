@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 
-from .model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
+from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
 
 # Blocks Codex, its plugins or Baton put into a user message. None is typed by the user.
 _INJECTED_PREFIXES = (

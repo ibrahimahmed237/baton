@@ -2,9 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from baton import claude_reader
-from baton.model import REPLY, TOOL_CALL, TOOL_RESULT
-from tests.builders import ClaudeChat
+from baton.adapters.claude import reader as claude_reader
+from baton.domain.model import REPLY, TOOL_CALL, TOOL_RESULT
+from tests.fixtures.builders import ClaudeChat
 
 
 class ClaudeReaderTest(unittest.TestCase):

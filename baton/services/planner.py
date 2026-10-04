@@ -15,9 +15,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Collection, Mapping, Sequence
 
-from . import ledger, status
-from .ledger import LedgerTurn, Link
-from .status import SideCondition
+from . import status
+from ..domain import link as link_states
+from ..domain.link import LedgerTurn, Link
+from ..domain.conditions import SideCondition
+from ..domain.errors import OrderNotAllowed
 
 # What happens to a side's waiting turns.
 ADD = "add"                              # the chat is closed: added as normal messages
@@ -52,10 +54,6 @@ class Plan:
         return any(step.action in (ADD, ADD_AFTER_RELEASE) for step in self.steps.values())
 
 
-class OrderNotAllowed(Exception):
-    """The order moves one app's own turns past each other, or is not the same set of turns."""
-
-
 def plan_sync(link: Link, turns: Sequence[LedgerTurn],
               conditions: Mapping[str, SideCondition] | None = None,
               add_when_idle: Collection[str] = ()) -> Plan:
@@ -65,7 +63,7 @@ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
     current = status.link_status(link, turns, conditions)
     steps = {}
     for side, side_status in current.sides.items():
-        waiting = tuple(turn for turn in turns if turn.states.get(side) == ledger.WAITING)
+        waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
         if not waiting:
             continue
         reason = side_status.waiting_reason
@@ -73,7 +71,7 @@ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
             steps[side] = Step(side, ADD, waiting)
         elif reason == status.CHAT_OPEN:
             idle = not conditions.get(side, SideCondition()).replying
-            release = idle and side in add_when_idle and link.mode == ledger.FULL_COPY
+            release = idle and side in add_when_idle and link.mode == link_states.FULL_COPY
             steps[side] = Step(side, ADD_AFTER_RELEASE if release else ATTACH, waiting, reason)
         else:
             steps[side] = Step(side, HOLD, waiting, reason)
@@ -84,16 +82,16 @@ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
 
 def unsynced(turns: Sequence[LedgerTurn]) -> list[LedgerTurn]:
     """Turns some side is still waiting for, in conversation order."""
-    return [turn for turn in turns if ledger.WAITING in turn.states.values()]
+    return [turn for turn in turns if link_states.WAITING in turn.states.values()]
 
 
 def last_shared(turns: Sequence[LedgerTurn]) -> LedgerTurn | None:
     """The last turn every side has, before the first unsynced one (M2)."""
     shared = None
     for turn in turns:
-        if ledger.WAITING in turn.states.values():
+        if link_states.WAITING in turn.states.values():
             break
-        if all(state in ledger.AGENT_HAS for state in turn.states.values()):
+        if all(state in link_states.AGENT_HAS for state in turn.states.values()):
             shared = turn
     return shared
 
@@ -174,4 +172,4 @@ def overlapping(order: Sequence[LedgerTurn]) -> list[tuple[LedgerTurn, LedgerTur
 
 def turns_to_skip(turns: Sequence[LedgerTurn], keep: str) -> list[LedgerTurn]:
     """"Keep this side's": the other sides' unsynced turns that will stay where they were written (M9)."""
-    return [turn for turn in unsynced(turns) if turn.origin != keep and turn.states.get(keep) == ledger.WAITING]
+    return [turn for turn in unsynced(turns) if turn.origin != keep and turn.states.get(keep) == link_states.WAITING]

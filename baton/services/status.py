@@ -1,4 +1,4 @@
-"""Where each side of a link stands, worked out from the ledger.
+"""Where each side of a link stands, worked out from the link_states.
 
 Answers the questions of docs/features/sync-status.md (R1 to R4): how many turns
 this side's agent has, how many its chat shows, what is waiting and why, and
@@ -10,8 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
-from . import ledger
-from .ledger import LedgerTurn, Link
+from ..domain import link as link_states
+from ..domain.link import LedgerTurn, Link
+from ..domain.conditions import SideCondition
 
 # Why turns are waiting on a side (R4), most important first.
 SIDE_MISSING = "side_missing"
@@ -22,15 +23,6 @@ CHAT_OPEN = "chat_open"
 NOT_SYNCED_YET = "not_synced_yet"
 
 _CHARS_PER_TOKEN = 4
-
-
-@dataclass(frozen=True)
-class SideCondition:
-    """What is true of one side's chat right now."""
-    exists: bool = True
-    open: bool = False
-    replying: bool = False
-    hooks_ready: bool = True
 
 
 @dataclass(frozen=True)
@@ -81,7 +73,7 @@ def link_status(link: Link, turns: Sequence[LedgerTurn],
 def _in_conflict(turns: Sequence[LedgerTurn]) -> set[str]:
     """Sides that each have a turn the other is waiting for: the user has to decide the order."""
     waits = {(turn.origin, side) for turn in turns
-             for side, state in turn.states.items() if state == ledger.WAITING}
+             for side, state in turn.states.items() if state == link_states.WAITING}
     return {side for origin, side in waits if (side, origin) in waits}
 
 
@@ -90,19 +82,19 @@ def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
     def count(*states: str) -> int:
         return sum(1 for turn in turns if turn.states.get(side) in states)
 
-    waiting = [turn for turn in turns if turn.states.get(side) == ledger.WAITING]
+    waiting = [turn for turn in turns if turn.states.get(side) == link_states.WAITING]
     reason = _waiting_reason(link, condition, conflict) if waiting else ""
     carried = waiting if reason == CHAT_OPEN else []
     return SideStatus(
         side=side,
         total=len(turns),
-        agent_has=count(*ledger.AGENT_HAS),
-        chat_shows=count(*ledger.CHAT_SHOWS),
-        added=count(ledger.ADDED),
-        attached=count(ledger.ATTACHED),
+        agent_has=count(*link_states.AGENT_HAS),
+        chat_shows=count(*link_states.CHAT_SHOWS),
+        added=count(link_states.ADDED),
+        attached=count(link_states.ATTACHED),
         waiting=len(waiting),
-        kept_elsewhere=count(ledger.KEPT_BACK),
-        skipped=count(ledger.SKIPPED),
+        kept_elsewhere=count(link_states.KEPT_BACK),
+        skipped=count(link_states.SKIPPED),
         synced_up_to=_synced_up_to(turns, side),
         waiting_reason=reason,
         attached_on_next_message=len(carried),
@@ -127,8 +119,8 @@ def _synced_up_to(turns: Sequence[LedgerTurn], side: str) -> LedgerTurn | None:
     last = None
     for turn in turns:
         state = turn.states.get(side)
-        if state == ledger.WAITING:
+        if state == link_states.WAITING:
             break
-        if state in ledger.AGENT_HAS:
+        if state in link_states.AGENT_HAS:
             last = turn
     return last

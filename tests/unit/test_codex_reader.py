@@ -2,9 +2,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from baton import codex_reader
-from baton.model import REPLY, TOOL_CALL, TOOL_RESULT
-from tests.builders import CodexChat
+from baton.adapters.codex import reader as codex_reader
+from baton.domain.model import REPLY, TOOL_CALL, TOOL_RESULT
+from tests.fixtures.builders import CodexChat
 
 
 class CodexReaderTest(unittest.TestCase):

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 
-from .model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
+from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
 
 # User records Claude Code writes for its own purposes. Records from current
 # versions carry `origin`; this list covers older records that do not.
