@@ -76,7 +76,7 @@ All of these are in the first version unless marked later.
 
 **R5. How to see them as normal messages.** Whenever turns are waiting because a chat is open, Baton names the step that makes them arrive as normal messages instead of attached, per app:
 - Claude: relaunch Claude before sending a message in that chat. A Claude chat stays open until the app quits.
-- Claude, without a relaunch: "Add them now". While the chat is not replying, Baton closes that one chat's background process and adds the turns; Claude loads the chat again on the next message. The agent then has them as real turns, and the chat shows them the next time Claude starts. Until then their state reads "added, shown after a relaunch", which is different from attached: attached turns are never shown.
+- Claude, without a relaunch: "Add them now". While the chat is not replying, Baton closes that one chat's background process and adds the turns; Claude loads the chat again on the next message. The agent then has them as real turns, and the chat shows them the next time Claude starts. Until then their state reads "added, shown after a relaunch", which is different from attached: attached turns are never shown. A setting decides when this happens: only when the user presses "Add them now" (default), or automatically whenever the chat is not replying. Baton never does it to a chat that is replying.
 - Codex: relaunch Codex. Leaving the chat is not enough: chats left idle for hours were still held. If Codex does let go by itself, Baton adds the turns straight away and they show when the chat is opened, with no relaunch.
 - Baton also says that this is optional: without it, the turns are attached and the agent still has them.
 

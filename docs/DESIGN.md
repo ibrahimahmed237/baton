@@ -1,6 +1,8 @@
 # Baton — design
 
-Hand a conversation from Claude Code to Codex and back. Each linked chat exists once on each side; new turns are appended to the same pair, never copied into a new session. A summary is never inserted into an existing chat: a brief always starts a new chat.
+Hand a conversation from one coding agent to another and back. Each linked chat exists once on each side; new turns are appended to the same pair, never copied into a new session. A summary is never inserted into an existing chat: a brief always starts a new chat.
+
+The first pair, and the first version, is Claude Code with Codex; this document names those two throughout. OpenCode and Cursor come next, and every rule here applies to any two tools ([features/more-tools.md](features/more-tools.md)).
 
 Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
 
@@ -11,7 +13,9 @@ Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `
 | Usage | Hand-off, one tool at a time |
 | History sent across | Two hand-off modes: full sync into the same linked chat, or a brief that starts a new chat on the other side |
 | Scope | Only chats the user links |
-| Links | One Claude chat with one Codex chat. A chat is in one link at a time; the link can be changed to another chat at any time, which removes the old link first |
+| Links | One chat with one chat, from two different tools. A chat is in one link at a time; the link can be changed to another chat at any time, which removes the old link first |
+| Tools | Claude Code and Codex in the first version. OpenCode and Cursor after it, as equal tools: any two can be linked, and a chat can be copied from any tool to any tool |
+| Idle Claude chat with turns waiting | Baton can add them as real turns without a relaunch by closing that one chat's background process. A setting chooses: only when the user presses "Add them now" (default), or automatically whenever the chat is not replying |
 | Audience | Built for one Mac first, polish for release later |
 | Codebase | Written fresh in its own repo; the upstream tool is a reference, not a base |
 | Trigger | Automatic at turn end (hooks, file watching as fallback) plus a Continue button |
@@ -53,6 +57,7 @@ The complete list. Nothing is in the first version unless it is here. "Spec" say
 | Notice a finished reply through each tool's turn-end hook, with file watching as fallback | 3 | M2, M3 | none |
 | Add turns to a closed chat as normal messages | 4 | M1 | none |
 | Attach turns to the next message in an open chat | 4 | M2 | none |
+| Add turns to an idle Claude chat as real turns, by button or automatically | R5, more-tools | M1, M3 | Sync status, Setup and settings |
 | Count only real prompts as turns | 4 | M1 (done) | none |
 | Track every message by its ID, so nothing is sent twice or sent back | 4 | M1 | none |
 | Follow a Claude chat when its ID changes | 4 | M1 | none |
@@ -107,8 +112,8 @@ The complete list. Nothing is in the first version unless it is here. "Spec" say
 | Feature | Spec | Built in | Screen |
 |---|---|---|---|
 | Sync history per link | A8 | M1, M3 | History |
-| Undo back to any point, listing exactly what is removed | A9 | M1, M3 | History, Undo to a sync point |
-| Saved copy before every cut, with restore | A10 | M1, M3 | History |
+| Undo back to any point, listing exactly what the chat will no longer have. Claude: the chat is cut. Codex: a shorter chat is created and linked | A9 | M1, M3 | History, Undo to a sync point |
+| Nothing lost for 30 days: restore a cut, or go back to the earlier chat | A10 | M1, M3 | History |
 | Relaunch an app from Baton, confirmed when a chat is replying, or when idle | A6 | M2, M3 | Relaunch warning |
 
 **Names**
@@ -136,10 +141,22 @@ The complete list. Nothing is in the first version unless it is here. "Spec" say
 | Setup check: hooks, background runners, logins, each with its fix | 6, 7 | M2, M3 | Setup and settings |
 | Menu-bar popover and window | 7 | M3 | Menu bar and window |
 | Light glass look; light and dark-gray themes | 7 | M3 | all |
-| Settings: catch-up notice, relaunch offer, merge behaviour, brief threshold, limit offer, hidden chat types, title tag, theme | 7 | M3 | Setup and settings |
+| Settings: catch-up notice, relaunch offer, adding turns to an idle Claude chat, merge behaviour, brief threshold, limit offer, hidden chat types, title tag, theme | 7 | M3 | Setup and settings |
 | Every notice, warning and error says what happened, why, and what to do | 7a | M3 | all |
 
-Not in the first version: [features/ideas.md](features/ideas.md).
+**After the first version: more tools** ([features/more-tools.md](features/more-tools.md))
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Baton's record names sides by tool, so a tool can be added without changing it | G10 | M1 (done) | none |
+| OpenCode as a tool: read, write, hooks, background runs | G1, G3 | M5 | Setup and settings |
+| Cursor as a tool, for the chats shown in the Cursor app | G1, G3 | M6 | Setup and settings |
+| Link any two tools; pick the other tool when linking | G2, G6 | M5 | Link a chat |
+| Copy a chat from any tool to any tool, with that tool's relaunch note | G5 | M5 | Link a chat |
+| What each tool can do, shown in Setup and used by every dialog | G3, G4, G7 | M5 | Setup and settings |
+| A tool's format change pauses only its own links | G8 | M5 | Setup and settings |
+
+Other ideas, not agreed: [features/ideas.md](features/ideas.md).
 
 ## 2. What testing the upstream tool showed
 
@@ -176,7 +193,7 @@ Claude desktop ── Stop hook ──┐                    ┌── stop hook
                         └─────────────────────────────┘
 ```
 
-- **Adapters** read a session into a common list of turns and write turns in the native format. They are written fresh, with the upstream converters as the reference for the formats.
+- **Adapters** read a session into a common list of turns and write turns in the native format. They are written fresh, with the upstream converters as the reference for the formats. There is one per tool, and each answers the same questions about its tool (can a closed chat take turns, does a new chat need a relaunch, can turns be attached, can a chat be made shorter, and so on; the list is in [features/more-tools.md](features/more-tools.md), G3). The planner and the app read those answers and never assume a tool's behaviour. A third or fourth tool is a new adapter and nothing else.
 - **Ledger** is Baton's own SQLite file in `~/Library/Application Support/Baton/`. It holds links, per-message mappings and a journal of every write.
 - **Planner** is a pure function: both sides' turns plus the ledger in, a plan out (what would be appended where, or "conflict", or "history changed"). Every UI action shows the plan first; dry run is the planner without the applier.
 - **Applier** executes a plan with the safety steps in section 5.
@@ -368,10 +385,13 @@ The wording Baton starts with:
 | M2 | CLI, hooks, agent brief | `link`, `relink`, `unlink`, `pause`, `resume`, `copy`, `status`, `plan`, `sync`, `merge`, `continue`, `brief`, `history`, `undo`, `notify`, `catch-up`, `setup`; `ask` (second opinion); turn-end and prompt hooks installed in both tools; noticing a usage limit at turn end; setup check per side; agent brief with offline fallback; read-only background runs for a second opinion; relaunch of an app in the safe order |
 | M3 | Baton.app | Menu-bar popover; window with the sync status screen (both names, a card per app with the send-here-now line and relaunch offer, turn-by-turn strip, conversation as messages with filter), link actions (pause, history, remove, copy, change link), the merge screen with reordering, the link and hand-off dialogs, the limit offer, the second opinion panel, the sync history with undo and restore, the relaunch confirmation, setup and settings; glass light and dark-gray themes |
 | M4 | Release polish | Signing, docs; report the merge bug to the upstream author |
+| M0b | Spike on OpenCode and Cursor with throwaway chats | The ten questions in [features/more-tools.md](features/more-tools.md) are answered for each tool. Run now, alongside M1 |
+| M5 | OpenCode | OpenCode adapter with its answers to G3; linking and copying between any two tools; tool picker in the link dialog; a Setup card per tool; per-tool format guard |
+| M6 | Cursor | Cursor adapter for the chats shown in the Cursor app, as far as M0b shows is safe |
 
-M1 to M3 are the first version.
+M1 to M3 are the first version. M5 and M6 follow it.
 
-Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md), [working across both tools](features/working-across.md). The complete list of what is in the first version is in section 1a. Ideas not yet agreed: [features/ideas.md](features/ideas.md).
+Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md), [working across both tools](features/working-across.md), [more tools](features/more-tools.md). The complete list of what is in the first version is in section 1a. Ideas not yet agreed: [features/ideas.md](features/ideas.md).
 
 ## 9. Open questions for the spike (M0)
 
