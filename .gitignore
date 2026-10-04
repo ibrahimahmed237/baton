@@ -3,6 +3,7 @@
 
 # Spike hook config for Codex: points at an absolute path on this machine
 .codex/
+.cursor/
 
 # Spike backups and journals: copies of real chat files, never to be pushed
 .baton-spike/
