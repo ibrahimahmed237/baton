@@ -60,8 +60,8 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 | Closed chat takes new turns | yes | yes | to verify | not planned; the format is closed |
 | Chat created from outside appears | after a relaunch | at once | at once, with the app running | not planned |
 | Added turn appears | after a relaunch; the agent has it at once | at once if Codex let go of the chat, else after a relaunch | to verify | to verify |
-| Attach turns to the next message | yes | yes | likely, through a plugin | being tested with a hook |
-| Tells when a reply finishes | yes | yes | likely, through a plugin | yes, in the transcript; hook being tested |
+| Attach turns to the next message | yes | yes | likely, through a plugin | yes |
+| Tells when a reply finishes | yes | yes | likely, through a plugin | yes |
 | Open and replying can be told | yes | yes | to verify | to verify |
 | Chat can be made shorter | yes | no; a shorter chat is created | to verify | to verify |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
@@ -96,7 +96,14 @@ A throwaway chat made in the app, in the Baton folder, shows how a chat is saved
 - The transcript file appeared at once, in the folder named after the project: the prompt wrapped in a time stamp and a query marker, the reply, and a line marking the end of the turn. That end-of-turn line is a second way to notice a finished reply.
 - The chat record carries the context in use, the limit and the percentage, so "how full is this side" needs no arithmetic for Cursor.
 
-A test hook is registered for the Baton folder (`.cursor/hooks.json`, not in the repo; `spike/m0b_cursor_hook.py`). It logs what Cursor passes at chat start, at a submitted prompt, after a reply and at the end of a turn, and offers a codeword as extra context at chat start (PLUM-2) and with a prompt containing "hook test" (LIME-8). Which codeword the agent can repeat shows where text can be attached.
+A test hook was registered for the Baton folder and run on two chats (`spike/m0b_cursor_hook.py`; removed again afterwards):
+
+- **Text can be attached to a prompt.** With a prompt hook returning extra context, the agent repeated the codeword in four seconds without using any tool. The attached text is not written to the transcript, so it is never read back as part of a prompt.
+- **Text offered at chat start did not reach the agent.** The hook ran, but the agent said it had been given nothing. This costs nothing: the prompt hook also runs on a chat's first message, so the history can be attached there.
+- **Cursor says when a reply finishes, and in which chat.** The hooks after a reply and at the end of a turn pass the chat's ID, the path of its transcript, the model, a status and the token counts of the turn.
+- Hooks were picked up while Cursor was running, with no restart and no approval step.
+
+What this means for a link with Cursor: reading, catch-up at send and automatic sync all work, so "Start now, history attached" and a brief are fully supported. "Copy the full history" into Cursor is not offered, and the link dialog says why (G4). Turns written in Cursor reach the other tool as normal messages like any others.
 
 ## OpenCode on this Mac (checked 2026-10-04)
 
