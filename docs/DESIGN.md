@@ -23,12 +23,123 @@ Status: design agreed 2026-10-04, nothing built yet. Own codebase, not a fork. `
 | Linking | From the menu-bar list. Two ways, chosen each time, each explained before the user confirms: copy the full history, or start now with the history attached |
 | Messages to the user | Every notice, warning and error says what happened, why, and what to do, in plain words |
 | Chats Codex already imported (70) | Shown as suggestions; linking aligns turns by content first |
-| Extra feature | Size and cost preview before a hand-off |
+| Extra features | Size and cost preview before a hand-off; the switch offer when a tool reaches its limit; how full each side is; "since you left"; second opinion from the other agent; keeping a turn on one side; pinning turns so briefs keep them. Full list in section 1a |
 | Agent | Not in the sync path. Both brief writers ship in the first version: agent-written and offline, offline as fallback |
 | Visual style | Light glass, system materials; light and dark themes; dark is mid-gray, not near-black |
 | Name | Baton |
 
 Surfaces in scope: Claude desktop app (Code tab) and Codex Desktop. No CLI or VS Code sessions exist on the target machine. SDK script sessions (`sdk-py`) are hidden by default.
+
+## 1a. Everything in the first version
+
+The complete list. Nothing is in the first version unless it is here. "Spec" says where the requirement is written; section numbers refer to this document, letter codes to the feature specs. "Built in" names the milestone (section 8). "Screen" names the board on the mockup canvas.
+
+**Linking**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Link a chat from the menu-bar list | 4, 7 | M1, M3 | Menu bar and window |
+| Two ways to link, explained before confirming: copy the full history, or start now with the history attached | 4, 7a | M1, M3 | Link a chat |
+| Suggestions: chats Codex already imported, matched by content | 4 | M1, M3 | Menu bar and window |
+| One link per chat; change the link to another chat | A0 | M1, M3 | Link a chat |
+| Remove a link without touching either chat | A2 | M1, M3 | Sync status |
+| Copy a chat to the other app without linking | A3 | M1, M3 | Link a chat |
+| Create a full copy when a chat shows less than its agent has | A4 | M1, M3 | Sync status |
+
+**Keeping in sync**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Notice a finished reply through each tool's turn-end hook, with file watching as fallback | 3 | M2, M3 | none |
+| Add turns to a closed chat as normal messages | 4 | M1 | none |
+| Attach turns to the next message in an open chat | 4 | M2 | none |
+| Count only real prompts as turns | 4 | M1 (done) | none |
+| Track every message by its ID, so nothing is sent twice or sent back | 4 | M1 | none |
+| Follow a Claude chat when its ID changes | 4 | M1 | none |
+| Keep the history across a compaction | 4 | M1 (done) | none |
+| Pause and resume one link | A1 | M1, M3 | Sync status |
+| Keep a turn on one side | W12, W13 | M1, M3 | Sync status |
+
+**Seeing where things stand**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Per side: what the agent has, what the chat shows, what is waiting, and the message it is synced up to | R1, R2 | M1, M3 | Sync status |
+| "If you send here now" line, with size | R3 | M1, M3 | Sync status |
+| Why something is waiting, and how to see it as normal messages | R4, R5 | M1, M3 | Sync status |
+| Relaunch offer whenever turns wait for an open chat on a full-copy link | R6 | M1, M3 | Sync status, Menu bar and window |
+| What the agent has on a history-attached link, made explicit | R7 | M1, M3 | Sync status |
+| Setup state per side | R8 | M2, M3 | Sync status, Setup and settings |
+| The conversation shown as messages, with each turn's state on both sides | R9, R10, R13 | M1, M3 | Sync status |
+| Turn-by-turn strip | R11 | M3 | Sync status |
+| Filter: all, waiting, attached, pinned | R12, W14 | M3 | Sync status |
+| Both chats' names, following renames | R14 | M1, M3 | Sync status, Both chats have new turns |
+| One line per chat in the menu bar | R15 | M3 | Menu bar and window |
+| States shown only when confirmed; a bypassed turn is delivered again | R16 | M1 | none |
+| How full each side's context is | W5, W6 | M1, M3 | Sync status, Hand-off |
+| "Since you left" digest | W7, W8 | M1, M3 | Sync status |
+
+**When both chats have new turns**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Both sides' unsynced messages shown together, in time order | M1 to M3 | M1, M3 | Both chats have new turns |
+| Reorder across apps, with shortcuts; one app's own turns keep their order | M4 | M1, M3 | Both chats have new turns |
+| What each app ends up with, before confirming | M5, M6 | M1, M3 | Both chats have new turns |
+| Marks for turns that ran at the same time and files changed on both sides | M7, M8 | M1, M3 | Both chats have new turns |
+| Keep one side only, or split | M9 | M1, M3 | Both chats have new turns |
+| Remember the choice, changeable in Settings | M10 | M1, M3 | Both chats have new turns, Setup and settings |
+
+**Handing off**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Continue: sync, then open the other app at that chat | 7, A7 | M2, M3 | Menu bar and window, Hand-off |
+| Full sync, or a brief in a new chat | 6 | M1, M3 | Hand-off |
+| Size and cost preview | 6 | M1, M3 | Hand-off |
+| Brief written by an agent, with the offline brief as fallback | 6 | M1, M2 | Hand-off |
+| Pinned turns always included in a brief | W14, W15 | M1, M3 | Sync status, Hand-off |
+| Offer the switch when a tool reaches its limit | W1 to W4 | M2, M3 | Hand-off |
+| Second opinion from the other agent | W9 to W11 | M2, M3 | Second opinion |
+
+**Taking things back**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Sync history per link | A8 | M1, M3 | History |
+| Undo back to any point, listing exactly what is removed | A9 | M1, M3 | History, Undo to a sync point |
+| Saved copy before every cut, with restore | A10 | M1, M3 | History |
+| Relaunch an app from Baton, confirmed when a chat is replying, or when idle | A6 | M2, M3 | Relaunch warning |
+
+**Names**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| A short tag on the twin chat's title | 7 | M1 | none |
+| Use one name on both sides | A5 | M2, M3 | Sync status |
+
+**Safety**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Never write into an open chat | 5 | M1 | none |
+| Journal before every write; preview before the first write to a chat | 5 | M1, M3 | Hand-off |
+| Only linked chats are ever written | 5 | M1 | none |
+| Pause syncing when an app changes how it saves chats | 5 | M1, M3 | Setup and settings |
+| Everything stays on the Mac | 5 | all | none |
+
+**Setup and the app itself**
+
+| Feature | Spec | Built in | Screen |
+|---|---|---|---|
+| Install Baton's hooks in both tools; one trust step in Codex | 3, 4 | M2, M3 | Setup and settings |
+| Setup check: hooks, background runners, logins, each with its fix | 6, 7 | M2, M3 | Setup and settings |
+| Menu-bar popover and window | 7 | M3 | Menu bar and window |
+| Light glass look; light and dark-gray themes | 7 | M3 | all |
+| Settings: catch-up notice, relaunch offer, merge behaviour, brief threshold, limit offer, hidden chat types, title tag, theme | 7 | M3 | Setup and settings |
+| Every notice, warning and error says what happened, why, and what to do | 7a | M3 | all |
+
+Not in the first version: [features/ideas.md](features/ideas.md).
 
 ## 2. What testing the upstream tool showed
 
@@ -251,14 +362,14 @@ The wording Baton starts with:
 | | Goal | Done when |
 |---|---|---|
 | M0 | Spike on the real apps with one throwaway chat | The questions in section 9 are answered |
-| M1 | Engine core | Readers for both chats (done); ledger with a state per turn per side; status computed from it (what each agent has, what each chat shows, what is waiting and why, what happens on the next message); planner including the merge with a user-chosen order; one link per chat; pause; sync history; session-chain following; safety rules; offline brief; tests from made-up chats covering the scenarios in the three feature specs |
-| M2 | CLI, hooks, agent brief | `link`, `relink`, `unlink`, `pause`, `resume`, `copy`, `status`, `plan`, `sync`, `merge`, `continue`, `brief`, `history`, `undo`, `notify`, `catch-up`, `setup`; turn-end and prompt hooks installed in both tools; setup check per side; agent brief with offline fallback; relaunch of an app in the safe order |
-| M3 | Baton.app | Menu-bar popover; window with the sync status screen (both names, a card per app with the send-here-now line and relaunch offer, turn-by-turn strip, conversation as messages with filter), link actions (pause, history, remove, copy, change link), the merge screen with reordering, the undo and relaunch confirmations, setup state; glass light and dark-gray themes |
+| M1 | Engine core | Readers for both chats (done); ledger with a state per turn per side; status computed from it (what each agent has, what each chat shows, what is waiting and why, what happens on the next message); planner including the merge with a user-chosen order; one link per chat; pause; kept-back and pinned turns; context numbers and the "since you left" digest read from both chats; sync history, undo and saved copies; session-chain following; safety rules; offline brief; tests from made-up chats covering the scenarios in the three feature specs |
+| M2 | CLI, hooks, agent brief | `link`, `relink`, `unlink`, `pause`, `resume`, `copy`, `status`, `plan`, `sync`, `merge`, `continue`, `brief`, `history`, `undo`, `notify`, `catch-up`, `setup`; `ask` (second opinion); turn-end and prompt hooks installed in both tools; noticing a usage limit at turn end; setup check per side; agent brief with offline fallback; read-only background runs for a second opinion; relaunch of an app in the safe order |
+| M3 | Baton.app | Menu-bar popover; window with the sync status screen (both names, a card per app with the send-here-now line and relaunch offer, turn-by-turn strip, conversation as messages with filter), link actions (pause, history, remove, copy, change link), the merge screen with reordering, the link and hand-off dialogs, the limit offer, the second opinion panel, the sync history with undo and restore, the relaunch confirmation, setup and settings; glass light and dark-gray themes |
 | M4 | Release polish | Signing, docs; report the merge bug to the upstream author |
 
 M1 to M3 are the first version.
 
-Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md). Ideas not yet agreed: [features/ideas.md](features/ideas.md).
+Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md), [working across both tools](features/working-across.md). The complete list of what is in the first version is in section 1a. Ideas not yet agreed: [features/ideas.md](features/ideas.md).
 
 ## 9. Open questions for the spike (M0)
 
