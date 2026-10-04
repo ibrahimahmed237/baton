@@ -25,7 +25,7 @@ All adapter tests run on files and databases built in a temporary folder that th
 ## B0. Fake adapter
 
 **Goal.** An in-memory tool whose facts can be set, so the core can be built and every scenario tested without a real tool.
-**Depends on.** A1.
+**Depends on.** E1.
 **Files.** `baton/adapters/fake/`, `tests/adapters/suite.py`.
 **Steps.** 1. Chats as lists of turns in memory. 2. Settable `Capabilities` and conditions (open, replying, app running, version). 3. A fake runner that returns canned text or fails. 4. A fake `AppControl` that records calls. 5. Four ready-made fact sets: `claude_like`, `codex_like`, `opencode_like`, `cursor_like`.
 **Tests.** The suite runs on the fake with each fact set.
