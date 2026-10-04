@@ -12,6 +12,8 @@ The low-level plan: every piece of work, in the order it can be done, with the f
 | [track-b-adapters.md](track-b-adapters.md) | One adapter per tool: Claude, Codex, OpenCode, Cursor. |
 | [track-c-cli-hooks.md](track-c-cli-hooks.md) | The `baton` command, hooks and plugin, relaunch, setup check, background runs. |
 | [track-d-app.md](track-d-app.md) | The Mac app: screens, themes, notes, wiring to the engine. |
+| [STATUS.md](STATUS.md) | Where the build stands right now, what is next, what is waiting. Start here when picking the work up. |
+| [ORCHESTRATOR.md](ORCHESTRATOR.md) | How packages are run, checked and handed back for review. |
 | [CHECKPOINTS.md](CHECKPOINTS.md) | The points where everything stops and is checked together, and the full feature-to-package map. |
 
 Each work package has the same fields: **Goal**, **From** (the requirement it implements), **Depends on**, **Files**, **Steps**, **Tests**, **Done when**. A package is small enough for one branch-sized change.
