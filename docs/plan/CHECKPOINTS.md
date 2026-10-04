@@ -76,4 +76,24 @@ If a feature is added to DESIGN.md section 1a, it gets a row here and a package,
 
 ## Results
 
-*(Filled in as checkpoints are passed: date, what was run, what failed and was fixed.)*
+### CP0 — passed 2026-10-05
+
+| Check | Result |
+|---|---|
+| Existing tests from the new layout | 70 pass |
+| Adapter suite on the fake tool, four fact sets | 44 checks pass (11 each) |
+| All engine tests | 129 pass (`python3 -m unittest discover -s tests -t .`) |
+| Layer rule | `domain`, `ports`, `services` import no adapter and no store |
+| No tool name in `ports`, `services`, the suite | holds |
+| App builds and decodes every contract sample | `swift build` ok, 15 tests pass, 60+ fixture files |
+| Contract frozen | yes, with a "Types and edge cases" section added from the 17 questions the app build raised |
+
+How it was done: E0, then E1 with B0, were each given to a Codex agent (GPT-6.1 Sol, medium) limited to `baton/` and `tests/`; D0 ran at the same time limited to `app/`. No agent committed. Each result was checked independently (scope of the diff, tests re-run, layer and naming rules) and committed on its own: `d4d9153` E0, `cb11c88` E1, `fcd3f41` B0, `bc2e180` D0.
+
+Corrected on review: the fake tool's fact sets were unnamed value lists and were rewritten with named fields. Folded back into the plan: `ChatReader.files_changed`, the `replays_tool_calls` fact, that adapters report content and not what is on screen, that renaming has its own per-tool answer, and the contract's types and edge cases.
+
+Not done at CP0, by design: the app has no styling (D1) and was not looked at on screen; `git mv` was not available to the agents, but git records the moves as renames.
+
+**Next: E2 to E6 and D1 to D4, towards CP1.**
+
+*(Later checkpoints are added here as they are passed.)*

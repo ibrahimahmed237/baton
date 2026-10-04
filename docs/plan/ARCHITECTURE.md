@@ -82,6 +82,7 @@ class ChatLocator(Protocol):
 class ChatReader(Protocol):
     def read(self, chat_id: str) -> list[Turn]: ...
     def usage(self, chat_id: str) -> Usage: ...      # tokens in context, size if known, limit if hit
+    def files_changed(self, turn: Turn) -> list[str]: ...   # for the same-file warning and the digest
 
 class ChatState(Protocol):
     def condition(self, chat_id: str) -> SideCondition: ...   # exists, open, replying, hooks_ready
@@ -119,6 +120,12 @@ class ToolAdapter(Protocol):
     hooks: HookSupport; runner: BackgroundRunner | None; app: AppControl
 ```
 
+Notes on these interfaces, settled at CP0:
+- An adapter reports what is in the chat, not what the app has on screen. Whether an added turn is visible yet is worked out by the core from `added_turn_visible` and from the next sign of a relaunch or reopen (a hook call, a new process).
+- `write_window` covers adding, creating, placing and cutting. Renaming has its own answer per tool, given by the writer raising `AppMustBeClosed` or returning a result with `needs`.
+- `checked_versions` is a tuple of strings; an adapter compares it with what `state.format_version()` reports.
+- The record store and its row type are still named `Ledger` and `LedgerTurn` in code. They are internal names; nothing shown to the user uses them. Renaming them is not worth the churn now.
+
 `Capabilities` is data, filled in per tool from more-tools.md:
 
 | Field | Values | Claude | Codex | OpenCode | Cursor |
@@ -134,6 +141,7 @@ class ToolAdapter(Protocol):
 | `context_size_known` | | per model | yes | no | yes |
 | `hooks_need` | first-use step | none | trust once | restart once | none |
 | `checked_versions` | format versions writing is allowed for | from files | from schema | schema | record `_v` 18 |
+| `replays_tool_calls` | real tool-call blocks can be written | yes | no | yes | no |
 
 The planner, applier, undo and notes read these fields. A new tool is a new `facts.py` plus the classes above.
 

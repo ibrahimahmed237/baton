@@ -24,6 +24,8 @@ All adapter tests run on files and databases built in a temporary folder that th
 
 ## B0. Fake adapter
 
+**Status.** Done 2026-10-05, commit `fcd3f41`.
+
 **Goal.** An in-memory tool whose facts can be set, so the core can be built and every scenario tested without a real tool.
 **Depends on.** E1.
 **Files.** `baton/adapters/fake/`, `tests/adapters/suite.py`.

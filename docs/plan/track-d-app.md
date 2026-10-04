@@ -29,11 +29,14 @@ Rules for this track:
 
 ## D0. Project, models, engine client
 
+**Status.** Done 2026-10-05, commit `bc2e180`.
+
 **Goal.** An app that launches, decodes every contract object, and can run either engine.
 **From.** CONTRACT.md.
 **Depends on.** CONTRACT.md frozen (CP0).
 **Files.** `App/`, `Engine/`, `Models/`.
-**Steps.** 1. Xcode project, menu-bar extra plus window, no dock icon by default. 2. Codable models for Note, Chat, Side, Turn, Step, Plan and each command's result. 3. `EngineClient` with one async function per command. 4. `ProcessEngine` runs `baton … --json`, maps `error` objects to a Swift error carrying the note. 5. `FixtureEngine` loads `Fixtures/<command>.<state>.json`.
+**As built.** A Swift package (`app/Package.swift`) with a library `BatonKit` and an executable `Baton`, so it builds and tests from the command line with `swift build` and `swift test`. An Xcode project is added in D13 for signing.
+**Steps.** 1. Swift package, menu-bar extra plus window, no dock icon by default. 2. Codable models for Note, Chat, Side, Turn, Step, Plan and each command's result. 3. `EngineClient` with one async function per command. 4. `ProcessEngine` runs `baton … --json`, maps `error` objects to a Swift error carrying the note. 5. `FixtureEngine` loads `Fixtures/<command>.<state>.json`.
 **Tests.** Decoding every fixture file.
 **Done when.** The app starts and lists the fixture links.
 

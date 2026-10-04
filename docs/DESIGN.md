@@ -4,7 +4,7 @@ Hand a conversation from one coding agent to another and back. Each linked chat 
 
 The first version covers four tools: Claude Code, Codex, OpenCode and Cursor (the Cursor app). This document often names Claude and Codex in its examples; every rule applies to any two of the four ([features/more-tools.md](features/more-tools.md)).
 
-Status: design agreed 2026-10-04; both spikes done; engine core started. What to build next, in order: [PLAN.md](PLAN.md). Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
+Status: design agreed 2026-10-04; both spikes done; building, checkpoint CP0 passed 2026-10-05. What to build next, in order: [PLAN.md](PLAN.md). Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
 
 ## 1. Decisions
 

@@ -1,6 +1,6 @@
 # Contract between the engine and the app
 
-The app never reads a chat or Baton's record. It runs `baton <command> --json` and shows what comes back. This file is that interface. Track D builds against it with fixture files; track C makes the engine produce it. It is frozen at checkpoint CP0 and after that only grows.
+The app never reads a chat or Baton's record. It runs `baton <command> --json` and shows what comes back. This file is that interface. Track D builds against it with fixture files; track C makes the engine produce it. **Frozen at checkpoint CP0, 2026-10-05.** From here it only grows: fields and commands are added, none is renamed or removed.
 
 ## Rules
 
@@ -9,6 +9,25 @@ The app never reads a chat or Baton's record. It runs `baton <command> --json` a
 - Text for the user is never built in the app. The engine returns **notes**: `{"id", "values", "text", "buttons", "status_line"}`. The app shows `text`; `id` and `values` are there for tests and for future translation.
 - Tools are named `claude`, `codex`, `opencode`, `cursor`. Times are ISO 8601 in UTC.
 - Unknown fields are ignored by the app, so the engine can add fields without breaking it.
+
+## Types and edge cases
+
+Settled at CP0 from the questions the app's first build raised.
+
+- **IDs.** Link, turn and event ids are integers. Chat ids and plan ids are strings.
+- **Numbers.** Counts and tokens are integers. `percent`, `seconds` and `glass` are numbers that may have a fraction.
+- **Times** are strings, ISO 8601 in UTC, with or without fractional seconds. The app treats them as opaque until it formats them.
+- **Fixed words** (tool, state, action, mode, tone, reason) are lower-case strings exactly as written in this file. A value the app does not know is shown as is, never a crash.
+- **Null and missing.** A field described as `X | null` may be null or absent; the app treats both the same. `Note.status_line`, `Note.buttons[].primary`, `Turn.messages`, `Turn.ended_at`, `Side.synced_up_to`, `Side.waiting_reason`, `Side.since_you_left`, `usage.size`, `usage.percent`, `usage.limit`, `Plan.link_id`, a history event's `tool`, a setup tool's `version`, `last_shared` and `ends_at` can all be null. Everything else is always present.
+- **A missing chat** still has a `Chat` object in its `Side`, with the last known name, and `condition.exists` false.
+- **Errors.** `{"error": {"kind": "<error name in snake_case>" | "internal", "note": Note}}`. Expected refusals exit 0; `internal` exits non-zero and may have no note.
+- **Capabilities** in `setup` are an object with the field names of ARCHITECTURE.md and lower-case values: `{"write_window": "app_closed", "new_chat_visible": "after_relaunch", "added_turn_visible": "after_relaunch", "can_cut": false, "can_place": true, "can_release_chat": false, "opens_at_chat": false, "limit_has_reset_time": false, "context_size_known": true, "hooks_need": "none", "checked_versions": ["18"], "replays_tool_calls": false}`.
+- **Merge presets** are `[{"id": "by_time" | "<tool>_first" | "dont_reorder", "label": "…", "order": [turn ids]}]`.
+- **Lists as arguments** (`--order`, `--tools`) are comma-separated.
+- **Commands without a plan** (`pause`, `resume`, `keep`, `send`, `pin`, `unpin`, `settings set`, `setup install`, `ask`, `open`, `notify`) act at once and take neither `--dry-run` nor `--confirm`: they change nothing in any chat. Everything that writes to a chat or changes a link returns a Plan first.
+- **`ask`** returns an `answer_id`; `ask add --answer <answer_id>` refers to it. Answers are kept for one hour.
+- **`catch-up`** is the one command that does not take `--json`; its output is whatever the calling tool expects.
+- **Fixture files** are named `<command>.<state>.json`, sub-commands with a hyphen (`ask-add`, `merge-show`, `settings-get`), default state `sample`.
 
 ## Shared objects
 
@@ -73,7 +92,7 @@ The app never reads a chat or Baton's record. It runs `baton <command> --json` a
 | `baton restore --event E` | Puts back a cut, or returns to the earlier chat | Plan |
 | `baton keep --turn N` / `send --turn N` / `pin` / `unpin` | Per-turn marks | `{"turn": Turn}` |
 | `baton brief --link L --to T [--writer T\|offline]` | Brief in a new chat | Plan, with `"brief": {"writer", "tokens", "pinned": [ids]}` |
-| `baton ask --from T:ID --turn N --tool T --question Q` | Second opinion | `{"answer", "tokens", "seconds", "notes": [Note]}` |
+| `baton ask --from T:ID --turn N --tool T --question Q` | Second opinion | `{"answer_id", "answer", "tokens", "seconds", "notes": [Note]}` |
 | `baton ask add --answer A` | Adds it to the chat as a turn | Plan |
 | `baton rename --link L --name N [--tools …]` | One name on both sides | Plan |
 | `baton relaunch --tool T [--when-idle] [--then-sync L]` | Close, write, reopen | Plan, with `"replying": [Chat]` |

@@ -6,6 +6,8 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 
 ## E0. Restructure into layers
 
+**Status.** Done 2026-10-05, commit `d4d9153`.
+
 **Goal.** Move what exists into the package layout, with no change in behaviour.
 **From.** ARCHITECTURE.md, package layout.
 **Depends on.** Nothing.
@@ -15,6 +17,8 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Done when.** All 70 pass from the new paths and `grep -rn "import" baton/domain baton/services` shows no import of `adapters` or `ledger`.
 
 ## E1. Ports and capabilities
+
+**Status.** Done 2026-10-05, commit `cb11c88`.
 
 **Goal.** The interfaces of ARCHITECTURE.md as code.
 **From.** more-tools.md G3, G10.
