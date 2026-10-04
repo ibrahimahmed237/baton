@@ -106,6 +106,46 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Headless runners (Q10)**
 - Both exist. The ChatGPT app bundles the Codex CLI at `Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`, same version as the desktop engine, with `exec --ephemeral`.
 
+## Checks before building (2026-10-04)
+
+The feature specs listed five things to confirm on throwaway chats. All five were run.
+
+**Both tools record a usage limit, with the reset time**
+- Claude writes an assistant record that is not a model reply: `isApiErrorMessage: true`, `error: "rate_limit"`, `apiErrorStatus: 429`, a text such as "You've hit your session limit · resets 4:20pm (Africa/Cairo)", and `quotaLimits` with `status`, `resetsAt` (seconds since 1970) and `rateLimitType` (`five_hour` seen).
+- Codex writes `rate_limits` into every `token_count` event: `primary` and `secondary`, each with `used_percent`, `window_minutes` and `resets_at`, plus `rate_limit_reached_type` once a limit is hit.
+- So a limit can be told from the chat file on both sides. Codex also says how close a limit is before it is reached.
+
+**Context in use can be read on both sides**
+- Claude: the `usage` of the latest real reply, `input_tokens + cache_creation_input_tokens + cache_read_input_tokens + output_tokens`. Checked on chats that were compacted: the sum just before each compaction matches the `preTokens` the tool recorded (median ratio 0.999). The context size is not in the file.
+- Codex: `token_count.info.last_token_usage`, with the size next to it as `model_context_window` (258,400 here).
+- So Codex gets tokens and a percentage. Claude gets tokens, and a percentage only where Baton knows the size for the model.
+
+**Background runs can be limited to reading**
+- Codex: `exec -s read-only`. Claude: `--allowedTools "Read,Grep,Glob"`.
+- Both read a file when asked. Both refused to create one; Claude also refused to run a shell command.
+
+**One Claude chat can be released without relaunching the app**
+- Ending the `claude` process of one idle chat (a normal terminate signal) closed it cleanly within a second and removed its entry from the session registry. The app started a new process for that chat on the next message, with the same session ID, and loaded the file again.
+- A turn appended after the release was known to the agent on the next message: asked for the codewords, it listed all three, including the one just added.
+- The chat view did not change. It did not show the appended turn; the view is filled when the app starts.
+- So for an idle Claude chat, real turns can be delivered with nothing relaunched: release the chat, add the turns. The agent has them at once and the chat shows them after the next relaunch, whenever that is. Attached turns, by comparison, are never shown.
+
+**Cutting a Claude chat back works, with the same split**
+- With the chat released, its file was cut back to an earlier point. On the next message the agent no longer had the removed part.
+- The chat view still displayed the removed exchange. It should follow the file after a relaunch, as it did for appended turns; that last step was not run.
+
+**Cutting a Codex chat back is not accepted**
+- With the app quit and no lock held, the test chat's file was cut from 297,015 to 291,281 bytes. After reopening, Codex's own index of the chat (`thread_history_1.sqlite`) still said it had read up to byte 297,015, still listed the removed turn, and the chat displayed it. Codex then wrote its next record at a position below the point its index says it has read.
+- So after a cut the chat view and the file disagree, and stay that way. Putting the file back from the saved copy, with the app closed, brought them back in step.
+- Whether the Codex agent still had the removed turn was not tested; the view alone rules this out.
+- Consequence: a Codex chat is only ever cut when Codex has not yet read past the cut point, which its index states (this covers taking back a write that just failed). In every other case undo creates a new Codex chat that ends at the chosen point and moves the link to it. Baton does not edit Codex's index.
+
+**A name changed from outside**
+- Codex keeps it in the `threads` table (`title` and `name`). After a restart, Codex showed the changed name in the sidebar and the title bar. It was not seen to change while Codex was running.
+- Claude keeps it in the sidebar entry (`title`). The running app did not pick the change up, and later wrote its own name back over it. A Claude chat can therefore be renamed from outside only while the app is closed, in the same step as a relaunch. That step was not run; it uses the same path as a chat created from outside, which Claude lists at start.
+
+`spike/m0_cut.py` did the cuts. It copies the whole file first and refuses while the chat is held.
+
 ## Waiting
 
 **Append to a real chat (Q1, Q2).** `spike/m0_append.py` is ready and passed a dry run on a sandbox copy (append on both sides, shapes checked, undo restores the original size). The automated permission check declined to let the assistant write into real chat files, so these two runs are done by hand:
@@ -118,6 +158,6 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 **Catch-up hook (Q11, Q12).** Done, see above. The test hook is still registered for this folder (`.claude/settings.local.json`, `.codex/hooks.json`, neither in the repo) and should be removed once the real hook replaces it.
 
 **Still open after M0**
-Nothing that needs another test run. Two design choices came out of the spike:
+Two small steps were not run, because both need Claude relaunched from outside the chat doing the test: that Claude's view follows a cut file after a relaunch, and that a Claude chat renamed while the app is closed keeps the name. Two design choices came out of the spike:
 - A twin chat written by Baton shows up in Claude only after a relaunch. The alternative that needs no relaunch: the user starts a new chat in Claude, Baton links it, and the history arrives through the prompt hook on the first message.
 - Claude-written briefs: settled. They use the `claude` command after a one-time login, and Baton checks for that login and says what to do when it is missing.
