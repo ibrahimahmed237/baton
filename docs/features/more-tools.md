@@ -86,6 +86,18 @@ So the rule (G8) for every tool that has a version in its format:
 - Before every write it reads the version. A version it does not know means no creating and no adding in that tool. Reading (Cursor's transcript files do not depend on the record version) and attaching at send keep working.
 - The user is told which tool changed, what still works, and that a Baton update is needed. Nothing is written on a guess.
 
+## Two ways a turn reaches a chat, and what the user sees
+
+Asked and settled 2026-10-04. This holds for every tool.
+
+| | Attached to the next message (hook or plugin) | Added to the chat as a real turn |
+|---|---|---|
+| Works while the chat is open | always | only in OpenCode; Claude after releasing an idle chat; never in a held Codex chat or a running Cursor |
+| The agent has the turn | yes, with that message | yes |
+| The chat shows the turn as a message | never, also not after reopening or a relaunch | yes: OpenCode on reopening the chat, Codex at once if it was not holding the chat, Claude and Cursor after a relaunch |
+
+So attaching is always available and never loses anything, but what was attached stays invisible in that chat for good. To see the turns as messages they have to be added as real turns, which for an open chat means closing or relaunching first (except OpenCode). The notes say which of the two will happen and offer the other.
+
 ## What is known per tool
 
 "Yes" and "no" are measured (SPIKE-M0.md). "To verify" has not been run.

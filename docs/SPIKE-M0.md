@@ -144,6 +144,12 @@ The feature specs listed five things to confirm on throwaway chats. All five wer
 - Codex keeps it in the `threads` table (`title` and `name`). After a restart, Codex showed the changed name in the sidebar and the title bar. It was not seen to change while Codex was running.
 - Claude keeps it in the sidebar entry (`title`). The running app did not pick the change up, and later wrote its own name back over it. A Claude chat can therefore be renamed from outside only while the app is closed, in the same step as a relaunch (confirmed, see below).
 
+**Writing into a chat Codex is holding loses the turn and damages the file's numbering**
+- The throwaway chat was opened in Codex, so Codex held it, and one turn was appended from outside.
+- Codex did not show the turn, and its agent did not have it: asked for every codeword, it listed the earlier ones only.
+- Codex then wrote its own next records with the same position numbers the appended turn had used, so the file now has six numbers used twice.
+- So the rule stands for Codex as for Claude, now measured for both: never write into a chat the app holds. A held chat is reached by attaching the turns to the user's next message, which works and leaves the file alone.
+
 `spike/m0_cut.py` did the cuts. It copies the whole file first and refuses while the chat is held.
 
 **After a relaunch, Claude's view follows the file, and a name given while closed is kept**
