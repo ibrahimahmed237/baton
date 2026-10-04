@@ -57,15 +57,15 @@ Every dialog takes its relaunch note and its warnings from these answers for the
 
 | | Claude | Codex | OpenCode | Cursor |
 |---|---|---|---|---|
-| Closed chat takes new turns | yes | yes | to verify | to verify |
-| Chat created from outside appears | after a relaunch | at once | to verify | to verify |
+| Closed chat takes new turns | yes | yes | to verify | not planned; the format is closed |
+| Chat created from outside appears | after a relaunch | at once | at once, with the app running | not planned |
 | Added turn appears | after a relaunch; the agent has it at once | at once if Codex let go of the chat, else after a relaunch | to verify | to verify |
-| Attach turns to the next message | yes | yes | likely, through a plugin | to verify |
-| Tells when a reply finishes | yes | yes | likely, through a plugin | to verify |
+| Attach turns to the next message | yes | yes | likely, through a plugin | being tested with a hook |
+| Tells when a reply finishes | yes | yes | likely, through a plugin | yes, in the transcript; hook being tested |
 | Open and replying can be told | yes | yes | to verify | to verify |
 | Chat can be made shorter | yes | no; a shorter chat is created | to verify | to verify |
-| Background run, read-only | yes | yes | to verify | to verify |
-| Records limits and context | yes; context size not recorded | yes | token counts yes; limits to verify | to verify |
+| Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
+| Records limits and context | yes; context size not recorded | yes | token counts yes; limits to verify | context yes, with size and percentage; limits to verify |
 | Opens at a given chat | yes | yes | to verify | to verify |
 
 ## Which Cursor: the app, not `cursor-agent` (checked 2026-10-04)
@@ -89,12 +89,22 @@ What the app offers for reading and for hooks:
 - The app knows hook events for a submitted prompt, a finished reply, the end of a turn, session start and end, and compaction, and its code names fields for extra context and for a follow-up message. So attaching turns and noticing a finished reply look possible; both need a live run.
 - Adding turns to a Cursor chat as normal messages would mean writing into the 3.8 GB database in a format that is not documented. Expect Cursor to work with "Start now, history attached" only, at least at first (G4).
 
+A throwaway chat made in the app, in the Baton folder, shows how a chat is saved:
+
+- The list of chats has one row per chat with its name, folder, times and how full its context is.
+- The chat itself is one record that lists its messages in order, and one record per message with its text, time and token count. The record also holds an encryption key for part of its state, which is another reason not to write there.
+- The transcript file appeared at once, in the folder named after the project: the prompt wrapped in a time stamp and a query marker, the reply, and a line marking the end of the turn. That end-of-turn line is a second way to notice a finished reply.
+- The chat record carries the context in use, the limit and the percentage, so "how full is this side" needs no arithmetic for Cursor.
+
+A test hook is registered for the Baton folder (`.cursor/hooks.json`, not in the repo; `spike/m0b_cursor_hook.py`). It logs what Cursor passes at chat start, at a submitted prompt, after a reply and at the end of a turn, and offers a codeword as extra context at chat start (PLUM-2) and with a prompt containing "hook test" (LIME-8). Which codeword the agent can repeat shows where text can be attached.
+
 ## OpenCode on this Mac (checked 2026-10-04)
 
 - The `opencode` command is damaged: macOS stops it at launch because its signature is no longer valid. Reinstalling it fixes that; Baton's setup check has to detect it and say so.
 - The OpenCode app runs a local server, but it asks for a password that the app makes up at each start. Baton does not go around that.
 - So the only way in from outside is the database. A throwaway chat was created there by `spike/m0b_opencode.py` with the app running: one project row, one chat, one finished question and answer, in the shapes OpenCode itself writes. The database stayed healthy and the script's `remove` takes exactly those rows out again.
-- Still to look at in the app: whether that chat is listed, shows its turn, and whether the agent knows the codeword when asked.
+- **It worked.** The user opened the folder in OpenCode: the chat was listed, its turn was shown as normal messages, and asked for the codeword the agent answered with it. OpenCode then added the new question and answer after Baton's rows and left those rows as they were. The app was running when the chat was created, so a chat made from outside needs no relaunch here.
+- This is different from the other tools in a useful way: the database takes writes from outside while the app is running without breaking, where a chat file does not. Whether a turn added to a chat the app has on screen appears there, and whether the agent has it, is still to test.
 - Useful details in the format: a user message records which files its turn changed; a reply records its token counts including the total; text the app inserted itself is marked as such, so it can be left out of prompts; chats that are sub-agent runs have a parent.
 - OpenCode has been used little here: 34 chats, the newest from May 2026.
 

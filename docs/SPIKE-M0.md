@@ -132,7 +132,7 @@ The feature specs listed five things to confirm on throwaway chats. All five wer
 
 **Cutting a Claude chat back works, with the same split**
 - With the chat released, its file was cut back to an earlier point. On the next message the agent no longer had the removed part.
-- The chat view still displayed the removed exchange. It should follow the file after a relaunch, as it did for appended turns; that last step was not run.
+- The chat view still displayed the removed exchange until Claude was relaunched (see below).
 
 **Cutting a Codex chat back is not accepted**
 - With the app quit and no lock held, the test chat's file was cut from 297,015 to 291,281 bytes. After reopening, Codex's own index of the chat (`thread_history_1.sqlite`) still said it had read up to byte 297,015, still listed the removed turn, and the chat displayed it. Codex then wrote its next record at a position below the point its index says it has read.
@@ -142,9 +142,15 @@ The feature specs listed five things to confirm on throwaway chats. All five wer
 
 **A name changed from outside**
 - Codex keeps it in the `threads` table (`title` and `name`). After a restart, Codex showed the changed name in the sidebar and the title bar. It was not seen to change while Codex was running.
-- Claude keeps it in the sidebar entry (`title`). The running app did not pick the change up, and later wrote its own name back over it. A Claude chat can therefore be renamed from outside only while the app is closed, in the same step as a relaunch. That step was not run; it uses the same path as a chat created from outside, which Claude lists at start.
+- Claude keeps it in the sidebar entry (`title`). The running app did not pick the change up, and later wrote its own name back over it. A Claude chat can therefore be renamed from outside only while the app is closed, in the same step as a relaunch (confirmed, see below).
 
 `spike/m0_cut.py` did the cuts. It copies the whole file first and refuses while the chat is held.
+
+**After a relaunch, Claude's view follows the file, and a name given while closed is kept**
+- `spike/m0_relaunch.py` relaunched Claude from outside: it waited until no chat was replying, asked the app to quit (gone within a second), changed one chat's name while the app was closed, and opened the app again.
+- The chat that had been cut back and then added to now displays exactly what its file holds: the removed exchange is gone and the turn added after the release is shown.
+- The chat renamed while closed kept the new name: in the sidebar entry, and in what the app itself reports, several minutes later. A running Claude had written its own name back; a closed one does not.
+- So both remaining steps are confirmed, and the order planned for Baton's relaunch (wait until idle, quit, write, reopen) works as one run.
 
 ## Waiting
 
@@ -158,6 +164,6 @@ The feature specs listed five things to confirm on throwaway chats. All five wer
 **Catch-up hook (Q11, Q12).** Done, see above. The test hook is still registered for this folder (`.claude/settings.local.json`, `.codex/hooks.json`, neither in the repo) and should be removed once the real hook replaces it.
 
 **Still open after M0**
-Two small steps were not run, because both need Claude relaunched from outside the chat doing the test: that Claude's view follows a cut file after a relaunch, and that a Claude chat renamed while the app is closed keeps the name. Two design choices came out of the spike:
+Nothing that needs another test run. Two design choices came out of the spike:
 - A twin chat written by Baton shows up in Claude only after a relaunch. The alternative that needs no relaunch: the user starts a new chat in Claude, Baton links it, and the history arrives through the prompt hook on the first message.
 - Claude-written briefs: settled. They use the `claude` command after a one-time login, and Baton checks for that login and says what to do when it is missing.
