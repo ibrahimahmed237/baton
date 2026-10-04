@@ -11,3 +11,4 @@ class SideCondition:
     open: bool = False
     replying: bool = False
     hooks_ready: bool = True
+    app_running: bool = False
