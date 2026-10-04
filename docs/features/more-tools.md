@@ -1,6 +1,6 @@
 # Feature: more tools, any two linked
 
-Status: agreed 2026-10-04. Claude Code with Codex is the first pair and the first version. OpenCode and Cursor are looked at now and built after the first pair works (milestones M5 and M6 in [DESIGN.md](../DESIGN.md)).
+Status: agreed 2026-10-04. All four tools are in the first version: Claude Code, Codex, OpenCode and Cursor. Claude with Codex is built first and the other two follow inside the same milestones ([PLAN.md](../PLAN.md)).
 
 ## Problem
 
@@ -138,8 +138,8 @@ Where it cannot be done in the same chat, "Create a full copy" (link-actions.md,
 | Open and replying can be told | yes | yes | yes, through the plugin | running or not: yes; replying: through hooks |
 | Chat can be made shorter | yes | no; a shorter chat is created | not tested; a shorter chat is created | not tested; a shorter chat is created |
 | Background run, read-only | yes | yes | command damaged on this Mac | only through `cursor-agent`, signed out here |
-| Records limits and context | yes; context size not recorded | yes | token counts yes; limits to verify | context yes, with size and percentage; limits to verify |
-| Opens at a given chat | yes | yes | not looked at; the app is brought to the front | not looked at; the app is brought to the front |
+| Records limits and context | yes; context size not recorded | yes | token counts yes; a failed reply carries the provider's error and status code, no reset time | context with size and percentage; a turn that ended on a limit says so in the transcript's end-of-turn line, no reset time |
+| Opens at a given chat | yes | yes | no; Baton opens the folder and names the chat to pick | no; Baton opens the folder and names the chat to pick |
 
 ## Which Cursor: the app, not `cursor-agent` (checked 2026-10-04)
 
@@ -203,7 +203,7 @@ What this means for a link with Cursor: every way of linking works. "Copy the fu
 | 4 | Attach text to the next message | yes, stored marked as inserted | yes, not stored in the transcript |
 | 5 | Signal when a reply finishes, with chat ID | yes | yes |
 | 6 | Background run, read-only | not available: the command is damaged here | not available: `cursor-agent` is signed out |
-| 7 | Open the app at a given chat | not looked at | not looked at |
+| 7 | Open the app at a given chat | no link to a chat exists. `opencode://open-project?directory=…` opens the folder; `opencode://new-session?directory=…&prompt=…` starts a new chat there | no link to a chat exists. The `cursor` command opens the folder |
 | 8 | Name: where, and changed from outside | in the chat's row; change not tested | in the chat list row; change not tested |
 | 9 | Chat made shorter | not tested | not tested |
 | 10 | `cursor-agent` same as the app? | n/a | no, separate; the app is the one to link |

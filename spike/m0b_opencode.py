@@ -12,6 +12,7 @@ added.
 
     m0b_opencode.py create --codeword FIG-3 [--cwd DIR] [--title T]
     m0b_opencode.py append --codeword PEAR-1     # one more turn in the chat `create` made
+    m0b_opencode.py cut --keep-turns 1           # take the chat back to its first N turns
     m0b_opencode.py remove
 """
 import argparse
@@ -165,6 +166,34 @@ def do_append(args):
     print(json.dumps({"appended": True, "session": session_id, "messages": [user_id, assistant_id]}))
 
 
+def do_cut(args):
+    """Remove every message after the first N questions and their answers, saving the removed rows."""
+    entry = [e for e in base.read_jsonl(base.JOURNAL)
+             if e.get("side") == "opencode" and e.get("kind") == "create" and not e.get("removed")][-1]
+    session_id = entry["session"]
+    db = sqlite3.connect(DB, timeout=10)
+    db.row_factory = sqlite3.Row
+    messages = db.execute("select * from message where session_id=? order by time_created, id", (session_id,)).fetchall()
+    users = [m["id"] for m in messages if json.loads(m["data"])["role"] == "user"]
+    if len(users) <= args.keep_turns:
+        sys.exit("the chat has %d turns; nothing to cut" % len(users))
+    first_gone = [m["id"] for m in messages].index(users[args.keep_turns])
+    gone = [m["id"] for m in messages[first_gone:]]
+    marks = ",".join("?" * len(gone))
+    saved = {"messages": [dict(m) for m in messages[first_gone:]],
+             "parts": [dict(p) for p in db.execute("select * from part where message_id in (%s)" % marks, gone)]}
+    keep_path = os.path.join(base.WORK, "backup", "opencode-cut-%d.json" % int(time.time()))
+    os.makedirs(os.path.dirname(keep_path), exist_ok=True)
+    with open(keep_path, "w") as fh:
+        json.dump(saved, fh)
+    with db:
+        db.execute("delete from part where message_id in (%s)" % marks, gone)
+        db.execute("delete from message where id in (%s)" % marks, gone)
+    db.close()
+    base.journal({"side": "opencode", "kind": "cut", "session": session_id, "removed_messages": gone, "saved": keep_path})
+    print(json.dumps({"cut": True, "kept_turns": args.keep_turns, "removed_messages": len(gone), "saved": keep_path}))
+
+
 def do_remove(_args):
     entries = base.read_jsonl(base.JOURNAL)
     db = sqlite3.connect(DB, timeout=10)
@@ -199,6 +228,9 @@ def main():
     a = sub.add_parser("append")
     a.add_argument("--codeword", required=True)
     a.set_defaults(fn=do_append)
+    k = sub.add_parser("cut")
+    k.add_argument("--keep-turns", type=int, required=True)
+    k.set_defaults(fn=do_cut)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()

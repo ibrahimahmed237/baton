@@ -11,6 +11,8 @@ Run only while Cursor is closed. `remove` deletes exactly the rows `create` adde
 
     m0b_cursor_create.py create --like CHAT_ID --codeword W
     m0b_cursor_create.py append --chat CHAT_ID --codeword W   # one more turn in an existing chat
+    m0b_cursor_create.py insert --chat CHAT_ID --before-last-turn --codeword W   # place a turn before the newest one
+    m0b_cursor_create.py cut --chat CHAT_ID --keep-turns N                        # take the chat back to N turns
     m0b_cursor_create.py remove
 """
 import argparse
@@ -131,6 +133,76 @@ def do_append(args):
     print(json.dumps({"appended": True, "chat": args.chat, "messages_now": len(heads)}))
 
 
+def _turn_starts(heads):
+    return [i for i, head in enumerate(heads) if head["type"] == 1]
+
+
+def do_insert(args):
+    """Place a question and answer before the chat's newest turn: 'attach now, show later'."""
+    if running():
+        sys.exit("Cursor is running; it keeps chats in memory and would write over this. Quit Cursor first.")
+    db = sqlite3.connect(DB, timeout=20)
+
+    def get(key):
+        return json.loads(db.execute("select value from cursorDiskKV where key=?", (key,)).fetchone()[0])
+
+    data = get("composerData:" + args.chat)
+    heads = data["fullConversationHeadersOnly"]
+    at_index = _turn_starts(heads)[-1]
+    user_head = heads[at_index]
+    reply_head = [h for h in heads if h["type"] == 2 and h.get("grouping", {}).get("hasText")][-1]
+    now = int(time.time() * 1000)
+    texts = ["[Baton spike: this turn was placed before your last message, from outside] Remember this codeword: %s."
+             % args.codeword, "Noted. The codeword is %s." % args.codeword]
+    rows, new_heads = {}, []
+    for head, text, at in zip((user_head, reply_head), texts, (now, now + 1)):
+        stamp = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(at / 1000))
+        bubble = dict(get("bubbleId:%s:%s" % (args.chat, head["bubbleId"])), bubbleId=str(uuid.uuid4()),
+                      text=text, createdAt=stamp)
+        bubble.pop("checkpointId", None)
+        if "richText" in bubble:
+            bubble["richText"] = rich_text(text)
+        rows["bubbleId:%s:%s" % (args.chat, bubble["bubbleId"])] = bubble
+        new_heads.append(dict(head, bubbleId=bubble["bubbleId"], createdAt=stamp,
+                              grouping=dict(head.get("grouping", {}), textPreview=text[:80])))
+    data["fullConversationHeadersOnly"] = heads[:at_index] + new_heads + heads[at_index:]
+    with db:
+        for key, row in rows.items():
+            db.execute("insert into cursorDiskKV(key, value) values(?,?)", (key, json.dumps(row)))
+        db.execute("insert into cursorDiskKV(key, value) values(?,?)", ("composerData:" + args.chat, json.dumps(data)))
+    db.close()
+    base.journal({"side": "cursor", "kind": "insert", "chat": args.chat, "keys": list(rows)})
+    print(json.dumps({"inserted": True, "chat": args.chat, "position": at_index, "messages_now": len(heads) + 2}))
+
+
+def do_cut(args):
+    """Take a chat back to its first N turns in the display records, saving what is removed."""
+    if running():
+        sys.exit("Cursor is running; it keeps chats in memory and would write over this. Quit Cursor first.")
+    db = sqlite3.connect(DB, timeout=20)
+    data = json.loads(db.execute("select value from cursorDiskKV where key=?",
+                                 ("composerData:" + args.chat,)).fetchone()[0])
+    heads = data["fullConversationHeadersOnly"]
+    starts = _turn_starts(heads)
+    if len(starts) <= args.keep_turns:
+        sys.exit("the chat has %d turns; nothing to cut" % len(starts))
+    gone = heads[starts[args.keep_turns]:]
+    keys = ["bubbleId:%s:%s" % (args.chat, head["bubbleId"]) for head in gone]
+    saved = {key: db.execute("select value from cursorDiskKV where key=?", (key,)).fetchone()[0] for key in keys}
+    keep_path = os.path.join(base.WORK, "backup", "cursor-cut-%d.json" % int(time.time()))
+    os.makedirs(os.path.dirname(keep_path), exist_ok=True)
+    with open(keep_path, "w") as fh:
+        json.dump({"heads": gone, "bubbles": {k: (v.decode() if isinstance(v, bytes) else v) for k, v in saved.items()}}, fh)
+    data["fullConversationHeadersOnly"] = heads[:starts[args.keep_turns]]
+    with db:
+        for key in keys:
+            db.execute("delete from cursorDiskKV where key=?", (key,))
+        db.execute("insert into cursorDiskKV(key, value) values(?,?)", ("composerData:" + args.chat, json.dumps(data)))
+    db.close()
+    base.journal({"side": "cursor", "kind": "cut", "chat": args.chat, "saved": keep_path})
+    print(json.dumps({"cut": True, "chat": args.chat, "kept_turns": args.keep_turns, "removed_messages": len(gone)}))
+
+
 def do_remove(_args):
     if running():
         sys.exit("Cursor is running; quit it first.")
@@ -162,6 +234,15 @@ def main():
     a.add_argument("--chat", required=True)
     a.add_argument("--codeword", required=True)
     a.set_defaults(fn=do_append)
+    i = sub.add_parser("insert")
+    i.add_argument("--chat", required=True)
+    i.add_argument("--before-last-turn", action="store_true", required=True)
+    i.add_argument("--codeword", required=True)
+    i.set_defaults(fn=do_insert)
+    k = sub.add_parser("cut")
+    k.add_argument("--chat", required=True)
+    k.add_argument("--keep-turns", type=int, required=True)
+    k.set_defaults(fn=do_cut)
     r = sub.add_parser("remove")
     r.set_defaults(fn=do_remove)
     args = ap.parse_args()

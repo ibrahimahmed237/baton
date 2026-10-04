@@ -2,7 +2,7 @@
 
 Hand a conversation from one coding agent to another and back. Each linked chat exists once on each side; new turns are appended to the same pair, never copied into a new session. A summary is never inserted into an existing chat: a brief always starts a new chat.
 
-The first pair, and the first version, is Claude Code with Codex; this document names those two throughout. OpenCode and Cursor come next, and every rule here applies to any two tools ([features/more-tools.md](features/more-tools.md)).
+The first version covers four tools: Claude Code, Codex, OpenCode and Cursor (the Cursor app). This document often names Claude and Codex in its examples; every rule applies to any two of the four ([features/more-tools.md](features/more-tools.md)).
 
 Status: design agreed 2026-10-04; both spikes done; engine core started. What to build next, in order: [PLAN.md](PLAN.md). Own codebase, not a fork. `Chamotrans/codex-claude-session-sync` (MIT) is studied as a reference for the session formats and for what already works; any code taken from it keeps its license notice. Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh
 
@@ -14,7 +14,7 @@ Status: design agreed 2026-10-04; both spikes done; engine core started. What to
 | History sent across | Two hand-off modes: full sync into the same linked chat, or a brief that starts a new chat on the other side |
 | Scope | Only chats the user links |
 | Links | One chat with one chat, from two different tools. A chat is in one link at a time; the link can be changed to another chat at any time, which removes the old link first |
-| Tools | Claude Code and Codex in the first version. OpenCode and Cursor after it, as equal tools: any two can be linked, and a chat can be copied from any tool to any tool |
+| Tools | Claude Code, Codex, OpenCode and Cursor, all in the first version (decided 2026-10-04 after both spikes). Equal tools: any two can be linked, and a chat can be copied from any tool to any tool |
 | Idle Claude chat with turns waiting | Baton can add them as real turns without a relaunch by closing that one chat's background process. A setting chooses: only when the user presses "Add them now" (default), or automatically whenever the chat is not replying |
 | Audience | Built for one Mac first, polish for release later |
 | Codebase | Written fresh in its own repo; the upstream tool is a reference, not a base |
@@ -32,7 +32,7 @@ Status: design agreed 2026-10-04; both spikes done; engine core started. What to
 | Visual style | Light glass, system materials; light and dark themes; dark is mid-gray, not near-black |
 | Name | Baton |
 
-Surfaces in scope: Claude desktop app (Code tab) and Codex Desktop in the first version; the OpenCode app and the Cursor app after it (not `cursor-agent`, which keeps separate chats). No CLI or VS Code sessions exist on the target machine. SDK script sessions (`sdk-py`) are hidden by default.
+Surfaces in scope, all in the first version: Claude desktop app (Code tab), Codex Desktop, the OpenCode app and the Cursor app (not `cursor-agent`, which keeps separate chats). No CLI or VS Code sessions exist on the target machine. SDK script sessions (`sdk-py`) are hidden by default.
 
 ## 1a. Everything in the first version
 
@@ -144,7 +144,7 @@ The complete list. Nothing is in the first version unless it is here. "Spec" say
 | Settings: catch-up notice, relaunch offer, adding turns to an idle Claude chat, merge behaviour, brief threshold, limit offer, hidden chat types, title tag, theme | 7 | M3 | Setup and settings |
 | Every notice, warning and error says what happened, why, and what to do | 7a | M3 | all |
 
-**After the first version: more tools** ([features/more-tools.md](features/more-tools.md))
+**More tools, also in the first version** ([features/more-tools.md](features/more-tools.md))
 
 | Feature | Spec | Built in | Screen |
 |---|---|---|---|
@@ -394,7 +394,7 @@ The wording Baton starts with:
 | M5 | OpenCode | OpenCode adapter with its answers to G3; linking and copying between any two tools; tool picker in the link dialog; a Setup card per tool; per-tool format guard |
 | M6 | Cursor | Cursor adapter for the chats shown in the Cursor app: read from transcripts, write display records while Cursor is closed, hooks for attach and reply-finished, version check before every write |
 
-M1 to M3 are the first version. M5 and M6 follow it.
+M1 to M3, M5 and M6 are the first version. The adapters of M5 and M6 are built inside M1 and M2, next to Claude's and Codex's; see [PLAN.md](PLAN.md).
 
 Feature specs: [sync status](features/sync-status.md), [actions on a link](features/link-actions.md), [when both chats have new turns](features/merge.md), [working across both tools](features/working-across.md), [more tools](features/more-tools.md). The complete list of what is in the first version is in section 1a. Ideas not yet agreed: [features/ideas.md](features/ideas.md).
 
