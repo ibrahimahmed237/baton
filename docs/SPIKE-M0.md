@@ -42,7 +42,13 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 
 **Creating a chat from outside (the twin)**
 - Codex: `spike/m0_create.py codex` wrote a new rollout and one row in `threads`, copying settings and base instructions from the user's newest thread. A second turn was then appended. Codex's own engine, run headless, resumed the thread and listed both codewords. The running desktop app loaded the thread when its link was opened. Works.
-- Claude: `spike/m0_create.py claude` wrote a new session file and a sidebar entry. The engine resumed the file and continued its chain, so the file is accepted. The running app does not notice a new sidebar entry: the chat was absent from its list and its link did nothing. It needs an app relaunch, and the in-app check is still to do.
+- Claude: `spike/m0_create.py claude` wrote a new session file and a sidebar entry. The running app does not notice a new sidebar entry: the chat was absent from its list and its link did nothing. After a relaunch both created chats were listed. Works, but only after a relaunch.
+- The created Codex thread also answered correctly when the user typed in it in the desktop app.
+
+**Appending to a closed Claude chat (Q1): it works**
+- Clean run: a chat created from outside with one turn (APRICOT-4), a second turn appended while nothing held it (MELON-7), then the app relaunched.
+- Asked inside the app to list the codewords, the agent answered "APRICOT-4 MELON-7". The new prompt's chain of parents runs through all four messages Baton wrote, and the chat kept its session ID.
+- So on both sides: a closed chat accepts appended turns, and the agent has them when the chat is next opened.
 
 **Opening an app at a chat**
 - Codex: `open codex://threads/<thread id>` made the running app load that thread within two seconds (its lock appeared).
@@ -75,7 +81,12 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Codex: the agent answered with the attached codeword in a new chat, after the hook was trusted once.
 - What the hook receives. Claude: `session_id`, `transcript_path`, `prompt`, `prompt_id`, `session_title`, `cwd`, `permission_mode`, `scratchpad_dir`. Codex: `session_id`, `transcript_path`, `prompt`, `turn_id`, `model`, `cwd`, `permission_mode`. The session ID is there on both sides, which is what the real hook needs to find the link.
 - How it is stored. Claude writes the attached text as an attachment record of type `hook_additional_context` and the notice as `hook_system_message`; the user's prompt record stays clean. Codex writes the attached text as its own `developer` message next to the prompt; the notice is not stored in the rollout.
-- The notice: Claude shows it as a "Claude Code notice" line above the reply. Not yet seen whether Codex Desktop displays it.
+- The notice: Claude shows it as a "Claude Code notice" line above the reply. Codex Desktop showed nothing in two tries and does not store it. On the Codex side the notice has to come from Baton itself, as a macOS notification or in the menu bar.
+
+**Turn-end hooks (Q4): they fire in both desktop apps**
+- Claude passes `session_id`, `transcript_path`, `last_assistant_message`, `stop_hook_active`, `prompt_id`, `cwd` and more. Printing nothing is accepted.
+- Codex passes `session_id`, `transcript_path`, `last_assistant_message`, `stop_hook_active`, `turn_id`, `model`, `cwd`. It ran after being trusted once, with `{}` as output.
+- So both apps tell Baton the moment a reply finishes, and which chat it was in.
 
 **An appended turn on a dead branch is shown but not known**
 - After the Claude app was relaunched, the old test chat displayed the turn that had been appended while it was open, in file order. The agent still did not have it: the later prompt had bypassed it.
@@ -100,12 +111,11 @@ Environment: Claude desktop app with its bundled Claude Code 2.1.284, Codex Desk
 - Claude test chat, while its process is alive and idle: done, see above.
 - Codex test chat, once Codex releases it: done, see above. Quitting the ChatGPT app released every thread lock at once; what else releases a thread is still unknown.
 
-**Append to a closed Claude chat (Q1).** Still untested: no way found yet to close one chat without restarting the app.
+**Append to a closed Claude chat (Q1).** Done, see above.
 
 **Catch-up hook (Q11, Q12).** Done, see above. The test hook is still registered for this folder (`.claude/settings.local.json`, `.codex/hooks.json`, neither in the repo) and should be removed once the real hook replaces it.
 
 **Still open after M0**
-- Claude, in the app: a chat created from outside and then appended to while closed ("Baton clean test", codewords APRICOT-4 then MELON-7). After a relaunch, does it appear in the sidebar and does the agent know both? The engine accepts the file; the app-level check needs the relaunch.
-- Turn-end hooks: the test hook now logs them. Claude's entry is installed; Codex's needs one trust click. Then: do they fire in both desktop apps with the session ID.
-- Whether Codex Desktop displays a hook's notice.
-- How a Claude-written brief gets produced, given headless Claude is not logged in.
+Nothing that needs another test run. Two design choices came out of the spike:
+- A twin chat written by Baton shows up in Claude only after a relaunch. The alternative that needs no relaunch: the user starts a new chat in Claude, Baton links it, and the history arrives through the prompt hook on the first message.
+- How a Claude-written brief gets produced, given headless Claude is not logged in: a one-time `claude` login, or a brief written inside the new chat.
