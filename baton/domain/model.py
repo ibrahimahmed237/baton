@@ -13,6 +13,7 @@ PROMPT = "prompt"
 REPLY = "reply"
 TOOL_CALL = "tool_call"
 TOOL_RESULT = "tool_result"
+TOOL_TEXT = "tool_text"
 
 
 @dataclass(frozen=True)
