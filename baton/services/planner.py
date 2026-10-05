@@ -19,13 +19,14 @@ from . import status
 from ..domain import link as link_states
 from ..domain.link import LedgerTurn, Link
 from ..domain.conditions import SideCondition
+from ..domain.capabilities import Capabilities
 from ..domain.errors import OrderNotAllowed
 
 # What happens to a side's waiting turns.
-ADD = "add"                              # the chat is closed: added as normal messages
-ADD_AFTER_RELEASE = "add_after_release"  # open but idle: its process is closed, then added; shown after a relaunch
-ATTACH = "attach"                        # open: attached to the user's next message there
-HOLD = "hold"                            # nothing is done now; the reason says why
+ADD = status.ADD                              # the chat is closed: added as normal messages
+ADD_AFTER_RELEASE = status.ADD_AFTER_RELEASE  # open but idle: its process is closed, then added; shown after a relaunch
+ATTACH = status.ATTACH                        # open: attached to the user's next message there
+HOLD = status.HOLD                            # nothing is done now; the reason says why
 
 # Ways to order a merge (merge.md, M3 to M6).
 BY_TIME = "by_time"
@@ -38,43 +39,44 @@ MERGED_COPY = "merged_copy"
 
 @dataclass(frozen=True)
 class Step:
+    """One side’s delivery action, required visibility step and alternatives."""
     side: str
     action: str
     turns: tuple[LedgerTurn, ...]
     reason: str = ""
+    needs: tuple[str, ...] = ()
+    alternatives: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Plan:
+    """A preview of delivery without changing a chat."""
     steps: dict[str, Step]  # only sides that have waiting turns
     decision_needed: bool
 
     @property
     def writes_anything(self) -> bool:
+        """Whether applying this plan would write real messages."""
         return any(step.action in (ADD, ADD_AFTER_RELEASE) for step in self.steps.values())
 
 
 def plan_sync(link: Link, turns: Sequence[LedgerTurn],
               conditions: Mapping[str, SideCondition] | None = None,
-              add_when_idle: Collection[str] = ()) -> Plan:
-    """`add_when_idle` names the sides whose tool can release one idle chat and
-    where the user chose to have turns added automatically."""
+              add_when_idle: Collection[str] = (), *,
+              facts: Mapping[str, Capabilities]) -> Plan:
+    """Choose delivery from capabilities and current state, without tool names."""
     conditions = conditions or {}
-    current = status.link_status(link, turns, conditions)
+    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle)
     steps = {}
     for side, side_status in current.sides.items():
         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
         if not waiting:
             continue
-        reason = side_status.waiting_reason
-        if reason == status.NOT_SYNCED_YET:
-            steps[side] = Step(side, ADD, waiting)
-        elif reason == status.CHAT_OPEN:
-            idle = not conditions.get(side, SideCondition()).replying
-            release = idle and side in add_when_idle and link.mode == link_states.FULL_COPY
-            steps[side] = Step(side, ADD_AFTER_RELEASE if release else ATTACH, waiting, reason)
-        else:
-            steps[side] = Step(side, HOLD, waiting, reason)
+        condition = conditions.get(side, SideCondition())
+        action, reason, needs, alternatives = status.delivery_choice(
+            link, condition, facts[side], side_status.waiting_reason,
+            side in add_when_idle)
+        steps[side] = Step(side, action, waiting, reason, needs, alternatives)
     return Plan(steps, current.decision_needed)
 
 
@@ -112,7 +114,7 @@ def merge_order(turns: Sequence[LedgerTurn], preset: str = BY_TIME) -> list[Ledg
             ordered.append(queue.pop(0))
         return ordered
     if preset not in sides:
-        raise ValueError("no unsynced turns were written in %s" % preset)
+        raise ValueError("no_unsynced_turns:" + preset)
     return sorted(pending, key=lambda turn: (turn.origin != preset, turn.seq))
 
 
@@ -120,20 +122,18 @@ def check_order(turns: Sequence[LedgerTurn], order: Sequence[LedgerTurn]) -> Non
     """Raise unless `order` is the unsynced turns with each app's own turns in their own order (M4)."""
     pending = unsynced(turns)
     if sorted(turn.id for turn in order) != sorted(turn.id for turn in pending):
-        raise OrderNotAllowed("the order has to hold exactly the turns that are not synced yet")
+        raise OrderNotAllowed(OrderNotAllowed.note_id)
     for side in {turn.origin for turn in pending}:
         own = [turn.id for turn in pending if turn.origin == side]
         if [turn.id for turn in order if turn.origin == side] != own:
-            raise OrderNotAllowed(
-                "turns written in %s stay in the order they were written; only turns from"
-                " different apps can pass each other" % side)
+            raise OrderNotAllowed(OrderNotAllowed.note_id)
 
 
 def move(turns: Sequence[LedgerTurn], order: Sequence[LedgerTurn], turn_id: int, position: int) -> list[LedgerTurn]:
     """Move one turn to a position in the order; refused if it passes a turn of its own app."""
     moved = [turn for turn in order if turn.id == turn_id]
     if not moved:
-        raise OrderNotAllowed("turn %d is not among the turns being merged" % turn_id)
+        raise OrderNotAllowed(OrderNotAllowed.note_id)
     rest = [turn for turn in order if turn.id != turn_id]
     result = rest[:position] + moved + rest[position:]
     check_order(turns, result)

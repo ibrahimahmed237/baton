@@ -1,6 +1,7 @@
 """Delivery rules, and the scenarios of docs/features/merge.md at the level of the record."""
 import unittest
 
+from baton.adapters.fake.facts import CLAUDE_LIKE
 from baton.services import planner, status
 from baton.domain.link import ATTACHED_HISTORY, CLAUDE, CODEX, FULL_COPY, SHOWN, SKIPPED
 from baton.ledger.sqlite_store import Ledger
@@ -31,7 +32,7 @@ class PlannerCase(unittest.TestCase):
         return self.ledger.turns(self.link.id)
 
     def plan(self, add_when_idle=(), **conditions):
-        return plan_sync(self.ledger.get_link(self.link.id), self.turns(), conditions, add_when_idle)
+        return plan_sync(self.ledger.get_link(self.link.id), self.turns(), conditions, add_when_idle, facts={side: CLAUDE_LIKE for side in self.link.sides})
 
     def names(self, order):
         return [turn.origin_id for turn in order]

@@ -1,6 +1,7 @@
 """The scenarios of docs/features/sync-status.md, at the level of the record."""
 import unittest
 
+from baton.adapters.fake.facts import CLAUDE_LIKE
 from baton.services import status
 from baton.domain.link import ADDED, ATTACHED, ATTACHED_HISTORY, CLAUDE, CODEX, FULL_COPY, SHOWN
 from baton.ledger.sqlite_store import Ledger
@@ -30,7 +31,7 @@ class StatusCase(unittest.TestCase):
 
     def status(self, **conditions):
         link = self.ledger.get_link(self.link.id)
-        return link_status(link, self.ledger.turns(link.id), conditions)
+        return link_status(link, self.ledger.turns(link.id), conditions, facts={side: CLAUDE_LIKE for side in link.sides})
 
 
 class FullCopyTest(StatusCase):

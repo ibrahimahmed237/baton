@@ -12,3 +12,5 @@ class SideCondition:
     replying: bool = False
     hooks_ready: bool = True
     app_running: bool = False
+    app_started_at: str = ""
+    format_known: bool = True
