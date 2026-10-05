@@ -1,0 +1,23 @@
+{
+  "suggestions": [
+    {
+      "a": {
+        "tool": "claude",
+        "id": "d3-suggestion-claude",
+        "name": "Imaginary orchard",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": false
+      },
+      "b": {
+        "tool": "codex",
+        "id": "d3-suggestion-codex",
+        "name": "Imaginary orchard",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": false
+      },
+      "matched_turns": 1
+    }
+  ]
+}

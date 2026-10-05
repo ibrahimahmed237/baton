@@ -1,0 +1,101 @@
+{
+  "links": [],
+  "notes": [
+    {
+      "id": "screen.linked",
+      "tone": "info",
+      "values": {},
+      "text": "Linked",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.attention",
+      "tone": "info",
+      "values": {},
+      "text": "Needs attention",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.suggestions",
+      "tone": "info",
+      "values": {},
+      "text": "Suggestions",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.activity",
+      "tone": "info",
+      "values": {},
+      "text": "Activity",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.list_empty",
+      "tone": "info",
+      "values": {},
+      "text": "No items yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.empty",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.sync_status",
+      "tone": "info",
+      "values": {},
+      "text": "Sync status",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.all_chats",
+      "tone": "info",
+      "values": {
+        "tool": "claude"
+      },
+      "text": "All claude chats",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.all_chats",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "All codex chats",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.all_chats",
+      "tone": "info",
+      "values": {
+        "tool": "opencode"
+      },
+      "text": "All opencode chats",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.all_chats",
+      "tone": "info",
+      "values": {
+        "tool": "cursor"
+      },
+      "text": "All cursor chats",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

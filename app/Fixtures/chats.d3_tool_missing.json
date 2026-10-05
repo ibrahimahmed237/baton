@@ -1,0 +1,36 @@
+{
+  "chats": [
+    {
+      "tool": "claude",
+      "id": "d3-unlinked-claude",
+      "name": "Orchard review",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": false
+    },
+    {
+      "tool": "codex",
+      "id": "d3-unlinked-codex",
+      "name": "Orchard review",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": false
+    },
+    {
+      "tool": "opencode",
+      "id": "d3-unlinked-opencode",
+      "name": "Orchard review",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": false
+    },
+    {
+      "tool": "cursor",
+      "id": "d3-unlinked-cursor",
+      "name": "Orchard review",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": false
+    }
+  ]
+}

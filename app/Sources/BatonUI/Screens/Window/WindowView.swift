@@ -1,0 +1,154 @@
+import SwiftUI
+import BatonKit
+
+/// Sidebar, lists and a detail host for the later screens.
+public struct WindowView: View {
+    @Environment(\.batonTheme) private var theme
+    @ObservedObject private var model: WindowViewModel
+    /// Shows the engine-backed window model.
+    public init(model: WindowViewModel) { self.model = model }
+    public var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(model.sections, id: \.self) { destination in
+                    if let note = model.label(for: destination) {
+                        Button { model.navigate(to: destination) } label: {
+                            HStack { Text(note.text); Spacer(minLength: 0) }
+                                .font(.callout.weight(model.section == destination ? .semibold : .regular))
+                                .padding(10).background(theme.colour(for: .action)
+                                    .opacity(model.section == destination ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 8))
+                        }.buttonStyle(.plain)
+                    }
+                }
+            }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
+                .background(theme.sidebar)
+            VStack(alignment: .leading, spacing: 14) {
+                if let label = model.label(for: model.section) { Text(label.text).font(.title2.weight(.semibold)) }
+                if let error = model.errorNote { NoteView(note: error) }
+                WindowScrollArea { listContent }
+            }.padding(20).frame(width: 305).frame(maxHeight: .infinity, alignment: .top)
+            Rectangle().fill(theme.hairline).frame(width: 1)
+            WindowScrollArea { detail }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(width: 1000, height: 600).background(theme.background)
+    }
+
+    @ViewBuilder private var listContent: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            switch model.section {
+            case .linked, .attention:
+                if model.listedLinks.isEmpty { empty }
+                ForEach(model.listedLinks, id: \.linkID) { link in
+                    row(.link(link.linkID)) { linkSummary(link) }
+                }
+            case .suggestions:
+                if model.suggestions.isEmpty { empty }
+                ForEach(model.suggestions.map { IdentifiedSuggestion(selection: model.suggestionSelection($0), suggestion: $0) }) { item in
+                    let suggestion = item.suggestion
+                    row(model.suggestionSelection(suggestion)) { suggestionSummary(suggestion) }
+                }
+            case .chats(let tool):
+                if (model.chats[tool] ?? []).isEmpty { empty }
+                ForEach(model.chats[tool] ?? [], id: \.id) { chat in
+                    row(.chat(tool, chat.id)) { chatSummary(chat) }
+                }
+            case .activity:
+                if model.activity.isEmpty { empty }
+                ForEach(model.activity) { entry in
+                    row(.event(entry.link.linkID, entry.event.id)) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            linkSummary(entry.link)
+                            Text(entry.event.text).font(.callout)
+                            Text(entry.event.at).font(.caption).foregroundStyle(theme.secondaryText)
+                        }
+                    }
+                }
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder private var detail: some View {
+        switch model.selection {
+        case .link:
+            if let link = model.selectedLink { linkSummary(link) }
+        case .suggestion:
+            if let suggestion = model.selectedSuggestion { suggestionSummary(suggestion) }
+        case .chat(let tool, let id):
+            if let chat = model.chats[tool]?.first(where: { $0.id == id }) { chatSummary(chat) }
+        case .event(let link, let id):
+            if let entry = model.activity.first(where: { $0.link.linkID == link && $0.event.id == id }) {
+                VStack(alignment: .leading, spacing: 12) { linkSummary(entry.link); Text(entry.event.text) }
+            }
+        case nil: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var empty: some View {
+        if let note = model.notes.first(where: { $0.id == "screen.list_empty" }) { NoteView(note: note) }
+    }
+
+    private func row<Content: View>(_ selection: WindowSelection, @ViewBuilder content: () -> Content) -> some View {
+        Button { model.select(selection) } label: {
+            content().frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                .background(theme.colour(for: .action).opacity(model.selection == selection ? 0.1 : 0),
+                            in: RoundedRectangle(cornerRadius: 9))
+        }.buttonStyle(.plain)
+    }
+
+    private func linkSummary(_ link: LinkSummary) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(link.sides.keys.sorted(), id: \.self) { tool in
+                if let chat = link.sides[tool] { chatSummary(chat) }
+            }
+            Text(link.headline.statusLine ?? link.headline.text).font(.callout).foregroundStyle(theme.secondaryText)
+        }
+    }
+
+    private func chatSummary(_ chat: Chat) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ToolDot(tool: chat.tool).font(.caption)
+            Text(chat.name).font(.headline)
+            Text(chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
+        }
+    }
+
+    private func suggestionSummary(_ suggestion: Suggestion) -> some View {
+        VStack(alignment: .leading, spacing: 10) { chatSummary(suggestion.a); chatSummary(suggestion.b) }
+    }
+}
+
+/// Native macOS scrolling is not drawn by ImageRenderer. Snapshot presentation
+/// lays out the very same content directly; live windows keep their scroll area.
+private struct SnapshotPresentationKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var batonSnapshotPresentation: Bool {
+        get { self[SnapshotPresentationKey.self] }
+        set { self[SnapshotPresentationKey.self] = newValue }
+    }
+}
+
+struct WindowScrollArea<Content: View>: View {
+    @Environment(\.batonSnapshotPresentation) private var snapshot
+    private let content: Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+    var body: some View {
+        Group {
+            if snapshot {
+                GeometryReader { geometry in
+                    content.frame(width: geometry.size.width, alignment: .topLeading)
+                        .frame(height: geometry.size.height, alignment: .topLeading).clipped()
+                }
+            } else {
+                ScrollView { content }
+            }
+        }
+    }
+}
+
+private struct IdentifiedSuggestion: Identifiable {
+    let selection: WindowSelection
+    let suggestion: Suggestion
+    var id: WindowSelection { selection }
+}

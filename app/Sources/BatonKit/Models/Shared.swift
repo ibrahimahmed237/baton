@@ -437,9 +437,10 @@ public struct LinkSummary: Codable, Equatable, Sendable {
     public var headline: Note
     public var inSync: Bool
     public var decisionNeeded: Bool
+    public var needsAttention: Bool?
 
     /// Creates a contract value without requiring JSON.
-    public init(linkID: Int, sides: [String: Chat], mode: String, paused: Bool, headline: Note, inSync: Bool, decisionNeeded: Bool) {
+    public init(linkID: Int, sides: [String: Chat], mode: String, paused: Bool, headline: Note, inSync: Bool, decisionNeeded: Bool, needsAttention: Bool? = nil) {
         self.linkID = linkID
         self.sides = sides
         self.mode = mode
@@ -447,6 +448,7 @@ public struct LinkSummary: Codable, Equatable, Sendable {
         self.headline = headline
         self.inSync = inSync
         self.decisionNeeded = decisionNeeded
+        self.needsAttention = needsAttention
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -457,6 +459,7 @@ public struct LinkSummary: Codable, Equatable, Sendable {
         case headline
         case inSync = "in_sync"
         case decisionNeeded = "decision_needed"
+        case needsAttention = "needs_attention"
     }
 }
 
