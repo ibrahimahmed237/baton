@@ -96,4 +96,38 @@ Not done at CP0, by design: the app has no styling (D1) and was not looked at on
 
 **Next: E2 to E6 and D1 to D4, towards CP1.**
 
+### CP1 — passed 2026-10-05, with six findings to close before CP2
+
+| Check | Result |
+|---|---|
+| S1 to S12 (and S4b), on the fact sets each applies to | pass, 42 subcases |
+| T0 to T4, X1, X2 | pass, all twelve tool pairs |
+| Eight delivery rows | pass |
+| Engine tests | 268 pass, re-run by the reviewer on the committed state in a clean copy |
+| App | `swift build` ok, 44 tests pass, same clean copy |
+| Layer and naming rules | hold |
+| Screens rendered | popover 18, window 34, sync status 38 images |
+
+Built by the Codex orchestrator with worker agents; each package staged from its own patch and committed by the reviewer: E2 `38a984a`, E3 `43614c2`, E4 `5b41095`, E5 `df091d0`, E6 `98fc038`, D1 `94f161c`, D2 `d214e44`, D3 `b5d5e5f`, D4 `dcb698e`.
+
+Reviewer findings F1 to F6 and decisions R9, R10 are in [STATUS.md](STATUS.md). In short: one decision was mislabelled as the reviewer's; the app shows tool ids and raw timestamps; the screens hold the right information but do not yet look like the mockup (new package D4b); one fixture contradicts itself; one offer is incomplete; two modules should be split.
+
+Not proven at CP1: anything on a real tool (adapters start at CP2), scrolling and keyboard use in the running app, and how the screens look to a person.
+
+**Next: close F1 to F6 and R10, then E7 to E10, B1, B2, C1, C2, D4b, D5 to D7, towards CP2.**
+
 *(Later checkpoints are added here as they are passed.)*
+
+
+### CP1 — checks passed 2026-10-05; reviewer approval pending
+
+| Check | Result and evidence |
+|---|---|
+| S1 to S12, including S4b | PASS — named tests, 42 applicable fact subcases; S9/S7 precedence resolved by reviewer |
+| T0 to T4 | PASS — named tests; four targets for T0/T1/T2, immediate/deferred target classes for T3/T4 |
+| X1, X2 | PASS — named existing-partner/refusal note and any-tool unlinked copy tests |
+| Eight delivery rows | PASS — row_1 through row_8, with format/state boundaries |
+| Popover/window/sync-status snapshots | PASS — 18/34/38 non-empty PNGs, both themes; fixture view-model assertions pass |
+| Combined tests/build | PASS — engine 268; Swift build; app 44 |
+
+Evidence and every pasted check: [CP1-2026-10-05.md](reports/CP1-2026-10-05.md). E2/E3/E4/D1/D2/D3 are reviewer-committed; E5/E6/D4 are ready entries and ordered patches. Only fakes and hand-made fixtures were exercised. Native runtime scrolling and real adapters/lifecycle are not proved at CP1. Stop before CP2 work until reviewer approval.

@@ -1,0 +1,695 @@
+diff --git a/baton/adapters/fake/tool.py b/baton/adapters/fake/tool.py
+--- a/baton/adapters/fake/tool.py
++++ b/baton/adapters/fake/tool.py
+@@ -2,7 +2,7 @@
+ from __future__ import annotations
+ 
+ from copy import deepcopy
+-from dataclasses import replace
++from dataclasses import asdict, replace
+ from typing import Any, Sequence
+ from uuid import uuid4
+ 
+@@ -132,6 +132,55 @@
+     def __init__(self, adapter: FakeAdapter):
+         self.adapter = adapter
+         self.writes: dict[str, tuple[WriteReceipt, Any]] = {}
++        self._prepared_create: str | None = None
++        self._consumed: set[str] = set()
++
++    def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt:
++        """Capture JSON rollback data without mutating any chat."""
++        if kind not in {"create", "add", "place", "cut", "rename"}:
++            raise ValueError(kind)
++        if (chat_id is None) != (kind == "create"):
++            raise ValueError(kind)
++        if chat_id is None:
++            chat_id = uuid4().hex
++            self._prepared_create = chat_id
++            data = {"prepared": True, "exists": False}
++        else:
++            self.adapter.locator.resolve(chat_id)
++            data = {"prepared": True, "exists": True,
++                    "turns": [asdict(t) for t in self.adapter.chats[chat_id]],
++                    "ref": asdict(self.adapter.refs[chat_id]),
++                    "inserted": [asdict(m) for m in self.adapter.inserted_text[chat_id]],
++                    "visible": None if chat_id not in self.adapter.visible else
++                        [asdict(t) for t in self.adapter.visible[chat_id]]}
++        return WriteReceipt(self.adapter.name, chat_id, kind, data)
++
++    @staticmethod
++    def _turns(values):
++        return [Turn(Message(**v["prompt"]), tuple(Message(**m) for m in v["messages"]))
++                for v in values]
++
++    def _restore_prepared(self, receipt: WriteReceipt) -> None:
++        if receipt.tool != self.adapter.name:
++            raise ValueError("receipt tool mismatch")
++        chat_id, data = receipt.chat_id, receipt.data
++        if not data["exists"]:
++            if self.adapter.state.condition(chat_id).exists:
++                self._check(chat_id)
++            for values in (self.adapter.chats, self.adapter.refs, self.adapter.conditions,
++                           self.adapter.inserted_text, self.adapter.visible):
++                values.pop(chat_id, None)
++            if self._prepared_create == chat_id:
++                self._prepared_create = None
++            return
++        self._check(chat_id)
++        self.adapter.chats[chat_id] = self._turns(data["turns"])
++        self.adapter.refs[chat_id] = ChatRef(**data["ref"])
++        self.adapter.inserted_text[chat_id] = [Message(**m) for m in data["inserted"]]
++        if data["visible"] is None:
++            self.adapter.visible.pop(chat_id, None)
++        else:
++            self.adapter.visible[chat_id] = self._turns(data["visible"])
+ 
+     def _check(self, chat_id: str | None = None, capability: str = "") -> None:
+         if not self.adapter.state.format_version().known:
+@@ -144,13 +193,22 @@
+         if chat_id is not None:
+             self.adapter.locator.resolve(chat_id)
+             condition = self.adapter.state.condition(chat_id)
++            if condition.replying and window != WriteWindow.ANY_TIME:
++                raise ChatReplying()
+             if window in (WriteWindow.CLOSED_OR_RELEASED, WriteWindow.NOT_HELD) and condition.open:
+                 raise ChatHeld()
+ 
+     def _result(self, chat_id: str, kind: str, turns: Sequence[Turn], undo: Any) -> WriteResult:
+         if kind != "create" and self.adapter.facts.added_turn_visible == Visibility.AT_ONCE:
+             self.adapter.visible[chat_id] = deepcopy(self.adapter.chats[chat_id])
+-        receipt = WriteReceipt(self.adapter.name, chat_id, kind, {"write_id": uuid4().hex})
++        if kind == "create":
++            saved = {"turns": [asdict(t) for t in undo[0]], "ref": asdict(undo[1])}
++        elif kind == "cut":
++            saved = {"index": undo[0], "removed": [asdict(t) for t in undo[1]]}
++        else:
++            saved = list(undo)
++        receipt = WriteReceipt(self.adapter.name, chat_id, kind,
++                               {"write_id": uuid4().hex, "undo": saved})
+         self.writes[receipt.data["write_id"]] = (receipt, undo)
+         return WriteResult(chat_id, tuple(turn.id for turn in turns), receipt)
+ 
+@@ -160,6 +218,13 @@
+         if len({turn.id for turn in turns}) != len(turns):
+             raise ValueError("turn ids must be unique within a chat")
+         chat_id = self.adapter.build_chat(turns, name, folder)
++        if self._prepared_create is not None:
++            reserved, self._prepared_create = self._prepared_create, None
++            for values in (self.adapter.chats, self.adapter.refs, self.adapter.conditions,
++                           self.adapter.inserted_text, self.adapter.visible):
++                values[reserved] = values.pop(chat_id)
++            self.adapter.refs[reserved] = replace(self.adapter.refs[reserved], id=reserved)
++            chat_id = reserved
+         if self.adapter.facts.new_chat_visible != Visibility.AT_ONCE:
+             del self.adapter.visible[chat_id]
+         return self._result(chat_id, "create", turns,
+@@ -205,11 +270,28 @@
+ 
+     def take_back(self, receipt: WriteReceipt) -> None:
+         """Undo one write, preserving unrelated later writes."""
++        if receipt.data.get("prepared"):
++            self._restore_prepared(receipt)
++            return
+         key = receipt.data.get("write_id", "")
+-        if key not in self.writes or self.writes[key][0] != receipt:
++        if (receipt.tool != self.adapter.name or key in self._consumed or
++                not self.adapter.state.condition(receipt.chat_id).exists):
++            raise ValueError("receipt does not belong to an outstanding write")
++        if key in self.writes:
++            if self.writes[key][0] != receipt:
++                raise ValueError("receipt mismatch")
++            undo = self.writes[key][1]
++        elif "undo" in receipt.data:
++            saved = receipt.data["undo"]
++            if receipt.kind == "create":
++                undo = (self._turns(saved["turns"]), ChatRef(**saved["ref"]))
++            elif receipt.kind == "cut":
++                undo = (saved["index"], self._turns(saved["removed"]))
++            else:
++                undo = saved
++        else:
+             raise ValueError("receipt does not belong to an outstanding write")
+         self._check(receipt.chat_id)
+-        undo = self.writes[key][1]
+         chat_id = receipt.chat_id
+         turns = self.adapter.chats[chat_id]
+         if receipt.kind == "create":
+@@ -235,7 +317,8 @@
+             self.adapter.visible.pop(chat_id, None)
+         elif self.adapter.facts.added_turn_visible == Visibility.AT_ONCE:
+             self.adapter.visible[chat_id] = deepcopy(turns)
+-        del self.writes[key]
++        self.writes.pop(key, None)
++        self._consumed.add(key)
+ 
+ 
+ class FakeHooks:
+diff --git a/baton/ledger/schema.py b/baton/ledger/schema.py
+new file mode 100644
+--- /dev/null
++++ b/baton/ledger/schema.py
+@@ -0,0 +1,16 @@
++"""Additive schema for durable write intents and saved rollback data."""
++JOURNAL_SCHEMA = """
++create table if not exists journal(
++ id integer primary key,
++ link_id integer,
++ tool text not null,
++ chat_id text not null,
++ action text not null,
++ begun_at text not null,
++ state text not null default 'begun',
++ pre_receipt text,
++ post_receipt text,
++ ended_at text not null default '',
++ error text not null default ''
++);
++"""
+diff --git a/baton/ledger/sqlite_store.py b/baton/ledger/sqlite_store.py
+--- a/baton/ledger/sqlite_store.py
++++ b/baton/ledger/sqlite_store.py
+@@ -19,6 +19,7 @@
+ from typing import Any, Iterable, Mapping, Sequence
+ 
+ from ..domain.model import Turn
++from .schema import JOURNAL_SCHEMA
+ from ..domain.link import (ADDED, ATTACHED, DELIVERED, KEPT_BACK, MODES, SHOWN, SKIPPED, TOOLS,
+                            WAITING, WRITTEN_HERE, Event, LedgerTurn, Link)
+ from ..domain.errors import AlreadyDelivered, AlreadyLinked
+@@ -89,11 +90,53 @@
+         self.db.row_factory = sqlite3.Row
+         self.db.execute("pragma foreign_keys = on")
+         self.db.executescript(_SCHEMA)
++        self.db.executescript(JOURNAL_SCHEMA)
+         self.db.execute("pragma user_version = 1")
+         self.db.commit()
+ 
+     def close(self) -> None:
+         self.db.close()
++
++    def journal_begin(self, link_id: int | None, tool: str, chat_id: str,
++                      action: str, at: str, receipt: dict[str, Any]) -> int:
++        with self.db:
++            cur = self.db.execute(
++                "insert into journal(link_id,tool,chat_id,action,begun_at,pre_receipt) values(?,?,?,?,?,?)",
++                (link_id, tool, chat_id, action, at, json.dumps(receipt)))
++        return cur.lastrowid
++
++    def journal_entry(self, entry_id: int) -> dict[str, Any]:
++        row = self.db.execute("select * from journal where id=?", (entry_id,)).fetchone()
++        if row is None:
++            raise KeyError(entry_id)
++        entry = dict(row)
++        for key in ("pre_receipt", "post_receipt"):
++            entry[key] = json.loads(entry[key]) if entry[key] is not None else None
++        return entry
++
++    def journal_entries(self, pending: bool = False) -> list[dict[str, Any]]:
++        query = "select id from journal"
++        if pending:
++            query += " where state in ('begun','failed')"
++        return [self.journal_entry(row[0]) for row in self.db.execute(query + " order by id")]
++
++    def journal_finish(self, entry_id: int, state: str, at: str,
++                       receipt: dict[str, Any] | None = None, error: str = "") -> None:
++        if state not in {"committed", "failed", "taken_back"}:
++            raise ValueError(state)
++        entry = self.journal_entry(entry_id)
++        if entry["state"] not in {"begun", "failed"} and not (entry["state"] == "committed" and state == "taken_back"):
++            raise ValueError(entry["state"])
++        with self.db:
++            self.db.execute("update journal set state=?,ended_at=?,post_receipt=?,error=? where id=?",
++                            (state, at, json.dumps(receipt) if receipt else None, error, entry_id))
++
++    def journal_prune(self, before: str) -> int:
++        with self.db:
++            cur = self.db.execute(
++                "update journal set pre_receipt=null,post_receipt=null where state in ('committed','taken_back')"
++                " and julianday(ended_at)<julianday(?) and pre_receipt is not null", (before,))
++        return cur.rowcount
+ 
+     # Links
+ 
+@@ -240,12 +283,18 @@
+                     (state, local_ids[index] if local_ids else "", event_id, turn_id, side))
+         return event_id
+ 
+-    def mark_shown(self, link_id: int, side: str) -> int:
++    def mark_shown(self, link_id: int, side: str, turn_ids: Sequence[int] | None = None) -> int:
+         """After that side's app was relaunched: what was added is now shown."""
+-        with self.db:
+-            cur = self.db.execute(
+-                "update turn_states set state=? where side=? and state=?"
+-                " and turn_id in (select id from turns where link_id=?)", (SHOWN, side, ADDED, link_id))
++        query = ("update turn_states set state=? where side=? and state=?"
++                 " and turn_id in (select id from turns where link_id=?)")
++        values: list[Any] = [SHOWN, side, ADDED, link_id]
++        if turn_ids is not None:
++            if not turn_ids:
++                return 0
++            query += " and turn_id in (" + ",".join("?" for _ in turn_ids) + ")"
++            values.extend(turn_ids)
++        with self.db:
++            cur = self.db.execute(query, values)
+         return cur.rowcount
+ 
+     def keep_back(self, link_id: int, turn_id: int, at: str = "") -> None:
+diff --git a/baton/ports/store.py b/baton/ports/store.py
+--- a/baton/ports/store.py
++++ b/baton/ports/store.py
+@@ -59,7 +59,7 @@
+         """Record delivery and return its history id."""
+         ...
+ 
+-    def mark_shown(self, link_id: int, side: str) -> int:
++    def mark_shown(self, link_id: int, side: str, turn_ids: Sequence[int] | None = None) -> int:
+         """Mark added turns as shown."""
+         ...
+ 
+@@ -82,3 +82,11 @@
+     def history(self, link_id: int) -> list[Event]:
+         """Return a link’s history, newest first."""
+         ...
++
++    def journal_begin(self, link_id: int | None, tool: str, chat_id: str,
++                      action: str, at: str, receipt: dict[str, Any]) -> int: ...
++    def journal_entry(self, entry_id: int) -> dict[str, Any]: ...
++    def journal_entries(self, pending: bool = False) -> list[dict[str, Any]]: ...
++    def journal_finish(self, entry_id: int, state: str, at: str,
++                       receipt: dict[str, Any] | None = None, error: str = "") -> None: ...
++    def journal_prune(self, before: str) -> int: ...
+diff --git a/baton/ports/tool.py b/baton/ports/tool.py
+--- a/baton/ports/tool.py
++++ b/baton/ports/tool.py
+@@ -83,6 +83,7 @@
+ @runtime_checkable
+ class ChatWriter(Protocol):
+     """ChatWriter interface for a chat tool."""
++    def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt: ...
+     def create(self, turns: Sequence[Turn], name: str, folder: str) -> WriteResult: ...
+     def add(self, chat_id: str, turns: Sequence[Turn]) -> WriteResult: ...
+     def place(self, chat_id: str, turns: Sequence[Turn], before_local_id: str) -> WriteResult: ...
+diff --git a/baton/services/journal.py b/baton/services/journal.py
+new file mode 100644
+--- /dev/null
++++ b/baton/services/journal.py
+@@ -0,0 +1,113 @@
++"""Durable rollback receipts and capability-based write guards."""
++from __future__ import annotations
++
++from dataclasses import asdict
++from datetime import datetime, timedelta
++from typing import Mapping, Sequence
++
++from ..domain.capabilities import WriteWindow
++from ..domain.errors import (AppMustBeClosed, ChatChanged, ChatHeld, ChatReplying,
++                             NotAvailable, UnknownFormat)
++from ..domain.model import Turn
++from ..ports.clock import Clock
++from ..ports.store import RecordStore
++from ..ports.tool import ToolAdapter, WriteReceipt
++
++
++class Journal:
++    """Persist rollback data before a writer is allowed to mutate a chat."""
++    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
++        self.store, self.adapters, self.clock = store, adapters, clock
++
++    def begin(self, link_id: int | None, tool: str, chat_id: str | None, action: str) -> int:
++        receipt = self.adapters[tool].writer.prepare(chat_id, action)
++        if receipt.tool != tool or receipt.kind != action or (chat_id is not None and receipt.chat_id != chat_id):
++            raise ValueError("receipt_identity_mismatch")
++        return self.store.journal_begin(link_id, tool, receipt.chat_id, action,
++                                        self.clock.now(), asdict(receipt))
++
++    def commit(self, entry_id: int, receipt: WriteReceipt) -> None:
++        entry = self.store.journal_entry(entry_id)
++        if (receipt.tool, receipt.chat_id, receipt.kind) != (entry['tool'], entry['chat_id'], entry['action']):
++            raise ValueError("receipt_identity_mismatch")
++        self.store.journal_finish(entry_id, "committed", self.clock.now(), asdict(receipt))
++
++    def fail(self, entry_id: int, error: Exception | str) -> None:
++        self.store.journal_finish(entry_id, "failed", self.clock.now(), error=type(error).__name__
++                                  if isinstance(error, Exception) else error)
++
++    def take_back(self, entry_id: int) -> None:
++        entry = self.store.journal_entry(entry_id)
++        if entry['state'] == 'taken_back':
++            return
++        receipt = entry['post_receipt'] if entry['state'] == 'committed' else entry['pre_receipt']
++        if receipt is None:
++            raise NotAvailable()
++        self.adapters[entry['tool']].writer.take_back(WriteReceipt(**receipt))
++        self.store.journal_finish(entry_id, 'taken_back', self.clock.now(), error=entry['error'])
++
++    def recover(self) -> list[dict]:
++        """Retry pending entries; failures remain recoverable rather than being forgotten."""
++        results = []
++        for entry in reversed(self.store.journal_entries(pending=True)):
++            try:
++                self.take_back(entry['id'])
++            except Exception as error:
++                self.fail(entry['id'], error)
++                results.append(self.store.journal_entry(entry['id']))
++                break
++            results.append(self.store.journal_entry(entry['id']))
++        return results
++
++    def prune(self) -> int:
++        cutoff = datetime.fromisoformat(self.clock.now().replace('Z', '+00:00')) - timedelta(days=30)
++        return self.store.journal_prune(cutoff.isoformat(timespec='seconds'))
++
++
++class Guard:
++    """Check the current state afresh, separately for release and for writing."""
++    def __init__(self, store: RecordStore):
++        self.store = store
++
++    def _linked(self, adapter: ToolAdapter, chat_id: str, link_id: int | None) -> None:
++        link = self.store.link_for(adapter.name, chat_id)
++        if link is None or (link_id is not None and link.id != link_id):
++            raise NotAvailable()
++
++    def check_release(self, adapter: ToolAdapter, chat_id: str, link_id: int | None = None) -> None:
++        self._linked(adapter, chat_id, link_id)
++        condition = adapter.state.condition(chat_id)
++        if condition.replying:
++            raise ChatReplying()
++        if not condition.exists or not condition.open or not adapter.facts.can_release_chat:
++            raise NotAvailable()
++
++    def check_write(self, adapter: ToolAdapter, chat_id: str | None,
++                    link_id: int | None = None, expected: Sequence[Turn] | None = None,
++                    action: str = 'add') -> None:
++        if not adapter.state.format_version().known:
++            raise UnknownFormat()
++        if chat_id is None:
++            if action != 'create':
++                raise NotAvailable()
++            running = adapter.app.running()
++        else:
++            self._linked(adapter, chat_id, link_id)
++            condition = adapter.state.condition(chat_id)
++            if not condition.exists:
++                raise ChatChanged()
++            if not condition.format_known:
++                raise UnknownFormat()
++            if condition.replying and adapter.facts.write_window != WriteWindow.ANY_TIME:
++                raise ChatReplying()
++            if adapter.facts.write_window in (WriteWindow.NOT_HELD, WriteWindow.CLOSED_OR_RELEASED) and condition.open:
++                raise ChatHeld()
++            running = condition.app_running
++            if expected is not None and adapter.reader.read(chat_id) != list(expected):
++                raise ChatChanged()
++        if adapter.facts.write_window == WriteWindow.APP_CLOSED and running:
++            raise AppMustBeClosed()
++        if action == 'cut' and not adapter.facts.can_cut:
++            raise NotAvailable()
++        if action == 'place' and not adapter.facts.can_place:
++            raise NotAvailable()
+diff --git a/tests/adapters/suite.py b/tests/adapters/suite.py
+--- a/tests/adapters/suite.py
++++ b/tests/adapters/suite.py
+@@ -157,3 +157,24 @@
+         else:
+             self.adapter.app.open(None, "folder")
+         self.assertEqual(self.visible_turns(created.chat_id), self.turns)
++
++    def test_prepared_receipts_precede_mutation_and_take_back(self):
++        import json
++        from dataclasses import asdict
++        from baton.ports.tool import WriteReceipt
++        prepared = self.adapter.writer.prepare(self.chat, "add")
++        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
++        prepared = WriteReceipt(**json.loads(json.dumps(asdict(prepared))))
++        extra = Turn(Message("p4", PROMPT, "more"))
++        self.adapter.writer.add(self.chat, [extra])
++        self.adapter.writer.take_back(prepared)
++        self.adapter.writer.take_back(prepared)
++        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
++        before = self.adapter.locator.chats()
++        prepared = self.adapter.writer.prepare(None, "create")
++        self.assertEqual(self.adapter.locator.chats(), before)
++        result = self.adapter.writer.create([], "new", "")
++        self.assertEqual(result.chat_id, prepared.chat_id)
++        self.adapter.writer.take_back(prepared)
++        self.adapter.writer.take_back(prepared)
++        self.assertEqual(self.adapter.locator.chats(), before)
+diff --git a/tests/unit/test_guard.py b/tests/unit/test_guard.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_guard.py
+@@ -0,0 +1,94 @@
++"""Safety rules DESIGN 5.1,1a,2a,2b,5,6 with fail-then-safe transitions."""
++from dataclasses import replace
++import unittest
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, CURSOR_LIKE, OPENCODE_LIKE
++from baton.domain.errors import (AppMustBeClosed, ChatChanged, ChatHeld, ChatReplying,
++                                 NotAvailable, UnknownFormat)
++from baton.ledger.sqlite_store import Ledger
++from baton.services.journal import Guard
++from tests.adapters.suite import turns
++
++
++class GuardTests(unittest.TestCase):
++    def setUp(self):
++        self.store = Ledger(':memory:')
++        self.adapter = FakeAdapter(CLAUDE_LIKE, name='claude')
++        self.chat = self.adapter.build_chat(turns())
++        self.link = self.store.link({'claude': self.chat, 'codex': 'other'}, 'full_copy')
++        self.guard = Guard(self.store)
++
++    def tearDown(self):
++        self.store.close()
++
++    def check(self, **values):
++        self.guard.check_write(self.adapter, self.chat, self.link.id, **values)
++
++    def test_held_then_closed(self):
++        for facts in (CLAUDE_LIKE, CODEX_LIKE):
++            self.adapter.facts = facts
++            self.adapter.set_condition(self.chat, open=True)
++            with self.assertRaises(ChatHeld): self.check()
++            self.adapter.set_condition(self.chat, open=False)
++            self.check()
++
++    def test_running_app_then_closed(self):
++        self.adapter.facts = CURSOR_LIKE
++        self.adapter.set_format(True, CURSOR_LIKE.checked_versions[0])
++        self.adapter.set_condition(self.chat, app_running=True)
++        with self.assertRaises(AppMustBeClosed): self.check()
++        self.adapter.set_condition(self.chat, app_running=False)
++        self.check()
++
++    def test_replying_then_idle_and_any_time_allows_running_chat(self):
++        self.adapter.set_condition(self.chat, replying=True)
++        with self.assertRaises(ChatReplying): self.check()
++        self.adapter.set_condition(self.chat, replying=False)
++        self.check()
++        self.adapter.facts = OPENCODE_LIKE
++        self.adapter.set_condition(self.chat, open=True, replying=True, app_running=True)
++        self.check()
++
++    def test_unknown_format_then_known(self):
++        self.adapter.set_format(False, 'unknown')
++        with self.assertRaises(UnknownFormat): self.check()
++        self.adapter.set_format(True, self.adapter.facts.checked_versions[0])
++        self.adapter.set_condition(self.chat, format_known=False)
++        with self.assertRaises(UnknownFormat): self.check()
++        self.adapter.set_condition(self.chat, format_known=True)
++        self.check()
++
++    def test_changed_chat_and_missing_chat(self):
++        with self.assertRaises(ChatChanged): self.check(expected=turns()[:1])
++        self.check(expected=turns())
++        self.adapter.set_condition(self.chat, exists=False)
++        with self.assertRaises(ChatChanged): self.check()
++
++    def test_unlinked_existing_write_refused_create_allowed(self):
++        chat = self.adapter.build_chat([])
++        with self.assertRaises(NotAvailable): self.guard.check_write(self.adapter, chat)
++        with self.assertRaises(NotAvailable): self.guard.check_write(self.adapter, None)
++        self.guard.check_write(self.adapter, None, action='create')
++        self.check()
++
++    def test_release_only_linked_open_idle_supported_chat(self):
++        with self.assertRaises(NotAvailable): self.guard.check_release(self.adapter, self.chat)
++        self.adapter.set_condition(self.chat, open=True, replying=True)
++        with self.assertRaises(ChatReplying): self.guard.check_release(self.adapter, self.chat)
++        self.adapter.set_condition(self.chat, replying=False)
++        self.guard.check_release(self.adapter, self.chat)
++        self.adapter.facts = CODEX_LIKE
++        with self.assertRaises(NotAvailable): self.guard.check_release(self.adapter, self.chat)
++        self.adapter.facts = CLAUDE_LIKE
++        other = self.adapter.build_chat([])
++        self.adapter.set_condition(other, open=True)
++        with self.assertRaises(NotAvailable): self.guard.check_release(self.adapter, other)
++
++    def test_cut_and_place_must_be_supported(self):
++        self.adapter.facts = CODEX_LIKE
++        for action in ('cut', 'place'):
++            with self.assertRaises(NotAvailable): self.check(action=action)
++        self.adapter.facts = replace(self.adapter.facts, can_cut=True, can_place=True)
++        self.check(action='cut')
++        self.check(action='place')
+diff --git a/tests/unit/test_journal.py b/tests/unit/test_journal.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_journal.py
+@@ -0,0 +1,153 @@
++"""DESIGN 5 safety-rule test index (all tool data is temporary/in memory).
++1/1a: GuardTests.test_held_then_closed, test_running_app_then_closed,
++       test_replying_then_idle_and_any_time_allows_running_chat.
++2: test_crash_between_add_and_record_recovers_across_instances.
++2a/A10: test_saved_cut_can_be_restored_after_restart,
++        test_saved_cut_is_retained_30_days_and_pending_is_never_pruned;
++        GuardTests.test_cut_and_place_must_be_supported.
++2b: GuardTests.test_release_only_linked_open_idle_supported_chat.
++3: test_create_recovery_removes_written_chat_but_not_other_chats.
++4: test_prepare_without_write_is_safe_to_recover proves preparation is read-only;
++   preview/plan execution is tested by the dependent E5 package.
++5: GuardTests.test_unlinked_existing_write_refused_create_allowed.
++6: GuardTests.test_unknown_format_then_known.
++7: no network code/dependency; tests exercise only fake tool and local store.
++"""
++from copy import deepcopy
++from dataclasses import replace
++from pathlib import Path
++import tempfile
++import unittest
++
++from baton.adapters.fake import FakeAdapter
++from baton.ledger.sqlite_store import Ledger
++from baton.ports.clock import FixedClock
++from baton.services.journal import Journal
++from tests.adapters.suite import turns
++
++
++class JournalTests(unittest.TestCase):
++    def setUp(self):
++        self.folder = tempfile.TemporaryDirectory()
++        self.path = str(Path(self.folder.name) / 'records.sqlite')
++        self.store = Ledger(self.path)
++        self.adapter = FakeAdapter(name='claude')
++        self.chat = self.adapter.build_chat(turns())
++        self.link = self.store.link({'claude': self.chat, 'codex': 'other'}, 'full_copy')
++        self.clock = FixedClock('2026-01-01T00:00:00Z')
++        self.journal = Journal(self.store, {'claude': self.adapter}, self.clock)
++
++    def tearDown(self):
++        self.store.close()
++        self.folder.cleanup()
++
++    def restart(self):
++        self.store.close()
++        self.store = Ledger(self.path)
++        # A new adapter object uses the same simulated tool storage, but no writer state.
++        adapter = FakeAdapter(name='claude')
++        for name in ('chats', 'refs', 'conditions', 'inserted_text', 'visible'):
++            setattr(adapter, name, deepcopy(getattr(self.adapter, name)))
++        self.adapter = adapter
++        self.journal = Journal(self.store, {'claude': adapter}, self.clock)
++
++    def test_crash_between_add_and_record_recovers_across_instances(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'add')
++        before = self.store.journal_entry(entry)
++        self.assertEqual(before['state'], 'begun')
++        self.assertEqual(len(before['pre_receipt']['data']['turns']), 3)
++        extra = replace(turns()[0], prompt=replace(turns()[0].prompt, id='p4'))
++        self.adapter.writer.add(self.chat, [extra])
++        self.assertEqual(len(self.adapter.reader.read(self.chat)), 4)
++        self.restart()
++        result = self.journal.recover()
++        self.assertEqual(result[0]['state'], 'taken_back')
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++        self.assertEqual(self.journal.recover(), [])
++        self.journal.take_back(entry)
++
++    def test_create_recovery_removes_written_chat_but_not_other_chats(self):
++        entry = self.journal.begin(None, 'claude', None, 'create')
++        receipt = self.store.journal_entry(entry)['pre_receipt']
++        self.assertFalse(receipt['data']['exists'])
++        result = self.adapter.writer.create(turns(), 'copy', '')
++        self.assertEqual(receipt['chat_id'], result.chat_id)
++        self.restart()
++        self.journal.recover()
++        self.assertFalse(self.adapter.state.condition(result.chat_id).exists)
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++
++    def test_prepare_without_write_is_safe_to_recover(self):
++        self.journal.begin(None, 'claude', None, 'create')
++        self.restart()
++        self.assertEqual(self.journal.recover()[0]['state'], 'taken_back')
++        self.assertEqual(len(self.adapter.locator.chats()), 1)
++
++    def test_commit_keeps_post_receipt_and_prevents_recovery(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'rename')
++        result = self.adapter.writer.rename(self.chat, 'new')
++        self.journal.commit(entry, result.receipt)
++        self.restart()
++        self.assertEqual(self.journal.recover(), [])
++        self.assertEqual(self.adapter.locator.name(self.chat), 'new')
++        self.assertEqual(self.store.journal_entry(entry)['post_receipt']['kind'], 'rename')
++
++    def test_failed_rollback_stays_pending_and_is_retried(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'cut')
++        self.adapter.writer.cut(self.chat, 'p1')
++        self.adapter.set_format(False, 'unknown')
++        self.assertEqual(self.journal.recover()[0]['state'], 'failed')
++        self.assertEqual(len(self.store.journal_entries(pending=True)), 1)
++        self.adapter.set_format(True, self.adapter.facts.checked_versions[0])
++        self.assertEqual(self.journal.recover()[0]['state'], 'taken_back')
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++
++    def test_saved_cut_is_retained_30_days_and_pending_is_never_pruned(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'cut')
++        result = self.adapter.writer.cut(self.chat, 'p1')
++        self.journal.commit(entry, result.receipt)
++        pending = self.journal.begin(self.link.id, 'claude', self.chat, 'add')
++        self.clock.value = '2026-01-31T00:00:00Z'
++        self.assertEqual(self.journal.prune(), 0)
++        self.clock.value = '2026-01-31T00:00:01Z'
++        self.assertEqual(self.journal.prune(), 1)
++        self.assertIsNone(self.store.journal_entry(entry)['pre_receipt'])
++        self.assertIsNotNone(self.store.journal_entry(pending)['pre_receipt'])
++
++    def test_saved_cut_can_be_restored_after_restart(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'cut')
++        result = self.adapter.writer.cut(self.chat, 'p1')
++        self.journal.commit(entry, result.receipt)
++        self.restart()
++        self.journal.take_back(entry)
++        self.journal.take_back(entry)
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++
++    def test_recovery_stops_on_latest_failure_without_overwriting_it(self):
++        first = self.journal.begin(self.link.id, 'claude', self.chat, 'cut')
++        self.adapter.writer.cut(self.chat, 'p2')
++        second = self.journal.begin(self.link.id, 'claude', self.chat, 'cut')
++        self.adapter.writer.cut(self.chat, 'p1')
++        self.adapter.set_format(False, 'unknown')
++        result = self.journal.recover()
++        self.assertEqual([r['id'] for r in result], [second])
++        self.assertEqual(self.store.journal_entry(first)['state'], 'begun')
++        self.adapter.set_format(True, self.adapter.facts.checked_versions[0])
++        self.assertEqual([r['id'] for r in self.journal.recover()], [second, first])
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++
++    def test_mark_shown_selects_only_turns_with_visibility_evidence(self):
++        ids = self.store.record_turns(self.link.id, 'claude', turns())
++        self.store.deliver(self.link.id, 'codex', ids, 'added', 'added', at=self.clock.now())
++        self.assertEqual(self.store.mark_shown(self.link.id, 'codex', ids[:1]), 1)
++        self.assertEqual([t.states['codex'] for t in self.store.turns(self.link.id)],
++                         ['shown', 'added', 'added'])
++        self.assertEqual(self.store.mark_shown(self.link.id, 'codex', []), 0)
++        self.assertEqual(self.store.mark_shown(self.link.id, 'codex'), 2)
++
++    def test_commit_refuses_receipt_for_another_write(self):
++        entry = self.journal.begin(self.link.id, 'claude', self.chat, 'rename')
++        result = self.adapter.writer.create([], 'other', '')
++        with self.assertRaises(ValueError):
++            self.journal.commit(entry, result.receipt)
++        self.assertEqual(self.store.journal_entry(entry)['state'], 'begun')

@@ -119,3 +119,13 @@ Settled at CP0 from the questions the app's first build raised.
 ## Fixtures for the app
 
 `tests/contract/` writes one JSON file per command and state into `app/Fixtures/`. The app's previews and tests load these, so every screen can be built and reviewed before the engine is connected. The states to cover are listed per screen in [track-d-app.md](track-d-app.md).
+
+## CP1 additive condition fields
+
+Side.condition may also include app_running (boolean), app_started_at (UTC ISO 8601 string, empty when unknown), and format_known (boolean). Existing fields retain their meaning; consumers ignore these additions until needed. A prompt-hook call is not proof that a chat was reopened. Deferred visibility clears only after the app_started_at evidence described in ARCHITECTURE.md, or explicit user mark_shown for ON_REOPEN_CHAT.
+
+For fixture-built CP1 screens, `links` may include an optional top-level `notes: [Note]` for engine-supplied empty-state, Continue and link-recent labels. Missing notes decode as an empty list. This does not change existing links fields.
+
+A link summary may also contain `needs_attention: bool`. The engine decides whether the link belongs in Needs attention; the app does not infer it from prose or tool names. Legacy engines that omit it retain the existing decision_needed fallback.
+
+For mapped, non-replayable tool activity, Turn.messages may additionally use `kind: "tool_text"`. It contains labelled ordinary text, never a native tool call or final reply. Existing kinds retain their meaning. The app groups this kind with expandable tool activity; real adapter writers serialize it as ordinary text.

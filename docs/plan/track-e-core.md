@@ -33,18 +33,19 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Replace the remaining assumptions ("an open chat is attached to") by the adapter's facts.
 **From.** more-tools.md "Best delivery per tool"; sync-status R4, R5; DESIGN 5 rule 1a.
 **Depends on.** E1, B0.
-**Files.** `baton/services/planner.py`, `baton/services/status.py`, `baton/domain/conditions.py`.
+**Files.** `baton/services/planner.py`, `baton/services/status.py`, `baton/domain/conditions.py`, `baton/notes/__init__.py`, `baton/notes/catalogue.py`; corresponding unit tests.
 **Steps.**
-1. `SideCondition` gains `app_running`.
+1. Keep `app_running`; add `app_started_at: str = ""`.
 2. `plan_sync` takes `facts: Mapping[tool, Capabilities]`. Decision per side, first that applies:
-   - not exists → `hold(side_missing)`; paused → `hold(paused)`; conflict → `hold(decision_needed)`; unknown format → `hold(format_unknown)` (attach still allowed).
+   - not exists → `hold(side_missing)`; paused → `hold(paused)`; conflict → `hold(decision_needed)`; unknown format → `attach` if chat open and hooks ready, otherwise `hold(format_unknown)`; no writes. Test both.
    - `ANY_TIME` → `add`, `needs: reopen_chat_to_see` if open.
    - `NOT_HELD` and not open → `add`.
    - `APP_CLOSED` and app not running → `add`; `CLOSED_OR_RELEASED` and no process → `add`.
    - `CLOSED_OR_RELEASED`, open, idle, `can_release_chat`, setting automatic, full-copy link → `add_after_release`, `needs: relaunch_to_see`.
    - otherwise open with hooks ready → `attach`; hooks not ready → `hold(hooks_not_ready)`.
 3. Each step carries `needs` and the alternatives it could offer (`close_sync_reopen`, `add_now`, `relaunch`), for E12 to turn into notes.
-4. Status: the "shown" count uses `added_turn_visible`; a turn added to a tool with `ON_REOPEN_CHAT` is `added` until the chat is next read as reopened (the hook's next call), then `shown`.
+4. Status: the "shown" count uses `added_turn_visible`; AT_ONCE is shown immediately; AFTER_RELAUNCH requires app_started_at after delivery; ON_REOPEN_CHAT requires a later app start or explicit user mark_shown. Never infer shown from a prompt-hook call. Keep the status instruction until shown.
+5. Seed the CP1 note catalogue now from the feature wording tables, including E4 marker text. E12 completes and audits it later.
 **Tests.** `tests/unit/test_planner_delivery.py`: one test per row of the "Best delivery per tool" table (8 rows), each built from a fake adapter given that tool's facts.
 **Done when.** The eight rows pass and the planner has no tool name in it.
 
@@ -53,8 +54,8 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Nothing is written without a journal entry, a saved copy where something is removed, and a way back.
 **From.** DESIGN 5 (all rules); link-actions A10.
 **Depends on.** E1.
-**Files.** `baton/services/journal.py`, `baton/ledger/schema.py` (table `journal`), `baton/domain/errors.py`.
-**Steps.** 1. `Journal.begin(link, tool, chat, action) -> entry` records intent and the adapter's "before" receipt. 2. `commit(entry, receipt)`, `fail(entry, error)`. 3. `take_back(entry)` calls `writer.take_back(receipt)`. 4. `Guard.check(adapter, chat)` raises `ChatHeld`, `AppMustBeClosed`, `ChatReplying`, `UnknownFormat`, `ChatChanged` from the adapter's state, using the facts. 5. Saved copies kept 30 days; `prune()` removes older ones. 6. On start, any `begun` entry without commit is taken back and reported.
+**Files.** `baton/services/journal.py`, `baton/ledger/schema.py` (table `journal`), `baton/ledger/sqlite_store.py`, `baton/ports/store.py` (additive), `baton/domain/errors.py`, `baton/ports/tool.py` (additive prepare), `baton/adapters/fake/tool.py`, `tests/adapters/suite.py`; corresponding unit tests.
+**Steps.** 1. `Journal.begin(link, tool, chat, action) -> entry` records intent and persists writer.prepare(chat | None, action) receipt before mutation; create preparation says no chat exists yet. 2. `commit(entry, receipt)`, `fail(entry, error)`. 3. `take_back(entry)` calls `writer.take_back(receipt)`. 4. Separate `Guard.check_release` (open, idle, release supported) and `Guard.check_write` (safe write state). The latter raises `ChatHeld`, `AppMustBeClosed`, `ChatReplying`, `UnknownFormat`, `ChatChanged` from the adapter's state, using the facts. 5. Saved copies kept 30 days; `prune()` removes older ones. 6. On start, any begun/uncommitted entry is taken back using its persisted pre-write receipt and reported; test durable recovery, including create.
 **Tests.** `tests/unit/test_journal.py`, `test_guard.py`: one failing-then-passing test per safety rule; a crash between write and record is recovered.
 **Done when.** Every rule in DESIGN 5 names its test in a comment at the top of the test.
 
@@ -63,8 +64,8 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** One place that says how a turn written in tool X is represented in tool Y.
 **From.** DESIGN 4 "Identity, not counts" and 6 "Full sync".
 **Depends on.** E1.
-**Files.** `baton/services/mapping.py`.
-**Steps.** 1. `for_target(turn, facts) -> Turn`: reasoning never crosses; tool calls become labelled text where the target cannot replay them, real blocks where it can (adapter fact `replays_tool_calls`). 2. A marker line on created chats ("continued from *tool*") when the title tag setting is on. 3. `content_key(turn)` for matching chats that are already copies of each other.
+**Files.** `baton/services/mapping.py`, `baton/domain/model.py` (additive non-replayable TOOL_TEXT kind), `baton/notes/catalogue.py` (marker and additive D4 presentation labels); corresponding unit tests.
+**Steps.** 1. `for_target(turn, facts) -> Turn`: reasoning never crosses; tool calls become labelled text where the target cannot replay them, real blocks where it can (adapter fact `replays_tool_calls`). 2. Created-chat title tag from the note catalogue when the title_tag setting is on (DESIGN 7); preserve prompt content. Keep the separate catalogue marker helper for adapter metadata, never insert it into a real prompt. 3. `content_key(turn)` for matching chats that are already copies of each other.
 **Tests.** `tests/unit/test_mapping.py`: round trip keeps prompt and final reply; tool calls flattened or kept by fact; reasoning dropped.
 **Done when.** No adapter contains mapping logic; writers receive already-mapped turns.
 
@@ -73,20 +74,25 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Carry a plan out, step by step, and record it.
 **From.** DESIGN 3 (applier), 4; sync-status S1 to S12.
 **Depends on.** E2, E3, E4, B0.
-**Files.** `baton/services/applier.py`.
-**Steps.** 1. `apply(plan) -> Result`: for each step, `Guard.check`, `Journal.begin`, call the writer (`add`, `create`, `place`, `cut`) or record `attach` intent, verify by reading back, `store.deliver(...)` with the local ids, `Journal.commit`. 2. `add_after_release`: `app.release(chat)`, wait for the state to report closed, then add; state `added`. 3. A step that fails takes itself back and stops the plan; earlier steps stay and are reported. 4. `record_attached(link, tool, turn_ids, message_id)` for the prompt hook. 5. `refresh(link)`: read both chats, `store.record_turns`, mark `added` → `shown` when the tool reports a relaunch or reopen.
+**Files.** `baton/services/applier.py`, additive `baton/services/planner.py` and `baton/services/status.py` initial-history policy flag, `baton/notes/catalogue.py` (additive D4 status labels), additive `baton/ports/store.py` and `baton/ledger/sqlite_store.py` methods needed for local delivery IDs, reconciliation and atomic delivery/journal commit; corresponding unit and scenario tests.
+**Steps.** 1. `apply(plan) -> Result`: for each step, `Guard.check_write`, `Journal.begin`, call the writer (`add`, `create`, `place`, `cut`) or record `attach` intent, verify by reading back, record local delivery IDs and commit the journal in one SQLite transaction. Recovery must never leave rolled-back content marked delivered. 2. `add_after_release`: check_release → app.release(chat) → wait at most 10 seconds for closed state → check_write → add; state `added`. Release or wait failure falls back to attach, records why, and never writes before a successful recheck. 3. A step that fails takes itself back and stops the plan; earlier steps stay and are reported. 4. `record_attached(link, tool, turn_ids, message_id)` for the prompt hook. 5. The shared planner/status policy accepts explicit initial_history_sides: attached-history initial turns remain waiting for first-prompt acknowledgement even on a closed destination; unknown-format precedence stays unchanged.
+6. `refresh(link)`: read both chats, `store.record_turns`, mark `added` → `shown` only according to E2 visibility evidence; never a prompt hook.
 **Tests.** `tests/scenarios/test_sync_status.py`: S1 to S12, one test each. `tests/unit/test_applier.py`: failure in the middle, read-back mismatch, plan id refused after the chat changed.
 **Done when.** S1 to S12 pass on the fake adapter with each of the four fact sets where the scenario applies.
+
+**Reviewer clarification (S9/S7).** If bypass also introduces a genuinely new completed destination turn, hold for S7; redeliver after merge (E7). Automatic S9 redelivery applies without that competing turn.
 
 ## E6. Linking and copying
 
 **Goal.** Both ways of linking, copy without linking, change and remove.
 **From.** DESIGN 4 "Linking"; link-actions A0 to A4; more-tools G2, G5, G6; scenarios T0 to T4, X1, X2.
 **Depends on.** E5.
-**Files.** `baton/services/linker.py`.
-**Steps.** 1. `plan_link(from, to_tool, to_chat|None, mode)`: `full_copy` creates the other chat (step `create`, with that tool's `needs`); `attached_history` links an existing new chat and leaves every turn `waiting`; `brief` delegates to E10. 2. Linking two existing chats aligns turns by `content_key` first, so shared turns are `shown` on both. 3. `plan_copy(from, to_tool, and_link)`. 4. `plan_relink`, `plan_unlink` (never touches a chat). 5. `suggestions()`: pairs of unlinked chats with matching content keys.
+**Files.** `baton/services/linker.py`, `baton/domain/link.py` (extend tool identity list to all four tools), additive `baton/ports/store.py` and `baton/ledger/sqlite_store.py` for atomic link metadata and journal completion; corresponding unit and scenario tests.
+**Steps.** 1. `plan_link(from, to_tool, to_chat|None, mode)`: `full_copy` creates the other chat (step `create`, with that tool's `needs`); `attached_history` links an existing new chat and leaves every turn `waiting`; `brief` raises `NotAvailable` until E10 exists (test the refusal). 2. Linking two existing chats aligns turns by `content_key` first, so shared turns are `shown` on both. 3. `plan_copy(from, to_tool, and_link)`. 4. `plan_relink`, `plan_unlink` (never touches a chat). 5. `suggestions()`: pairs of unlinked chats with matching content keys.
 **Tests.** `tests/scenarios/test_link_actions.py` T0 to T4; `test_more_tools.py` X1, X2.
 **Done when.** Those scenarios pass and a link can be made between any two of the four fact sets.
+
+**Integration notes.** `plan_full_copy(link_id, side)` implements A4 while preserving link/turn identity and reconciling local IDs. Plain copies from linked sides include attached history. Canonical previews confirm their exact keep/skip/order record snapshot and refuse unrecorded native turns until refresh. Unlink uses metadata observations and remains available if a chat is missing or unreadable. Durable created-copy visibility is independent of rollback receipt retention. A third-tool relink requires an explicit retained `from_side`; C3/D5 must add contract/UI routes for that choice and A4 before wiring.
 
 ## E7. Merge
 

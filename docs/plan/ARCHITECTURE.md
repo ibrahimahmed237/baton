@@ -62,7 +62,7 @@ baton/
   hooks/
     prompt.py  turn_end.py                              entry points the tools call
     opencode_plugin.js
-app/                  Xcode project (track D)
+app/                  Swift package: BatonKit, BatonUI, thin Baton executable (track D)
 tests/
   unit/  adapters/  scenarios/  contract/  fixtures/
 ```
@@ -89,6 +89,7 @@ class ChatState(Protocol):
     def format_version(self) -> FormatCheck: ...              # known / unknown, with the version seen
 
 class ChatWriter(Protocol):
+    def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt: ... # rollback data before any mutation; None for create
     def create(self, turns: Sequence[Turn], name: str, folder: str) -> WriteResult: ...
     def add(self, chat_id: str, turns: Sequence[Turn]) -> WriteResult: ...
     def place(self, chat_id: str, turns: Sequence[Turn], before_local_id: str) -> WriteResult: ...
@@ -121,7 +122,7 @@ class ToolAdapter(Protocol):
 ```
 
 Notes on these interfaces, settled at CP0:
-- An adapter reports what is in the chat, not what the app has on screen. Whether an added turn is visible yet is worked out by the core from `added_turn_visible` and from the next sign of a relaunch or reopen (a hook call, a new process).
+- An adapter reports chat content, not the screen. Visibility uses added_turn_visible and SideCondition.app_started_at: AT_ONCE immediately; AFTER_RELAUNCH after a later app start; ON_REOPEN_CHAT after a later app start or explicit user mark_shown. A hook call never proves reopening.
 - `write_window` covers adding, creating, placing and cutting. Renaming has its own answer per tool, given by the writer raising `AppMustBeClosed` or returning a result with `needs`.
 - `checked_versions` is a tuple of strings; an adapter compares it with what `state.format_version()` reports.
 - The record store and its row type are still named `Ledger` and `LedgerTurn` in code. They are internal names; nothing shown to the user uses them. Renaming them is not worth the churn now.
@@ -185,7 +186,7 @@ Services never print and never exit. They return results or raise these. `cli/` 
 **State and time**
 - Only the record store keeps state. Services are stateless between calls.
 - Time comes from a `Clock` passed in, never from `datetime.now()` inside a service.
-- A write is always: plan, journal, write, verify, record. If verify fails, take back, and record that too.
+- A write is always: plan, prepare rollback receipt, journal begin, write, verify, record, journal commit. If verify fails, take back, and record that too. Journal.begin persists the pre-write receipt; commit saves the post-write receipt. Startup recovery takes back every begun/uncommitted entry with its pre-write receipt, including create receipts that record that no chat existed. Fake and shared adapter suite test this additive port.
 
 ## Testing
 
@@ -205,3 +206,24 @@ A scenario test reads like its row in the spec: given, when, then. If a spec row
 - `docs/plan/ARCHITECTURE.md` (this file) and `CONTRACT.md` are the two things to read.
 - To add a tool: copy `adapters/fake/`, fill in `facts.py` from measurements, make the adapter suite pass, add the tool's entries to the note catalogue. Nothing else changes.
 - To add a feature: a service, its note ids, its command, its contract entry, its screen. In that order.
+
+### Mapped tool activity
+
+Mapping uses additive `TOOL_TEXT` (`tool_text`) for flattened tool activity. It remains ordinary labelled text and never becomes the final reply when a turn has no reply. Replay-capable targets preserve native call/result blocks. Adapter writers must serialize TOOL_TEXT as ordinary text; mapping and user wording stay in services/catalogue. Prompt content stays unchanged; configurable created-chat tags belong on the title.
+
+### Atomic completion and confirmations
+
+E5 confirmations fingerprint full chat contents, chat references, side conditions, capabilities, and link/turn records. A changed fingerprint requires a new preview. SQLite delivery states and committed journal receipts complete in one transaction; unfinished recovery must not leave content marked delivered. E6 must avoid a live link to a creation rolled back during recovery.
+
+Real adapters must preserve the TOOL_TEXT distinction across their wire-format writer/reader round trip, including an incomplete turn with no final reply. Serializing it as ordinary text alone is insufficient if the reader then mistakes it for the final reply; adapter fixtures and shared-suite checks must cover that.
+
+### E5 conflict precedence clarification
+
+Reviewer decision: bypass marks the missing delivery waiting. If a new completed destination turn also exists, S7 takes precedence and both directions hold until the merge decision; S9 redelivery follows merge (E7). Without a competing completed turn, S9 can redeliver directly.
+
+
+### E6 creation and visibility metadata
+
+Link creation/replacement and journal completion commit together after read-back verification. A failed transaction preserves the prior link and removes the uncommitted created chat via its pre-write receipt. Full-copy replacement preserves the link and canonical turn IDs, order and pins; it reconciles local and originating IDs for the replaced side. Copies from a linked side reconstruct the canonical public conversation, including attached history, and refuse stale unrecorded native turns until refresh.
+
+Canonical copy payloads confirm the exact record snapshot used to choose turns, including keep/skip/order, rather than a later record read. Unlinked creation time and monotonic visibility are stored separately in created_copies, keyed by tool/chat, independently of 30-day rollback-receipt retention. Unlink observes metadata only and never requires readable chat content.
