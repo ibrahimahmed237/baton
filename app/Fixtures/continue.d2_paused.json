@@ -1,0 +1,55 @@
+{
+  "plan_id": "p_d2_paused",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "action": "hold",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "paused",
+      "needs": [],
+      "notes": [
+        {
+          "id": "link.paused",
+          "tone": "info",
+          "values": {
+            "n": 2
+          },
+          "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
+          "buttons": [
+            {
+              "id": "resume",
+              "label": "Resume",
+              "primary": true
+            }
+          ],
+          "status_line": "Paused, 2 waiting"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.paused",
+      "tone": "info",
+      "values": {
+        "n": 2
+      },
+      "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
+      "buttons": [
+        {
+          "id": "resume",
+          "label": "Resume",
+          "primary": true
+        }
+      ],
+      "status_line": "Paused, 2 waiting"
+    }
+  ],
+  "opened": false
+}

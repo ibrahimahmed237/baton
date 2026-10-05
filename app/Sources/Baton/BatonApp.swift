@@ -1,36 +1,11 @@
 import AppKit
 import SwiftUI
 import BatonKit
-
-/// Holds only the engine's list response and any engine-supplied error note.
-@MainActor
-final class AppState: ObservableObject {
-    @Published private(set) var links: [LinkSummary] = []
-    @Published private(set) var errorNote: Note?
-    private let engine: any EngineClient
-
-    /// Injects the same client into the menu and window.
-    init(engine: any EngineClient) {
-        self.engine = engine
-    }
-
-    /// Refreshes the list using engine data without synthesizing display sentences.
-    func refresh() async {
-        do {
-            links = try await engine.links().links
-            errorNote = nil
-        } catch let error as EngineCommandError {
-            errorNote = error.note
-        } catch {
-            // Transport errors have no catalogue sentence; D13 adds their presentation.
-            errorNote = nil
-        }
-    }
-}
+import BatonUI
 
 /// The D0 list shared by the menu-bar extra and the main window.
 struct LinkList: View {
-    @ObservedObject var state: AppState
+    @ObservedObject var state: PopoverViewModel
 
     var body: some View {
         List {
@@ -55,17 +30,20 @@ struct LinkList: View {
 /// A fixture-backed menu-bar app and window, built directly by Swift Package Manager.
 @main
 struct BatonApp: App {
-    @StateObject private var state: AppState
+    @StateObject private var state: PopoverViewModel
+    @Environment(\.openWindow) private var openWindow
 
     init() {
         NSApplication.shared.setActivationPolicy(.accessory)
         let fixtures = Bundle.module.resourceURL!.appendingPathComponent("Fixtures", isDirectory: true)
-        _state = StateObject(wrappedValue: AppState(engine: FixtureEngine(directory: fixtures)))
+        _state = StateObject(wrappedValue: PopoverViewModel(engine: FixtureEngine(directory: fixtures, states: ["links": "d2_in_sync", "suggestions": "d2_in_sync", "continue": "d2_in_sync"])))
     }
 
     var body: some Scene {
-        MenuBarExtra("Baton", systemImage: "link") {
-            LinkList(state: state)
+        MenuBarExtra {
+            PopoverView(model: state, linkRecent: { openWindow(id: "links") }).task { await state.refresh() }
+        } label: {
+            BatonMenuIcon(needsDecision: state.needsDecision)
         }
         .menuBarExtraStyle(.window)
         Window("Baton", id: "links") {

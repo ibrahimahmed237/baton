@@ -1,0 +1,27 @@
+{
+  "plan_id": "p_d2_relaunch_needed",
+  "applied": false,
+  "link_id": 3,
+  "steps": [],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "relaunch_to_see",
+      "tone": "info",
+      "values": {
+        "tool": "claude",
+        "n": 2
+      },
+      "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
+      "buttons": [
+        {
+          "id": "relaunch",
+          "label": "Relaunch claude",
+          "primary": true
+        }
+      ],
+      "status_line": "Relaunch claude to see 2 new turns"
+    }
+  ],
+  "opened": false
+}

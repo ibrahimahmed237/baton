@@ -1,0 +1,77 @@
+{
+  "links": [
+    {
+      "link_id": 3,
+      "sides": {
+        "claude": {
+          "tool": "claude",
+          "id": "sample-a",
+          "name": "Imaginary orchard",
+          "folder": "/tmp/baton-sample",
+          "updated_at": "2026-10-04T14:05:00Z",
+          "linked": true
+        },
+        "codex": {
+          "tool": "codex",
+          "id": "sample-b",
+          "name": "Imaginary orchard",
+          "folder": "/tmp/baton-sample",
+          "updated_at": "2026-10-04T14:05:00Z",
+          "linked": true
+        }
+      },
+      "mode": "full_copy",
+      "paused": false,
+      "headline": {
+        "id": "setup.trust_once",
+        "tone": "info",
+        "values": {
+          "tool": "codex"
+        },
+        "text": "In codex, type /hooks and trust Baton's two entries.",
+        "buttons": [],
+        "status_line": "Setup: 1 step left"
+      },
+      "in_sync": false,
+      "decision_needed": false
+    }
+  ],
+  "notes": [
+    {
+      "id": "screen.empty",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.link_recent",
+      "tone": "info",
+      "values": {},
+      "text": "Link a recent chat",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "claude"
+      },
+      "text": "Continue in claude",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "Continue in codex",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

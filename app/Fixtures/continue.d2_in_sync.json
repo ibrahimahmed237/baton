@@ -1,0 +1,18 @@
+{
+  "plan_id": "p_d2_in_sync",
+  "applied": false,
+  "link_id": 3,
+  "steps": [],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "nothing_unusual",
+      "tone": "info",
+      "values": {},
+      "text": "Nothing unusual.",
+      "buttons": [],
+      "status_line": null
+    }
+  ],
+  "opened": false
+}

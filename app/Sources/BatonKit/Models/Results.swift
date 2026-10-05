@@ -59,14 +59,24 @@ public struct SuggestionsResult: Codable, Equatable, Sendable {
 /// Result of the Links command.
 public struct LinksResult: Codable, Equatable, Sendable {
     public var links: [LinkSummary]
+    public var notes: [Note]
 
     /// Creates a contract value without requiring JSON.
-    public init(links: [LinkSummary]) {
+    public init(links: [LinkSummary], notes: [Note] = []) {
         self.links = links
+        self.notes = notes
+    }
+
+    /// Older engines may omit the additive presentation notes.
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        links = try values.decode([LinkSummary].self, forKey: .links)
+        notes = try values.decodeIfPresent([Note].self, forKey: .notes) ?? []
     }
 
     private enum CodingKeys: String, CodingKey {
         case links
+        case notes
     }
 }
 

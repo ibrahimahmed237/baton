@@ -1,0 +1,83 @@
+{
+  "links": [
+    {
+      "link_id": 3,
+      "sides": {
+        "claude": {
+          "tool": "claude",
+          "id": "sample-a",
+          "name": "Imaginary orchard",
+          "folder": "/tmp/baton-sample",
+          "updated_at": "2026-10-04T14:05:00Z",
+          "linked": true
+        },
+        "codex": {
+          "tool": "codex",
+          "id": "sample-b",
+          "name": "Imaginary orchard",
+          "folder": "/tmp/baton-sample",
+          "updated_at": "2026-10-04T14:05:00Z",
+          "linked": true
+        }
+      },
+      "mode": "full_copy",
+      "paused": true,
+      "headline": {
+        "id": "link.paused",
+        "tone": "info",
+        "values": {
+          "n": 2
+        },
+        "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
+        "buttons": [
+          {
+            "id": "resume",
+            "label": "Resume",
+            "primary": true
+          }
+        ],
+        "status_line": "Paused, 2 waiting"
+      },
+      "in_sync": false,
+      "decision_needed": false
+    }
+  ],
+  "notes": [
+    {
+      "id": "screen.empty",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.link_recent",
+      "tone": "info",
+      "values": {},
+      "text": "Link a recent chat",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "claude"
+      },
+      "text": "Continue in claude",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "Continue in codex",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

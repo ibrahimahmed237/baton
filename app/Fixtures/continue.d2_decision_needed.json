@@ -1,0 +1,51 @@
+{
+  "plan_id": "p_d2_decision_needed",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "action": "hold",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "decision_needed",
+      "needs": [],
+      "notes": [
+        {
+          "id": "merge.decision_needed",
+          "tone": "warning",
+          "values": {},
+          "text": "Both sides have turns the other never received. A decision is needed.",
+          "buttons": [
+            {
+              "id": "merge_show",
+              "label": "Decide",
+              "primary": true
+            }
+          ],
+          "status_line": "A decision is needed"
+        }
+      ]
+    }
+  ],
+  "decision_needed": true,
+  "notes": [
+    {
+      "id": "merge.decision_needed",
+      "tone": "warning",
+      "values": {},
+      "text": "Both sides have turns the other never received. A decision is needed.",
+      "buttons": [
+        {
+          "id": "merge_show",
+          "label": "Decide",
+          "primary": true
+        }
+      ],
+      "status_line": "A decision is needed"
+    }
+  ],
+  "opened": false
+}

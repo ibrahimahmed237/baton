@@ -1,0 +1,57 @@
+{
+  "plan_id": "p_d2_waiting",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "action": "attach",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "chat_open",
+      "needs": [],
+      "notes": [
+        {
+          "id": "write.chat_open",
+          "tone": "info",
+          "values": {
+            "tool": "codex",
+            "n": 2
+          },
+          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close codex, sync, reopen",
+              "primary": true
+            }
+          ],
+          "status_line": "2 turns waiting, attached on next message"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.chat_open",
+      "tone": "info",
+      "values": {
+        "tool": "codex",
+        "n": 2
+      },
+      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close codex, sync, reopen",
+          "primary": true
+        }
+      ],
+      "status_line": "2 turns waiting, attached on next message"
+    }
+  ],
+  "opened": false
+}

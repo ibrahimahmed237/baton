@@ -101,8 +101,15 @@ public struct MessageBubble: View {
 public struct PlanSteps: View {
     @Environment(\.batonTheme) private var theme
     public let steps: [Step]
+    public let excludingNotes: [Note]
     /// Presents steps in the order returned by the engine.
-    public init(steps: [Step]) { self.steps = steps }
+    public init(steps: [Step], excludingNotes: [Note] = []) {
+        self.steps = steps; self.excludingNotes = excludingNotes
+    }
+    /// Omits exact notes already displayed at the plan level while retaining changed notes.
+    public func displayedNotes(for step: Step) -> [Note] {
+        step.notes.filter { !excludingNotes.contains($0) }
+    }
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
@@ -111,7 +118,7 @@ public struct PlanSteps: View {
                         .foregroundStyle(theme.colour(for: StateColour.step(step.action)))
                     VStack(alignment: .leading, spacing: 8) {
                         HStack { ToolDot(tool: step.tool); Text(step.action).font(.caption) }
-                        ForEach(Array(step.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
+                        ForEach(Array(displayedNotes(for: step).enumerated()), id: \.offset) { _, note in NoteView(note: note) }
                     }
                 }
             }

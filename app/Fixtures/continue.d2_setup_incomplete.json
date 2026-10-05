@@ -1,0 +1,43 @@
+{
+  "plan_id": "p_d2_setup_incomplete",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "action": "hold",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "hooks_not_ready",
+      "needs": [],
+      "notes": [
+        {
+          "id": "setup.trust_once",
+          "tone": "info",
+          "values": {
+            "tool": "codex"
+          },
+          "text": "In codex, type /hooks and trust Baton's two entries.",
+          "buttons": [],
+          "status_line": "Setup: 1 step left"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "setup.trust_once",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "In codex, type /hooks and trust Baton's two entries.",
+      "buttons": [],
+      "status_line": "Setup: 1 step left"
+    }
+  ],
+  "opened": false
+}

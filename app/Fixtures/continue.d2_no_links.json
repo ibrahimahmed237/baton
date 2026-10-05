@@ -1,0 +1,18 @@
+{
+  "plan_id": "p_d2_no_links",
+  "applied": false,
+  "link_id": null,
+  "steps": [],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "screen.empty",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    }
+  ],
+  "opened": false
+}

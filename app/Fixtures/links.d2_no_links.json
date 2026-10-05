@@ -1,0 +1,41 @@
+{
+  "links": [],
+  "notes": [
+    {
+      "id": "screen.empty",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.link_recent",
+      "tone": "info",
+      "values": {},
+      "text": "Link a recent chat",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "claude"
+      },
+      "text": "Continue in claude",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.continue",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "Continue in codex",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}
