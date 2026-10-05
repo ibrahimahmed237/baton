@@ -129,12 +129,12 @@ public extension EngineTransport {
 
     /// Runs the pause command.
     func pause(link: Int, mutation: MutationOptions = .preview) async throws -> PauseResult {
-        try await response(command: "pause", arguments: ["--link", String(link)] + mutation.arguments, as: PauseResult.self)
+        try await response(command: "pause", arguments: ["--link", String(link)], as: PauseResult.self)
     }
 
     /// Runs the resume command.
     func resume(link: Int, mutation: MutationOptions = .preview) async throws -> ResumeResult {
-        try await response(command: "resume", arguments: ["--link", String(link)] + mutation.arguments, as: ResumeResult.self)
+        try await response(command: "resume", arguments: ["--link", String(link)], as: ResumeResult.self)
     }
 
     /// Runs the sync command.

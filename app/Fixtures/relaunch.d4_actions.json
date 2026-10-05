@@ -1,0 +1,77 @@
+{
+  "plan_id": "p_d4_relaunch",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "claude",
+      "action": "relaunch",
+      "turns": [
+        43,
+        44
+      ],
+      "reason": "fixture",
+      "needs": [],
+      "notes": [
+        {
+          "id": "write.app_must_close",
+          "tone": "warning",
+          "values": {
+            "tool": "claude",
+            "n": 2
+          },
+          "text": "Baton closes claude, writes, and opens claude again on this folder; your windows come back. Baton never writes while claude runs, because claude would write over it.",
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "status_line": "2 turns waiting until claude is closed"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.app_must_close",
+      "tone": "warning",
+      "values": {
+        "tool": "claude",
+        "n": 2
+      },
+      "text": "Baton closes claude, writes, and opens claude again on this folder; your windows come back. Baton never writes while claude runs, because claude would write over it.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "2 turns waiting until claude is closed"
+    }
+  ],
+  "replying": []
+}

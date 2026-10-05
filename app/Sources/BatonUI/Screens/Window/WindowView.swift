@@ -4,9 +4,13 @@ import BatonKit
 /// Sidebar, lists and a detail host for the later screens.
 public struct WindowView: View {
     @Environment(\.batonTheme) private var theme
+    @StateObject private var statusModel: SyncStatusViewModel
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
-    public init(model: WindowViewModel) { self.model = model }
+    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil) {
+        self.model = model
+        _statusModel = StateObject(wrappedValue: statusModel ?? model.makeStatusModel())
+    }
     public var body: some View {
         HStack(alignment: .top, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
@@ -30,6 +34,10 @@ public struct WindowView: View {
             Rectangle().fill(theme.hairline).frame(width: 1)
             WindowScrollArea { detail }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(width: 1000, height: 600).background(theme.background)
+            .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
+            .onChange(of: statusModel.removedLinkID) { _, removed in
+                if removed != nil { Task { await model.refresh() } }
+            }
     }
 
     @ViewBuilder private var listContent: some View {
@@ -69,7 +77,10 @@ public struct WindowView: View {
     @ViewBuilder private var detail: some View {
         switch model.selection {
         case .link:
-            if let link = model.selectedLink { linkSummary(link) }
+            if let link = model.selectedLink {
+                if statusModel.status?.linkID == link.linkID { SyncStatusView(model: statusModel) }
+                else { linkSummary(link) }
+            }
         case .suggestion:
             if let suggestion = model.selectedSuggestion { suggestionSummary(suggestion) }
         case .chat(let tool, let id):

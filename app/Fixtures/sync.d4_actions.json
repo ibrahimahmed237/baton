@@ -1,0 +1,66 @@
+{
+  "plan_id": "p_d4_sync",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "claude",
+      "action": "sync",
+      "turns": [
+        43,
+        44
+      ],
+      "reason": "fixture",
+      "needs": [],
+      "notes": [
+        {
+          "id": "write.release",
+          "tone": "info",
+          "values": {
+            "tool": "claude",
+            "n": 2
+          },
+          "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch claude to see them.",
+          "buttons": [
+            {
+              "id": "add_now",
+              "label": "Add them now",
+              "primary": true
+            },
+            {
+              "id": "relaunch",
+              "label": "Relaunch claude",
+              "primary": false
+            }
+          ],
+          "status_line": "Relaunch claude to see 2 new turns"
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.release",
+      "tone": "info",
+      "values": {
+        "tool": "claude",
+        "n": 2
+      },
+      "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch claude to see them.",
+      "buttons": [
+        {
+          "id": "add_now",
+          "label": "Add them now",
+          "primary": true
+        },
+        {
+          "id": "relaunch",
+          "label": "Relaunch claude",
+          "primary": false
+        }
+      ],
+      "status_line": "Relaunch claude to see 2 new turns"
+    }
+  ]
+}

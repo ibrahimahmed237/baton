@@ -1,0 +1,664 @@
+{
+  "link_id": 3,
+  "mode": "full_copy",
+  "paused": false,
+  "in_sync": false,
+  "decision_needed": false,
+  "sides": {
+    "claude": {
+      "tool": "claude",
+      "chat": {
+        "tool": "claude",
+        "id": "sample-a",
+        "name": "Imaginary orchard",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": true
+      },
+      "condition": {
+        "exists": true,
+        "open": true,
+        "replying": false,
+        "hooks_ready": true
+      },
+      "total": 4,
+      "agent_has": 2,
+      "chat_shows": 2,
+      "added": 0,
+      "attached": 0,
+      "waiting": 2,
+      "kept_elsewhere": 0,
+      "skipped": 0,
+      "synced_up_to": {
+        "id": 42,
+        "seq": 2,
+        "origin": "codex",
+        "first_line": "Add silver pear trees.",
+        "started_at": "2026-10-05T10:02:00Z",
+        "ended_at": "2026-10-04T14:01:00Z",
+        "tokens": 1600,
+        "pinned": true,
+        "states": {
+          "claude": "shown",
+          "codex": "written_here"
+        },
+        "messages": [
+          {
+            "kind": "prompt",
+            "text": "Add silver pear trees."
+          },
+          {
+            "kind": "reply",
+            "text": "Silver pears grow beneath a violet sky."
+          }
+        ]
+      },
+      "waiting_reason": "format_unknown",
+      "next_message": {
+        "turns": 2,
+        "tokens": 3200
+      },
+      "usage": {
+        "tokens": 6400,
+        "size": 200000,
+        "percent": 3.2,
+        "limit": null
+      },
+      "since_you_left": {
+        "turns": 2,
+        "files": 2,
+        "commands": 3,
+        "since": "2026-10-05T09:00:00Z"
+      },
+      "notes": [
+        {
+          "id": "status.summary",
+          "tone": "info",
+          "values": {
+            "tool": "claude",
+            "agent_has": 2,
+            "total": 4,
+            "chat_shows": 2,
+            "waiting": 2
+          },
+          "text": "claude's agent has 2 of 4 turns. Its chat shows 2; 2 are waiting.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "format.unknown_version",
+          "tone": "warning",
+          "values": {
+            "tool": "claude",
+            "version": "invented-next"
+          },
+          "text": "claude was updated and saves chats differently (version invented-next). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated.",
+          "buttons": [],
+          "status_line": "claude: reading only"
+        },
+        {
+          "id": "status.if_send",
+          "tone": "info",
+          "values": {
+            "tool": "claude",
+            "n": 2,
+            "tokens": 3200
+          },
+          "text": "If you send a message now, claude gets 2 turns, about 3200 tokens.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.synced_up_to",
+          "tone": "info",
+          "values": {
+            "first_line": "Add silver pear trees."
+          },
+          "text": "Synced up to Add silver pear trees.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.context",
+          "tone": "info",
+          "values": {
+            "tokens": 6400
+          },
+          "text": "Context in use: 6400 tokens",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.since_you_left",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "files": 2,
+            "commands": 3
+          },
+          "text": "Since you left: 2 turns, 2 files, 3 commands",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "screen.open",
+          "tone": "info",
+          "values": {
+            "tool": "claude"
+          },
+          "text": "Open in claude",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.setup_ready",
+          "tone": "ok",
+          "values": {
+            "tool": "claude"
+          },
+          "text": "Baton's hooks are installed and trusted in claude.",
+          "buttons": [],
+          "status_line": null
+        }
+      ]
+    },
+    "codex": {
+      "tool": "codex",
+      "chat": {
+        "tool": "codex",
+        "id": "sample-b",
+        "name": "Orchard tests",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": true
+      },
+      "condition": {
+        "exists": true,
+        "open": false,
+        "replying": false,
+        "hooks_ready": true
+      },
+      "total": 4,
+      "agent_has": 4,
+      "chat_shows": 4,
+      "added": 0,
+      "attached": 0,
+      "waiting": 0,
+      "kept_elsewhere": 0,
+      "skipped": 0,
+      "synced_up_to": {
+        "id": 44,
+        "seq": 4,
+        "origin": "codex",
+        "first_line": "Check the harvest.",
+        "started_at": "2026-10-05T10:04:00Z",
+        "ended_at": "2026-10-04T14:01:00Z",
+        "tokens": 1600,
+        "pinned": false,
+        "states": {
+          "claude": "waiting",
+          "codex": "written_here"
+        },
+        "messages": [
+          {
+            "kind": "prompt",
+            "text": "Check the harvest."
+          },
+          {
+            "kind": "reply",
+            "text": "Silver pears grow beneath a violet sky."
+          }
+        ]
+      },
+      "waiting_reason": null,
+      "next_message": {
+        "turns": 0,
+        "tokens": 0
+      },
+      "usage": {
+        "tokens": 6400,
+        "size": 200000,
+        "percent": 3.2,
+        "limit": null
+      },
+      "since_you_left": {
+        "turns": 2,
+        "files": 2,
+        "commands": 3,
+        "since": "2026-10-05T09:00:00Z"
+      },
+      "notes": [
+        {
+          "id": "status.summary",
+          "tone": "info",
+          "values": {
+            "tool": "codex",
+            "agent_has": 4,
+            "total": 4,
+            "chat_shows": 4,
+            "waiting": 0
+          },
+          "text": "codex's agent has 4 of 4 turns. Its chat shows 4; 0 are waiting.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.next_none",
+          "tone": "info",
+          "values": {},
+          "text": "If you send a message now, nothing extra is attached.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.synced_up_to",
+          "tone": "info",
+          "values": {
+            "first_line": "Check the harvest."
+          },
+          "text": "Synced up to Check the harvest.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.context",
+          "tone": "info",
+          "values": {
+            "tokens": 6400
+          },
+          "text": "Context in use: 6400 tokens",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.since_you_left",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "files": 2,
+            "commands": 3
+          },
+          "text": "Since you left: 2 turns, 2 files, 3 commands",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "screen.open",
+          "tone": "info",
+          "values": {
+            "tool": "codex"
+          },
+          "text": "Open in codex",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.setup_ready",
+          "tone": "ok",
+          "values": {
+            "tool": "codex"
+          },
+          "text": "Baton's hooks are installed and trusted in codex.",
+          "buttons": [],
+          "status_line": null
+        }
+      ]
+    }
+  },
+  "turns": [
+    {
+      "id": 41,
+      "seq": 1,
+      "origin": "codex",
+      "first_line": "Describe an imaginary orchard.",
+      "started_at": "2026-10-05T10:01:00Z",
+      "ended_at": "2026-10-04T14:01:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "shown",
+        "codex": "written_here"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Describe an imaginary orchard."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "seq": 2,
+      "origin": "codex",
+      "first_line": "Add silver pear trees.",
+      "started_at": "2026-10-05T10:02:00Z",
+      "ended_at": "2026-10-04T14:01:00Z",
+      "tokens": 1600,
+      "pinned": true,
+      "states": {
+        "claude": "shown",
+        "codex": "written_here"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Add silver pear trees."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "seq": 3,
+      "origin": "codex",
+      "first_line": "Write the orchard tests.",
+      "started_at": "2026-10-05T10:03:00Z",
+      "ended_at": "2026-10-04T14:01:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "waiting",
+        "codex": "written_here"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Write the orchard tests."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "seq": 4,
+      "origin": "codex",
+      "first_line": "Check the harvest.",
+      "started_at": "2026-10-05T10:04:00Z",
+      "ended_at": "2026-10-04T14:01:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "waiting",
+        "codex": "written_here"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Check the harvest."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "status.reached",
+      "tone": "info",
+      "values": {
+        "tool": "claude"
+      },
+      "text": "claude's agent has everything above this line",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "status.reached",
+      "tone": "info",
+      "values": {
+        "tool": "codex"
+      },
+      "text": "codex's agent has everything above this line",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.sync_status",
+      "tone": "info",
+      "values": {},
+      "text": "Sync status",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.pause",
+      "tone": "info",
+      "values": {},
+      "text": "Pause",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.resume",
+      "tone": "info",
+      "values": {},
+      "text": "Resume sync",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.history",
+      "tone": "info",
+      "values": {},
+      "text": "History",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.remove",
+      "tone": "info",
+      "values": {},
+      "text": "Remove link",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.refresh",
+      "tone": "info",
+      "values": {},
+      "text": "Refresh",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.copy",
+      "tone": "info",
+      "values": {},
+      "text": "Copy to\u2026",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.show_reply",
+      "tone": "info",
+      "values": {},
+      "text": "Show full reply",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.hide_reply",
+      "tone": "info",
+      "values": {},
+      "text": "Hide full reply",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.show_tools",
+      "tone": "info",
+      "values": {},
+      "text": "Show tool activity",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.hide_tools",
+      "tone": "info",
+      "values": {},
+      "text": "Hide tool activity",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "filter.all",
+      "tone": "info",
+      "values": {},
+      "text": "All",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "filter.waiting",
+      "tone": "info",
+      "values": {},
+      "text": "Waiting",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "filter.attached",
+      "tone": "info",
+      "values": {},
+      "text": "Attached",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "filter.kept",
+      "tone": "info",
+      "values": {},
+      "text": "Kept back",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "filter.pinned",
+      "tone": "info",
+      "values": {},
+      "text": "Pinned",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "message.prompt",
+      "tone": "info",
+      "values": {},
+      "text": "User",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "message.reply",
+      "tone": "info",
+      "values": {},
+      "text": "Reply",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "message.tool_call",
+      "tone": "info",
+      "values": {},
+      "text": "Tool call",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "message.tool_result",
+      "tone": "info",
+      "values": {},
+      "text": "Tool result",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.written_here",
+      "tone": "info",
+      "values": {},
+      "text": "Written here",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.shown",
+      "tone": "info",
+      "values": {},
+      "text": "Shown",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.added",
+      "tone": "info",
+      "values": {},
+      "text": "Added, shown after a relaunch",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.attached",
+      "tone": "info",
+      "values": {},
+      "text": "Attached",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.waiting",
+      "tone": "info",
+      "values": {},
+      "text": "Waiting",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.skipped",
+      "tone": "info",
+      "values": {},
+      "text": "Skipped",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "turn.kept_back",
+      "tone": "info",
+      "values": {},
+      "text": "Kept back",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.earlier_turns",
+      "tone": "info",
+      "values": {
+        "n": 2
+      },
+      "text": "2 earlier turns, in both chats",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "status.checked",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T10:20:00Z"
+      },
+      "text": "Last checked 2026-10-05T10:20:00Z",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

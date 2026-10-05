@@ -18,7 +18,13 @@ public struct FixtureEngine: EngineTransport {
         command: String, arguments: [String], as type: Result.Type
     ) async throws -> Result {
         let selectedState = states[command] ?? state
-        let url = directory.appendingPathComponent("\(command).\(selectedState).json")
+        var url = directory.appendingPathComponent("\(command).\(selectedState).json")
+        // Hand-made window fixtures can provide a distinct response per selected link.
+        if let index = arguments.firstIndex(of: "--link"), arguments.indices.contains(index + 1),
+           let link = Int(arguments[index + 1]) {
+            let scoped = directory.appendingPathComponent("\(command).\(selectedState)_\(link).json")
+            if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
+        }
         let data = try Data(contentsOf: url)
         return try decodeResponse(type, from: data)
     }

@@ -1,0 +1,76 @@
+{
+  "plan_id": "p_d4_copy",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "action": "copy",
+      "turns": [
+        43,
+        44
+      ],
+      "reason": "fixture",
+      "needs": [],
+      "notes": [
+        {
+          "id": "link.copy",
+          "tone": "info",
+          "values": {
+            "tool": "codex",
+            "n": 4
+          },
+          "text": "A new chat is created in codex with all 4 turns. The two chats will not be kept in sync.",
+          "buttons": [
+            {
+              "id": "copy",
+              "label": "Copy to codex",
+              "primary": true
+            },
+            {
+              "id": "copy_and_link",
+              "label": "Copy and link",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "status_line": null
+        }
+      ]
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.copy",
+      "tone": "info",
+      "values": {
+        "tool": "codex",
+        "n": 4
+      },
+      "text": "A new chat is created in codex with all 4 turns. The two chats will not be kept in sync.",
+      "buttons": [
+        {
+          "id": "copy",
+          "label": "Copy to codex",
+          "primary": true
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

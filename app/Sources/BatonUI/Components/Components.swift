@@ -35,9 +35,10 @@ public struct NoteView: View {
     @Environment(\.batonTheme) private var theme
     public let note: Note
     private let action: (NoteButton) -> Void
+    private let enabled: (NoteButton) -> Bool
     /// Presents a note and forwards its button choices.
-    public init(note: Note, action: @escaping (NoteButton) -> Void = { _ in }) {
-        self.note = note; self.action = action
+    public init(note: Note, enabled: @escaping (NoteButton) -> Bool = { _ in true }, action: @escaping (NoteButton) -> Void = { _ in }) {
+        self.note = note; self.enabled = enabled; self.action = action
     }
     public var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -48,7 +49,8 @@ public struct NoteView: View {
                 if let line = note.statusLine { Text(line).font(.caption).foregroundStyle(theme.secondaryText) }
                 HStack {
                     ForEach(note.buttons, id: \.id) { button in
-                        Button(button.label) { action(button) }
+                        Button(button.label) { if enabled(button) { action(button) } }
+                            .disabled(!enabled(button))
                             .buttonStyle(BatonButtonStyle(meaning: StateColour.tone(note.tone)))
                     }
                 }
