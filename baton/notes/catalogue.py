@@ -160,6 +160,9 @@ CATALOGUE = {note.id: note for note in (
     Note("message.tool_result", "info", "Tool result"),
     Note("message.tool_text", "info", "Tool activity"),
     Note("status.tool_activity", "info", "Ran {commands} commands, changed {files} files"),
+    Note("status.attached", "info", "{tool}'s agent has {n} attached turns. They are not shown as messages in this chat."),
+    Note("status.setup_ready", "ok", "Baton's hooks are installed and trusted in {tool}."),
+    Note("status.new_chat_relaunch", "info", "Relaunch {tool} to see this chat.", ("Relaunch {tool}",), "Relaunch {tool} to see this chat"),
 )}
 
 

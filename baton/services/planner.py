@@ -63,10 +63,12 @@ class Plan:
 def plan_sync(link: Link, turns: Sequence[LedgerTurn],
               conditions: Mapping[str, SideCondition] | None = None,
               add_when_idle: Collection[str] = (), *,
-              facts: Mapping[str, Capabilities]) -> Plan:
+              facts: Mapping[str, Capabilities],
+              initial_history_sides: Collection[str] = ()) -> Plan:
     """Choose delivery from capabilities and current state, without tool names."""
     conditions = conditions or {}
-    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle)
+    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle,
+                                 initial_history_sides=initial_history_sides)
     steps = {}
     for side, side_status in current.sides.items():
         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
@@ -75,7 +77,7 @@ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
         condition = conditions.get(side, SideCondition())
         action, reason, needs, alternatives = status.delivery_choice(
             link, condition, facts[side], side_status.waiting_reason,
-            side in add_when_idle)
+            side in add_when_idle, side in initial_history_sides)
         steps[side] = Step(side, action, waiting, reason, needs, alternatives)
     return Plan(steps, current.decision_needed)
 

@@ -138,6 +138,66 @@ class Ledger:
                 " and julianday(ended_at)<julianday(?) and pre_receipt is not null", (before,))
         return cur.rowcount
 
+    def local_ids(self, link_id: int, side: str) -> dict[int, str]:
+        """Read local identities, including unconfirmed prior deliveries."""
+        return {row["turn_id"]: row["local_id"] for row in self.db.execute(
+            "select s.turn_id,s.local_id from turn_states s join turns t on t.id=s.turn_id"
+            " where t.link_id=? and s.side=? and s.local_id<>''", (link_id, side))}
+
+    def reset_delivery(self, link_id: int, side: str, turn_ids: Sequence[int], at: str) -> None:
+        """Keep bypassed identities while making their delivery state truthful."""
+        with self.db:
+            for turn_id in turn_ids:
+                current = self._state(link_id, turn_id, side)
+                if current not in (ADDED, SHOWN):
+                    continue
+                self.db.execute("update turn_states set state=?,event_id=null where turn_id=? and side=?",
+                                (WAITING, turn_id, side))
+            if turn_ids:
+                self._event(link_id, at, "not_confirmed", side, turn_ids=turn_ids)
+
+    def record_event(self, link_id: int, kind: str, side: str, at: str,
+                     turn_ids: Sequence[int] = (), detail: dict[str, Any] | None = None) -> int:
+        """Persist a non-delivery action in the link history."""
+        with self.db:
+            return self._event(link_id, at, kind, side, detail, turn_ids)
+
+    def complete_write(self, entry_id: int, receipt: dict[str, Any], at: str,
+                       link_id: int | None, side: str, turn_ids: Sequence[int], state: str,
+                       kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
+        """Atomically persist verified local delivery and journal completion."""
+        entry = self.journal_entry(entry_id)
+        if (entry["state"] != "begun" or entry["link_id"] != link_id or
+                (entry["tool"],entry["chat_id"],entry["action"]) !=
+                (receipt["tool"],receipt["chat_id"],receipt["kind"]) or
+                side != receipt["tool"] or kind != receipt["kind"]):
+            raise ValueError("receipt_identity_mismatch")
+        if link_id is not None and kind != 'create' and self.get_link(link_id).chat(side) != receipt['chat_id']:
+            raise ValueError("chat_identity_mismatch")
+        if link_id is not None:
+            if state not in DELIVERED or len(local_ids) != len(turn_ids):
+                raise ValueError("delivery_identity_mismatch")
+            for turn_id in turn_ids:
+                if self._state(link_id, turn_id, side) != WAITING:
+                    raise ValueError("delivery_not_waiting")
+        # One transaction: a committed journal and its delivery states are inseparable.
+        with self.db:
+            event_id = None
+            if link_id is not None:
+                if kind == 'create':
+                    before_chat = self.get_link(link_id).chat(side)
+                    self.db.execute("update link_chats set chat=? where link_id=? and tool=?",
+                                    (receipt['chat_id'], link_id, side))
+                    self._event(link_id, at, 'link_moved', side,
+                                {'from': before_chat, 'to': receipt['chat_id']})
+                event_id = self._event(link_id, at, kind, side, detail, turn_ids)
+                for turn_id, local_id in zip(turn_ids, local_ids):
+                    self.db.execute("update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?",
+                                    (state, local_id, event_id, turn_id, side))
+            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
+                            (at, json.dumps(receipt), entry_id))
+        return event_id
+
     # Links
 
     def link(self, chats: Mapping[str, str], mode: str, at: str = "") -> Link:

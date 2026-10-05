@@ -78,11 +78,12 @@ class LinkStatus:
 def link_status(link: Link, turns: Sequence[LedgerTurn],
                 conditions: Mapping[str, SideCondition] | None = None, *,
                 facts: Mapping[str, Capabilities], history: Sequence[Event] = (),
-                add_when_idle: Collection[str] = ()) -> LinkStatus:
+                add_when_idle: Collection[str] = (),
+                initial_history_sides: Collection[str] = ()) -> LinkStatus:
     """Compute status from facts and explicit delivery/relaunch evidence."""
     conditions = conditions or {}
     in_conflict = _in_conflict(turns)
-    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle)
+    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle, side in initial_history_sides)
              for side in link.sides}
     return LinkStatus(sides, link.paused, bool(in_conflict))
 
@@ -96,14 +97,14 @@ def _in_conflict(turns: Sequence[LedgerTurn]) -> set[str]:
 
 def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
                  condition: SideCondition, conflict: bool, facts: Capabilities,
-                 history: Sequence[Event], automatic: bool) -> SideStatus:
+                 history: Sequence[Event], automatic: bool, initial_history: bool = False) -> SideStatus:
     def count(*states: str) -> int:
         return sum(1 for turn in turns if turn.states.get(side) in states)
 
     waiting = [turn for turn in turns if turn.states.get(side) == link_states.WAITING]
     reason = _waiting_reason(link, condition, conflict) if waiting else ""
     # Use the planner policy so status cannot promise attachment for an add-only side.
-    action, delivery_reason, _, _ = delivery_choice(link, condition, facts, reason, automatic)
+    action, delivery_reason, _, _ = delivery_choice(link, condition, facts, reason, automatic, initial_history)
     if waiting:
         reason = NOT_SYNCED_YET if action == ADD else delivery_reason
     carried = waiting if action == ATTACH else []
@@ -183,13 +184,15 @@ def _later(start: str, delivered: str) -> bool:
         return False
 
 def delivery_choice(link: Link, condition: SideCondition, facts: Capabilities,
-                    reason: str, automatic: bool = False) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
+                    reason: str, automatic: bool = False, initial_history: bool = False) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
     """Select a safe action and note metadata for a single waiting side."""
     if reason in (SIDE_MISSING, PAUSED, DECISION_NEEDED):
         return HOLD, reason, (), ()
     if not condition.format_known:
         action = ATTACH if condition.open and condition.hooks_ready else HOLD
         return action, FORMAT_UNKNOWN, (), ()
+    if initial_history:
+        return (ATTACH, 'initial_history', (), ()) if condition.hooks_ready else (HOLD, HOOKS_NOT_READY, (), ())
     window = facts.write_window
     allowed = (window == WriteWindow.ANY_TIME
                or window == WriteWindow.NOT_HELD and not condition.open

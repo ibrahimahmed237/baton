@@ -90,3 +90,19 @@ class RecordStore(Protocol):
     def journal_finish(self, entry_id: int, state: str, at: str,
                        receipt: dict[str, Any] | None = None, error: str = "") -> None: ...
     def journal_prune(self, before: str) -> int: ...
+
+    def local_ids(self, link_id: int, side: str) -> dict[int, str]:
+        """Return persisted local identities for recorded turns on one side."""
+        ...
+    def reset_delivery(self, link_id: int, side: str, turn_ids: Sequence[int], at: str) -> None:
+        """Return bypassed deliveries to waiting while retaining their identities."""
+        ...
+    def record_event(self, link_id: int, kind: str, side: str, at: str,
+                     turn_ids: Sequence[int] = (), detail: dict[str, Any] | None = None) -> int:
+        """Record an observed action without changing delivery states."""
+        ...
+    def complete_write(self, entry_id: int, receipt: dict[str, Any], at: str,
+                       link_id: int | None, side: str, turn_ids: Sequence[int], state: str,
+                       kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
+        """Commit verified delivery metadata and the journal in one transaction."""
+        ...
