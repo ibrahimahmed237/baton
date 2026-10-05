@@ -91,6 +91,7 @@ class Ledger:
         self.db.execute("pragma foreign_keys = on")
         self.db.executescript(_SCHEMA)
         self.db.executescript(JOURNAL_SCHEMA)
+        self.db.execute("create table if not exists created_copies(tool text not null, chat_id text not null, delivered_at text not null, shown integer not null default 0, seen_at text, primary key(tool,chat_id))")
         self.db.execute("pragma user_version = 1")
         self.db.commit()
 
@@ -197,6 +198,106 @@ class Ledger:
             self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
                             (at, json.dumps(receipt), entry_id))
         return event_id
+
+    def copy_info(self, tool: str, chat_id: str) -> dict | None:
+        """Read copy creation and visibility independently of rollback retention."""
+        row = self.db.execute('select * from created_copies where tool=? and chat_id=?',(tool,chat_id)).fetchone()
+        return dict(row) if row else None
+
+    def mark_copy_shown(self, tool: str, chat_id: str, at: str) -> None:
+        """Monotonically persist confirmed copy visibility by durable chat identity."""
+        with self.db:
+            self.db.execute('update created_copies set shown=1,seen_at=? where tool=? and chat_id=?',(at,tool,chat_id))
+
+    def _record_copy(self, receipt, at):
+        self.db.execute('insert into created_copies(tool,chat_id,delivered_at) values(?,?,?)',
+                        (receipt['tool'],receipt['chat_id'],at))
+
+    def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
+        """Commit an unlinked creation with durable visibility metadata atomically."""
+        self._creation_entry(entry_id,receipt)
+        with self.db:
+            self._record_copy(receipt,at)
+            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",(at,json.dumps(receipt),entry_id))
+
+    def _creation_entry(self, entry_id, receipt, link_id=None):
+        entry = self.journal_entry(entry_id)
+        if (entry['state'] != 'begun' or entry['link_id'] != link_id or
+                (entry['tool'],entry['chat_id'],entry['action']) !=
+                (receipt['tool'],receipt['chat_id'],receipt['kind']) or receipt['kind'] != 'create'):
+            raise ValueError('receipt_identity_mismatch')
+
+    def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
+                      entry_id: int | None = None, receipt: dict | None = None,
+                      replace_link_id: int | None = None) -> Link:
+        """Commit aligned link records and any verified creation as one transaction."""
+        if len(chats) != 2 or mode not in MODES:
+            raise ValueError('link_shape')
+        for side,chat in chats.items():
+            linked = self.link_for(_tool(side),chat)
+            if linked and linked.id != replace_link_id:
+                raise AlreadyLinked(side,linked)
+        if replace_link_id is not None and self.get_link(replace_link_id).removed_at:
+            raise ValueError('link_removed')
+        if entry_id is not None:
+            self._creation_entry(entry_id,receipt)
+            if chats.get(receipt['tool']) != receipt['chat_id']:
+                raise ValueError('chat_identity_mismatch')
+        for row in rows:
+            if (row['origin'] not in chats or set(row['states']) != set(chats) or
+                    row['states'][row['origin']] != WRITTEN_HERE or
+                    any(state not in (WRITTEN_HERE,SHOWN,ADDED,WAITING) for state in row['states'].values())):
+                raise ValueError('turn_shape')
+        with self.db:
+            if replace_link_id is not None:
+                self.db.execute('update links set removed_at=? where id=?',(at,replace_link_id))
+                self.db.execute('update link_chats set active=0 where link_id=?',(replace_link_id,))
+                self._event(replace_link_id,at,'link_removed')
+            cur = self.db.execute('insert into links(mode,created_at) values(?,?)',(mode,at))
+            link_id = cur.lastrowid
+            self.db.executemany('insert into link_chats(link_id,tool,chat) values(?,?,?)',
+                                [(link_id,side,chat) for side,chat in chats.items()])
+            self._event(link_id,at,'linked',detail={'mode':mode})
+            for seq,row in enumerate(rows,1):
+                turn = row['turn']
+                cur = self.db.execute('insert into turns(link_id,seq,origin,origin_id,started_at,ended_at,first_line,size) values(?,?,?,?,?,?,?,?)',
+                    (link_id,seq,row['origin'],turn.id,turn.started_at,turn.ended_at,
+                     turn.prompt.text.strip()[:_FIRST_LINE_CHARS],_size(turn)))
+                turn_id = cur.lastrowid
+                for side,state in row['states'].items():
+                    event_id = self._event(link_id,at,'create' if entry_id else 'aligned',side,turn_ids=(turn_id,)) if state in (SHOWN,ADDED) else None
+                    self.db.execute('insert into turn_states(turn_id,side,state,local_id,event_id) values(?,?,?,?,?)',
+                                    (turn_id,side,state,row['local_ids'].get(side,''),event_id))
+            if entry_id is not None:
+                self._record_copy(receipt,at)
+                self.db.execute("update journal set state='committed',link_id=?,ended_at=?,post_receipt=? where id=?",
+                                (link_id,at,json.dumps(receipt),entry_id))
+        return self.get_link(link_id)
+
+    def complete_link_copy(self, link_id: int, side: str, chat_id: str,
+                           turn_ids: Sequence[int], local_ids: Sequence[str], state: str,
+                           at: str, entry_id: int, receipt: dict) -> Link:
+        """Move a verified twin and its local identities without replacing turn records."""
+        self._creation_entry(entry_id,receipt,link_id)
+        link = self.get_link(link_id)
+        if (link.removed_at or side not in link.sides or state not in (SHOWN,ADDED) or
+                len(turn_ids) != len(local_ids) or len(set(local_ids)) != len(local_ids) or
+                receipt['tool'] != side or receipt['chat_id'] != chat_id):
+            raise ValueError('copy_identity_mismatch')
+        for turn_id in turn_ids: self._origin(link_id,turn_id)
+        if self.link_for(side,chat_id):
+            raise AlreadyLinked(side,self.link_for(side,chat_id))
+        with self.db:
+            self.db.execute('update link_chats set chat=? where link_id=? and tool=?',(chat_id,link_id,side))
+            self.db.execute("update links set mode='full_copy' where id=?",(link_id,))
+            event_id = self._event(link_id,at,'create',side,{'from':link.chat(side),'to':chat_id},turn_ids)
+            for turn_id,local_id in zip(turn_ids,local_ids):
+                self.db.execute('update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?',
+                                (state,local_id,event_id,turn_id,side))
+                self.db.execute('update turns set origin_id=? where id=? and origin=?',(local_id,turn_id,side))
+            self._record_copy(receipt,at)
+            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",(at,json.dumps(receipt),entry_id))
+        return self.get_link(link_id)
 
     # Links
 

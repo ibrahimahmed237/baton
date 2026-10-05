@@ -106,3 +106,27 @@ class RecordStore(Protocol):
                        kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
         """Commit verified delivery metadata and the journal in one transaction."""
         ...
+
+    def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
+                      entry_id: int | None = None, receipt: dict | None = None,
+                      replace_link_id: int | None = None) -> Link:
+        """Atomically align a new link, replace its predecessor and commit any creation."""
+        ...
+
+    def complete_link_copy(self, link_id: int, side: str, chat_id: str,
+                           turn_ids: Sequence[int], local_ids: Sequence[str], state: str,
+                           at: str, entry_id: int, receipt: dict) -> Link:
+        """Atomically move a full-copy twin while preserving conversation identity."""
+        ...
+
+    def copy_info(self, tool: str, chat_id: str) -> dict | None:
+        """Read durable creation time and visibility independently of rollback receipts."""
+        ...
+
+    def mark_copy_shown(self, tool: str, chat_id: str, at: str) -> None:
+        """Persist confirmed copy visibility without changing writer receipts."""
+        ...
+
+    def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
+        """Commit an unlinked creation and durable visibility metadata atomically."""
+        ...

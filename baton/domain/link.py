@@ -6,7 +6,9 @@ from typing import Any
 
 CLAUDE = "claude"
 CODEX = "codex"
-TOOLS = (CLAUDE, CODEX)
+OPENCODE = "opencode"
+CURSOR = "cursor"
+TOOLS = (CLAUDE, CODEX, OPENCODE, CURSOR)
 
 # How a link was made (DESIGN.md, section 4).
 FULL_COPY = "full_copy"
