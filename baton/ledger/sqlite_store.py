@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
 from ..domain.model import Turn
+from .schema import JOURNAL_SCHEMA
 from ..domain.link import (ADDED, ATTACHED, DELIVERED, KEPT_BACK, MODES, SHOWN, SKIPPED, TOOLS,
                            WAITING, WRITTEN_HERE, Event, LedgerTurn, Link)
 from ..domain.errors import AlreadyDelivered, AlreadyLinked
@@ -89,11 +90,53 @@ class Ledger:
         self.db.row_factory = sqlite3.Row
         self.db.execute("pragma foreign_keys = on")
         self.db.executescript(_SCHEMA)
+        self.db.executescript(JOURNAL_SCHEMA)
         self.db.execute("pragma user_version = 1")
         self.db.commit()
 
     def close(self) -> None:
         self.db.close()
+
+    def journal_begin(self, link_id: int | None, tool: str, chat_id: str,
+                      action: str, at: str, receipt: dict[str, Any]) -> int:
+        with self.db:
+            cur = self.db.execute(
+                "insert into journal(link_id,tool,chat_id,action,begun_at,pre_receipt) values(?,?,?,?,?,?)",
+                (link_id, tool, chat_id, action, at, json.dumps(receipt)))
+        return cur.lastrowid
+
+    def journal_entry(self, entry_id: int) -> dict[str, Any]:
+        row = self.db.execute("select * from journal where id=?", (entry_id,)).fetchone()
+        if row is None:
+            raise KeyError(entry_id)
+        entry = dict(row)
+        for key in ("pre_receipt", "post_receipt"):
+            entry[key] = json.loads(entry[key]) if entry[key] is not None else None
+        return entry
+
+    def journal_entries(self, pending: bool = False) -> list[dict[str, Any]]:
+        query = "select id from journal"
+        if pending:
+            query += " where state in ('begun','failed')"
+        return [self.journal_entry(row[0]) for row in self.db.execute(query + " order by id")]
+
+    def journal_finish(self, entry_id: int, state: str, at: str,
+                       receipt: dict[str, Any] | None = None, error: str = "") -> None:
+        if state not in {"committed", "failed", "taken_back"}:
+            raise ValueError(state)
+        entry = self.journal_entry(entry_id)
+        if entry["state"] not in {"begun", "failed"} and not (entry["state"] == "committed" and state == "taken_back"):
+            raise ValueError(entry["state"])
+        with self.db:
+            self.db.execute("update journal set state=?,ended_at=?,post_receipt=?,error=? where id=?",
+                            (state, at, json.dumps(receipt) if receipt else None, error, entry_id))
+
+    def journal_prune(self, before: str) -> int:
+        with self.db:
+            cur = self.db.execute(
+                "update journal set pre_receipt=null,post_receipt=null where state in ('committed','taken_back')"
+                " and julianday(ended_at)<julianday(?) and pre_receipt is not null", (before,))
+        return cur.rowcount
 
     # Links
 
@@ -240,12 +283,18 @@ class Ledger:
                     (state, local_ids[index] if local_ids else "", event_id, turn_id, side))
         return event_id
 
-    def mark_shown(self, link_id: int, side: str) -> int:
+    def mark_shown(self, link_id: int, side: str, turn_ids: Sequence[int] | None = None) -> int:
         """After that side's app was relaunched: what was added is now shown."""
+        query = ("update turn_states set state=? where side=? and state=?"
+                 " and turn_id in (select id from turns where link_id=?)")
+        values: list[Any] = [SHOWN, side, ADDED, link_id]
+        if turn_ids is not None:
+            if not turn_ids:
+                return 0
+            query += " and turn_id in (" + ",".join("?" for _ in turn_ids) + ")"
+            values.extend(turn_ids)
         with self.db:
-            cur = self.db.execute(
-                "update turn_states set state=? where side=? and state=?"
-                " and turn_id in (select id from turns where link_id=?)", (SHOWN, side, ADDED, link_id))
+            cur = self.db.execute(query, values)
         return cur.rowcount
 
     def keep_back(self, link_id: int, turn_id: int, at: str = "") -> None:

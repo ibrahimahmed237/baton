@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import replace
+from dataclasses import asdict, replace
 from typing import Any, Sequence
 from uuid import uuid4
 
@@ -132,6 +132,55 @@ class FakeWriter:
     def __init__(self, adapter: FakeAdapter):
         self.adapter = adapter
         self.writes: dict[str, tuple[WriteReceipt, Any]] = {}
+        self._prepared_create: str | None = None
+        self._consumed: set[str] = set()
+
+    def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt:
+        """Capture JSON rollback data without mutating any chat."""
+        if kind not in {"create", "add", "place", "cut", "rename"}:
+            raise ValueError(kind)
+        if (chat_id is None) != (kind == "create"):
+            raise ValueError(kind)
+        if chat_id is None:
+            chat_id = uuid4().hex
+            self._prepared_create = chat_id
+            data = {"prepared": True, "exists": False}
+        else:
+            self.adapter.locator.resolve(chat_id)
+            data = {"prepared": True, "exists": True,
+                    "turns": [asdict(t) for t in self.adapter.chats[chat_id]],
+                    "ref": asdict(self.adapter.refs[chat_id]),
+                    "inserted": [asdict(m) for m in self.adapter.inserted_text[chat_id]],
+                    "visible": None if chat_id not in self.adapter.visible else
+                        [asdict(t) for t in self.adapter.visible[chat_id]]}
+        return WriteReceipt(self.adapter.name, chat_id, kind, data)
+
+    @staticmethod
+    def _turns(values):
+        return [Turn(Message(**v["prompt"]), tuple(Message(**m) for m in v["messages"]))
+                for v in values]
+
+    def _restore_prepared(self, receipt: WriteReceipt) -> None:
+        if receipt.tool != self.adapter.name:
+            raise ValueError("receipt tool mismatch")
+        chat_id, data = receipt.chat_id, receipt.data
+        if not data["exists"]:
+            if self.adapter.state.condition(chat_id).exists:
+                self._check(chat_id)
+            for values in (self.adapter.chats, self.adapter.refs, self.adapter.conditions,
+                           self.adapter.inserted_text, self.adapter.visible):
+                values.pop(chat_id, None)
+            if self._prepared_create == chat_id:
+                self._prepared_create = None
+            return
+        self._check(chat_id)
+        self.adapter.chats[chat_id] = self._turns(data["turns"])
+        self.adapter.refs[chat_id] = ChatRef(**data["ref"])
+        self.adapter.inserted_text[chat_id] = [Message(**m) for m in data["inserted"]]
+        if data["visible"] is None:
+            self.adapter.visible.pop(chat_id, None)
+        else:
+            self.adapter.visible[chat_id] = self._turns(data["visible"])
 
     def _check(self, chat_id: str | None = None, capability: str = "") -> None:
         if not self.adapter.state.format_version().known:
@@ -144,13 +193,22 @@ class FakeWriter:
         if chat_id is not None:
             self.adapter.locator.resolve(chat_id)
             condition = self.adapter.state.condition(chat_id)
+            if condition.replying and window != WriteWindow.ANY_TIME:
+                raise ChatReplying()
             if window in (WriteWindow.CLOSED_OR_RELEASED, WriteWindow.NOT_HELD) and condition.open:
                 raise ChatHeld()
 
     def _result(self, chat_id: str, kind: str, turns: Sequence[Turn], undo: Any) -> WriteResult:
         if kind != "create" and self.adapter.facts.added_turn_visible == Visibility.AT_ONCE:
             self.adapter.visible[chat_id] = deepcopy(self.adapter.chats[chat_id])
-        receipt = WriteReceipt(self.adapter.name, chat_id, kind, {"write_id": uuid4().hex})
+        if kind == "create":
+            saved = {"turns": [asdict(t) for t in undo[0]], "ref": asdict(undo[1])}
+        elif kind == "cut":
+            saved = {"index": undo[0], "removed": [asdict(t) for t in undo[1]]}
+        else:
+            saved = list(undo)
+        receipt = WriteReceipt(self.adapter.name, chat_id, kind,
+                               {"write_id": uuid4().hex, "undo": saved})
         self.writes[receipt.data["write_id"]] = (receipt, undo)
         return WriteResult(chat_id, tuple(turn.id for turn in turns), receipt)
 
@@ -160,6 +218,13 @@ class FakeWriter:
         if len({turn.id for turn in turns}) != len(turns):
             raise ValueError("turn ids must be unique within a chat")
         chat_id = self.adapter.build_chat(turns, name, folder)
+        if self._prepared_create is not None:
+            reserved, self._prepared_create = self._prepared_create, None
+            for values in (self.adapter.chats, self.adapter.refs, self.adapter.conditions,
+                           self.adapter.inserted_text, self.adapter.visible):
+                values[reserved] = values.pop(chat_id)
+            self.adapter.refs[reserved] = replace(self.adapter.refs[reserved], id=reserved)
+            chat_id = reserved
         if self.adapter.facts.new_chat_visible != Visibility.AT_ONCE:
             del self.adapter.visible[chat_id]
         return self._result(chat_id, "create", turns,
@@ -205,11 +270,28 @@ class FakeWriter:
 
     def take_back(self, receipt: WriteReceipt) -> None:
         """Undo one write, preserving unrelated later writes."""
+        if receipt.data.get("prepared"):
+            self._restore_prepared(receipt)
+            return
         key = receipt.data.get("write_id", "")
-        if key not in self.writes or self.writes[key][0] != receipt:
+        if (receipt.tool != self.adapter.name or key in self._consumed or
+                not self.adapter.state.condition(receipt.chat_id).exists):
+            raise ValueError("receipt does not belong to an outstanding write")
+        if key in self.writes:
+            if self.writes[key][0] != receipt:
+                raise ValueError("receipt mismatch")
+            undo = self.writes[key][1]
+        elif "undo" in receipt.data:
+            saved = receipt.data["undo"]
+            if receipt.kind == "create":
+                undo = (self._turns(saved["turns"]), ChatRef(**saved["ref"]))
+            elif receipt.kind == "cut":
+                undo = (saved["index"], self._turns(saved["removed"]))
+            else:
+                undo = saved
+        else:
             raise ValueError("receipt does not belong to an outstanding write")
         self._check(receipt.chat_id)
-        undo = self.writes[key][1]
         chat_id = receipt.chat_id
         turns = self.adapter.chats[chat_id]
         if receipt.kind == "create":
@@ -235,7 +317,8 @@ class FakeWriter:
             self.adapter.visible.pop(chat_id, None)
         elif self.adapter.facts.added_turn_visible == Visibility.AT_ONCE:
             self.adapter.visible[chat_id] = deepcopy(turns)
-        del self.writes[key]
+        self.writes.pop(key, None)
+        self._consumed.add(key)
 
 
 class FakeHooks:

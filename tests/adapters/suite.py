@@ -157,3 +157,24 @@ class AdapterSuite:
         else:
             self.adapter.app.open(None, "folder")
         self.assertEqual(self.visible_turns(created.chat_id), self.turns)
+
+    def test_prepared_receipts_precede_mutation_and_take_back(self):
+        import json
+        from dataclasses import asdict
+        from baton.ports.tool import WriteReceipt
+        prepared = self.adapter.writer.prepare(self.chat, "add")
+        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
+        prepared = WriteReceipt(**json.loads(json.dumps(asdict(prepared))))
+        extra = Turn(Message("p4", PROMPT, "more"))
+        self.adapter.writer.add(self.chat, [extra])
+        self.adapter.writer.take_back(prepared)
+        self.adapter.writer.take_back(prepared)
+        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
+        before = self.adapter.locator.chats()
+        prepared = self.adapter.writer.prepare(None, "create")
+        self.assertEqual(self.adapter.locator.chats(), before)
+        result = self.adapter.writer.create([], "new", "")
+        self.assertEqual(result.chat_id, prepared.chat_id)
+        self.adapter.writer.take_back(prepared)
+        self.adapter.writer.take_back(prepared)
+        self.assertEqual(self.adapter.locator.chats(), before)
