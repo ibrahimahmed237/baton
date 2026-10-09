@@ -33,22 +33,24 @@ public enum BatonWindowConfiguration {
 /// Owns one main window across launch, menu-bar actions and reopening after close.
 @MainActor public final class BatonMainWindowController: NSWindowController {
     public let model: WindowViewModel
-    public init(model: WindowViewModel) {
+    private let appearance: ThemePreference
+    public init(model: WindowViewModel, appearance: ThemePreference? = nil) {
+        let preference = appearance ?? .shared
+        self.appearance = preference
         self.model = model
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
                               backing: .buffered, defer: false)
-        BatonWindowConfiguration.apply(to: window)
+        BatonWindowConfiguration.apply(to: window, theme: preference.theme)
         window.title = "Baton"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: AnyView(WindowView(model: model).batonTheme(.light).task { await model.refresh() }))
+        window.contentView = NSHostingView(rootView: AppearanceWindowContent(preference: preference, model: model))
         window.center()
         super.init(window: window)
     }
-    /// Applies the system palette without replacing the window or its model.
+    /// Selects a fixed app palette without replacing the window or its model.
     public func setTheme(_ theme: Theme) {
-        guard let hosting = window?.contentView as? NSHostingView<AnyView> else { return }
-        hosting.rootView = AnyView(WindowView(model: model).batonTheme(theme).task { [model] in await model.refresh() })
+        appearance.choose(theme == .light ? .light : .graphite)
     }
     public required init?(coder: NSCoder) { nil }
     public override func showWindow(_ sender: Any?) {

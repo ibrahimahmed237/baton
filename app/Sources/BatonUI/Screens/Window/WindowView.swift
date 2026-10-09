@@ -8,9 +8,11 @@ public struct WindowView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var linkDialog: LinkDialogViewModel?
     @StateObject private var statusModel: SyncStatusViewModel
+    @ObservedObject private var appearance: ThemePreference
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
-    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil) {
+    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil, appearance: ThemePreference? = nil) {
+        self.appearance = appearance ?? .shared
         self.model = model
         _statusModel = StateObject(wrappedValue: statusModel ?? model.makeStatusModel())
     }
@@ -31,6 +33,8 @@ public struct WindowView: View {
                     Rectangle().fill(theme.hairline).frame(height: 1).padding(.vertical, 8)
                     WindowScrollArea { listContent }
                 }
+                Spacer(minLength: 12)
+                ThemeSelector(preference: appearance, notes: model.notes)
             }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
                 .background { Rectangle().fill(.regularMaterial).overlay(theme.sidebar.opacity(reduceTransparency ? 1 : glass / 200)) }
             if model.section != .linked && model.section != .attention {

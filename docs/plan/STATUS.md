@@ -24,6 +24,8 @@ Decisions (Reviewer):
 
 ## Now
 
+- UI7 complete: Dock surroundings are white, in-app content marks have no surrounding tile in either theme, and the B/I.A retain exactly the existing burgundy/black pixels. Appearance Light/Dark/System is visible at the sidebar bottom; the shared local app preference updates window/popover without changing macOS settings. Native Light/Dark switching inspected; separate review's hosted-update test finding fixed. Root377 engine /83 app tests and installed-SDK Swift build pass. Ready patch follows UI6, with no image replacement or Git writes.
+
 - UI6 complete: menu renderer now uses the signed burgundy/black B and I.A; runtime marks have transparent margins in light mode and close-fitting gray glass in graphite. Window/popover/Dock follow system appearance, including native Reduce Transparency injection and Dock update notifications. Independent review findings fixed. Root377 engine / 81 app / Swift build pass; refreshed native fixture visibly shows graphite signed mark. Menu theme/badge renders inspected; direct system-menu capture timed out, so its actual on-screen item was not separately photographed. Ready-to-commit patch follows UI5; Git remains read-only.
 
 - UI5 complete: Ibrahim's chosen burgundy/black compact logo includes I.A; branded empty/selection/filter states use catalogue wording and preserve loading/failure distinctions. Independent review's popover navigation-copy warning is fixed. Current shared tree: 377 engine / 79 app tests and Swift build pass with the installed SDK flags. Running fixture inspected; Show all turns restores messages. Ready-to-commit patch follows UI4, including binary assets; Git remains read-only.
@@ -36,11 +38,11 @@ Decisions (Reviewer):
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Current working tree: 377 engine tests, 81 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI6 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Current working tree: 377 engine tests, 83 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI7 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
 
-UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI6, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. UI6 replaces the menu glyph with the signed mark. I.A is retained but tiny at 22 points; no claim of easy signature reading at menu size.
+UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI7, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. UI6 replaces the menu glyph with the signed mark. I.A is retained but tiny at 22 points; no claim of easy signature reading at menu size.
 
 UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
 
@@ -71,6 +73,7 @@ Continue E9/E10 (including M12), and D6/D7 in parallel; E8/U9 is now fixture-ver
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI7 logo surroundings and appearance selector | 2026-10-06 | Ready to commit — independent review finding fixed; native selector/Light/Dark inspected | 377 engine /83 app |
 | UI6 transparent logo and dark glass | 2026-10-06 | Ready to commit — separate review fixes confirmed; native graphite preview inspected | 377 engine / 81 app |
 | UI5 signed identity and empty states | 2026-10-06 | Ready to commit — independent review warning fixed; native fixture and both themes inspected | 377 engine / 79 app |
 | UI4 conversation orientation | 2026-10-06 | Ready to commit — separate review; final connector correction included in UI5 | Shared UI5 tree: 377 engine / 79 app |
@@ -698,6 +701,53 @@ Carry the signed mark across both app appearances
 Replace the menu glyph and white tile with the transparent Baton identity. Keep black and I.A readable on gray glass in dark mode, preserve the decision badge, and respect system appearance and reduced transparency.
 ```
 
+### UI7 — logo surroundings and appearance selector
+
+Patch: `docs/plan/reports/patches/UI7.patch`, applies after UI6. No binary artwork change. Independent reviewer confirms no remaining findings; root377/83/build pass.
+
+Exact paths:
+
+- `app/Brand/README.md`
+- `app/Sources/BatonUI/Components/BrandMark.swift`
+- `app/Sources/BatonUI/Components/WindowPresentation.swift`
+- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
+- `app/Sources/BatonUI/Theme/ThemePreference.swift`
+- `app/Sources/Baton/BatonApp.swift`
+- `app/Tests/BatonUITests/BrandTests.swift`
+- `app/Tests/BatonUITests/ThemePreferenceTests.swift`
+- `baton/notes/catalogue.py`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI7-2026-10-06.md`
+- `app/Fixtures/links.d2_decision_needed.json`
+- `app/Fixtures/links.d2_in_sync.json`
+- `app/Fixtures/links.d2_no_links.json`
+- `app/Fixtures/links.d2_one_side_ahead.json`
+- `app/Fixtures/links.d2_paused.json`
+- `app/Fixtures/links.d2_relaunch_needed.json`
+- `app/Fixtures/links.d2_setup_incomplete.json`
+- `app/Fixtures/links.d2_waiting.json`
+- `app/Fixtures/links.d3_empty.json`
+- `app/Fixtures/links.d3_filled.json`
+- `app/Fixtures/links.d3_tool_missing.json`
+- `app/Fixtures/links.d5_already.json`
+- `app/Fixtures/links.d5_claude.json`
+- `app/Fixtures/links.d5_codex.json`
+- `app/Fixtures/links.d5_cursor.json`
+- `app/Fixtures/links.d5_large.json`
+- `app/Fixtures/links.d5_opencode.json`
+- `app/Fixtures/links.d5_unavailable.json`
+- `app/Fixtures/links.empty.json`
+
+Message:
+
+```text
+Keep logo colors fixed and make appearance selectable
+
+Give the Dock a white tile while leaving in-app logos bare in both themes. Expose a remembered Light, Dark or System app preference so people can choose the surfaces without recoloring B or I.A or changing macOS settings.
+```
+
 ## Decisions
 
 27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
@@ -748,7 +798,11 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 27. **Transparent signed identity (Ibrahim, 2026-10-06):** requested menu adoption, no white margins around B/I.A in current logo placements, and gray glass in dark mode. UI6 implements this and follows macOS appearance without changing its setting.
 
+28. **Logo surroundings and selector (Ibrahim,2026-10-06):** Dock margins should be white; in-app marks have no surrounding panel. He explicitly clarified that B/I.A colors must not change. Light/Dark/System controls app surfaces only; pixel invariance is checked. Local app preference storage is the orchestrator’s fixture implementation; engine settings must be connected in C2/D12.
+
 ## Questions
+
+- UI7 preference currently lives in the app’s UserDefaults. C2/D12 must reconcile it with the engine theme setting before real app wiring; fixture tests inject memory persistence and never write real preferences.
 
 - UI3 native functions and Ibrahim’s visible-controls check pass. Ctrl-Command-F shortcut is not wired after removal of the SwiftUI Window scene; Escape exits native fullscreen, standard green control works. Track standard command integration in D13/keyboard polish; do not claim it repaired.
 
@@ -762,6 +816,8 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-06 — UI7 complete:377 engine/83 app/build pass with installedSDKflags. Kept exact existing B/I.A artwork after Ibrahim clarified surroundings only; no alternate-color asset adopted. Content is bare, Dock tile white, selector visible at sidebar bottom. Native Light/Dark switches inspected; user later selected System/Activity, so no further automation or relaunch. Review warning fixed with mounted offscreen native theme/retained-state assertions after layout settles; final full suite passes. UI7 ready after UI6; no Git or real-chat writes.
 
 - 2026-10-06 — UI6 completed:377 engine /81 app/build pass. Imagegen transparent extraction replaces white runtime tile; brand/menu/theme/reduced-transparency PNGs inspected. Root native fixture confirms graphite signed gray-glass logo after exact-binary refresh. Separate reviewer warning closed by explicit native accessibility injection, opaque pixel assertions and Dock notification refresh; initial hosted view identity corrected. UI6 patch follows UI5; no Git/real-chat writes. SystemUIServer direct menu capture timed out, so no native item photograph claimed.
 

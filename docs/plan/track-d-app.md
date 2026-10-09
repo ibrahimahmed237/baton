@@ -228,3 +228,19 @@ UI4/UI5 completion 2026-10-06: independent review findings fixed. Shared tree pa
 **Done when.** Menu uses the signed mark, no baked-in white square remains in runtime logo placements, graphite uses gray glass and reduced-transparency fallback, and tests/build/review are green. I.A is retained but its tiny menu rendering is not claimed as comfortably readable.
 
 UI6 completion 2026-10-06:377 engine /81 app tests and installed-SDK Swift build pass. Separate reviewer confirms accessibility injection/opaque pixels and stable initial root identity fixes. Native graphite fixture and light/graphite/menu/badge/reduced-transparency renders inspected. Direct menu-item capture was unavailable; signature remains tiny at menu size. Ready after UI5.
+
+## UI7 — bare in-app identity and theme choice
+
+**Goal.** Keep a white-tile Dock icon, remove all panels around in-app logos in both appearances, and expose Light/Dark/System choices.
+
+**From.** Ibrahim's 2026-10-06 clarification: app bar icon should have white around it, inside app no surrounding panel, and where to switch between themes. Earlier context identifies app bar as Dock.
+
+**Files.** app/Brand and BatonUI/Resources/Brand dark asset; Components/BrandMark.swift and WindowPresentation.swift; Theme/Theme.swift and ThemePreference.swift; WindowView.swift; PopoverView.swift; BatonApp.swift; note catalogue and applicable links fixtures; focused BatonUITests; status/track/UI7 report/patch.
+
+**Steps.** Separate content, menu and Dock placements. Bare transparent marks for content in both themes; B and I.A remain burgundy/black as Ibrahim explicitly clarified. Dock keeps burgundy/black on white; menu retains its prior theme-aware badge rendering. Persist local app Light/Dark/System appearance preference and expose a catalogue-labelled sidebar selector; System follows macOS. Update window/popover without losing selection and without changing OS settings. C2/D12 must later wire preference to engine settings as applicable.
+
+**Checks.** Pixel/snapshot assertions for bare content and white Dock, persistence/resolution of preferences, stable window/model state, full app/engine gates, native fixture theme switching and independent review.
+
+**Done when.** In-app logo has no backing in either theme, Dock tile is white, theme choice is visible and retained, build/tests/review pass and running fixture was inspected.
+
+UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build pass. B/I.A image pixels identical across themes, content margins transparent, Dock borders white. Native sidebar Light/Dark/System inspected and changed surfaces; independent hosted-update test warning fixed and rechecked. Engine preference integration remains C2/D12. No image replacement, real chats or Git writes.

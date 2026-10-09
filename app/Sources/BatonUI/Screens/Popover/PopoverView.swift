@@ -101,7 +101,7 @@ public struct BatonMenuIcon: View {
         return image
     }
     public var body: some View {
-        BrandMark(size: 22, reduceTransparency: reduceTransparency)
+        BrandMark(size: 22, reduceTransparency: reduceTransparency, placement: .menu)
             .frame(width: 26, height: 22, alignment: .leading)
             .overlay(alignment: .topTrailing) {
                 if needsDecision {

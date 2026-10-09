@@ -160,6 +160,38 @@
       "text": "Choose Link a recent chat to find a conversation to link.",
       "buttons": [],
       "status_line": null
+    },
+    {
+      "id": "screen.theme",
+      "tone": "info",
+      "values": {},
+      "text": "Appearance",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.light",
+      "tone": "info",
+      "values": {},
+      "text": "Light",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.graphite",
+      "tone": "info",
+      "values": {},
+      "text": "Dark",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.system",
+      "tone": "info",
+      "values": {},
+      "text": "System",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

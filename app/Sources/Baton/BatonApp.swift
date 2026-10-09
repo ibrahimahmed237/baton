@@ -8,6 +8,7 @@ import BatonUI
 struct BatonApp: App {
     @NSApplicationDelegateAdaptor(BatonAppDelegate.self) private var appDelegate
     @StateObject private var state: PopoverViewModel
+    @StateObject private var appearance = ThemePreference.shared
     @State private var menuBarInserted = true
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -20,7 +21,7 @@ struct BatonApp: App {
     var body: some Scene {
         MenuBarExtra(isInserted: $menuBarInserted) {
             PopoverView(model: state, linkRecent: { appDelegate.showMainWindow(section: .suggestions) })
-                .batonTheme(colorScheme == .dark ? .graphite : .light)
+                .batonTheme(appearance.theme)
                 .task { await state.refresh() }
         } label: {
             if CommandLine.arguments.contains("--review-label") {
@@ -45,37 +46,10 @@ private final class BatonAppDelegate: NSObject, NSApplicationDelegate {
         return BatonMainWindowController(model: WindowViewModel(engine: FixtureEngine(directory: fixtures, state: "d3_filled")))
     }()
 
-    private var appearanceObservation: NSKeyValueObservation?
-    private var displayOptionsObserver: NSObjectProtocol?
-
     func applicationDidFinishLaunching(_ notification: Notification) {
-        updateAppearance(NSApplication.shared.effectiveAppearance)
-        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, change in
-            let theme: Theme = change.newValue?.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light
-            Task { @MainActor [weak self] in self?.applyTheme(theme) }
-        }
-        displayOptionsObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
-            object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    self?.updateApplicationIcon(NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light)
-                }
-            }
+        if let icon = BatonBrand.applicationIcon(theme: .light) { NSApplication.shared.applicationIconImage = icon }
         NSApplication.shared.setActivationPolicy(.regular)
         showMainWindow()
-    }
-
-    private func updateAppearance(_ appearance: NSAppearance) {
-        applyTheme(appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light)
-    }
-
-    private func applyTheme(_ theme: Theme) {
-        updateApplicationIcon(theme)
-        mainWindow.setTheme(theme)
-    }
-
-    private func updateApplicationIcon(_ theme: Theme) {
-        if let icon = BatonBrand.applicationIcon(theme: theme) { NSApplication.shared.applicationIconImage = icon }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
