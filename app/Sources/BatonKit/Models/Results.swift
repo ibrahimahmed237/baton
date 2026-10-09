@@ -125,15 +125,19 @@ public struct LinkResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -143,6 +147,8 @@ public struct LinkResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -154,15 +160,19 @@ public struct CopyResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -172,6 +182,8 @@ public struct CopyResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -183,15 +195,19 @@ public struct RelinkResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -201,6 +217,8 @@ public struct RelinkResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -212,15 +230,19 @@ public struct UnlinkResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -230,6 +252,8 @@ public struct UnlinkResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -241,15 +265,19 @@ public struct SyncResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -259,6 +287,8 @@ public struct SyncResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -270,15 +300,19 @@ public struct MergeResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -288,6 +322,8 @@ public struct MergeResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -299,15 +335,19 @@ public struct RestoreResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -317,6 +357,8 @@ public struct RestoreResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -328,15 +370,19 @@ public struct AskAddResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -346,6 +392,8 @@ public struct AskAddResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -357,15 +405,19 @@ public struct RenameResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -375,6 +427,8 @@ public struct RenameResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 
@@ -420,16 +474,20 @@ public struct ContinueResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
     public var opened: Bool
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], opened: Bool) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], opened: Bool, confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
         self.opened = opened
     }
 
@@ -440,6 +498,8 @@ public struct ContinueResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
         case opened
     }
 }
@@ -501,17 +561,21 @@ public struct UndoResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
     public var removes: [RemovedTurn]
     public var endsAt: Turn?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], removes: [RemovedTurn], endsAt: Turn? = nil) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], removes: [RemovedTurn], endsAt: Turn? = nil, confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
         self.removes = removes
         self.endsAt = endsAt
     }
@@ -523,6 +587,8 @@ public struct UndoResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
         case removes
         case endsAt = "ends_at"
     }
@@ -592,16 +658,20 @@ public struct BriefResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
     public var brief: BriefDetails
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], brief: BriefDetails) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], brief: BriefDetails, confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
         self.brief = brief
     }
 
@@ -612,6 +682,8 @@ public struct BriefResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
         case brief
     }
 }
@@ -647,16 +719,20 @@ public struct RelaunchResult: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
     public var replying: [Chat]
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], replying: [Chat]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], replying: [Chat], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
         self.replying = replying
     }
 
@@ -667,6 +743,8 @@ public struct RelaunchResult: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
         case replying
     }
 }

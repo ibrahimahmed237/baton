@@ -353,15 +353,19 @@ public struct Plan: Codable, Equatable, Sendable {
     public var steps: [Step]
     public var decisionNeeded: Bool
     public var notes: [Note]
+    public var confirmation: Note?
+    public var stage: String?
 
     /// Creates a contract value without requiring JSON.
-    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note]) {
+    public init(planID: String, applied: Bool, linkID: Int? = nil, steps: [Step], decisionNeeded: Bool, notes: [Note], confirmation: Note? = nil, stage: String? = nil) {
         self.planID = planID
         self.applied = applied
         self.linkID = linkID
         self.steps = steps
         self.decisionNeeded = decisionNeeded
         self.notes = notes
+        self.confirmation = confirmation
+        self.stage = stage
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -371,6 +375,8 @@ public struct Plan: Codable, Equatable, Sendable {
         case steps
         case decisionNeeded = "decision_needed"
         case notes
+        case confirmation
+        case stage
     }
 }
 

@@ -1,0 +1,65 @@
+{
+  "plan_id": "p_d6_claude_open_idle",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "add_after_release",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "chat open and idle",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.chat_open_release",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "n": 2
+      },
+      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Claude.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "add_now",
+          "label": "Add them now",
+          "primary": false
+        }
+      ],
+      "status_line": "2 turns waiting, attached on next message"
+    }
+  ],
+  "confirmation": {
+    "id": "plan.confirm_sync",
+    "tone": "info",
+    "values": {},
+    "text": "Sync the waiting turns.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Sync",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  }
+}

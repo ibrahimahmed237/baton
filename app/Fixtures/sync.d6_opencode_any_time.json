@@ -1,0 +1,54 @@
+{
+  "plan_id": "p_d6_opencode_any_time",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "add",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "",
+      "needs": [
+        "reopen_chat_to_see"
+      ],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.any_time",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode",
+        "n": 2
+      },
+      "text": "Baton adds these 2 turns now. If the chat is on screen, open it again to see them.",
+      "buttons": [],
+      "status_line": "Open the chat again to see 2 new turns"
+    }
+  ],
+  "confirmation": {
+    "id": "plan.confirm_sync",
+    "tone": "info",
+    "values": {},
+    "text": "Sync the waiting turns.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Sync",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  }
+}

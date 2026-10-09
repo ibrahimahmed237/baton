@@ -21,12 +21,12 @@ G2 common app check, G3 brand assertion and C1 accepted on 2026-10-09; G2 dab931
 |---|---|---|---|---|---|
 | **CP0** ✅ | E0 ✅ E1 ✅ | B0 fake ✅ | | D0 ✅ | |
 | **CP1** ✅ | E2 ✅ E3 ✅ E4 ✅ E5 ✅ E6 ✅ | | | D1 ✅ D2 ✅ D3 ✅ D4 ✅ | |
-| **CP2** ◐ | R10 ✅ E7 merge ✅ E8 undo ✅ E9 usage ◐ E10 briefs ◐ | B1 Claude ✅ (fixtures) B2 Codex ◐ | C1 skeleton ✅ C2 read commands ○ | D4b ✅ D5 ✅ UI1–UI13 ✅ D6 confirmation ◐ D7 hand-off ◐ | Claude and Codex adapters on two throwaway chats ○ (Ibrahim said go) |
+| **CP2** ◐ | R10 ✅ E7 merge ✅ E8 undo ✅ E9 usage ✅ E10 briefs ◐ | B1 Claude ✅ (fixtures) B2 Codex ◐ | C1 skeleton ✅ C2 read commands ○ | D4b ✅ D5 ✅ UI1–UI13 ✅ D6 confirmation ✅ D7 hand-off ◐ | Claude and Codex adapters on two throwaway chats ○ (Ibrahim said go) |
 | **CP3** ○ | E11 keep, pin, pause, names ○ E12 notes audit ○ E13 setup check, relaunch ○ | B3 OpenCode ○ B4 Cursor ○ | C3 action commands ○ C4 hooks ○ C5 relaunch ○ C6 background runs ○ | D8 merge ○ D9 history, undo ○ D10 second opinion ○ D11 setup, settings ○ | Catch-up at send and sync at turn end in all four tools; relaunch for Claude and Cursor ○ |
 | **CP4** ○ | | | C7 limit offer, file watching ○ | D12 wire to the real engine ○ | Each screen by hand against throwaway chats ○ |
 | **CP5** ○ | | | | D13 polish ○ | The CP5 checklist in [CHECKPOINTS.md](CHECKPOINTS.md) ○ |
 
-**Count:** 55 packages. 33 done, 5 in review or repair, 17 not started. Plus four live checks, none done yet.
+**Count:** 55 packages. 35 done, 3 in review or repair, 17 not started. Plus four live checks, none done yet.
 
 ## What "finished" means
 

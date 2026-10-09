@@ -116,7 +116,7 @@ Rules for this track:
 
 ## D6. What-will-happen and confirmation
 
-**Status.** Repair started 2026-10-09 under the approved [CP2 repair plan](CP2-REPAIR-PLAN.md).
+**Status.** D6 accepted 2026-10-09 for CP2 fixture-screen scope after five reviewer findings were fixed;129 app/build pass. Commit prepared; [report](reports/D6-2026-10-09.md).
 **Files.** `app/Sources/BatonUI/Screens/PlanReview/`, additive `app/Sources/BatonKit/Models/` and shared `ConfirmationGate`, focused D6/D5 tests and minimal D6 fixtures. C2 owns final fixture generation; root owns shared contract/catalogue.
 **Repair acceptance.** Exact plan/revision display receipt, action provenance and side routing, semantic copy-and-link, preservation of unavailable CP3 requests and action-specific catalogue confirmation/Cancel controls. Unknown or ambiguous buttons never apply. Tests validate full requests and tokens, not unconditional fake success.
 

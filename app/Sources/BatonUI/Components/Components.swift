@@ -134,12 +134,13 @@ public struct PlanSteps: View {
 /// Tracks whether the exact current notes have appeared before an action is enabled.
 public struct ConfirmationGate: Equatable {
     private var displayed: [Note]?
+    private var identity: String?
     /// Starts with no notes acknowledged as displayed.
     public init() {}
     /// Acknowledges the exact notes that appeared on screen.
-    public mutating func markDisplayed(_ notes: [Note]) { displayed = notes }
+    public mutating func markDisplayed(_ notes: [Note], identity: String? = nil) { displayed = notes; self.identity = identity }
     /// Allows confirmation only for non-empty unchanged notes.
-    public func permits(_ notes: [Note]) -> Bool { !notes.isEmpty && displayed == notes }
+    public func permits(_ notes: [Note], identity: String? = nil) -> Bool { !notes.isEmpty && displayed == notes && self.identity == identity }
 }
 
 /// Displays all required notes before enabling their confirmation buttons.
@@ -148,15 +149,23 @@ public struct ConfirmBar: View {
     @State private var gate = ConfirmationGate()
     public let notes: [Note]
     public let buttons: [NoteButton]
-    private let action: (NoteButton) -> Void
+    private let action: (Int, NoteButton) -> Void
+    private let revision: String?
+    private let enabled: (Int, NoteButton) -> Bool
     /// Presents notes with confirmation buttons gated on their appearance.
     public init(notes: [Note], buttons: [NoteButton], action: @escaping (NoteButton) -> Void = { _ in }) {
-        self.notes = notes; self.buttons = buttons; self.action = action
+        self.notes = notes; self.buttons = buttons; self.revision = nil; self.enabled = { _, _ in true }; self.action = { _, button in action(button) }
+    }
+    /// Binds indexed choices, including identical per-side buttons, to one plan revision.
+    public init(notes: [Note], buttons: [NoteButton], revision: String, enabled: @escaping (Int, NoteButton) -> Bool = { _, _ in true }, actionAtIndex: @escaping (Int, NoteButton) -> Void) {
+        self.notes = notes; self.buttons = buttons; self.revision = revision; self.enabled = enabled; self.action = actionAtIndex
     }
     private var displayIdentity: Data? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
-        return try? encoder.encode(notes)
+        guard var data = try? encoder.encode(notes) else { return nil }
+        data.append(Data((revision ?? "").utf8))
+        return data
     }
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -167,11 +176,11 @@ public struct ConfirmBar: View {
                 }
             }
             .id(displayIdentity)
-            .onAppear { gate.markDisplayed(notes) }
+            .onAppear { gate.markDisplayed(notes, identity: revision) }
             HStack {
-                ForEach(buttons, id: \.id) { button in
-                    Button(button.label) { if gate.permits(notes) { action(button) } }
-                        .disabled(!gate.permits(notes))
+                ForEach(Array(buttons.enumerated()), id: \.offset) { index, button in
+                    Button(button.label) { if gate.permits(notes, identity: revision), enabled(index, button) { action(index, button) } }
+                        .disabled(!gate.permits(notes, identity: revision) || !enabled(index, button))
                         .buttonStyle(BatonButtonStyle(meaning: button.primary == true ? .action : .neutral))
                 }
             }

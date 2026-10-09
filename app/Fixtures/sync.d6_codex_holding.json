@@ -1,0 +1,58 @@
+{
+  "plan_id": "p_d6_codex_holding",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "attach",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "Codex holds this chat",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.chat_open",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "n": 2
+      },
+      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Codex.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Codex, sync, reopen",
+          "primary": true
+        }
+      ],
+      "status_line": "2 turns waiting, attached on next message"
+    }
+  ],
+  "confirmation": {
+    "id": "plan.confirm_sync",
+    "tone": "info",
+    "values": {},
+    "text": "Sync the waiting turns.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Sync",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  }
+}

@@ -6,12 +6,12 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-Stopping at the E9/D6 package boundary: the measured five-hour usage window is100% consumed. No E10/D7 repair was started. E9 is accepted after root/independent review; D6 fixture-screen repair is accepted after five routing findings were fixed. Final working tree **670 engine /129 app**, build green. Isolated staged E9 passes **555 engine** without unfinished E10/B2. G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, approved plan record `825137e` committed; no push.
+Stopping at the E9/D6 package boundary: the measured five-hour usage window is100% consumed. No E10/D7 repair was started. E9 committed `650a8d1` after root/independent review; D6 fixture-screen repair is accepted after five routing findings were fixed. Final working tree **670 engine /129 app**, build green. Isolated staged E9 passes **555 engine** without unfinished E10/B2. G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, approved plan record `825137e` committed; no push.
 
 | Package | Current state | Owned files |
 |---|---|---|
-| E9 | Accepted; staged for own commit | Scope/outputs in reports/E9-2026-10-09.md; isolated Codex/catalogue hunks |
-| D6 | Accepted fixture screen; final isolated app scope check/commit next | PlanReview, additive BatonKit models/ConfirmationGate, tests and d6 fixtures |
+| E9 | Committed `650a8d1`; isolated555/full670 engine pass | Scope/outputs in reports/E9-2026-10-09.md; isolated Codex/catalogue hunks |
+| D6 | Accepted fixture screen; isolated staged build/tests pass119, commit prepared | PlanReview, additive BatonKit models/ConfirmationGate, tests and d6 fixtures |
 | E10 | Preserved unfinished implementation, privacy/lifecycle repairs NOT started | services/brief.py, transcripts.py, test_brief and test_working_across_brief; catalogue E10 block; test_merge M12 intent test |
 | B2 | Preserved unfinished native fixture implementation; safety repairs/live owed | adapters/codex except committed reader classifier, native fixtures/tests/report |
 | D7 | Preserved unfinished hand-off; repair NOT started | HandOff production/tests and d7 fixtures; D6 API/Continue compatibility edits retained here |
@@ -20,7 +20,7 @@ Stopping at the E9/D6 package boundary: the measured five-hour usage window is10
 
 ## Next
 
-1. Finish the E9/D6 isolated commit records at this green boundary. Resume E10 engine and D7 app repairs in parallel next session under CP2-REPAIR-PLAN.md; preserve all unfinished files.
+1. E9 committed650a8d1; finish D6 commit/records at this green boundary. Resume E10 engine and D7 app repairs in parallel next session under CP2-REPAIR-PLAN.md; preserve all unfinished files.
 2. Independently review each repair and commit one package at a time; update STATUS/MAP/HANDOFF after each. Approved Git writes work; no push.
 3. B2 safety repairs/review, then C2 safe reads and deterministic generated fixtures. C2 must label future-only providers and add service-backed effects; D6 modeled transport is routing evidence only.
 4. Explicitly scope the Claude/Codex throwaway live run after blockers close; each app closure still needs Ibrahim's go. Record every CP2 check; CP2 remains unpassed.
@@ -57,47 +57,39 @@ Stopping at the E9/D6 package boundary: the measured five-hour usage window is10
 | G2 | 2026-10-09 | `dab931c` | 650 engine, 115 app; build green |
 | G3 | 2026-10-09 | `7f6e39f` | 115 app green |
 | C1 | 2026-10-09 | `e15e076` | 650 working-tree engine / 115 app green |
+| E9 | 2026-10-09 | `650a8d1` | 555 isolated /670 working-tree engine;129 app build green |
 
 ## Ready to commit
 
-### E9
+### D6
 
-- `baton/adapters/claude/reader.py`
-- `baton/adapters/codex/reader.py`
-- `baton/adapters/fake/tool.py`
-- `baton/domain/model.py`
-- `baton/ledger/evidence.py`
-- `baton/ledger/links.py`
-- `baton/ledger/schema.py`
-- `baton/ledger/sqlite_store.py`
-- `baton/ledger/turns.py`
-- `baton/notes/catalogue.py`
-- `baton/ports/store.py`
-- `baton/ports/tool.py`
-- `baton/services/digest.py`
-- `baton/services/limit_offer.py`
-- `baton/services/linker.py`
-- `baton/services/noteformat.py`
-- `baton/services/observations.py`
-- `baton/services/refresh.py`
-- `baton/services/usage.py`
-- `tests/scenarios/test_working_across.py`
-- `tests/unit/test_claude_reader.py`
-- `tests/unit/test_codex_reader.py`
-- `tests/unit/test_digest.py`
-- `tests/unit/test_evidence.py`
-- `tests/unit/test_usage.py`
-- `docs/plan/ARCHITECTURE.md`
-- `docs/plan/CP2-REPAIR-PLAN.md`
-- `docs/plan/track-e-core.md`
+- `app/Fixtures/link.d6_new_chat_claude.json`
+- `app/Fixtures/link.d6_new_chat_codex.json`
+- `app/Fixtures/link.d6_new_chat_cursor.json`
+- `app/Fixtures/relaunch.d6_idle.json`
+- `app/Fixtures/relaunch.d6_replying.json`
+- `app/Fixtures/relaunch.d6_when_idle.json`
+- `app/Fixtures/setup.d6_labels.json`
+- `app/Fixtures/sync.d6_claude_open_idle.json`
+- `app/Fixtures/sync.d6_claude_replying.json`
+- `app/Fixtures/sync.d6_codex_holding.json`
+- `app/Fixtures/sync.d6_cursor_running.json`
+- `app/Fixtures/sync.d6_opencode_any_time.json`
+- `app/Sources/BatonKit/Models/Results.swift`
+- `app/Sources/BatonKit/Models/Shared.swift`
+- `app/Sources/BatonUI/Components/Components.swift`
+- `app/Sources/BatonUI/Screens/PlanReview/PlanReviewView.swift`
+- `app/Sources/BatonUI/Screens/PlanReview/PlanReviewViewModel.swift`
+- `app/Tests/BatonUITests/PlanReviewTests.swift`
+- `docs/plan/track-d-app.md`
 - `docs/plan/STATUS.md`
 - `docs/plan/MAP.md`
 - `docs/plan/HANDOFF.md`
-- `docs/plan/reports/E9-2026-10-09.md`
+- `docs/plan/reports/D6-2026-10-09.md`
 
-Subject: Keep usage offers and catch-up evidence reliable
+Subject: Keep plan confirmations tied to the displayed action
 
-Body: Persist limit offers across processes and validate completed source content before catch-up. Keep unfinished replies and legacy observations distinct so digest counts cannot imply missing or changed history was received.
+Body: Preserve the original request and offering side when choices change, and block stale or unsupported confirmations. Explicit catalogue controls and token-aware tests prevent attachment or future relaunch samples from claiming the wrong action succeeded.
 
 ## Decisions and reviewer findings
 

@@ -1,0 +1,66 @@
+{
+  "plan_id": "p_d6_new_chat_claude",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "create",
+      "turns": [],
+      "reason": "new chat",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "new_chat.relaunch",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "Relaunch Claude to see this chat"
+    }
+  ],
+  "confirmation": {
+    "id": "plan.confirm_link",
+    "tone": "info",
+    "values": {},
+    "text": "Create the linked chat described above.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  }
+}

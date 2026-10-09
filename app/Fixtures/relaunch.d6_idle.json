@@ -1,0 +1,98 @@
+{
+  "plan_id": "p_d6_relaunch_idle",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "close",
+      "turns": [],
+      "reason": "app must be closed",
+      "needs": [
+        "app_closed"
+      ],
+      "notes": []
+    },
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "add",
+      "turns": [
+        41,
+        42
+      ],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    },
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "reopen",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.app_must_close",
+      "tone": "warning",
+      "values": {
+        "tool": "Claude",
+        "n": 2
+      },
+      "text": "Baton closes Claude, writes, and opens Claude again on this folder; your windows come back. Baton never writes while Claude runs, because Claude would write over it.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "2 turns waiting until Claude is closed"
+    },
+    {
+      "id": "plan.unavailable",
+      "tone": "info",
+      "values": {},
+      "text": "This action is not available yet. Your current choice is kept.",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ],
+  "replying": [],
+  "confirmation": {
+    "id": "plan.unavailable",
+    "tone": "info",
+    "values": {},
+    "text": "This action is not available yet. Your current choice is kept.",
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  }
+}
