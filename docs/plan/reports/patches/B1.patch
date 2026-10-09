@@ -1,0 +1,1183 @@
+diff --git a/baton/adapters/claude/facts.py b/baton/adapters/claude/facts.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/facts.py
+@@ -0,0 +1,5 @@
++"""Capabilities measured by M0; native schema plus checked CLI version."""
++from ...domain.capabilities import Capabilities, HookNeed, Visibility, WriteWindow
++FACTS = Capabilities(WriteWindow.CLOSED_OR_RELEASED, Visibility.AFTER_RELAUNCH,
++ Visibility.AFTER_RELAUNCH, True, False, True, True, True, True, HookNeed.NONE,
++ ("2.1.284",), True)
+diff --git a/baton/adapters/claude/runner.py b/baton/adapters/claude/runner.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/runner.py
+@@ -0,0 +1,27 @@
++"""Ephemeral reader process; never resumes a linked session."""
++import shutil
++import subprocess
++from ...domain.errors import NotAvailable
++from ...ports.tool import SetupFinding
++
++class ClaudeRunner:
++    """Run a separate ephemeral process restricted to reading."""
++    def __init__(self, command=None): self.command = command or subprocess.run
++    def _run(self, args, folder=None):
++        return self.command(args, cwd=folder, capture_output=True, text=True, timeout=120)
++    def available(self):
++        """Report whether the background command is signed in and usable."""
++        try:
++            result = self._run(['claude', 'auth', 'status', '--json'])
++            import json
++            ok = result.returncode == 0 and json.loads(result.stdout).get('loggedIn') is True
++        except (OSError, ValueError, subprocess.TimeoutExpired): ok = False
++        return SetupFinding('runner', ok, '' if ok else 'setup.runner', {'tool': 'claude'})
++    def ask(self, prompt, folder, read_only=True):
++        """Ask in an ephemeral read-only process without resuming a linked chat."""
++        if not read_only: raise NotAvailable()
++        if not self.available().ok: raise NotAvailable()
++        result = self._run(['claude', '-p', '--no-session-persistence', '--setting-sources', 'project',
++            '--allowedTools', 'Read,Grep,Glob', '--', prompt], folder)
++        if result.returncode: raise NotAvailable()
++        return result.stdout
+diff --git a/baton/adapters/claude/hooks.py b/baton/adapters/claude/hooks.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/hooks.py
+@@ -0,0 +1,65 @@
++"""Merge owned hook entries without modifying unrelated project settings."""
++import json
++import importlib.util
++from ...ports.tool import SetupFinding
++
++class ClaudeHooks:
++    """Manage owned hook settings and native prompt-hook output."""
++    COMMANDS = {"UserPromptSubmit": "python3 -m baton.hooks.prompt --tool claude",
++                "Stop": "python3 -m baton.hooks.turn_end --tool claude"}
++    def __init__(self, adapter, hook_commands=None, entrypoints_available=None):
++        self.adapter = adapter
++        self.commands = hook_commands or self.COMMANDS
++        self.entrypoints_available = entrypoints_available or self._available
++    @staticmethod
++    def _available():
++        try:
++            return all(importlib.util.find_spec(name) is not None for name in
++                ('baton.hooks.prompt', 'baton.hooks.turn_end'))
++        except (ModuleNotFoundError, ValueError): return False
++    @property
++    def path(self):
++        """Return the settings path confined to the adapter root."""
++        return self.adapter.locator.inside(self.adapter.root / '.claude/settings.json')
++    def _read(self):
++        if not self.path.exists(): return {}
++        result = json.loads(self.path.read_text())
++        if not isinstance(result, dict): raise ValueError('invalid settings')
++        return result
++    def check(self):
++        """Report whether the owned hook entries and entry points are ready."""
++        try:
++            settings = self._read(); hooks = settings.get('hooks', {})
++            ok = all(any(any(h.get('type') == 'command' and h.get('command') == command for h in e.get('hooks', []))
++                for e in hooks.get(event, [])) for event, command in self.commands.items())
++        except (OSError, ValueError, TypeError, AttributeError): ok = False
++        ok = ok and self.entrypoints_available()
++        return SetupFinding('hooks', ok, '' if ok else 'setup.hooks', {'need': 'none', 'tool': 'claude'})
++    def install(self):
++        """Add owned hook entries without replacing unrelated settings."""
++        if not self.entrypoints_available(): return self.check()
++        settings = self._read(); hooks = settings.setdefault('hooks', {})
++        for event, command in self.commands.items():
++            entries = hooks.setdefault(event, [])
++            if not any(any(h.get('command') == command for h in e.get('hooks', [])) for e in entries):
++                entries.append({'hooks': [{'type': 'command', 'command': command}]})
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        self.path.write_text(json.dumps(settings, indent=2))
++        return self.check()
++    def uninstall(self):
++        """Remove only the hook entries owned by Baton."""
++        settings = self._read()
++        for event, command in self.commands.items():
++            entries = settings.get('hooks', {}).get(event, [])
++            for entry in entries:
++                entry['hooks'] = [h for h in entry.get('hooks', []) if h.get('command') != command]
++            if event in settings.get('hooks', {}): settings['hooks'][event] = [e for e in entries if e.get('hooks')]
++        if self.path.exists(): self.path.write_text(json.dumps(settings, indent=2))
++    def attach_reply(self, text, notice):
++        """Encode native additional context and an optional notice."""
++        result = {'hookSpecificOutput': {'hookEventName': 'UserPromptSubmit', 'additionalContext': text}}
++        if notice is not None: result['systemMessage'] = notice
++        return json.dumps(result)
++    def turn_end_reply(self):
++        """Return the native empty turn-end hook response."""
++        return ''
+diff --git a/baton/adapters/claude/__init__.py b/baton/adapters/claude/__init__.py
+--- a/baton/adapters/claude/__init__.py
++++ b/baton/adapters/claude/__init__.py
+@@ -0,0 +1,3 @@
++"""Native Claude Code adapter with explicit filesystem and process boundaries."""
++from .tool import ClaudeAdapter
++__all__ = ['ClaudeAdapter']
+diff --git a/baton/adapters/claude/locator.py b/baton/adapters/claude/locator.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/locator.py
+@@ -0,0 +1,60 @@
++"""Stable desktop sidebar identities, resolved afresh on every operation."""
++import json
++import re
++from pathlib import Path
++from datetime import datetime, timezone
++from ...ports.tool import ChatRef
++
++class ClaudeLocator:
++    """Resolve stable sidebar identities to their current native files."""
++    def __init__(self, root): self.root = Path(root).resolve()
++    def inside(self, path):
++        """Refuse any resolved path outside the configured adapter root."""
++        path = Path(path).resolve()
++        if not path.is_relative_to(self.root): raise ValueError("outside adapter root")
++        return path
++    @property
++    def sidebar(self):
++        """Return the desktop sidebar directory under the configured root."""
++        return self.root / "Library/Application Support/Claude/claude-code-sessions"
++    def entries(self):
++        """Read native sidebar entries without applying discovery filters."""
++        for path in self.sidebar.glob("*/*/local_*.json"):
++            path = self.inside(path)
++            try: entry = json.loads(path.read_text())
++            except (OSError, ValueError): continue
++            if isinstance(entry, dict) and entry.get("sessionId"): yield path, entry
++    def entry(self, chat_id):
++        """Locate the sidebar entry for one stable chat identity."""
++        matches = [(p, e) for p, e in self.entries() if e["sessionId"] == chat_id]
++        if len(matches) != 1: raise KeyError(chat_id)
++        return matches[0]
++    def session_path(self, chat_id):
++        """Follow the sidebar identity to its current native chat file."""
++        _, entry = self.entry(chat_id)
++        sid = entry.get("cliSessionId", "")
++        if not sid or Path(sid).name != sid: raise ValueError("invalid session id")
++        matches = list((self.root / ".claude/projects").glob("*/" + sid + ".jsonl"))
++        if len(matches) != 1: raise KeyError(chat_id)
++        return self.inside(matches[0])
++    def chats(self):
++        """List discoverable native sidebar chats."""
++        return [self.resolve(e["sessionId"]) for _, e in self.entries()
++                if not e.get("isArchived") and not e.get("scriptStarted")]
++    def resolve(self, chat_id):
++        """Return the current reference for a stable chat identity."""
++        _, entry = self.entry(chat_id)
++        self.session_path(chat_id)
++        ms = entry.get("lastActivityAt", 0)
++        updated = datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat().replace("+00:00", "Z")
++        return ChatRef(chat_id, entry.get("title", ""), entry.get("cwd", ""), updated)
++    def name(self, chat_id):
++        """Read the current title from the native sidebar entry."""
++        return self.resolve(chat_id).name
++    def creation_paths(self, chat_id, sid, folder, account=None):
++        """Choose confined native chat and sidebar paths for creation."""
++        accounts = sorted({p.parent for p, _ in self.entries()})
++        target = self.inside(account) if account else (accounts[0] if len(accounts) == 1 else None)
++        if target is None: raise ValueError("an explicit sidebar account is required")
++        project = re.sub(r"[^A-Za-z0-9]", "-", folder) or "-"
++        return self.inside(self.root / ".claude/projects" / project / (sid + ".jsonl")), self.inside(target / (chat_id + ".json"))
+diff --git a/baton/adapters/claude/reader.py b/baton/adapters/claude/reader.py
+--- a/baton/adapters/claude/reader.py
++++ b/baton/adapters/claude/reader.py
+@@ -10,7 +10,7 @@
+ import json
+ import re
+ 
+-from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
++from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Message, Turn
+ 
+ # User records Claude Code writes for its own purposes. Records from current
+ # versions carry `origin`; this list covers older records that do not.
+@@ -29,6 +29,7 @@
+ 
+ 
+ def read_records(path: str) -> list[dict]:
++    """Read JSONL records, tolerating damaged lines for read-only use."""
+     records = []
+     with open(path, errors="replace") as fh:
+         for line in fh:
+@@ -79,6 +80,7 @@
+ 
+ 
+ def is_prompt(record: dict) -> bool:
++    """Distinguish real human or peer prompts from injected records."""
+     if record.get("type") != "user" or record.get("isCompactSummary") or record.get("isVisibleInTranscriptOnly"):
+         return False
+     content = (record.get("message") or {}).get("content")
+@@ -115,10 +117,10 @@
+         ident = uuid if len(content) == 1 else "%s#%d" % (uuid, index)
+         kind = block.get("type")
+         if record["type"] == "assistant" and kind == "text" and block.get("text", "").strip():
+-            out.append(Message(id=ident, kind=REPLY, text=block["text"], at=at))
++            out.append(Message(id=ident, kind=TOOL_TEXT if record.get("batonMessageKind") == TOOL_TEXT else REPLY, text=block["text"], at=at))
+         elif record["type"] == "assistant" and kind == "tool_use":
+             out.append(Message(id=ident, kind=TOOL_CALL, at=at, tool=block.get("name", ""),
+-                               tool_input=block.get("input"), call_id=block.get("id", "")))
++                               tool_input=block.get("input"), call_id=record.get("batonOriginalCallId", block.get("id", ""))))
+         elif record["type"] == "user" and kind == "tool_result":
+             out.append(Message(id=ident, kind=TOOL_RESULT, text=_result_text(block.get("content")), at=at,
+                                call_id=block.get("tool_use_id", ""), is_error=bool(block.get("is_error"))))
+@@ -126,6 +128,7 @@
+ 
+ 
+ def turns_from_records(records: list[dict]) -> list[Turn]:
++    """Read the live public conversation as whole turns."""
+     turns: list[Turn] = []
+     prompt, messages = None, []
+     for record in live_chain(records):
+@@ -142,4 +145,44 @@
+ 
+ 
+ def read_chat(path: str) -> list[Turn]:
++    """Read public turns from one native chat file."""
+     return turns_from_records(read_records(path))
++
++
++class ClaudeReader:
++    """Resolve stable sidebar ids, then read only the native live chain."""
++    def __init__(self, adapter): self.adapter = adapter
++    def read(self, chat_id):
++        """Read the public turns for the current stable chat identity."""
++        return read_chat(str(self.adapter.locator.session_path(chat_id)))
++    def usage(self, chat_id):
++        """Read the latest context usage and provider limit evidence."""
++        from datetime import datetime, timezone
++        from ...ports.tool import Usage
++        records = live_chain(read_records(str(self.adapter.locator.session_path(chat_id))))
++        tokens, size, reached, reset = 0, None, False, None
++        for record in reversed(records):
++            if record.get("type") != "assistant": continue
++            if record.get("isApiErrorMessage"):
++                quota = record.get("quotaLimits") or {}
++                reached = record.get("apiErrorStatus") == 429 or record.get("error") == "rate_limit"
++                if quota.get("resetsAt") is not None:
++                    reset = datetime.fromtimestamp(quota["resetsAt"], timezone.utc).isoformat().replace("+00:00", "Z")
++                continue
++            message = record.get("message") or {}
++            usage = message.get("usage")
++            if isinstance(usage, dict):
++                tokens = sum(usage.get(k, 0) or 0 for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"))
++                size = self.adapter.context_sizes.get(message.get("model"))
++                break
++        return Usage(tokens, size, reached, reset)
++    def files_changed(self, turn):
++        """Extract paths changed by native edit or write tool calls."""
++        paths = []
++        for message in turn.messages:
++            if message.kind == TOOL_CALL and message.tool.lower() in ("write", "edit", "multiedit"):
++                values = message.tool_input or {}
++                if isinstance(values, dict):
++                    path = values.get("file_path") or values.get("path")
++                    if isinstance(path, str) and path not in paths: paths.append(path)
++        return paths
+diff --git a/baton/adapters/claude/app.py b/baton/adapters/claude/app.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/app.py
+@@ -0,0 +1,97 @@
++"""App/process controls isolated behind an injectable operating-system port."""
++import os
++import shlex
++import signal
++import subprocess
++import time
++from datetime import datetime, timezone
++from ...domain.errors import ChatReplying, NotAvailable
++
++class SystemProcess:
++    """Isolate operating-system observations and app control calls."""
++    def alive(self, pid):
++        """Check whether a positive process identity is still alive."""
++        if not isinstance(pid, int) or pid <= 0: return False
++        try: os.kill(pid, 0); return True
++        except OSError: return False
++    def running(self):
++        """Observe whether the desktop app process is running."""
++        listing = subprocess.run(['ps', '-axo', 'command='], capture_output=True, text=True, check=True).stdout
++        return any('/Claude.app/Contents/MacOS/Claude' in line for line in listing.splitlines())
++    def started_at(self):
++        """Return the desktop process launch time when it can be observed."""
++        env = {**os.environ, 'LC_ALL': 'C'}
++        listing = subprocess.run(['ps', '-axo', 'lstart=,command='], capture_output=True,
++            text=True, check=True, env=env).stdout
++        for line in listing.splitlines():
++            line = line.strip()
++            if '/Claude.app/Contents/MacOS/Claude' in line:
++                stamp = datetime.strptime(line[:24], '%a %b %d %H:%M:%S %Y')
++                return stamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
++        return ''
++    def owns_session(self, pid, sid):
++        """Verify that a process belongs to the requested native session."""
++        if not isinstance(pid, int) or pid <= 0: return False
++        result = subprocess.run(['ps', '-p', str(pid), '-o', 'command='], capture_output=True,
++            text=True, check=False)
++        if result.returncode: return False
++        try: args = shlex.split(result.stdout.strip())
++        except ValueError: return False
++        if not args or os.path.basename(args[0]) != 'claude': return False
++        return any(args[i] in ('--session-id', '--resume') and args[i + 1] == sid
++            for i in range(len(args) - 1))
++    def terminate(self, pid):
++        """Send a normal termination signal to an already verified process."""
++        if pid <= 0: raise ValueError('invalid process id')
++        os.kill(pid, signal.SIGTERM)
++    def open_url(self, url):
++        """Ask the system to open the supplied native chat link."""
++        subprocess.run(['open', url], check=True)
++    def quit(self):
++        """Ask the desktop app to quit normally."""
++        subprocess.run(['osascript', '-e', 'tell application "Claude" to quit'], check=True)
++    def open_app(self):
++        """Ask the system to launch the desktop app."""
++        subprocess.run(['open', '-a', 'Claude'], check=True)
++
++class ClaudeApp:
++    """Open, close or release only chats whose state allows it."""
++    def __init__(self, adapter): self.adapter = adapter
++    def running(self):
++        """Observe whether the desktop app process is running."""
++        return self.adapter.process.running()
++    def close(self):
++        """Quit normally only after checking for active replies."""
++        if any(e.get('status') == 'busy' for e in self.adapter.state.registry()): raise ChatReplying()
++        self.adapter.process.quit()
++        deadline = time.monotonic() + 10
++        while self.running():
++            if time.monotonic() >= deadline: raise NotAvailable()
++            time.sleep(.05)
++    def open(self, chat_id, folder):
++        """Open the app or a resolved native chat."""
++        if chat_id is None: self.adapter.process.open_app()
++        else:
++            self.adapter.locator.resolve(chat_id)
++            self.adapter.process.open_url('claude://claude.ai/epitaxy/' + chat_id)
++    def release(self, chat_id):
++        """End an idle owned chat process and wait for its registry release."""
++        entries = list(self.adapter.state.registry(chat_id))
++        if any(e.get('status') == 'busy' for e in entries): raise ChatReplying()
++        # Refresh before signalling: a reply may have started after the preview.
++        current = list(self.adapter.state.registry(chat_id))
++        if any(e.get('status') == 'busy' for e in current): raise ChatReplying()
++        for entry in current:
++            if not self.adapter.process.owns_session(entry['pid'], entry['sessionId']): raise NotAvailable()
++        for entry in current:
++            # Revalidate immediately before each signal, including registry busy state.
++            latest = list(self.adapter.state.registry(chat_id))
++            match = next((e for e in latest if e.get('pid') == entry['pid']), None)
++            if match is None: continue
++            if match.get('status') == 'busy': raise ChatReplying()
++            if not self.adapter.process.owns_session(entry['pid'], entry['sessionId']): raise NotAvailable()
++            self.adapter.process.terminate(entry['pid'])
++        deadline = time.monotonic() + 10
++        while list(self.adapter.state.registry(chat_id)):
++            if time.monotonic() >= deadline: raise NotAvailable()
++            time.sleep(.05)
+diff --git a/baton/adapters/claude/writer.py b/baton/adapters/claude/writer.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/writer.py
+@@ -0,0 +1,237 @@
++"""Native records with durable pre-write manifests and conservative rollback."""
++from __future__ import annotations
++import base64
++import json
++import os
++import tempfile
++from pathlib import Path
++from uuid import uuid4
++from dataclasses import asdict
++from ...domain.errors import AppMustBeClosed, ChatChanged, ChatHeld, ChatReplying, NotAvailable, UnknownFormat
++from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT
++from ...ports.tool import WriteReceipt, WriteResult
++from .reader import read_records, live_chain
++
++
++def encode(data):
++    """Encode native bytes into a JSON-safe receipt value."""
++    return base64.b64encode(data).decode("ascii")
++def decode(data):
++    """Recover native bytes from a JSON-safe receipt value."""
++    return base64.b64decode(data)
++def serialize(records):
++    """Encode native records as newline-terminated JSONL bytes."""
++    return ''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in records).encode()
++
++
++def native_records(turns, session_id, folder, parent=None, version="2.1.284", prompt_index=0, template=None):
++    """Build chained native records for public turn content."""
++    records = []
++    template = template or {}
++    for turn in turns:
++        prompt_index += 1
++        for message in (turn.prompt, *turn.messages):
++            envelope = dict(isSidechain=False, userType="external", entrypoint="claude-desktop",
++                cwd=folder, sessionId=session_id, version=version, gitBranch="HEAD",
++                uuid=message.id, parentUuid=parent, timestamp=message.at)
++            if message.kind == PROMPT:
++                envelope.update(type="user", promptId=message.id, permissionMode=template.get("permissionMode", "default"), origin={"kind": "human"},
++                    promptSource=template.get("promptSource", "sdk"), turnOrigin="human", turnPosition={"promptIndex": prompt_index, "turnIndex": 1},
++                    message={"role": "user", "content": message.text})
++            elif message.kind == TOOL_RESULT:
++                envelope.update(type="user", message={"role": "user", "content": [{"type": "tool_result",
++                    "tool_use_id": message.call_id, "content": message.text, "is_error": message.is_error}]})
++            elif message.kind in (REPLY, TOOL_TEXT, TOOL_CALL):
++                block = {"type": "tool_use", "id": message.call_id or message.id, "name": message.tool, "input": message.tool_input} if message.kind == TOOL_CALL else {"type": "text", "text": message.text}
++                envelope.update(type="assistant", message={"id": "msg_" + message.id, "type": "message", "role": "assistant",
++                    "model": "codex", "content": [block], "stop_reason": "tool_use" if message.kind == TOOL_CALL else "end_turn", "stop_sequence": None,
++                    "usage": {"input_tokens": 0, "output_tokens": 0}})
++                if message.kind == TOOL_TEXT: envelope["batonMessageKind"] = TOOL_TEXT
++                if message.kind == TOOL_CALL and not message.call_id: envelope["batonOriginalCallId"] = ""
++            else: raise ValueError(message.kind)
++            records.append(envelope)
++            parent = message.id
++    return records
++
++
++class ClaudeWriter:
++    """Publish native records with durable, reversible write receipts."""
++    def __init__(self, adapter):
++        self.adapter = adapter
++        self.prepared = None
++    def _check(self, chat_id=None, kind=""):
++        if not self.adapter.state.format_version().known: raise UnknownFormat()
++        if chat_id is not None:
++            c = self.adapter.state.condition(chat_id)
++            if not c.exists: raise KeyError(chat_id)
++            if c.replying: raise ChatReplying()
++            if c.open: raise ChatHeld()
++        if kind == "rename" and self.adapter.process.running(): raise AppMustBeClosed()
++        if kind == "place": raise NotAvailable()
++    def _snapshot(self, paths):
++        return {str(self.adapter.locator.inside(p)): encode(p.read_bytes()) if p.exists() else None for p in paths}
++    def prepare(self, chat_id, kind):
++        """Reserve creation identity or snapshot rollback data before mutation."""
++        if kind not in ("create", "add", "cut", "rename", "place"): raise ValueError(kind)
++        if (chat_id is None) != (kind == "create"): raise ValueError(kind)
++        token = uuid4().hex
++        if chat_id is None:
++            chat_id, sid = "local_" + str(uuid4()), str(uuid4())
++            paths, before = [], {}
++        else:
++            sid = self.adapter.locator.entry(chat_id)[1]["cliSessionId"]
++            paths = [self.adapter.locator.session_path(chat_id), self.adapter.locator.entry(chat_id)[0]]
++            before = self._snapshot(paths)
++        receipt = WriteReceipt("claude", chat_id, kind, {"prepared": True, "token": token,
++            "session_id": sid, "before": before, "intent": str(self.adapter.root / ".baton-rollback" / (token + ".json"))})
++        self.prepared = receipt
++        return receipt
++    def _begin(self, chat_id, kind):
++        receipt = self.prepared
++        if receipt is None or receipt.kind != kind or (chat_id is not None and receipt.chat_id != chat_id):
++            receipt = self.prepare(chat_id, kind)
++        self.prepared = None
++        return receipt
++    def _write(self, receipt, after, turns=()):
++        intent = self.adapter.locator.inside(receipt.data["intent"])
++        before = receipt.data["before"] or {p: None for p in after}
++        manifest = {"token": receipt.data["token"], "before": before, "after": after}
++        intent.parent.mkdir(parents=True, exist_ok=True)
++        with intent.open("x") as fh:
++            json.dump(manifest, fh); fh.flush(); os.fsync(fh.fileno())
++        directory = os.open(intent.parent, os.O_RDONLY)
++        try: os.fsync(directory)
++        finally: os.close(directory)
++        # Recheck after reserving the rollback intent, immediately before mutations.
++        self._check(None if receipt.kind == "create" else receipt.chat_id, receipt.kind)
++        if self._snapshot([Path(p) for p in before]) != before: raise ChatChanged()
++        try:
++            for path, encoded in after.items():
++                path = self.adapter.locator.inside(path)
++                path.parent.mkdir(parents=True, exist_ok=True)
++                # Publish whole native files atomically: a crash exposes either the
++                # complete pre-write or complete post-write bytes, never a torn log.
++                fd, temporary = tempfile.mkstemp(prefix=".baton-", dir=path.parent)
++                try:
++                    with os.fdopen(fd, "wb") as fh:
++                        fh.write(decode(encoded)); fh.flush(); os.fsync(fh.fileno())
++                    current = encode(path.read_bytes()) if path.exists() else None
++                    if current != before.get(str(path)): raise ChatChanged()
++                    self._check(None if receipt.kind == "create" else receipt.chat_id, receipt.kind)
++                    os.replace(temporary, path)
++                    directory = os.open(path.parent, os.O_RDONLY)
++                    try: os.fsync(directory)
++                    finally: os.close(directory)
++                finally:
++                    Path(temporary).unlink(missing_ok=True)
++        except BaseException:
++            self.take_back(receipt)
++            raise
++        post = WriteReceipt("claude", receipt.chat_id, receipt.kind,
++            {**receipt.data, "prepared": False, "before": before, "after": after})
++        return WriteResult(receipt.chat_id, tuple(t.id for t in turns), post)
++    def create(self, turns, name, folder):
++        """Publish a new native chat and its sidebar entry."""
++        self._check()
++        receipt = self._begin(None, "create")
++        sid = receipt.data["session_id"]
++        session, entry_path = self.adapter.locator.creation_paths(receipt.chat_id, sid, folder, self.adapter.account)
++        records = native_records(turns, sid, folder)
++        records.append({"type": "custom-title", "customTitle": name, "sessionId": sid})
++        entry = dict(sessionId=receipt.chat_id, cliSessionId=sid, cwd=folder, originCwd=folder,
++            lastFocusedAt=0, createdAt=0, lastActivityAt=0, isArchived=False, title=name, titleSource="auto",
++            permissionMode="default", completedTurns=len(turns), titleTurn=0, bridgeSessionIds=[],
++            alwaysAllowedReasons=[], sessionPermissionUpdates=[], spawnSeed={})
++        return self._write(receipt, {str(session): encode(serialize(records)), str(entry_path): encode(json.dumps(entry).encode())}, turns)
++    def add(self, chat_id, turns):
++        """Append chained native records while preserving the existing byte prefix."""
++        self._check(chat_id)
++        receipt = self._begin(chat_id, "add")
++        path = self.adapter.locator.session_path(chat_id)
++        records = read_records(str(path)); chain = live_chain(records)
++        existing = {r.get("uuid") for r in records}
++        ids = [m.id for t in turns for m in (t.prompt, *t.messages)]
++        if len(ids) != len(set(ids)) or existing.intersection(ids): raise ValueError("duplicate message id")
++        entry = self.adapter.locator.entry(chat_id)[1]
++        data = path.read_bytes()
++        if data and not data.endswith(b'\n'): raise UnknownFormat()
++        from .reader import is_prompt
++        prompt = next((r for r in reversed(chain) if is_prompt(r)), {})
++        prompt_index = (prompt.get("turnPosition") or {}).get("promptIndex", 0)
++        appended = native_records(turns, entry["cliSessionId"], entry["cwd"], chain[-1]["uuid"] if chain else None,
++            prompt_index=prompt_index, template=prompt)
++        after = dict(receipt.data["before"]); after[str(path)] = encode(data + serialize(appended))
++        return self._write(receipt, after, turns)
++    def cut(self, chat_id, keep_through_local_id):
++        """Retain a turn prefix with a durable saved copy for restoration."""
++        self._check(chat_id)
++        receipt = self._begin(chat_id, "cut")
++        path = self.adapter.locator.session_path(chat_id)
++        turns = self.adapter.reader.read(chat_id)
++        index = next((i for i, t in enumerate(turns) if keep_through_local_id in (t.id, *(m.id for m in t.messages))), None)
++        if index is None: raise KeyError(keep_through_local_id)
++        last_id = (turns[index].messages[-1].id if turns[index].messages else turns[index].id).split('#')[0]
++        lines = path.read_bytes().splitlines(keepends=True)
++        end = next((i for i, line in enumerate(lines) if json.loads(line).get("uuid") == last_id), None)
++        if end is None: raise KeyError(last_id)
++        after = dict(receipt.data["before"]); after[str(path)] = encode(b''.join(lines[:end + 1]))
++        return self._write(receipt, after, turns[:index + 1])
++    def place(self, chat_id, turns, before_local_id):
++        """Refuse placement because the native tool cannot insert turns safely."""
++        self._check(chat_id, "place")
++    def rename(self, chat_id, name):
++        """Change the sidebar title only while the desktop app is closed."""
++        self._check(chat_id, "rename")
++        receipt = self._begin(chat_id, "rename")
++        path, entry = self.adapter.locator.entry(chat_id)
++        entry["title"] = name
++        after = dict(receipt.data["before"]); after[str(path)] = encode(json.dumps(entry).encode())
++        return self._write(receipt, after)
++    def take_back(self, receipt):
++        """Restore an owned write without overwriting later outside changes."""
++        if receipt.tool != "claude": raise ValueError("wrong adapter")
++        intent = self.adapter.locator.inside(receipt.data["intent"])
++        if not intent.exists():
++            if receipt.data.get("prepared"): return
++            raise ValueError("receipt consumed")
++        manifest = json.loads(intent.read_text())
++        if manifest.get("token") != receipt.data["token"]: raise ValueError("receipt mismatch")
++        # Exact manifest ownership allows recovery even if a newly created
++        # sidebar/file pair was only partly published. Never bypass live holders.
++        try:
++            c = self.adapter.state.condition(receipt.chat_id)
++        except (KeyError, ValueError):
++            c = None
++        if c is not None and c.replying: raise ChatReplying()
++        if c is not None and c.open: raise ChatHeld()
++        if receipt.kind == "rename" and self.adapter.process.running(): raise AppMustBeClosed()
++        # Registry ownership survives a partially published/missing sidebar.
++        for entry in self.adapter.state.registry():
++            if entry.get("sessionId") == receipt.data["session_id"]:
++                if entry.get("status") == "busy": raise ChatReplying()
++                raise ChatHeld()
++        before, after = manifest["before"], manifest["after"]
++        for path in before:
++            path = self.adapter.locator.inside(path)
++            current = encode(path.read_bytes()) if path.exists() else None
++            if current not in (before[str(path)], after[str(path)]): raise ChatChanged()
++        for path, encoded in before.items():
++            path = self.adapter.locator.inside(path)
++            if encoded is None: path.unlink(missing_ok=True)
++            else:
++                fd, temporary = tempfile.mkstemp(prefix=".baton-restore-", dir=path.parent)
++                try:
++                    with os.fdopen(fd, 'wb') as fh:
++                        fh.write(decode(encoded)); fh.flush(); os.fsync(fh.fileno())
++                    os.replace(temporary, path)
++                finally: Path(temporary).unlink(missing_ok=True)
++        for parent in {Path(p).parent for p in before}:
++            if not parent.exists():
++                continue
++            directory = os.open(parent, os.O_RDONLY)
++            try: os.fsync(directory)
++            finally: os.close(directory)
++        intent.unlink()
++        directory = os.open(intent.parent, os.O_RDONLY)
++        try: os.fsync(directory)
++        finally: os.close(directory)
+diff --git a/baton/adapters/claude/tool.py b/baton/adapters/claude/tool.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/tool.py
+@@ -0,0 +1,27 @@
++"""Claude adapter wired exclusively through an explicit filesystem root."""
++from pathlib import Path
++from .facts import FACTS
++from .locator import ClaudeLocator
++from .reader import ClaudeReader
++from .state import ClaudeState
++from .writer import ClaudeWriter
++from .hooks import ClaudeHooks
++from .runner import ClaudeRunner
++from .app import ClaudeApp, SystemProcess
++
++class ClaudeAdapter:
++    """Compose the native reader, writer, state and app ports."""
++    name = "claude"
++    facts = FACTS
++    def __init__(self, root, *, process=None, command=None, account=None, context_sizes=None, hook_commands=None, hook_entrypoints_available=None):
++        self.root = Path(root).resolve()
++        self.account = account
++        self.context_sizes = context_sizes or {}
++        self.process = process if process is not None else SystemProcess()
++        self.locator = ClaudeLocator(self.root)
++        self.hooks = ClaudeHooks(self, hook_commands=hook_commands, entrypoints_available=hook_entrypoints_available)
++        self.state = ClaudeState(self)
++        self.reader = ClaudeReader(self)
++        self.writer = ClaudeWriter(self)
++        self.runner = ClaudeRunner(command)
++        self.app = ClaudeApp(self)
+diff --git a/baton/adapters/claude/state.py b/baton/adapters/claude/state.py
+new file mode 100644
+--- /dev/null
++++ b/baton/adapters/claude/state.py
+@@ -0,0 +1,46 @@
++"""Session registry plus injectable process checks; no idle-time inference."""
++import json
++from ...domain.conditions import SideCondition
++from ...ports.tool import FormatCheck
++from .reader import read_records
++
++class ClaudeState:
++    """Report native holders, format checks and visibility evidence."""
++    def __init__(self, adapter): self.adapter = adapter
++    def registry(self, chat_id=None):
++        """Read live session holders, optionally for one stable chat."""
++        sid = self.adapter.locator.entry(chat_id)[1]["cliSessionId"] if chat_id else None
++        for path in (self.adapter.root / ".claude/sessions").glob("*.json"):
++            try: entry = json.loads(self.adapter.locator.inside(path).read_text())
++            except (OSError, ValueError): continue
++            pid = entry.get("pid")
++            if isinstance(pid, int) and pid > 0 and self.adapter.process.alive(pid):
++                if sid is None or entry.get("sessionId") == sid: yield entry
++    def condition(self, chat_id):
++        """Combine existence, holder, hook and launch evidence for a chat."""
++        try: self.adapter.locator.resolve(chat_id)
++        except KeyError: return SideCondition(exists=False, app_running=self.adapter.process.running())
++        entries = list(self.registry(chat_id))
++        return SideCondition(open=bool(entries), replying=any(e.get("status") == "busy" for e in entries),
++            app_running=self.adapter.process.running(), app_started_at=self.adapter.process.started_at(),
++            hooks_ready=self.adapter.hooks.check().ok, format_known=self.format_version().known)
++    def format_version(self):
++        """Validate every native sidebar target, including hidden entries."""
++        versions = set()
++        try:
++            for _, entry in self.adapter.locator.entries():
++                path = self.adapter.locator.session_path(entry["sessionId"])
++                # Tolerant reads may skip damaged tail lines; writes never may.
++                text = path.read_text()
++                if text and not text.endswith('\n'): return FormatCheck(False, "incomplete")
++                records = [json.loads(line) for line in text.splitlines() if line.strip()]
++                if not all(isinstance(r, dict) for r in records): return FormatCheck(False, "unknown")
++                for rec in records:
++                    if rec.get("type") in ("user", "assistant"):
++                        version = rec.get("version", "")
++                        versions.add(version)
++                        if not all(k in rec for k in ("uuid", "parentUuid", "message")):
++                            return FormatCheck(False, version)
++            known = not versions or versions <= set(self.adapter.facts.checked_versions)
++            return FormatCheck(known, next(iter(sorted(versions)), self.adapter.facts.checked_versions[0]))
++        except (OSError, ValueError, KeyError): return FormatCheck(False, "unknown")
+diff --git a/tests/adapters/test_claude.py b/tests/adapters/test_claude.py
+new file mode 100644
+--- /dev/null
++++ b/tests/adapters/test_claude.py
+@@ -0,0 +1,282 @@
++"""Claude native filesystem/registry tests; no live apps or real chat paths."""
++import json
++import tempfile
++import unittest
++from dataclasses import asdict
++from pathlib import Path
++from unittest.mock import patch
++from types import SimpleNamespace
++from baton.adapters.claude import ClaudeAdapter
++from baton.domain.errors import AppMustBeClosed, ChatChanged, ChatReplying, UnknownFormat
++from baton.domain.model import Message, Turn, PROMPT, TOOL_TEXT, REPLY
++from baton.ports.tool import WriteReceipt
++from tests.adapters.suite import AdapterSuite, turns
++from tests.fixtures.claude.build import build, FixtureProcess
++
++class ClaudeSuite(AdapterSuite, unittest.TestCase):
++    def make_adapter(self):
++        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
++        self.root = Path(self.temp.name); self.process = FixtureProcess(self.root)
++        adapter = ClaudeAdapter(self.root, process=self.process, command=lambda *a, **k: SimpleNamespace(returncode=0, stdout='{"loggedIn": true}'), context_sizes={'test-model': 100000}, hook_entrypoints_available=lambda: True)
++        self.process.adapter = adapter
++        adapter.hooks.install()
++        return adapter
++    def build_chat(self, values):
++        chat = build(self.root, values)
++        self.process.visible[chat] = list(values)
++        return chat
++    def insert_text(self, chat, message):
++        path = self.adapter.locator.session_path(chat)
++        records = [json.loads(l) for l in path.read_text().splitlines()]
++        # A native hook attachment lives on the parent chain without becoming a prompt.
++        path.write_text(path.read_text() + json.dumps({'type': 'attachment', 'uuid': message.id,
++            'parentUuid': records[-1]['uuid'], 'attachment': {'type': 'hook_additional_context', 'content': message.text}}) + '\n')
++    def set_condition(self, chat, **values):
++        self.process.is_running = values.get('app_running', self.process.is_running)
++        path, entry = self.adapter.locator.entry(chat)
++        if values.get('exists') is False: path.unlink(); self.process.pids.clear(); return
++        registry = self.root / '.claude/sessions'; registry.mkdir(parents=True, exist_ok=True)
++        self.process.pids.clear()
++        if values.get('open', False):
++            self.process.pids.add(1234)
++            (registry/'1234.json').write_text(json.dumps({'pid': 1234, 'sessionId': entry['cliSessionId'], 'status': 'busy' if values.get('replying') else 'idle'}))
++    def set_format(self, known, version):
++        path = self.adapter.locator.session_path(self.chat)
++        records = [json.loads(l) for l in path.read_text().splitlines()]
++        for r in records: r['version'] = version if known else 'unsupported'
++        path.write_text(''.join(json.dumps(r)+'\n' for r in records))
++    def configure_usage(self, chat):
++        path = self.adapter.locator.session_path(chat)
++        records = [json.loads(l) for l in path.read_text().splitlines()]
++        path.write_text(path.read_text()+json.dumps({'type':'assistant','uuid':'quota','parentUuid':records[-1]['uuid'],
++            'isApiErrorMessage':True,'apiErrorStatus':429,'error':'rate_limit','quotaLimits':{'resetsAt':1767225600},
++            'message':{'content':[]},'version':'2.1.284'})+'\n')
++        return self.adapter.reader.usage(chat)
++    def visible_turns(self, chat): return self.process.visible.get(chat)
++
++class ClaudeSafety(unittest.TestCase):
++    def setUp(self):
++        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
++        self.root = Path(self.temp.name); self.process = FixtureProcess(self.root)
++        self.adapter = ClaudeAdapter(self.root, process=self.process, hook_entrypoints_available=lambda: True)
++        self.process.adapter = self.adapter
++        self.chat = build(self.root, turns())
++    def test_rename_refuses_running_app_with_idle_closed_chat(self):
++        self.process.is_running = True
++        with self.assertRaises(AppMustBeClosed): self.adapter.writer.rename(self.chat, 'changed')
++    def test_stale_append_receipt_preserves_later_native_writes(self):
++        a = self.adapter.writer.add(self.chat, [Turn(Message('extra', PROMPT, 'extra'))])
++        self.adapter.writer.add(self.chat, [Turn(Message('later', PROMPT, 'later'))])
++        before = self.adapter.locator.session_path(self.chat).read_bytes()
++        with self.assertRaises(ChatChanged): self.adapter.writer.take_back(a.receipt)
++        self.assertEqual(self.adapter.locator.session_path(self.chat).read_bytes(), before)
++    def test_prewrite_recovery_new_writer_json_receipt(self):
++        pre = self.adapter.writer.prepare(self.chat, 'add')
++        self.adapter.writer.add(self.chat, [Turn(Message('extra', PROMPT, 'extra'))])
++        other = ClaudeAdapter(self.root, process=self.process)
++        receipt = WriteReceipt(**json.loads(json.dumps(asdict(pre))))
++        other.writer.take_back(receipt); other.writer.take_back(receipt)
++        self.assertEqual(other.reader.read(self.chat), turns())
++    def test_prewrite_partial_create_recovery(self):
++        pre = self.adapter.writer.prepare(None, 'create')
++        result = self.adapter.writer.create(turns(), 'copy', '/other')
++        self.adapter.locator.entry(result.chat_id)[0].unlink()
++        other = ClaudeAdapter(self.root, process=self.process)
++        other.writer.take_back(WriteReceipt(**json.loads(json.dumps(asdict(pre)))))
++        self.assertFalse(other.state.condition(result.chat_id).exists)
++    def test_stable_sidebar_id_follows_session_move(self):
++        old = self.adapter.locator.session_path(self.chat)
++        new = old.with_name('new-session.jsonl'); new.write_bytes(old.read_bytes())
++        path, entry = self.adapter.locator.entry(self.chat)
++        entry['cliSessionId']='new-session'; path.write_text(json.dumps(entry))
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++        self.assertEqual(self.adapter.locator.session_path(self.chat), new)
++    def test_dead_branch_compaction_and_hook_attachments(self):
++        path = self.adapter.locator.session_path(self.chat)
++        records = [json.loads(l) for l in path.read_text().splitlines()]
++        records += [{'uuid':'dead','parentUuid':'a3','type':'user','message':{'content':'dead'}},
++            {'uuid':'compact','parentUuid':None,'logicalParentUuid':'a3','type':'system','subtype':'compact_boundary'},
++            {'uuid':'hook','parentUuid':'compact','type':'attachment','attachment':{'type':'hook_additional_context','content':'injected'}}]
++        path.write_text(''.join(json.dumps(r)+'\n' for r in records))
++        self.assertEqual(self.adapter.reader.read(self.chat), turns())
++    def test_tool_text_and_incomplete_prompt_roundtrip(self):
++        values=[Turn(Message('p4',PROMPT,'question'),(Message('t4',TOOL_TEXT,'[Tool 1: read]\ntext'), Message('a4',REPLY,'answer'))),Turn(Message('p5',PROMPT,'incomplete'))]
++        result=self.adapter.writer.create(values,'copy','/folder')
++        self.assertEqual(self.adapter.reader.read(result.chat_id),values)
++        native=[json.loads(l) for l in self.adapter.locator.session_path(result.chat_id).read_text().splitlines()]
++        self.assertEqual(native[1]['message']['content'],[{'type':'text','text':'[Tool 1: read]\ntext'}])
++    def test_unknown_record_shape_blocks_write_without_blocking_read(self):
++        path=self.adapter.locator.session_path(self.chat)
++        recs=[json.loads(l) for l in path.read_text().splitlines()]; del recs[0]['parentUuid']
++        path.write_text(''.join(json.dumps(r)+'\n' for r in recs))
++        self.assertIsInstance(self.adapter.reader.read(self.chat),list)
++        with self.assertRaises(UnknownFormat): self.adapter.writer.add(self.chat,[])
++    def test_busy_release_does_not_signal(self):
++        registry=self.root/'.claude/sessions';registry.mkdir(parents=True)
++        self.process.pids.add(1234)
++        (registry/'1234.json').write_text(json.dumps({'pid':1234,'sessionId':'fixture_session','status':'busy'}))
++        with self.assertRaises(ChatReplying): self.adapter.app.release(self.chat)
++        self.assertEqual(self.process.calls,[])
++    def test_hooks_preserve_unrelated_settings_and_entries(self):
++        path=self.adapter.hooks.path;path.parent.mkdir(parents=True,exist_ok=True)
++        original={'permissions':{'allow':['Read']},'hooks':{'Stop':[{'hooks':[{'type':'command','command':'other'}]}]}}
++        path.write_text(json.dumps(original));self.adapter.hooks.install();self.adapter.hooks.install()
++        value=json.loads(path.read_text());self.assertEqual(len(value['hooks']['Stop']),2)
++        self.adapter.hooks.uninstall();value=json.loads(path.read_text())
++        self.assertEqual(value['permissions'],original['permissions']);self.assertEqual(value['hooks']['Stop'],original['hooks']['Stop'])
++        output=json.loads(self.adapter.hooks.attach_reply('context','notice'))
++        self.assertEqual(output['hookSpecificOutput']['additionalContext'],'context')
++        self.assertEqual(self.adapter.hooks.turn_end_reply(),'')
++    def test_runner_ephemeral_read_only_and_login(self):
++        calls=[]
++        def command(args,**kwargs):
++            calls.append((args,kwargs));return SimpleNamespace(returncode=0,stdout='{"loggedIn":true}' if 'auth' in args else 'brief')
++        adapter=ClaudeAdapter(self.root,process=self.process,command=command)
++        self.assertEqual(adapter.runner.ask('summarize','/fixture'),'brief')
++        argv=calls[-1][0]
++        self.assertIn('--no-session-persistence',argv);self.assertIn('Read,Grep,Glob',argv)
++        self.assertNotIn('resume',argv);self.assertNotIn('fixture_session',argv)
++        adapter.runner.command=lambda *a,**k:SimpleNamespace(returncode=1,stdout='')
++        self.assertFalse(adapter.runner.available().ok)
++
++    def test_publish_crash_recovers_with_prewrite_receipt_in_fresh_adapter(self):
++        import os
++        pre = self.adapter.writer.prepare(None, 'create')
++        replacement = os.replace
++        count = 0
++        def publish(source, destination):
++            nonlocal count
++            count += 1
++            if count == 2: raise RuntimeError('simulated interruption')
++            return replacement(source, destination)
++        # Interrupt after the native session is published but before its sidebar.
++        # Suppress in-process rollback to model process loss, not exception cleanup.
++        with patch('baton.adapters.claude.writer.os.replace', side_effect=publish), patch.object(self.adapter.writer, 'take_back'):
++            with self.assertRaises(RuntimeError): self.adapter.writer.create(turns(), 'copy', '/new')
++        manifest=json.loads(Path(pre.data['intent']).read_text())
++        self.assertTrue(any(Path(p).exists() for p in manifest['after']))
++        other=ClaudeAdapter(self.root,process=self.process)
++        other.writer.take_back(WriteReceipt(**json.loads(json.dumps(asdict(pre)))))
++        self.assertTrue(all(not Path(p).exists() for p in manifest['after']))
++        self.assertEqual(other.reader.read(self.chat),turns())
++    def test_prewrite_receipt_refuses_outside_edit_without_touching_other_files(self):
++        pre=self.adapter.writer.prepare(self.chat,'rename')
++        self.adapter.writer.rename(self.chat,'planned')
++        path,entry=self.adapter.locator.entry(self.chat)
++        entry['title']='outside';path.write_text(json.dumps(entry))
++        snapshot={str(p):p.read_bytes() for p in (path,self.adapter.locator.session_path(self.chat))}
++        with self.assertRaises(ChatChanged): self.adapter.writer.take_back(pre)
++        self.assertEqual({p:Path(p).read_bytes() for p in snapshot},snapshot)
++    def test_atomic_append_preserves_all_prior_bytes_including_dead_branches(self):
++        path=self.adapter.locator.session_path(self.chat)
++        original=path.read_bytes()
++        dead={'uuid':'deadbranch','parentUuid':'a2','isSidechain':True,'type':'assistant','version':'2.1.284','message':{'content':[{'type':'text','text':'dead'}]}}
++        path.write_bytes(original+json.dumps(dead).encode()+b'\n')
++        before=path.read_bytes()
++        self.adapter.writer.add(self.chat,[Turn(Message('extra',PROMPT,'more'))])
++        self.assertTrue(path.read_bytes().startswith(before))
++        self.assertEqual(self.adapter.reader.read(self.chat)[-1].id,'extra')
++    def test_native_usage_cache_sum_and_unknown_model_size(self):
++        path=self.adapter.locator.session_path(self.chat)
++        records=[json.loads(l) for l in path.read_text().splitlines()]
++        records[-1]['message']['usage']={'input_tokens':10,'cache_creation_input_tokens':20,'cache_read_input_tokens':30,'output_tokens':4}
++        path.write_text(''.join(json.dumps(r)+'\n' for r in records))
++        self.assertEqual(self.adapter.reader.usage(self.chat).tokens,64)
++        self.assertIsNone(self.adapter.reader.usage(self.chat).size)
++        self.adapter.context_sizes={'test-model':200000}
++        self.assertEqual(self.adapter.reader.usage(self.chat).size,200000)
++    def test_app_started_time_uses_process_launch_not_hook_calls(self):
++        from baton.adapters.claude.app import SystemProcess
++        output='Mon Oct  5 09:00:00 2026 /Applications/Claude.app/Contents/MacOS/Claude\n'
++        with patch('baton.adapters.claude.app.subprocess.run',return_value=SimpleNamespace(stdout=output)) as command:
++            stamp=SystemProcess().started_at()
++        self.assertTrue(stamp.startswith('2026-10-05T'))
++        self.assertTrue(stamp.endswith('Z'))
++        self.assertIn('lstart=,command=',command.call_args.args[0])
++    def test_recovery_refuses_live_registry_even_if_sidebar_missing(self):
++        pre=self.adapter.writer.prepare(None,'create')
++        result=self.adapter.writer.create(turns(),'copy','/new')
++        sid=pre.data['session_id']
++        self.adapter.locator.entry(result.chat_id)[0].unlink()
++        registry=self.root/'.claude/sessions';registry.mkdir(parents=True)
++        self.process.pids.add(1234)
++        (registry/'1234.json').write_text(json.dumps({'pid':1234,'sessionId':sid,'status':'idle'}))
++        from baton.domain.errors import ChatHeld
++        with self.assertRaises(ChatHeld): self.adapter.writer.take_back(pre)
++
++    def test_malformed_tail_remains_readable_but_blocks_writes(self):
++        path=self.adapter.locator.session_path(self.chat)
++        path.write_bytes(path.read_bytes()+b'{malformed}\n')
++        self.assertEqual(self.adapter.reader.read(self.chat),turns())
++        before=path.read_bytes()
++        with self.assertRaises(UnknownFormat): self.adapter.writer.add(self.chat,[])
++        self.assertEqual(path.read_bytes(),before)
++    def test_prepared_cut_recovery_restores_exact_native_bytes(self):
++        path=self.adapter.locator.session_path(self.chat);before=path.read_bytes()
++        pre=self.adapter.writer.prepare(self.chat,'cut')
++        self.adapter.writer.cut(self.chat,'a1')
++        fresh=ClaudeAdapter(self.root,process=self.process)
++        fresh.writer.take_back(WriteReceipt(**json.loads(json.dumps(asdict(pre)))))
++        self.assertEqual(path.read_bytes(),before)
++
++    def test_missing_hook_entrypoints_refuse_install_without_changing_settings(self):
++        adapter=ClaudeAdapter(self.root,process=self.process,hook_entrypoints_available=lambda:False)
++        path=adapter.hooks.path
++        self.assertFalse(adapter.hooks.install().ok)
++        self.assertFalse(path.exists())
++    def test_release_refuses_reused_pid_identity(self):
++        registry=self.root/'.claude/sessions';registry.mkdir(parents=True)
++        self.process.pids.add(1234)
++        (registry/'1234.json').write_text(json.dumps({'pid':1234,'sessionId':'fixture_session','status':'idle'}))
++        self.process.owns_session=lambda pid,sid:False
++        from baton.domain.errors import NotAvailable
++        with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
++        self.assertEqual(self.process.calls,[])
++    def test_system_process_identity_checks_session_and_executable(self):
++        from baton.adapters.claude.app import SystemProcess
++        for output,expected in (('/path/claude --resume fixture_session',True),('/path/claude --resume unrelated',False),('/bin/other --resume fixture_session',False),('/path/claude --resume',False)):
++            with self.subTest(output=output),patch('baton.adapters.claude.app.subprocess.run',return_value=SimpleNamespace(returncode=0,stdout=output)):
++                self.assertEqual(SystemProcess().owns_session(1234,'fixture_session'),expected)
++
++    def test_native_append_parent_and_prompt_positions_continue(self):
++        created=self.adapter.writer.create(turns()[:2],'copy','/project')
++        result=self.adapter.writer.add(created.chat_id,turns()[2:])
++        records=[json.loads(l) for l in self.adapter.locator.session_path(created.chat_id).read_text().splitlines()]
++        prompts=[r for r in records if r.get('origin',{}).get('kind')=='human']
++        self.assertEqual([p['turnPosition']['promptIndex'] for p in prompts],[1,2,3])
++        self.assertEqual(prompts[-1]['parentUuid'],'a2')
++        tool=next(r for r in records if r.get('uuid')=='c1')
++        self.assertEqual(tool['message']['stop_reason'],'tool_use')
++        self.assertEqual(tool['message']['content'][0]['id'],'c1')
++
++    def test_archived_unknown_target_blocks_every_write_without_mutation(self):
++        entry_path, entry = self.adapter.locator.entry(self.chat)
++        entry['isArchived'] = True
++        entry_path.write_text(json.dumps(entry))
++        chat_path = self.adapter.locator.session_path(self.chat)
++        records = [json.loads(line) for line in chat_path.read_text().splitlines()]
++        for record in records: record['version'] = 'unsupported'
++        chat_path.write_text(''.join(json.dumps(record)+'\n' for record in records))
++        before = (chat_path.read_bytes(), entry_path.read_bytes())
++        self.assertFalse(self.adapter.state.format_version().known)
++        for operation in (lambda: self.adapter.writer.add(self.chat, []),
++                          lambda: self.adapter.writer.cut(self.chat, 'p1'),
++                          lambda: self.adapter.writer.rename(self.chat, 'changed'),
++                          lambda: self.adapter.writer.create([], 'new', '/new-project')):
++            with self.subTest(operation=operation), self.assertRaises(UnknownFormat): operation()
++        self.assertEqual(before, (chat_path.read_bytes(), entry_path.read_bytes()))
++
++    def test_recover_create_intent_before_project_directory_exists(self):
++        prepared = self.adapter.writer.prepare(None, 'create')
++        with patch.object(self.adapter.writer, '_check', side_effect=[None, UnknownFormat()]):
++            with self.assertRaises(UnknownFormat): self.adapter.writer.create([], 'new', '/never-created')
++        intent = Path(prepared.data['intent'])
++        self.assertTrue(intent.exists())
++        other = ClaudeAdapter(self.root, process=self.process)
++        receipt = WriteReceipt(**json.loads(json.dumps(asdict(prepared))))
++        other.writer.take_back(receipt)
++        self.assertFalse(intent.exists())
++        self.assertFalse(other.state.condition(prepared.chat_id).exists)
++        self.assertEqual(other.reader.read(self.chat), turns())
++
++if __name__=='__main__': unittest.main()
+diff --git a/tests/fixtures/claude/__init__.py b/tests/fixtures/claude/__init__.py
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/claude/__init__.py
+@@ -0,0 +1 @@
++"""Synthetic native Claude fixtures."""
+diff --git a/tests/fixtures/claude/build.py b/tests/fixtures/claude/build.py
+new file mode 100644
+--- /dev/null
++++ b/tests/fixtures/claude/build.py
+@@ -0,0 +1,61 @@
++"""Hand-built native envelopes copied from M0; no production writer reuse."""
++import json
++from pathlib import Path
++from baton.domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT
++
++def build(root, turns, chat='local_fixture', session='fixture_session', folder='/fixture/project'):
++    root = Path(root)
++    sidebar = root / 'Library/Application Support/Claude/claude-code-sessions/org/account'
++    sidebar.mkdir(parents=True, exist_ok=True)
++    (sidebar / (chat + '.json')).write_text(json.dumps({'sessionId': chat, 'cliSessionId': session,
++        'title': 'fixture', 'cwd': folder, 'lastActivityAt': 0, 'isArchived': False}))
++    project = root / '.claude/projects/fixture-project'
++    project.mkdir(parents=True, exist_ok=True)
++    records, parent = [], None
++    for turn in turns:
++        for m in (turn.prompt, *turn.messages):
++            r = {'uuid': m.id, 'parentUuid': parent, 'timestamp': m.at, 'sessionId': session,
++                'cwd': folder, 'version': '2.1.284', 'isSidechain': False}
++            if m.kind == PROMPT:
++                r.update(type='user', origin={'kind': 'human'}, promptId=m.id,
++                    message={'role': 'user', 'content': m.text})
++            elif m.kind == REPLY:
++                r.update(type='assistant', message={'role': 'assistant', 'model': 'test-model',
++                    'content': [{'type': 'text', 'text': m.text}], 'usage': {'input_tokens': 10, 'output_tokens': 5}})
++            elif m.kind == TOOL_CALL:
++                r.update(type='assistant', message={'role': 'assistant', 'content': [{'type': 'tool_use',
++                    'id': m.call_id, 'name': m.tool, 'input': m.tool_input}]})
++            elif m.kind == TOOL_RESULT:
++                r.update(type='user', message={'role': 'user', 'content': [{'type': 'tool_result',
++                    'tool_use_id': m.call_id, 'content': m.text, 'is_error': m.is_error}]})
++            else: raise ValueError(m.kind)
++            records.append(r); parent = m.id
++    path = project / (session + '.jsonl')
++    path.write_text(''.join(json.dumps(r) + '\n' for r in records))
++    return chat
++
++class FixtureProcess:
++    """Registry-driven process controls, and a simulated UI explicitly limited to tests."""
++    def __init__(self, root):
++        self.root = Path(root); self.is_running = False; self.pids = set(); self.calls = []
++        self.visible = {}; self.adapter = None
++    def alive(self, pid): return pid in self.pids
++    def running(self): return self.is_running
++    def started_at(self): return '2026-01-02T00:00:00Z' if self.is_running else ''
++    def owns_session(self, pid, sid):
++        for path in (self.root / '.claude/sessions').glob('*.json'):
++            entry = json.loads(path.read_text())
++            if entry.get('pid') == pid and entry.get('sessionId') == sid: return pid in self.pids
++        return False
++    def terminate(self, pid): self.calls.append(('terminate', pid)); self.pids.discard(pid)
++    def quit(self): self.is_running = False; self.pids.clear()
++    def open_app(self):
++        self.is_running = True
++        self.visible = {r.id: self.adapter.reader.read(r.id) for r in self.adapter.locator.chats()}
++    def open_url(self, url):
++        self.open_app()
++        chat = url.rsplit('/', 1)[-1]
++        sid = self.adapter.locator.entry(chat)[1]['cliSessionId']
++        registry = self.root / '.claude/sessions'; registry.mkdir(parents=True, exist_ok=True)
++        self.pids.add(1234)
++        (registry / '1234.json').write_text(json.dumps({'pid': 1234, 'sessionId': sid, 'status': 'idle'}))
+diff --git a/tests/adapters/suite.py b/tests/adapters/suite.py
+--- a/tests/adapters/suite.py
++++ b/tests/adapters/suite.py
+@@ -67,7 +67,8 @@
+         error = AppMustBeClosed if window == WriteWindow.APP_CLOSED else ChatHeld
+         with self.assertRaises(error):
+             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
+-        with self.assertRaises(error):
++        # Renaming may need the whole app closed even when adding only needs a released chat.
++        with self.assertRaises((error, AppMustBeClosed)):
+             self.adapter.writer.rename(self.chat, "changed")
+         if window == WriteWindow.APP_CLOSED:
+             with self.assertRaises(error):
+@@ -78,9 +79,10 @@
+         created = self.adapter.writer.create(self.turns[:1], "copy", "")
+         first = self.adapter.writer.add(created.chat_id, self.turns[1:2])
+         second = self.adapter.writer.add(created.chat_id, self.turns[2:])
++        self.adapter.writer.take_back(second.receipt)
++        self.assertEqual(self.adapter.reader.read(created.chat_id), self.turns[:2])
+         self.adapter.writer.take_back(first.receipt)
+-        self.assertEqual(self.adapter.reader.read(created.chat_id), [self.turns[0], self.turns[2]])
+-        self.adapter.writer.take_back(second.receipt)
++        self.assertEqual(self.adapter.reader.read(created.chat_id), self.turns[:1])
+         renamed = self.adapter.writer.rename(created.chat_id, "renamed")
+         self.adapter.writer.take_back(renamed.receipt)
+         self.assertEqual(self.adapter.locator.name(created.chat_id), "copy")
+diff --git a/tests/adapters/test_fake.py b/tests/adapters/test_fake.py
+--- a/tests/adapters/test_fake.py
++++ b/tests/adapters/test_fake.py
+@@ -53,6 +53,17 @@
+ 
+ 
+ class FakeBehaviorTests(unittest.TestCase):
++    def test_fake_can_remove_an_older_append_without_losing_a_later_one(self):
++        adapter = FakeAdapter()
++        original = turns()
++        chat = adapter.build_chat(original[:1])
++        first = adapter.writer.add(chat, original[1:2])
++        second = adapter.writer.add(chat, original[2:])
++        adapter.writer.take_back(first.receipt)
++        self.assertEqual(adapter.reader.read(chat), [original[0], original[2]])
++        adapter.writer.take_back(second.receipt)
++        self.assertEqual(adapter.reader.read(chat), original[:1])
++
+     def test_runner_returns_or_raises_and_records_requests(self):
+         runner = FakeBackgroundRunner("canned")
+         self.assertTrue(runner.available().ok)
+diff --git a/baton/services/mapping.py b/baton/services/mapping.py
+--- a/baton/services/mapping.py
++++ b/baton/services/mapping.py
+@@ -28,8 +28,11 @@
+     calls = {m.id: index for index, m in enumerate(
+         (m for m in messages if m.kind == TOOL_CALL), start=1)}
+     for message in messages:
++        if message.kind == TOOL_CALL and message.call_id:
++            calls[message.call_id] = calls[message.id]
++    for message in messages:
+         if message.kind == TOOL_RESULT and message.call_id and message.call_id not in calls:
+-            calls[message.call_id] = len(calls) + 1
++            calls[message.call_id] = max(calls.values(), default=0) + 1
+     return messages, calls
+ 
+ 
+diff --git a/tests/unit/test_mapping.py b/tests/unit/test_mapping.py
+--- a/tests/unit/test_mapping.py
++++ b/tests/unit/test_mapping.py
+@@ -117,3 +117,13 @@
+         self.assertEqual(marker('source'), get('history.marker').render({'tool': 'source'}).template)
+         self.assertEqual(content_key(mapped[0]), content_key(original))
+         self.assertEqual(for_created_chat([], CODEX_LIKE), [])
++
++    def test_native_call_id_and_record_id_share_the_same_display_number(self):
++        original = turn()
++        native = replace(original, messages=tuple(
++            replace(m, call_id='tool-use-1') if m.kind in (TOOL_CALL, TOOL_RESULT) else m
++            for m in original.messages))
++        mapped = for_target(native, CODEX_LIKE)
++        self.assertIn('Tool result for call 1:', mapped.messages[1].text)
++        self.assertEqual(content_key(native), content_key(original))
++        self.assertEqual(content_key(native), content_key(mapped))
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+--- a/baton/notes/catalogue.py
++++ b/baton/notes/catalogue.py
+@@ -64,6 +64,8 @@
+ 
+ 
+ CATALOGUE = {note.id: note for note in (
++    Note("setup.hooks", "warning", "Baton's hooks are not ready in {tool}. Install Baton's hooks and check again."),
++    Note("setup.runner", "warning", "{tool} cannot run a background brief. Check its command and sign in, or use the offline brief."),
+     Note("nothing_unusual", "info", "Nothing unusual."),
+     Note("new_chat.at_once", "info", "The new chat appears in {tool} right away. No relaunch."),
+     Note("new_chat.relaunch", "info", "Baton closes {tool}, creates the chat, and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel"), "Relaunch {tool} to see this chat"),
+diff --git a/docs/plan/track-b-adapters.md b/docs/plan/track-b-adapters.md
+--- a/docs/plan/track-b-adapters.md
++++ b/docs/plan/track-b-adapters.md
+@@ -34,6 +34,8 @@
+ **Done when.** The suite passes four times on the fake.
+ 
+ ## B1. Claude
++
++**Files.** `baton/adapters/claude/`, `tests/adapters/test_claude.py`, `tests/fixtures/claude/`, related isolated unit tests; `tests/adapters/suite.py` and `tests/adapters/test_fake.py` for Ibrahim-approved reverse-order rollback and fake-only out-of-order preservation. `baton/services/mapping.py` and `tests/unit/test_mapping.py` for authentic native call-id/result pairing, and `baton/notes/catalogue.py` for setup findings. All roots/processes/commands in tests are explicit temporary fixtures or injected controls. Live evidence is separately gated.
+ 
+ **Facts.** write window `CLOSED_OR_RELEASED`; new chat `AFTER_RELAUNCH`; added turn `AFTER_RELAUNCH`; can cut; cannot place; can release one idle chat; opens at chat; limit with reset time; context size per model; hooks need nothing.
+ 
+diff --git a/docs/plan/ARCHITECTURE.md b/docs/plan/ARCHITECTURE.md
+--- a/docs/plan/ARCHITECTURE.md
++++ b/docs/plan/ARCHITECTURE.md
+@@ -244,3 +244,11 @@
+ ### E7 merge transaction and follow-on dependencies (Orchestrator; separate reviewer checked)
+ 
+ A confirmed merge completes linked chat replacements, canonical order, per-side delivery/skips and begun journal receipts in one store transaction, with one merge history event. The history retains pre-merge link/turn/receipt data for E8 undo. An approved merge resolves only its exact pending turns on its resulting chat identities; a newly completed conflicting turn must require a new decision. U9 is an E8 integration check; M12 depends on E9/E10 rather than a pretend brief implementation in E7.
++
++### Safe receipt rollback (Ibrahim approved, 2026-10-05)
++
++Adapter rollback receipts restore writes in reverse order. A stale receipt must refuse with ChatChanged if later outside changes would be overwritten. The shared suite tests reverse-order rollback, and individual real adapters prove stale-receipt refusal without mutation. The fake retains an additional out-of-order removal test for its in-memory implementation; this is not a required native-file operation.
++
++### B1 native adapter implementation boundary
++
++All tests use an explicit temporary root, injected process/command controls and hand-built native shapes. Native publication uses fsynced temporary files and atomic replacement while preserving the existing log byte prefix; a fsynced intent manifest precedes publication. Rollback handles either native path unpublished and refuses later outside changes. Native format checks include hidden sidebar targets. Release requires verified process/session ownership; real process arguments and desktop visibility remain live-check obligations. Hook installation/check does not claim readiness until C4 entry points can consume native stdin and resolve stable sidebar identities. Tool calls map by their native call ID as well as their record ID.

@@ -119,7 +119,7 @@ Not proven at CP1: anything on a real tool (adapters start at CP2), scrolling an
 *(Later checkpoints are added here as they are passed.)*
 
 
-### CP1 — checks passed 2026-10-05; reviewer approval pending
+### CP1 — historical orchestrator submission, superseded by approval above
 
 | Check | Result and evidence |
 |---|---|
@@ -130,4 +130,22 @@ Not proven at CP1: anything on a real tool (adapters start at CP2), scrolling an
 | Popover/window/sync-status snapshots | PASS — 18/34/38 non-empty PNGs, both themes; fixture view-model assertions pass |
 | Combined tests/build | PASS — engine 268; Swift build; app 44 |
 
-Evidence and every pasted check: [CP1-2026-10-05.md](reports/CP1-2026-10-05.md). E2/E3/E4/D1/D2/D3 are reviewer-committed; E5/E6/D4 are ready entries and ordered patches. Only fakes and hand-made fixtures were exercised. Native runtime scrolling and real adapters/lifecycle are not proved at CP1. Stop before CP2 work until reviewer approval.
+Evidence and every pasted check: [CP1-2026-10-05.md](reports/CP1-2026-10-05.md). At that submission, E5/E6/D4 were patches. They have since been committed and CP1 approved, as recorded above. Only fakes and hand-made fixtures were exercised; native runtime scrolling and real adapters/lifecycle remain unproved.
+
+
+### CP1 findings follow-up — 2026-10-05
+
+| Check | Result and evidence |
+|---|---|
+| S1–S12/S4b, T0–T4, X1/X2 and eight delivery rows | PASS — 39 focused tests, named output in the follow-up report; full suite passes |
+| Combined engine/app/build | PASS — 270 engine, Swift build, 49 app |
+| Popover/window/status snapshots | PASS — 114 generated non-empty PNGs including four native menu images; both themes. Two separate live window captures record runtime scrolling. |
+| Layer, core naming, sentence and scope checks | PASS — output and manual review in the follow-up report |
+| R10 behavior/transaction preservation | PASS — 37 unchanged store method bodies, exact previews/refresh across 24 cases, durable rollback/retry test, separate reviewer acceptance |
+| D4b human running-app comparison | PASS — Ibrahim retained the existing style and explicitly instructed commit/continue after the fixture review; no additional runtime verification inferred |
+
+Evidence: [CP1-findings-2026-10-05.md](reports/CP1-findings-2026-10-05.md). Original CP1 approval stands. D4b’s human appearance gate is accepted; E7 and D5 are starting toward CP2. F2/F6 engine generation is assigned explicitly to C2 by the reviewer and remains tracked there.
+
+### CP2 — incomplete implementation boundary, 2026-10-05
+
+**FAIL / incomplete.** E7 implementation and D5 independently accepted; B1 fixture implementation reviewed, live acceptance pending. Final tree: 334 engine / 60 app tests and Swift build pass. Isolated sequential patches pass E7 295/49, D5 295/60, B1 334/60. Claude native fixtures pass; Codex B2, actual U9/E8, T7–T11, V1–V8/V13/V14, E9/E10, C1/C2-generated fixtures and D6/D7 remain. No live app run authorized or performed. Every CP2 check and full output is in [CP2-2026-10-05.md](reports/CP2-2026-10-05.md). Next E8/D6/B2, with package order preserved.
