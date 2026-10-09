@@ -2,7 +2,7 @@
 
 The one place that says where the build stands. Kept current by the orchestrator ([ORCHESTRATOR.md](ORCHESTRATOR.md)); every entry is a fact that was checked, not a plan.
 
-**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last reviewed:** 2026-10-09
+**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last reviewed:** 2026-10-09 · **Whole road:** [MAP.md](MAP.md)
 
 ## Reviewer notes — 2026-10-09
 
@@ -25,10 +25,12 @@ Reviewed by Claude at Ibrahim's request after the Codex chat `01a1115f` had work
 - **G5. This file had grown past a thousand lines.** It is a status page, not a history. Keep Now, Next, Done, open Questions and the last ten log lines here; everything else belongs in `reports/`.
 - **G6. B1's live acceptance is still owed** before any package depends on the Claude adapter being right.
 
-**Decisions waiting for Ibrahim** (none of these may be decided by an agent)
-- **Q1. Wording of the reached line (sync-status R10).** The spec's example says an agent "has everything above this line". After a keep-one-side merge a skipped turn can sit above it, so that is not always true. Reviewer's recommendation: change the spec to "*agent* has reached here" and state skipped turns separately. Needs your yes to edit docs/features/sync-status.md.
-- **Q2. Where the theme setting lives.** The app keeps it in its own preferences; the contract has it as an engine setting. Reviewer's recommendation: the engine setting is the one source, the app reads and writes it through `baton settings` once D12 wires the app to the engine.
-- **Q3. Go for the live run** of the Claude and Codex adapters on two throwaway chats (CP2).
+**Decisions by Ibrahim, 2026-10-09** (all three: yes)
+- **Q1. Reached line.** The line reads "*agent* has reached here"; a skipped turn is marked on the turn itself. Spec R10, the catalogue and the fixtures are changed (`773c831`).
+- **Q2. Theme setting.** The engine setting `theme` is the one source. The app reads and writes it through `baton settings` when D12 wires the app to the engine; until then the app's own preference is a stand-in.
+- **Q3. Live run** of the Claude and Codex adapters on two throwaway chats: go given. It runs when B2 is accepted. Each closing of an app is still asked at that moment.
+
+**Correction to G4:** track-d-app.md already lists UI1 to UI13. Nothing to add.
 
 ## Reviewer notes — CP1, 2026-10-05
 
@@ -50,14 +52,23 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI13 is complete and independently reviewed. The conversation uses a quiet receipt endpoint instead of a black inset, explains agent context versus chat visibility, and keeps filtered endpoints separate from visible turns. The final signed fixture is open on the updated view.
-- UI12 is complete and independently reviewed with no remaining findings. The complete Dock tile is smaller, and the menu uses the signed B/I.A mark as a cached grayscale glass mask instead of UI11's generic link symbol. The final signed fixture launches and Computer Use confirms the current window is visible; menu and Dock renders were inspected as PNGs.
-- Current shared tree: **380 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI13 are ready. No push or real chats.
-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI13 implementation records remain ready to commit as listed below. UI13 independent review found and closed wording and render-coverage issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI12 menu output was inspected through rendered snapshots.
+Claude is the orchestrator in this chat since 2026-10-09 and can commit. Four builder agents work at the same time on files that do not overlap:
+
+| Agent | Packages | Files |
+|---|---|---|
+| 1 | E9 usage, limits, digest; then E10 briefs | `baton/services/{usage,digest,brief}.py`, `tests/scenarios/test_working_across.py`, `tests/unit/test_brief.py` |
+| 2 | B2 Codex adapter | `baton/adapters/codex/`, `tests/fixtures/codex`, `tests/adapters/test_codex.py` |
+| 3 | C1 command skeleton | `baton/cli/`, `pyproject.toml`, `tests/contract/` |
+| 4 | G2 check script, G3 brand test, D6, D7 | `app/` |
+
+Each writes a report in `reports/`. The orchestrator reviews, has a separate reviewer agent challenge each package, commits one package at a time, and updates this page and [MAP.md](MAP.md).
 
 ## Next
 
-Review/commit the ordered patches through UI13. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+1. Review and commit E9, E10, B2, C1, D6, D7.
+2. C2 read commands (needs C1 and E9): generates the app's fixtures; carries F2 (`tool_label`) and F6 (release offer).
+3. Live run of the Claude and Codex adapters on two throwaway chats named "Baton test (safe to delete)". Ibrahim closes and reopens the apps when asked.
+4. Write the CP2 result into CHECKPOINTS.md. Then CP3 (see [MAP.md](MAP.md)).
 
 ## Done
 
