@@ -39,3 +39,37 @@ class NoteCatalogueTest(unittest.TestCase):
         self.assertEqual(releasable["buttons"][1]["label"], "Add them now")
         self.assertNotIn("add_now", [b["id"] for b in generic["buttons"]])
         self.assertNotIn("add_now", [b["id"] for b in replying["buttons"]])
+
+
+class UI8PresentationCatalogueTests(unittest.TestCase):
+    def test_ui8_fixture_wording_is_exactly_from_catalogue(self):
+        """Receipt, Settings and Quit notes may not diverge in the fixture UI."""
+        import json
+        from pathlib import Path
+        from baton.notes.catalogue import get
+        root = Path(__file__).resolve().parents[2] / "app" / "Fixtures"
+        prefixes = ("screen.received_", "settings.", "quit.")
+        checked = 0
+        for path in root.glob("*.json"):
+            data = json.loads(path.read_text())
+            if not isinstance(data, dict):
+                continue
+            for note in data.get("notes", []):
+                if note["id"].startswith(prefixes):
+                    self.assertEqual(note, get(note["id"]).to_dict(note["values"]), str(path))
+                    checked += 1
+        self.assertGreater(checked, 100)
+
+
+    def test_fixture_receipts_stop_before_first_waiting_turn(self):
+        """A receipt must never claim a turn whose earlier history is still waiting."""
+        import json
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[2] / "app" / "Fixtures"
+        for path in root.glob("status.*.json"):
+            status = json.loads(path.read_text())
+            for tool, side in status.get("sides", {}).items():
+                reached = side.get("synced_up_to")
+                if reached:
+                    self.assertFalse(any(turn["seq"] <= reached["seq"] and turn["states"].get(tool) == "waiting"
+                                         for turn in status.get("turns", [])), (path.name, tool))

@@ -43,7 +43,7 @@ struct BrandTests {
             let png = try #require(bitmap.representation(using: .png, properties: [:]))
             data[theme] = png
             #expect(image.size == NSSize(width: 92, height: 92))
-            try png.write(to: directory.appendingPathComponent("UI7-brand-\(theme.rawValue).png"))
+            try png.write(to: directory.appendingPathComponent("UI8-brand-\(theme.rawValue).png"))
         }
         for theme in Theme.allCases {
             let content = ImageRenderer(content: BrandMark(size: 92).batonTheme(theme))
@@ -60,7 +60,7 @@ struct BrandTests {
             #expect(border.alphaComponent > 0.99)
             #expect(min(border.redComponent, border.greenComponent, border.blueComponent) > 0.99)
             let png = try #require(dockPixels.representation(using: .png, properties: [:]))
-            try png.write(to: directory.appendingPathComponent("UI7-dock-\(theme.rawValue).png"))
+            try png.write(to: directory.appendingPathComponent("UI8-dock-\(theme.rawValue).png"))
         }
         let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
         let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
@@ -71,11 +71,38 @@ struct BrandTests {
         }
         let opaqueMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: true))
         let translucentMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: false))
-        #expect(opaqueMenu.tiffRepresentation != translucentMenu.tiffRepresentation)
+        #expect(opaqueMenu.tiffRepresentation == translucentMenu.tiffRepresentation)
         let light = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .light))
         let dark = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
         #expect(!light.isTemplate && !dark.isTemplate)
-        #expect(light.tiffRepresentation != dark.tiffRepresentation)
+        #expect(light.tiffRepresentation == dark.tiffRepresentation)
+    }
+    @MainActor @Test func dockMarkUsesMoreOfItsTileAndMenuOutlineStaysTransparentOutside() throws {
+        let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+        let dockData = try #require(dock.tiffRepresentation)
+        let pixels = try #require(NSBitmapImageRep(data: dockData))
+        var left = pixels.pixelsWide; var right = 0
+        for y in stride(from: 0, to: pixels.pixelsHigh, by: 2) {
+            for x in stride(from: 0, to: pixels.pixelsWide, by: 2) {
+                guard let color = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if color.alphaComponent > 0.9 && max(color.redComponent, color.greenComponent, color.blueComponent) < 0.7 {
+                    left = min(left, x); right = max(right, x)
+                }
+            }
+        }
+        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.74)
+        let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+        let data = try #require(menu.tiffRepresentation)
+        let tiny = try #require(NSBitmapImageRep(data: data))
+        var whiteEdge = 0
+        for y in 0..<tiny.pixelsHigh {
+            for x in 0..<tiny.pixelsWide {
+                let c = try #require(tiny.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.85 { whiteEdge += 1 }
+            }
+        }
+        #expect(whiteEdge > 15)
+        #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
     }
     private func requireData(_ value: Data?) throws -> Data { try #require(value) }
 

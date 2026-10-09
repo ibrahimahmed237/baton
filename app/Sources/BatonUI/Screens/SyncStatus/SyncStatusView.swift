@@ -192,8 +192,8 @@ public struct SyncStatusView: View {
             }
             ForEach(model.displayedTurns, id: \.id) { turn in
                 VStack(alignment: .leading, spacing: 0) {
-                    if turn.id == model.displayedTurns.first?.id, !hiddenTurnNotes.isEmpty {
-                        reachedBoundaryGroup(hiddenTurnNotes).padding(.leading, 12)
+                    if turn.id == model.displayedTurns.first?.id, !model.hiddenReachedTools.isEmpty {
+                        reachedBoundaryGroup(model.hiddenReachedTools, hidden: true).padding(.leading, 12)
                         Capsule().fill(theme.colour(for: .added).opacity(0.65))
                             .frame(width: 2, height: 16).padding(.leading, 12)
                             .accessibilityHidden(true)
@@ -201,15 +201,6 @@ public struct SyncStatusView: View {
                     turnView(turn)
                 }.id(turn.id)
             }
-        }
-    }
-    private var hiddenTurnNotes: [Note] {
-        model.tools.compactMap { tool in
-            guard let reached = model.status?.sides[tool]?.syncedUpTo,
-                  !model.displayedTurns.contains(where: { $0.id == reached.id }) else { return nil }
-            return model.status?.notes.first(where: {
-                $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
-            })
         }
     }
     private func turnView(_ turn: Turn) -> some View {
@@ -248,38 +239,30 @@ public struct SyncStatusView: View {
                     ForEach(Array(model.toolMessages(for: turn).enumerated()), id: \.offset) { _, message in messageView(message, expanded: true) }
                 }
             }
-            let reachedNotes = model.tools.compactMap { tool -> Note? in
-                guard model.status?.sides[tool]?.syncedUpTo?.id == turn.id else { return nil }
-                return model.status?.notes.first(where: {
-                    $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
-                })
-            }
-            if !reachedNotes.isEmpty {
-                reachedBoundaryGroup(reachedNotes).padding(.top, 2)
-            }
+            let reached = model.reachedTools(at: turn.id)
+            if !reached.isEmpty { reachedBoundaryGroup(reached).padding(.top, 2) }
         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
     }
-    private func reachedBoundaryGroup(_ notes: [Note]) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(Array(notes.enumerated()), id: \.offset) { _, note in
-                reachedBoundary(note)
-            }
-        }
-        .padding(.leading, 10)
-        .overlay(alignment: .leading) {
-            Capsule().fill(theme.colour(for: .added).opacity(0.65)).frame(width: 2)
-        }
-        .accessibilityElement(children: .contain)
-    }
-    private func reachedBoundary(_ note: Note) -> some View {
-        HStack(alignment: .center, spacing: 7) {
-            Image(systemName: "arrow.turn.down.right")
-                .font(.caption2.weight(.semibold))
+    private func reachedBoundaryGroup(_ tools: [String], hidden: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: hidden ? "clock.arrow.circlepath" : "checkmark.circle.fill")
+                .foregroundStyle(theme.colour(for: .added)).font(.system(size: 17))
                 .accessibilityHidden(true)
-            Text(note.text).font(.caption.weight(.semibold))
-        }
-        .foregroundStyle(theme.colour(for: .added))
-        .accessibilityElement(children: .combine)
+            VStack(alignment: .leading, spacing: 7) {
+                if let heading = model.note(hidden ? "screen.received_hidden" : "screen.received_here") {
+                    Text(heading.text).font(.caption.weight(.semibold)).foregroundStyle(theme.text)
+                }
+                HStack(spacing: 10) {
+                    ForEach(tools, id: \.self) { tool in ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption) }
+                }
+                ForEach(Array(model.receiptNotes(for: tools, hidden: hidden).enumerated()), id: \.offset) { _, note in
+                    Text(note.text).font(.caption).foregroundStyle(theme.secondaryText)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(12)
+            .background(theme == .graphite ? Color(white: 0.10) : Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 9))
+            .overlay(RoundedRectangle(cornerRadius: 9).stroke(theme.colour(for: .added).opacity(0.35)))
+            .accessibilityElement(children: .combine)
     }
     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
         HStack {

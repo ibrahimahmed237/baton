@@ -4,7 +4,7 @@ import BatonKit
 
 /// Sidebar destinations, including only tools reported as installed.
 public enum WindowSection: Hashable, Sendable {
-    case linked, attention, suggestions, chats(String), activity
+    case linked, attention, suggestions, chats(String), activity, settings
 }
 
 /// Stable selections within the window's lists.
@@ -45,7 +45,9 @@ public final class WindowViewModel: ObservableObject {
 
     public func makeStatusModel() -> SyncStatusViewModel { SyncStatusViewModel(engine: engine) }
 
-    public var sections: [WindowSection] { [.linked, .attention, .suggestions] + installedTools.map(WindowSection.chats) + [.activity] }
+    public func makeSettingsModel(appearance: ThemePreference) -> SettingsViewModel { SettingsViewModel(engine: engine, appearance: appearance) }
+
+    public var sections: [WindowSection] { [.linked, .attention, .suggestions] + installedTools.map(WindowSection.chats) + [.activity, .settings] }
     public var attentionLinks: [LinkSummary] { links.filter { $0.needsAttention ?? $0.decisionNeeded } }
     public var listedLinks: [LinkSummary] { section == .attention ? attentionLinks : links }
     public var selectedLink: LinkSummary? {
@@ -70,6 +72,7 @@ public final class WindowViewModel: ObservableObject {
         case .chats(let tool):
             return notes.first { $0.id == "screen.all_chats" && $0.values["tool"] == .string(toolLabels[tool] ?? tool) }
         case .activity: id = "screen.activity"
+        case .settings: id = "screen.settings"
         }
         return notes.first { $0.id == id }
     }
@@ -83,6 +86,7 @@ public final class WindowViewModel: ObservableObject {
         case .suggestions: prefix = "empty.suggestions"
         case .chats: prefix = "empty.chats"
         case .activity: prefix = "empty.activity"
+        case .settings: return nil
         }
         return EmptyStateContent.find(prefix, in: notes)
     }
@@ -96,6 +100,7 @@ public final class WindowViewModel: ObservableObject {
         case .suggestions: prefix = "empty.select_suggestion"
         case .chats: prefix = "empty.select_chat"
         case .activity: prefix = "empty.select_activity"
+        case .settings: return nil
         }
         return EmptyStateContent.find(prefix, in: notes)
     }
@@ -160,6 +165,7 @@ public final class WindowViewModel: ObservableObject {
         case .suggestions: return suggestions.map(suggestionSelection)
         case .chats(let tool): return (chats[tool] ?? []).map { .chat(tool, $0.id) }
         case .activity: return activity.map { .event($0.link.linkID, $0.event.id) }
+        case .settings: return []
         }
     }
 

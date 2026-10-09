@@ -691,28 +691,32 @@ public struct OpenResult: Codable, Equatable, Sendable {
 /// Result of the SettingsGet command.
 public struct SettingsGetResult: Codable, Equatable, Sendable {
     public var settings: Settings
+    public var notes: [Note]?
 
     /// Creates a contract value without requiring JSON.
-    public init(settings: Settings) {
+    public init(settings: Settings, notes: [Note]? = nil) {
         self.settings = settings
+        self.notes = notes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settings
+        case settings, notes
     }
 }
 
 /// Result of the SettingsSet command.
 public struct SettingsSetResult: Codable, Equatable, Sendable {
     public var settings: Settings
+    public var notes: [Note]?
 
     /// Creates a contract value without requiring JSON.
-    public init(settings: Settings) {
+    public init(settings: Settings, notes: [Note]? = nil) {
         self.settings = settings
+        self.notes = notes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case settings
+        case settings, notes
     }
 }
 

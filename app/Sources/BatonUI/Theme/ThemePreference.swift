@@ -18,19 +18,26 @@ public enum AppearanceMode: String, CaseIterable, Sendable {
     public static let shared: ThemePreference = {
         let preference = ThemePreference(storedValue: UserDefaults.standard.string(forKey: "baton.ui.theme"),
             systemTheme: NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light,
-            save: { UserDefaults.standard.set($0, forKey: "baton.ui.theme") })
+            save: { UserDefaults.standard.set($0, forKey: "baton.ui.theme") },
+            storedGlass: UserDefaults.standard.object(forKey: "baton.ui.glass") as? Double,
+            saveGlass: { UserDefaults.standard.set($0, forKey: "baton.ui.glass") })
         preference.observeSystemAppearance()
         return preference
     }()
     @Published public private(set) var mode: AppearanceMode
     @Published public private(set) var theme: Theme
     @Published public private(set) var systemTheme: Theme
+    @Published public private(set) var glass: Double
+    private let saveGlass: (Double) -> Void
     private let save: (String) -> Void
     private var appearanceObservation: NSKeyValueObservation?
 
     /// Uses injectable persistence so fixture tests never touch real preferences.
-    public init(storedValue: String? = nil, systemTheme: Theme = .light, save: @escaping (String) -> Void = { _ in }) {
+    public init(storedValue: String? = nil, systemTheme: Theme = .light, save: @escaping (String) -> Void = { _ in },
+                storedGlass: Double? = nil, saveGlass: @escaping (Double) -> Void = { _ in }) {
         let choice = AppearanceMode(rawValue: storedValue ?? "") ?? .system
+        glass = storedGlass.map { $0.isFinite ? min(95, max(40, $0)) : 62 } ?? 62
+        self.saveGlass = saveGlass
         mode = choice; self.systemTheme = systemTheme; theme = choice.resolve(system: systemTheme); self.save = save
     }
 
@@ -38,6 +45,14 @@ public enum AppearanceMode: String, CaseIterable, Sendable {
     public func choose(_ choice: AppearanceMode) {
         guard mode != choice else { return }
         mode = choice; save(choice.rawValue); resolve()
+    }
+
+    /// Changes local surface opacity without altering macOS transparency preferences.
+    public func chooseGlass(_ value: Double) {
+        guard value.isFinite else { return }
+        let clamped = min(95, max(40, value))
+        guard glass != clamped else { return }
+        glass = clamped; saveGlass(clamped)
     }
 
     /// Follows macOS only when the saved choice is System.
@@ -92,7 +107,7 @@ struct AppearanceWindowContent: View {
     @ObservedObject var preference: ThemePreference
     let model: WindowViewModel
     var body: some View {
-        WindowView(model: model, appearance: preference).batonTheme(preference.theme)
+        WindowView(model: model, appearance: preference).batonTheme(preference.theme, glass: preference.glass)
             .task { await model.refresh() }
     }
 }

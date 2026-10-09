@@ -151,6 +151,7 @@ struct EmptyStateTests {
         let filtered = SyncStatusViewModel(engine: EmptyStateEngine(state: "d4_s1")); await filtered.load(link: 3)
         filtered.setFilter(.attached)
         for theme in Theme.allCases {
+            empty.navigate(to: .linked)
             let title = try #require(empty.emptyDetailContent)
             try render(EmptyStateView(content: title), name: "component", theme: theme, output: output)
             for section in empty.sections {
@@ -162,6 +163,7 @@ struct EmptyStateTests {
                 case .suggestions: name = "suggestions"
                 case .chats(let tool): name = "chats_" + tool
                 case .activity: name = "activity"
+                case .settings: continue
                 }
                 try render(WindowView(model: empty), name: "empty_" + name, theme: theme, output: output)
                 try render(WindowView(model: filled), name: "select_" + name, theme: theme, output: output)

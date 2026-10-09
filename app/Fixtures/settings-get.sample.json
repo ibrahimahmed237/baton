@@ -10,5 +10,367 @@
     "title_tag": true,
     "theme": "system",
     "glass": 62
-  }
+  },
+  "notes": [
+    {
+      "id": "settings.preview",
+      "tone": "info",
+      "values": {},
+      "text": "These choices are saved for this preview. Live chat syncing is not connected yet.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.appearance",
+      "tone": "info",
+      "values": {},
+      "text": "Appearance",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.sync",
+      "tone": "info",
+      "values": {},
+      "text": "Sync and delivery",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.chats",
+      "tone": "info",
+      "values": {},
+      "text": "Chats and context",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.reset",
+      "tone": "info",
+      "values": {},
+      "text": "Restore defaults",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.saved",
+      "tone": "info",
+      "values": {},
+      "text": "Saved",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.error",
+      "tone": "info",
+      "values": {},
+      "text": "The change could not be saved. Your previous choice is still in use.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.invalid",
+      "tone": "info",
+      "values": {},
+      "text": "Enter a positive whole number of tokens.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.on",
+      "tone": "info",
+      "values": {},
+      "text": "On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.off",
+      "tone": "info",
+      "values": {},
+      "text": "Off",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.on_button",
+      "tone": "info",
+      "values": {},
+      "text": "Ask me to add them",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.automatic",
+      "tone": "info",
+      "values": {},
+      "text": "Add automatically when idle",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.ask",
+      "tone": "info",
+      "values": {},
+      "text": "Ask each time",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.by_time",
+      "tone": "info",
+      "values": {},
+      "text": "Merge by time",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.notice_on_attach",
+      "tone": "info",
+      "values": {},
+      "text": "Show a notice when history is attached",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.offer_relaunch",
+      "tone": "info",
+      "values": {},
+      "text": "Offer to relaunch for visible messages",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.offer_switch_at_limit",
+      "tone": "info",
+      "values": {},
+      "text": "Offer to switch when a limit is reached",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.merge",
+      "tone": "info",
+      "values": {},
+      "text": "When both chats have new turns",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.brief_threshold_tokens",
+      "tone": "info",
+      "values": {},
+      "text": "Offer a brief above this token count",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.hide_script_chats",
+      "tone": "info",
+      "values": {},
+      "text": "Hide chats created by scripts",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.title_tag",
+      "tone": "info",
+      "values": {},
+      "text": "Tag chat titles with Baton",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.theme",
+      "tone": "info",
+      "values": {},
+      "text": "Colour theme",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.glass",
+      "tone": "info",
+      "values": {},
+      "text": "Surface opacity",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.glass_help",
+      "tone": "info",
+      "values": {},
+      "text": "Lower values let more of the background show through.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.apply",
+      "tone": "info",
+      "values": {},
+      "text": "Apply",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.loading",
+      "tone": "info",
+      "values": {},
+      "text": "Loading settings\u2026",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.settings",
+      "tone": "info",
+      "values": {},
+      "text": "Settings",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.light",
+      "tone": "info",
+      "values": {},
+      "text": "Light",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.graphite",
+      "tone": "info",
+      "values": {},
+      "text": "Dark",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.theme.system",
+      "tone": "info",
+      "values": {},
+      "text": "System",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "notice_on_attach",
+        "value": "On"
+      },
+      "text": "Default: On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "offer_relaunch",
+        "value": "On"
+      },
+      "text": "Default: On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "add_to_idle_claude",
+        "value": "Ask me to add them"
+      },
+      "text": "Default: Ask me to add them",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "offer_switch_at_limit",
+        "value": "On"
+      },
+      "text": "Default: On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "merge",
+        "value": "Ask each time"
+      },
+      "text": "Default: Ask each time",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "brief_threshold_tokens",
+        "value": "150,000"
+      },
+      "text": "Default: 150,000",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "hide_script_chats",
+        "value": "On"
+      },
+      "text": "Default: On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "title_tag",
+        "value": "On"
+      },
+      "text": "Default: On",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "theme",
+        "value": "System"
+      },
+      "text": "Default: System",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.default",
+      "tone": "info",
+      "values": {
+        "key": "glass",
+        "value": "62%"
+      },
+      "text": "Default: 62%",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.add_to_idle_claude",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Delivery to an idle Claude chat",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
 }

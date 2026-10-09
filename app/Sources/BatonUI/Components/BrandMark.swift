@@ -23,37 +23,38 @@ public enum BatonBrand {
 /// Keeps the mark colors unchanged and chooses only the surrounding surface.
 public struct BrandMark: View {
     @Environment(\.batonTheme) private var theme
-    @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
     private let placement: BrandPlacement
     private let size: CGFloat
-    private let reduceTransparencyOverride: Bool?
 
     /// Creates the signed logo at a size appropriate to its surrounding content.
     public init(size: CGFloat = 96, reduceTransparency: Bool? = nil, placement: BrandPlacement = .content) {
         self.placement = placement
-        self.size = size; self.reduceTransparencyOverride = reduceTransparency
+        self.size = size
     }
 
     public var body: some View {
         Group {
             if let icon = BatonBrand.nativeIcon() {
-                Image(nsImage: icon).resizable().interpolation(.high).scaledToFit()
+                ZStack {
+                    if placement == .menu {
+                        // Outline the silhouette behind the original pixels, not the artwork itself.
+                        ForEach(0..<8) { step in
+                            Image(nsImage: icon).resizable().renderingMode(.template).scaledToFit()
+                                .foregroundStyle(.white)
+                                .offset(x: cos(Double(step) * .pi / 4) * 0.6,
+                                        y: sin(Double(step) * .pi / 4) * 0.6)
+                        }
+                    }
+                    Image(nsImage: icon).resizable().interpolation(.high).scaledToFit()
+                }
             }
         }
-        .frame(width: placement == .dock ? size * 0.82 : size, height: placement == .dock ? size * 0.82 : size)
+        .frame(width: placement == .dock ? size * 0.98 : size, height: placement == .dock ? size * 0.98 : size)
         .frame(width: size, height: size)
         .background {
             if placement == .dock {
                 RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white)
-            } else if placement == .menu, theme == .graphite {
-                RoundedRectangle(cornerRadius: size * 0.18)
-                    .fill(LinearGradient(colors: [Color(white: 0.76), Color(white: 0.57)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .opacity((reduceTransparencyOverride ?? systemReduceTransparency) ? 1 : 0.9)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: size * 0.18)
-                            .strokeBorder(Color.white.opacity(0.24), lineWidth: size < 30 ? 0.5 : 1)
-                    }
+
             }
         }
         .accessibilityHidden(true)

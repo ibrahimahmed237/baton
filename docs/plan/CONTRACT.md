@@ -158,3 +158,10 @@ The preview for an already-linked source includes the named current partner and 
 ### Relink mode (Ibrahim approved, 2026-10-05)
 
 The R9 retained-side relink signature additionally accepts `--mode full_copy|attached_history|brief`, defaulting to `full_copy` when absent. The selected mode describes a new counterpart; brief always creates a new chat. Earlier relink callers keep their default behavior. D5 sends the selected mode and retained side, and C3 implements it.
+
+
+## UI8 additive settings presentation
+
+`settings get` and `settings set` may include optional top-level `notes: [Note]`. They supply labels, choice names, default labels keyed by `values.key`, save/error messages and the fixture-preview notice. Absence decodes as no presentation notes. Settings fields and immediate `settings set` behaviour retain their existing meanings.
+
+Status notes may include `screen.received_here`, `screen.received_both`, per-tool `screen.received_one` and per-tool `screen.received_hidden_tool` with `values.seq` (the reached turn sequence). These are presentation receipts; existing `status.reached` and the engine marker protocol are unchanged. Both agents may share one boundary when their `synced_up_to.id` matches. Hidden boundaries stay per-tool and never imply a visible turn has been received.

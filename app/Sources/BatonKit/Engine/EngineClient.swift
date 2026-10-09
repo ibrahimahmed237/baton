@@ -243,9 +243,9 @@ public extension EngineTransport {
         try await response(command: "settings-get", arguments: ["get"], as: SettingsGetResult.self)
     }
 
-    /// Runs the settings-set command.
+    /// Sets configuration immediately; the retained mutation argument does not add plan flags.
     func settingsSet(key: String, value: String, mutation: MutationOptions = .preview) async throws -> SettingsSetResult {
-        try await response(command: "settings-set", arguments: ["set", key, value] + mutation.arguments, as: SettingsSetResult.self)
+        try await response(command: "settings-set", arguments: ["set", key, value], as: SettingsSetResult.self)
     }
 
     /// Runs the notify command.

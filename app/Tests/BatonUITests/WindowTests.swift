@@ -86,7 +86,7 @@ struct WindowTests {
     func navigationSelectionAndAttentionUseEngineFlags() async {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
         await model.refresh()
-        #expect(model.sections.count == 8)
+        #expect(model.sections.count == 9)
         #expect(model.attentionLinks.map(\.linkID) == [3, 4])
         model.select(.link(3))
         #expect(model.selectedLink?.linkID == 3)
@@ -164,7 +164,7 @@ struct WindowTests {
             let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_" + fixture))
             await model.refresh()
             let destinations = fixture == "tool_missing" ? [WindowSection.linked] : model.sections
-            #expect(destinations.count == (fixture == "tool_missing" ? 1 : 8))
+            #expect(destinations.count == (fixture == "tool_missing" ? 1 : 9))
             for section in destinations {
                 model.navigate(to: section)
                 let name: String
@@ -173,6 +173,7 @@ struct WindowTests {
                 case .attention: name = "attention"; if fixture == "filled" { model.select(.link(4)) }
                 case .suggestions: name = "suggestions"; if fixture == "filled" { model.select(model.suggestionSelection(model.suggestions[0])) }
                 case .chats(let tool): name = "chats_" + tool; if fixture == "filled" { model.select(.chat(tool, "d3-unlinked-" + tool)) }
+                case .settings: name = "settings"
                 case .activity: name = "activity"; if fixture == "filled" { model.select(.event(3, 1)) }
                 }
                 for theme in Theme.allCases {

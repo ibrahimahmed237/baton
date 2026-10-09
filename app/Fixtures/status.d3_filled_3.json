@@ -31,22 +31,22 @@
       "kept_elsewhere": 0,
       "skipped": 0,
       "synced_up_to": {
-        "id": 44,
-        "seq": 4,
-        "origin": "claude",
-        "first_line": "Check the harvest.",
-        "started_at": "2026-10-05T10:04:00Z",
+        "id": 42,
+        "seq": 2,
+        "origin": "codex",
+        "first_line": "Add silver pear trees.",
+        "started_at": "2026-10-05T10:02:00Z",
         "ended_at": "2026-10-04T14:01:00Z",
         "tokens": 1600,
-        "pinned": false,
+        "pinned": true,
         "states": {
-          "claude": "written_here",
-          "codex": "waiting"
+          "claude": "shown",
+          "codex": "written_here"
         },
         "messages": [
           {
             "kind": "prompt",
-            "text": "Check the harvest."
+            "text": "Add silver pear trees."
           },
           {
             "kind": "reply",
@@ -112,9 +112,9 @@
           "id": "status.synced_up_to",
           "tone": "info",
           "values": {
-            "first_line": "Check the harvest."
+            "first_line": "Add silver pear trees."
           },
-          "text": "Synced up to Check the harvest.",
+          "text": "Synced up to Add silver pear trees.",
           "buttons": [],
           "status_line": null
         },
@@ -493,7 +493,7 @@
       "id": "screen.copy",
       "tone": "info",
       "values": {},
-      "text": "Copy to…",
+      "text": "Copy to\u2026",
       "buttons": [],
       "status_line": null
     },
@@ -730,6 +730,72 @@
       "tone": "info",
       "values": {},
       "text": "Show all turns",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_here",
+      "tone": "info",
+      "values": {},
+      "text": "History received through this turn",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_both",
+      "tone": "info",
+      "values": {},
+      "text": "Both agents have the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden",
+      "tone": "info",
+      "values": {},
+      "text": "Received history outside this view",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_one",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Claude has the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden_tool",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "seq": 2
+      },
+      "text": "Claude has history through turn 2.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_one",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "Codex has the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden_tool",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "seq": 3
+      },
+      "text": "Codex has history through turn 3.",
       "buttons": [],
       "status_line": null
     }

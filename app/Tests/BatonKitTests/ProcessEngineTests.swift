@@ -17,6 +17,21 @@ struct ProcessEngineTests {
     }
 
     @Test
+    func settingsActImmediatelyWithoutPlanFlags() async throws {
+        let json = try String(contentsOf: FixtureDecodingTests.fixtures.appendingPathComponent("settings-set.sample.json"), encoding: .utf8)
+        let script = """
+        [ "$#" -eq 5 ] && [ "$1" = settings ] && [ "$2" = set ] && [ "$3" = glass ] && [ "$4" = 62 ] && [ "$5" = --json ] || exit 88
+        cat <<'JSON'
+        \(json)
+        JSON
+        """
+        try await withScript(script) { engine, _ in
+            _ = try await engine.settingsSet(key: "glass", value: "62", mutation: .preview)
+            _ = try await engine.settingsSet(key: "glass", value: "62", mutation: .confirm("unused"))
+        }
+    }
+
+    @Test
     func testRefusalAndCrashBothCarryTheEngineNote() async throws {
         let noteData = try Data(contentsOf: FixtureDecodingTests.fixtures.appendingPathComponent("note.sample.json"))
         let note = try JSONDecoder().decode(Note.self, from: noteData)

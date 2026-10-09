@@ -8,13 +8,18 @@ public struct PopoverView: View {
     @Environment(\.batonSnapshotPresentation) private var snapshot
     @ObservedObject private var model: PopoverViewModel
     private let linkRecent: () -> Void
+    private let openWindow: () -> Void
+    private let quit: () -> Void
+    private let applicationNotes: [Note]
 
     /// Shows an injected model and delegates opening the suggestion screen.
-    public init(model: PopoverViewModel, linkRecent: @escaping () -> Void = {}) {
-        self.model = model; self.linkRecent = linkRecent
+    public init(model: PopoverViewModel, linkRecent: @escaping () -> Void = {},
+                openWindow: @escaping () -> Void = {}, quit: @escaping () -> Void = {}, applicationNotes: [Note] = []) {
+        self.model = model; self.linkRecent = linkRecent; self.openWindow = openWindow; self.quit = quit; self.applicationNotes = applicationNotes
     }
 
     public var body: some View {
+        VStack(spacing: 0) {
         WindowScrollArea(snapshotClips: false) {
         VStack(alignment: .leading, spacing: 14) {
             if let note = model.errorNote { NoteView(note: note) }
@@ -66,7 +71,18 @@ public struct PopoverView: View {
                 PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
             }
         }.padding(16)
-        }.frame(width: 380, height: snapshot ? nil : 460).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+        }
+        Divider()
+        HStack {
+            if let note = model.applicationNote("screen.open_window", fallback: applicationNotes) {
+                Button(note.text, action: openWindow).buttonStyle(.plain)
+            }
+            Spacer()
+            if let note = model.applicationNote("screen.quit", fallback: applicationNotes) {
+                Button(note.text, action: quit).buttonStyle(.plain)
+            }
+        }.font(.caption.weight(.medium)).padding(12)
+        }.frame(width: 340, height: snapshot ? nil : 340).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
     }
 
     private func rowMeaning(_ link: LinkSummary) -> StateColour {

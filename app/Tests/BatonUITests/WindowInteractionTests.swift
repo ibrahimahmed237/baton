@@ -142,6 +142,7 @@ struct WindowInteractionTests {
             case .linked, .attention: selection = .link(model.listedLinks[0].linkID)
             case .suggestions: selection = model.suggestionSelection(model.suggestions[0])
             case .chats(let tool): selection = .chat(tool, model.chats[tool]![0].id)
+            case .settings: continue
             case .activity: selection = .event(model.activity[0].link.linkID, model.activity[0].event.id)
             }
             model.select(selection)

@@ -63,7 +63,10 @@ struct PopoverTests {
     @Test
     func omittedPresentationNotesRemainCompatible() throws {
         let original = try Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/links.sample.json"))
-        #expect(try JSONDecoder().decode(LinksResult.self, from: original).notes.isEmpty)
+        var object = try #require(JSONSerialization.jsonObject(with: original) as? [String: Any])
+        object.removeValue(forKey: "notes")
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        #expect(try JSONDecoder().decode(LinksResult.self, from: legacy).notes.isEmpty)
     }
 
     @MainActor @Test

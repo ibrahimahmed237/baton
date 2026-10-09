@@ -4,11 +4,14 @@ import SwiftUI
 public enum Theme: String, CaseIterable, Sendable {
     case light, graphite
 
-    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x50545d) }
-    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x484b52) }
+    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x242126) }
+    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x302b31) }
     public var text: Color { self == .light ? colour(0x20242d) : colour(0xffffff) }
     public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xd5d8e0) }
     public var hairline: Color { text.opacity(0.1) }
+    /// Decorative brand accents, independent of semantic state and tool colours.
+    public var backdropAccent: Color { self == .graphite ? colour(0x6b1935) : colour(0x9c5268) }
+    public var backdropInk: Color { self == .graphite ? colour(0x100e12) : colour(0x8d8591) }
     public var scheme: ColorScheme { self == .light ? .light : .dark }
 
     /// Returns a colour for a meaning, rather than for a particular screen.
@@ -114,7 +117,7 @@ public struct GlassCard<Content: View>: View {
     }
 }
 
-/// Soft identity-colour pools behind the system material surfaces.
+/// Subtle burgundy and ink pools behind the system material surfaces.
 public struct GlassBackdrop: View {
     @Environment(\.batonTheme) private var theme
     @Environment(\.batonGlass) private var glass
@@ -124,11 +127,11 @@ public struct GlassBackdrop: View {
         GeometryReader { geometry in
             ZStack {
                 theme.background.opacity(reduceTransparency ? 1 : glass / 100)
-                Circle().fill(theme.colour(for: .claude).opacity(0.18))
+                Circle().fill(theme.backdropAccent.opacity(0.28))
                     .frame(width: 360, height: 360).blur(radius: 90).offset(x: -geometry.size.width * 0.35, y: -180)
-                Circle().fill(theme.colour(for: .codex).opacity(0.16))
+                Circle().fill(theme.backdropInk.opacity(0.25))
                     .frame(width: 420, height: 420).blur(radius: 110).offset(x: geometry.size.width * 0.3, y: 160)
-                Circle().fill(theme.colour(for: .cursor).opacity(0.1))
+                Circle().fill(theme.backdropAccent.opacity(0.08))
                     .frame(width: 320, height: 320).blur(radius: 90).offset(x: 80, y: -180)
             }.frame(width: geometry.size.width, height: geometry.size.height).background(.regularMaterial).clipped()
         }.accessibilityHidden(true)

@@ -244,3 +244,12 @@ UI6 completion 2026-10-06:377 engine /81 app tests and installed-SDK Swift build
 **Done when.** In-app logo has no backing in either theme, Dock tile is white, theme choice is visible and retained, build/tests/review pass and running fixture was inspected.
 
 UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build pass. B/I.A image pixels identical across themes, content margins transparent, Dock borders white. Native sidebar Light/Dark/System inspected and changed surfaces; independent hosted-update test warning fixed and rechecked. Engine preference integration remains C2/D12. No image replacement, real chats or Git writes.
+
+
+## UI8. Clear receipts, brand contrast and preview settings
+
+**From.** Ibrahim, 2026-10-06: white edge around black menu artwork; smaller white Dock margins; burgundy/black dark backdrop; clearer same-turn history receipts; Settings with defaults; compact popover and confirmed Quit.
+**Files.** app/Sources, app/Tests, app/Fixtures; baton/notes/catalogue.py and tests/unit/test_notes.py; additive CONTRACT settings notes; docs/plan records/reports.
+**Steps.** Preserve burgundy/black B and I.A; outline menu silhouette, never recolor content artwork. Group receipt boundaries by their actual turn, explain hidden boundaries separately and suppress when no displayed messages. Build the settings portion of D11 early, with all ten contract keys, choices, defaults and saved fixture-only configuration. Apply appearance/glass immediately across window/popover. Confirm every user Quit request; keep compact popover footer accessible while long content scrolls.
+**Tests.** Receipt grouping/filtering; Settings choices, defaults, validation, persistence, failed save; native CLI settings arguments; Quit cancel/confirm; brand pixels and light/graphite PNGs.
+**Done when.** Shared tests/build pass; separate review is resolved; rendered views and refreshed fixture are inspected. Full D11 setup boards and D12 real-engine connection are not claimed.

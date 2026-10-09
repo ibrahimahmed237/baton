@@ -7,12 +7,15 @@ public struct WindowView: View {
     @Environment(\.batonGlass) private var glass
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var linkDialog: LinkDialogViewModel?
+    @StateObject private var settingsModel: SettingsViewModel
     @StateObject private var statusModel: SyncStatusViewModel
     @ObservedObject private var appearance: ThemePreference
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
     public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil, appearance: ThemePreference? = nil) {
-        self.appearance = appearance ?? .shared
+        let preference = appearance ?? .shared
+        self.appearance = preference
+        _settingsModel = StateObject(wrappedValue: model.makeSettingsModel(appearance: preference))
         self.model = model
         _statusModel = StateObject(wrappedValue: statusModel ?? model.makeStatusModel())
     }
@@ -37,7 +40,7 @@ public struct WindowView: View {
                 ThemeSelector(preference: appearance, notes: model.notes)
             }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
                 .background { Rectangle().fill(.regularMaterial).overlay(theme.sidebar.opacity(reduceTransparency ? 1 : glass / 200)) }
-            if model.section != .linked && model.section != .attention {
+            if model.section != .linked && model.section != .attention && model.section != .settings {
                 VStack(alignment: .leading, spacing: 14) {
                     if let label = model.label(for: model.section) { Text(label.text).font(.title2.weight(.semibold)) }
                     WindowScrollArea { listContent }
@@ -47,7 +50,8 @@ public struct WindowView: View {
             WindowScrollArea {
                 VStack(alignment: .leading, spacing: 14) {
                     if let error = model.errorNote { NoteView(note: error) }
-                    detail
+                    if model.section == .settings { SettingsView(model: settingsModel, appearance: appearance, fallbackNotes: model.notes) }
+                    else { detail }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop().ignoresSafeArea(.container, edges: .top) }
@@ -81,6 +85,7 @@ public struct WindowView: View {
                 ForEach(model.chats[tool] ?? [], id: \.id) { chat in
                     row(.chat(tool, chat.id)) { chatSummary(chat) }
                 }
+            case .settings: EmptyView()
             case .activity:
                 if model.activity.isEmpty { empty }
                 ForEach(model.activity) { entry in

@@ -273,6 +273,89 @@
       "text": "System",
       "buttons": [],
       "status_line": null
+    },
+    {
+      "id": "screen.settings",
+      "tone": "info",
+      "values": {},
+      "text": "Settings",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.open_window",
+      "tone": "info",
+      "values": {},
+      "text": "Open Baton",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.quit",
+      "tone": "info",
+      "values": {},
+      "text": "Quit Baton\u2026",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "quit.title",
+      "tone": "info",
+      "values": {},
+      "text": "Quit Baton?",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "quit.confirm",
+      "tone": "info",
+      "values": {},
+      "text": "Baton will close. Your saved settings will be kept.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "quit.actions",
+      "tone": "warning",
+      "values": {},
+      "text": "Quit Baton?",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Keep Baton open",
+          "primary": true
+        },
+        {
+          "id": "quit",
+          "label": "Quit Baton",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "settings.preview",
+      "tone": "info",
+      "values": {},
+      "text": "These choices are saved for this preview. Live chat syncing is not connected yet.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.error",
+      "tone": "info",
+      "values": {},
+      "text": "The change could not be saved. Your previous choice is still in use.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "settings.loading",
+      "tone": "info",
+      "values": {},
+      "text": "Loading settings\u2026",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

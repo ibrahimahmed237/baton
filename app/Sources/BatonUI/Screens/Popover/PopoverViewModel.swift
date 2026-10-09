@@ -25,6 +25,11 @@ public final class PopoverViewModel: ObservableObject {
     /// Receives the only source of data and user-facing wording.
     public init(engine: any EngineClient) { self.engine = engine }
 
+    /// Keeps application actions available even before or after a failed status refresh.
+    public func applicationNote(_ id: String, fallback: [Note]) -> Note? {
+        notes.first { $0.id == id } ?? fallback.first { $0.id == id }
+    }
+
     public func continueNote(for tool: String) -> Note? {
         guard let label = selectedLink?.sides[tool]?.displayLabel else { return nil }
         return notes.first { $0.id == "screen.continue" && $0.values["tool"] == .string(label) }

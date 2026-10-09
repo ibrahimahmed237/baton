@@ -317,6 +317,72 @@
       "text": "Show all turns",
       "buttons": [],
       "status_line": null
+    },
+    {
+      "id": "screen.received_here",
+      "tone": "info",
+      "values": {},
+      "text": "History received through this turn",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_both",
+      "tone": "info",
+      "values": {},
+      "text": "Both agents have the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden",
+      "tone": "info",
+      "values": {},
+      "text": "Received history outside this view",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_one",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Claude has the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden_tool",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "seq": 1
+      },
+      "text": "Claude has history through turn 1.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_one",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "Codex has the conversation through this turn.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.received_hidden_tool",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "seq": 1
+      },
+      "text": "Codex has history through turn 1.",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

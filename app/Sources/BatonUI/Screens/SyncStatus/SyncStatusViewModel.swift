@@ -68,6 +68,30 @@ public final class SyncStatusViewModel: ObservableObject {
     public func note(_ id: String, turn: Int? = nil) -> Note? {
         status?.notes.first { note in note.id == id && (turn == nil || note.values["turn_id"] == .number(Double(turn!))) }
     }
+    /// Groups only tools whose engine-reported receipt ends at this exact turn.
+    public func reachedTools(at turn: Int) -> [String] {
+        tools.filter { status?.sides[$0]?.syncedUpTo?.id == turn }
+    }
+    /// Keeps filtered or folded receipts explicit about their original turn.
+    public var hiddenReachedTools: [String] {
+        guard !displayedTurns.isEmpty else { return [] }
+        let visible = Set(displayedTurns.map(\.id))
+        return tools.filter { tool in
+            guard let turn = status?.sides[tool]?.syncedUpTo?.id else { return false }
+            return !visible.contains(turn)
+        }
+    }
+    /// Uses engine wording for a shared receipt, with a legacy per-tool fallback.
+    public func receiptNotes(for tools: [String], hidden: Bool = false) -> [Note] {
+        guard !tools.isEmpty else { return [] }
+        if !hidden, tools.count == self.tools.count, tools.count == 2,
+           let shared = note("screen.received_both") { return [shared] }
+        return tools.compactMap { tool in
+            let id = hidden ? "screen.received_hidden_tool" : "screen.received_one"
+            return status?.notes.first { $0.id == id && $0.values["tool"] == .string(toolLabel(tool)) }
+                ?? status?.notes.first { $0.id == "status.reached" && $0.values["tool"] == .string(toolLabel(tool)) }
+        }
+    }
     public func stateLabel(_ state: String) -> String? { note("turn." + state)?.text }
     public func setFilter(_ value: ConversationFilter) { filter = value }
     public func jump(to turn: Int) {
