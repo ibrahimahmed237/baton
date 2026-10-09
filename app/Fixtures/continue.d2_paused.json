@@ -29,7 +29,8 @@
           ],
           "status_line": "Paused, 2 waiting"
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   ],
   "decision_needed": false,

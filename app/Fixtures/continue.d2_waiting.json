@@ -17,20 +17,21 @@
           "id": "write.chat_open",
           "tone": "info",
           "values": {
-            "tool": "codex",
+            "tool": "Codex",
             "n": 2
           },
-          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
+          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Codex.",
           "buttons": [
             {
               "id": "close_sync_reopen",
-              "label": "Close codex, sync, reopen",
+              "label": "Close Codex, sync, reopen",
               "primary": true
             }
           ],
           "status_line": "2 turns waiting, attached on next message"
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   ],
   "decision_needed": false,
@@ -39,14 +40,14 @@
       "id": "write.chat_open",
       "tone": "info",
       "values": {
-        "tool": "codex",
+        "tool": "Codex",
         "n": 2
       },
-      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
+      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Codex.",
       "buttons": [
         {
           "id": "close_sync_reopen",
-          "label": "Close codex, sync, reopen",
+          "label": "Close Codex, sync, reopen",
           "primary": true
         }
       ],

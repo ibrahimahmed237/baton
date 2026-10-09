@@ -13,7 +13,8 @@
         "name": "Imaginary orchard",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Claude"
       },
       "condition": {
         "exists": true,
@@ -74,12 +75,7 @@
         "percent": 0.8,
         "limit": null
       },
-      "since_you_left": {
-        "turns": 1,
-        "files": 2,
-        "commands": 3,
-        "since": "2026-10-04T13:00:00Z"
-      },
+      "since_you_left": null,
       "notes": [
         {
           "id": "fixture.links.ready",
@@ -104,7 +100,8 @@
           ],
           "status_line": "Sample ready"
         }
-      ]
+      ],
+      "tool_label": "Claude"
     },
     "codex": {
       "tool": "codex",
@@ -114,7 +111,8 @@
         "name": "Imaginary orchard",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Codex"
       },
       "condition": {
         "exists": true,
@@ -175,12 +173,7 @@
         "percent": 0.8,
         "limit": null
       },
-      "since_you_left": {
-        "turns": 1,
-        "files": 2,
-        "commands": 3,
-        "since": "2026-10-04T13:00:00Z"
-      },
+      "since_you_left": null,
       "notes": [
         {
           "id": "fixture.links.ready",
@@ -205,7 +198,8 @@
           ],
           "status_line": "Sample ready"
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   },
   "turns": [
@@ -267,6 +261,22 @@
         }
       ],
       "status_line": "Sample ready"
+    },
+    {
+      "id": "screen.turn_by_turn",
+      "tone": "info",
+      "values": {},
+      "text": "Turn by turn",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.conversation",
+      "tone": "info",
+      "values": {},
+      "text": "Conversation",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

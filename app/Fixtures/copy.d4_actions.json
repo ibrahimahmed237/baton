@@ -17,14 +17,14 @@
           "id": "link.copy",
           "tone": "info",
           "values": {
-            "tool": "codex",
+            "tool": "Codex",
             "n": 4
           },
-          "text": "A new chat is created in codex with all 4 turns. The two chats will not be kept in sync.",
+          "text": "A new chat is created in Codex with all 4 turns. The two chats will not be kept in sync.",
           "buttons": [
             {
               "id": "copy",
-              "label": "Copy to codex",
+              "label": "Copy to Codex",
               "primary": true
             },
             {
@@ -40,7 +40,8 @@
           ],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   ],
   "decision_needed": false,
@@ -49,14 +50,14 @@
       "id": "link.copy",
       "tone": "info",
       "values": {
-        "tool": "codex",
+        "tool": "Codex",
         "n": 4
       },
-      "text": "A new chat is created in codex with all 4 turns. The two chats will not be kept in sync.",
+      "text": "A new chat is created in Codex with all 4 turns. The two chats will not be kept in sync.",
       "buttons": [
         {
           "id": "copy",
-          "label": "Copy to codex",
+          "label": "Copy to Codex",
           "primary": true
         },
         {

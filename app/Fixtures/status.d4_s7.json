@@ -13,7 +13,8 @@
         "name": "Imaginary orchard",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Claude"
       },
       "condition": {
         "exists": true,
@@ -75,13 +76,13 @@
           "id": "status.summary",
           "tone": "info",
           "values": {
-            "tool": "claude",
+            "tool": "Claude",
             "agent_has": 3,
             "total": 4,
             "chat_shows": 3,
             "waiting": 1
           },
-          "text": "claude's agent has 3 of 4 turns. Its chat shows 3; 1 are waiting.",
+          "text": "Claude's agent has 3 of 4 turns. Its chat shows 3; 1 are waiting.",
           "buttons": [],
           "status_line": null
         },
@@ -143,9 +144,9 @@
           "id": "screen.open",
           "tone": "info",
           "values": {
-            "tool": "claude"
+            "tool": "Claude"
           },
-          "text": "Open in claude",
+          "text": "Open in Claude",
           "buttons": [],
           "status_line": null
         },
@@ -153,13 +154,14 @@
           "id": "status.setup_ready",
           "tone": "ok",
           "values": {
-            "tool": "claude"
+            "tool": "Claude"
           },
-          "text": "Baton's hooks are installed and trusted in claude.",
+          "text": "Baton's hooks are installed and trusted in Claude.",
           "buttons": [],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Claude"
     },
     "codex": {
       "tool": "codex",
@@ -169,7 +171,8 @@
         "name": "Orchard tests",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Codex"
       },
       "condition": {
         "exists": true,
@@ -231,13 +234,13 @@
           "id": "status.summary",
           "tone": "info",
           "values": {
-            "tool": "codex",
+            "tool": "Codex",
             "agent_has": 3,
             "total": 4,
             "chat_shows": 3,
             "waiting": 1
           },
-          "text": "codex's agent has 3 of 4 turns. Its chat shows 3; 1 are waiting.",
+          "text": "Codex's agent has 3 of 4 turns. Its chat shows 3; 1 are waiting.",
           "buttons": [],
           "status_line": null
         },
@@ -299,9 +302,9 @@
           "id": "screen.open",
           "tone": "info",
           "values": {
-            "tool": "codex"
+            "tool": "Codex"
           },
-          "text": "Open in codex",
+          "text": "Open in Codex",
           "buttons": [],
           "status_line": null
         },
@@ -309,13 +312,14 @@
           "id": "status.setup_ready",
           "tone": "ok",
           "values": {
-            "tool": "codex"
+            "tool": "Codex"
           },
-          "text": "Baton's hooks are installed and trusted in codex.",
+          "text": "Baton's hooks are installed and trusted in Codex.",
           "buttons": [],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   },
   "turns": [
@@ -421,9 +425,9 @@
       "id": "status.reached",
       "tone": "info",
       "values": {
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "claude's agent has everything above this line",
+      "text": "Claude's agent has everything above this line",
       "buttons": [],
       "status_line": null
     },
@@ -431,9 +435,9 @@
       "id": "status.reached",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "codex's agent has everything above this line",
+      "text": "Codex's agent has everything above this line",
       "buttons": [],
       "status_line": null
     },
@@ -489,7 +493,7 @@
       "id": "screen.copy",
       "tone": "info",
       "values": {},
-      "text": "Copy to\u2026",
+      "text": "Copy to…",
       "buttons": [],
       "status_line": null
     },
@@ -670,6 +674,22 @@
         "at": "2026-10-05T10:20:00Z"
       },
       "text": "Last checked 2026-10-05T10:20:00Z",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.turn_by_turn",
+      "tone": "info",
+      "values": {},
+      "text": "Turn by turn",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.conversation",
+      "tone": "info",
+      "values": {},
+      "text": "Conversation",
       "buttons": [],
       "status_line": null
     }

@@ -9,7 +9,8 @@
           "name": "Imaginary orchard",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Claude"
         },
         "codex": {
           "tool": "codex",
@@ -17,7 +18,8 @@
           "name": "Orchard tests",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Codex"
         }
       },
       "mode": "full_copy",
@@ -49,7 +51,8 @@
           "name": "Imaginary orchard",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Claude"
         },
         "codex": {
           "tool": "codex",
@@ -57,7 +60,8 @@
           "name": "Orchard tests",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Codex"
         }
       },
       "mode": "full_copy",
@@ -66,18 +70,18 @@
         "id": "relaunch_to_see",
         "tone": "info",
         "values": {
-          "tool": "claude",
+          "tool": "Claude",
           "n": 2
         },
-        "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
+        "text": "The agent has these 2 turns. Relaunch Claude to see them as normal messages.",
         "buttons": [
           {
             "id": "relaunch",
-            "label": "Relaunch claude",
+            "label": "Relaunch Claude",
             "primary": true
           }
         ],
-        "status_line": "Relaunch claude to see 2 new turns"
+        "status_line": "Relaunch Claude to see 2 new turns"
       },
       "in_sync": false,
       "decision_needed": false,
@@ -92,7 +96,8 @@
           "name": "Imaginary orchard",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Claude"
         },
         "codex": {
           "tool": "codex",
@@ -100,7 +105,8 @@
           "name": "Orchard tests",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Codex"
         }
       },
       "mode": "full_copy",
@@ -179,9 +185,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "All claude chats",
+      "text": "All Claude chats",
       "buttons": [],
       "status_line": null
     },
@@ -189,9 +195,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "All codex chats",
+      "text": "All Codex chats",
       "buttons": [],
       "status_line": null
     },
@@ -199,9 +205,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "opencode"
+        "tool": "OpenCode"
       },
-      "text": "All opencode chats",
+      "text": "All OpenCode chats",
       "buttons": [],
       "status_line": null
     },
@@ -209,9 +215,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "cursor"
+        "tool": "Cursor"
       },
-      "text": "All cursor chats",
+      "text": "All Cursor chats",
       "buttons": [],
       "status_line": null
     }

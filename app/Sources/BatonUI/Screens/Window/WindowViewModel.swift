@@ -31,6 +31,7 @@ public final class WindowViewModel: ObservableObject {
     @Published public private(set) var chats: [String: [Chat]] = [:]
     @Published public private(set) var activity: [ActivityEntry] = []
     @Published public private(set) var errorNote: Note?
+    private var toolLabels: [String: String] = [:]
     private let engine: any EngineClient
     private var refreshNumber = 0
 
@@ -62,7 +63,7 @@ public final class WindowViewModel: ObservableObject {
         case .attention: id = "screen.attention"
         case .suggestions: id = "screen.suggestions"
         case .chats(let tool):
-            return notes.first { $0.id == "screen.all_chats" && $0.values["tool"] == .string(tool) }
+            return notes.first { $0.id == "screen.all_chats" && $0.values["tool"] == .string(toolLabels[tool] ?? tool) }
         case .activity: id = "screen.activity"
         }
         return notes.first { $0.id == id }
@@ -76,6 +77,7 @@ public final class WindowViewModel: ObservableObject {
             let response = try await engine.links()
             let setup = try await engine.setup()
             let suggested = try await engine.suggestions()
+            let labels = Dictionary(uniqueKeysWithValues: setup.tools.map { ($0.tool, $0.displayLabel) })
             let installed = setup.tools.filter(\.installed).map(\.tool).sorted()
             var allChats: [String: [Chat]] = [:]
             for tool in installed {
@@ -87,6 +89,7 @@ public final class WindowViewModel: ObservableObject {
             }
             guard refreshNumber == refresh else { return }
             links = response.links; notes = response.notes; suggestions = suggested.suggestions
+            toolLabels = labels
             installedTools = installed; chats = allChats
             let datedEvents: [(index: Int, entry: ActivityEntry, date: Date)] = events.enumerated().map { index, entry in
                 (index: index, entry: entry, date: eventDate(entry.event.at))

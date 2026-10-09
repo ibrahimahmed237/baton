@@ -21,9 +21,9 @@
       "id": "screen.continue",
       "tone": "info",
       "values": {
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "Continue in claude",
+      "text": "Continue in Claude",
       "buttons": [],
       "status_line": null
     },
@@ -31,9 +31,9 @@
       "id": "screen.continue",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "Continue in codex",
+      "text": "Continue in Codex",
       "buttons": [],
       "status_line": null
     }

@@ -17,13 +17,14 @@
           "id": "setup.trust_once",
           "tone": "info",
           "values": {
-            "tool": "codex"
+            "tool": "Codex"
           },
-          "text": "In codex, type /hooks and trust Baton's two entries.",
+          "text": "In Codex, type /hooks and trust Baton's two entries.",
           "buttons": [],
           "status_line": "Setup: 1 step left"
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   ],
   "decision_needed": false,
@@ -32,9 +33,9 @@
       "id": "setup.trust_once",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "In codex, type /hooks and trust Baton's two entries.",
+      "text": "In Codex, type /hooks and trust Baton's two entries.",
       "buttons": [],
       "status_line": "Setup: 1 step left"
     }

@@ -76,3 +76,9 @@ Thin layers over the services. No rules live here: a command parses, calls one s
 **Steps.** 1. At turn end, read the limit state; return an offer note once per limit. 2. `baton watch --once` re-reads linked chats whose files changed since the last look, for the app to call on a timer.
 **Tests.** V1 to V3.
 **Done when.** V1 to V3 pass through the commands.
+
+## Reviewer carry-over from CP1
+
+- F2 (C2): emit additive `tool_label` in Chat, Side, Step and setup tool objects, and render coding-app note values with display labels from CONTRACT.md. D4b supplies hand-made labelled fixtures first.
+- F6 (C2): select catalogue `write.chat_open_release` instead of `write.chat_open` only for an open, idle, release-capable full-copy side with the on-button setting. Never offer release for a replying/held-only side or initial attached-history delivery. Preserve the generic note for those cases.
+- R9 (C3): add `baton link --link L --replace T --mode full_copy` and `baton relink --link L --to T[:ID] --keep T2`; existing signatures remain. D5 exposes these choices.

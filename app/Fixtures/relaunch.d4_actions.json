@@ -17,14 +17,14 @@
           "id": "write.app_must_close",
           "tone": "warning",
           "values": {
-            "tool": "claude",
+            "tool": "Claude",
             "n": 2
           },
-          "text": "Baton closes claude, writes, and opens claude again on this folder; your windows come back. Baton never writes while claude runs, because claude would write over it.",
+          "text": "Baton closes Claude, writes, and opens Claude again on this folder; your windows come back. Baton never writes while Claude runs, because Claude would write over it.",
           "buttons": [
             {
               "id": "close_sync_reopen",
-              "label": "Close claude, sync, reopen",
+              "label": "Close Claude, sync, reopen",
               "primary": true
             },
             {
@@ -38,9 +38,10 @@
               "primary": false
             }
           ],
-          "status_line": "2 turns waiting until claude is closed"
+          "status_line": "2 turns waiting until Claude is closed"
         }
-      ]
+      ],
+      "tool_label": "Claude"
     }
   ],
   "decision_needed": false,
@@ -49,14 +50,14 @@
       "id": "write.app_must_close",
       "tone": "warning",
       "values": {
-        "tool": "claude",
+        "tool": "Claude",
         "n": 2
       },
-      "text": "Baton closes claude, writes, and opens claude again on this folder; your windows come back. Baton never writes while claude runs, because claude would write over it.",
+      "text": "Baton closes Claude, writes, and opens Claude again on this folder; your windows come back. Baton never writes while Claude runs, because Claude would write over it.",
       "buttons": [
         {
           "id": "close_sync_reopen",
-          "label": "Close claude, sync, reopen",
+          "label": "Close Claude, sync, reopen",
           "primary": true
         },
         {
@@ -70,7 +71,7 @@
           "primary": false
         }
       ],
-      "status_line": "2 turns waiting until claude is closed"
+      "status_line": "2 turns waiting until Claude is closed"
     }
   ],
   "replying": []

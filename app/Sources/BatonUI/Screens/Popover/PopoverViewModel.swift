@@ -19,6 +19,10 @@ public final class PopoverViewModel: ObservableObject {
     /// Receives the only source of data and user-facing wording.
     public init(engine: any EngineClient) { self.engine = engine }
 
+    public func continueNote(for tool: String) -> Note? {
+        guard let label = selectedLink?.sides[tool]?.displayLabel else { return nil }
+        return notes.first { $0.id == "screen.continue" && $0.values["tool"] == .string(label) }
+    }
     public var selectedLink: LinkSummary? { links.first { $0.linkID == selectedLinkID } }
     public var needsDecision: Bool { links.contains { $0.decisionNeeded } }
 

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import BatonKit
 
@@ -25,13 +26,13 @@ public struct PopoverView: View {
                             .frame(width: 7, height: 7).padding(.top, 5).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
-                                ForEach(link.sides.keys.sorted(), id: \.self) { tool in ToolDot(tool: tool) }
+                                ForEach(link.sides.keys.sorted(), id: \.self) { tool in ToolDot(tool: tool, label: link.sides[tool]?.displayLabel) }
                             }.font(.caption)
                             ForEach(Array(Set(link.sides.values.map(\.name))).sorted(), id: \.self) { name in
                                 Text(name).font(.headline)
                             }
                             Text(link.headline.statusLine ?? link.headline.text)
-                                .font(.callout).foregroundStyle(theme.secondaryText)
+                                .font(.callout).foregroundStyle(theme.colour(for: rowMeaning(link)))
                         }
                         Spacer(minLength: 0)
                         if link.decisionNeeded {
@@ -47,7 +48,7 @@ public struct PopoverView: View {
             if let selected = model.selectedLink {
                 HStack {
                     ForEach(selected.sides.keys.sorted(), id: \.self) { tool in
-                        if let note = model.notes.first(where: { $0.id == "screen.continue" && $0.values["tool"] == .string(tool) }) {
+                        if let note = model.continueNote(for: tool) {
                             Button(note.text) { Task { await model.continueIn(tool: tool) } }
                                 .buttonStyle(PopoverActionStyle())
                         }
@@ -63,7 +64,7 @@ public struct PopoverView: View {
                 ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
                 PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
             }
-        }.padding(16).frame(width: 380).background(theme.background)
+        }.padding(16).frame(width: 380).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
     }
 
     private func rowMeaning(_ link: LinkSummary) -> StateColour {
@@ -83,6 +84,16 @@ public struct BatonMenuIcon: View {
     public let needsDecision: Bool
     /// Receives the badge state without calculating sync behaviour.
     public init(needsDecision: Bool) { self.needsDecision = needsDecision }
+    /// Flattens the icon and its badge into the image accepted by the system menu bar.
+    @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme) -> NSImage? {
+        let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision)
+            .font(.system(size: 14)).foregroundStyle(theme.text)
+            .frame(width: 22, height: 18).batonTheme(theme))
+        renderer.scale = 2
+        let image = renderer.nsImage
+        image?.isTemplate = !needsDecision
+        return image
+    }
     public var body: some View {
         Image(systemName: "link")
             .overlay(alignment: .topTrailing) {

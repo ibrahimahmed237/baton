@@ -11,29 +11,30 @@ public struct SyncStatusView: View {
         VStack(alignment: .leading, spacing: 18) {
             if let status = model.status {
                 header(status)
-                ViewThatFits(in: .horizontal) {
-                    HStack(alignment: .top, spacing: 14) {
-                        ForEach(model.tools, id: \.self) { tool in
-                            if let side = status.sides[tool] { sideCard(side).frame(minWidth: 280) }
-                        }
-                    }
-                    VStack(alignment: .leading, spacing: 14) {
-                        ForEach(model.tools, id: \.self) { tool in
-                            if let side = status.sides[tool] { sideCard(side) }
-                        }
+                HStack(alignment: .top, spacing: 14) {
+                    ForEach(model.tools, id: \.self) { tool in
+                        if let side = status.sides[tool] { sideCard(side).frame(maxWidth: .infinity) }
                     }
                 }
-                ForEach(Array(status.notes.filter { !$0.id.hasPrefix("screen.") && !$0.id.hasPrefix("filter.") && !$0.id.hasPrefix("turn.") && !$0.id.hasPrefix("message.") && !["status.reached", "status.tool_activity"].contains($0.id) }.enumerated()), id: \.offset) { _, note in
+                ForEach(Array(status.notes.filter { !$0.id.hasPrefix("screen.") && !$0.id.hasPrefix("filter.") && !$0.id.hasPrefix("turn.") && !$0.id.hasPrefix("message.") && !["status.reached", "status.tool_activity", "status.checked"].contains($0.id) }.enumerated()), id: \.offset) { _, note in
                     NoteView(note: note, enabled: { button in model.tools.first.map { model.supportsSideAction(button, tool: $0) } ?? false }) { button in
                         if let tool = model.tools.first { Task { await model.sideAction(button, tool: tool) } }
                     }
                 }
                 strip(status)
-                filters
-                conversation
+                GlassCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack {
+                            if let note = model.note("screen.conversation") { Text(note.text).font(.caption.weight(.semibold)) }
+                            Spacer(minLength: 0)
+                            filters
+                        }
+                        conversation
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if let history = model.history {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(history, id: \.id) { entry in Text(entry.text); Text(entry.at).font(.caption) }
+                        ForEach(history, id: \.id) { entry in Text(entry.text); Text(DisplayTime.string(entry.at)).font(.caption) }
                     }
                 }
                 if let plan = model.plan {
@@ -49,52 +50,85 @@ public struct SyncStatusView: View {
     }
 
     private func header(_ status: StatusResult) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if let note = model.note("screen.sync_status") { Text(note.text).font(.title2.bold()) }
-            HStack {
+        HStack(alignment: .top, spacing: 16) {
+            VStack(alignment: .leading, spacing: 8) {
+                if let note = model.note("screen.sync_status") { Text(note.text).font(.caption).foregroundStyle(theme.secondaryText) }
+                HStack(spacing: 12) {
+                    ForEach(model.tools, id: \.self) { tool in
+                        if tool != model.tools.first { Image(systemName: "arrow.left.arrow.right").font(.caption).foregroundStyle(theme.secondaryText).accessibilityHidden(true) }
+                        if let side = status.sides[tool] {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(side.chat.name).font(.system(size: 17, weight: .semibold))
+                                ToolDot(tool: tool, label: side.displayLabel).font(.caption)
+                            }
+                        }
+                    }
+                }
+                if let note = model.note("status.checked") { Text(DisplayTime.noteText(note.text, values: note.values)).font(.caption2).foregroundStyle(theme.secondaryText) }
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 10) {
                 labelButton(status.paused ? "screen.resume" : "screen.pause") { Task { await model.togglePause() } }
                 labelButton("screen.history") { Task { await model.showHistory() } }
-                labelButton("screen.remove") { Task { await model.previewRemoval() } }
+                labelButton("screen.remove", meaning: .danger) { Task { await model.previewRemoval() } }
                 labelButton("screen.refresh") { Task { await model.load(link: status.linkID) } }
-            }.buttonStyle(.plain)
+            }.font(.caption).buttonStyle(.plain)
         }
     }
+
     private func sideCard(_ side: Side) -> some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 10) {
-                ToolDot(tool: side.tool)
-                Text(side.chat.name).font(.headline)
-                Text(side.chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
-                ForEach(Array(side.notes.enumerated()), id: \.offset) { _, note in
-                    if note.id == "status.context" { MeterBar(percent: side.usage.percent, label: note.text) }
-                    else if note.id != "screen.open" { NoteView(note: note, enabled: { model.supportsSideAction($0, tool: side.tool) }) { button in Task { await model.sideAction(button, tool: side.tool) } } }
+                ToolDot(tool: side.tool, label: side.displayLabel)
+                ForEach(Array(model.displayedNotes(for: side).enumerated()), id: \.offset) { _, note in
+                    if note.id == "status.context" { MeterBar(percent: side.usage.percent, label: DisplayTime.noteText(note.text, values: note.values)) }
+                    else if !["screen.open", "status.synced_up_to"].contains(note.id) {
+                        Text(DisplayTime.noteText(note.text, values: note.values)).font(note.id == "status.summary" ? .system(size: 16, weight: .semibold) : .system(size: 12))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 if let reached = side.syncedUpTo {
-                    Text(reached.firstLine).font(.callout)
-                    HStack { ToolDot(tool: reached.origin); Text(reached.startedAt).font(.caption) }
+                    VStack(alignment: .leading, spacing: 4) {
+                        if let line = side.notes.first(where: { $0.id == "status.synced_up_to" }) { Text(DisplayTime.noteText(line.text, values: line.values)).font(.caption) }
+                        HStack { ToolDot(tool: reached.origin, label: model.toolLabel(reached.origin)); Text(DisplayTime.string(reached.startedAt)) }.font(.caption2)
+                    }.foregroundStyle(theme.secondaryText)
                 }
-                HStack {
+                HStack(spacing: 8) {
+                    ForEach(model.sideButtons(side), id: \.id) { button in
+                        Button(button.label) { Task { await model.sideAction(button, tool: side.tool) } }
+                            .disabled(!model.supportsSideAction(button, tool: side.tool))
+                            .buttonStyle(BatonButtonStyle(meaning: ["relaunch", "close_sync_reopen"].contains(button.id) ? .danger : button.id == "add_now" ? .added : .action, compact: true))
+                    }
                     if let note = side.notes.first(where: { $0.id == "screen.open" }) {
                         Button(note.text) { Task { await model.open(tool: side.tool) } }.disabled(!side.condition.exists)
+                            .buttonStyle(BatonButtonStyle(meaning: .action, compact: true))
                     }
-                    if let copy = model.note("screen.copy"), let target = model.tools.first(where: { $0 != side.tool }) {
+                    if model.sideButtons(side).isEmpty, let copy = model.note("screen.copy"), let target = model.tools.first(where: { $0 != side.tool }) {
                         Button(copy.text) { Task { await model.previewCopy(from: side.tool, to: target) } }.disabled(!side.condition.exists)
+                            .buttonStyle(BatonButtonStyle(meaning: .action, compact: true))
                     }
-                }.buttonStyle(.plain)
+                }.font(.system(size: 10, weight: .semibold)).buttonStyle(.plain)
+                if !model.sideButtons(side).isEmpty, let copy = model.note("screen.copy"), let target = model.tools.first(where: { $0 != side.tool }) {
+                    Button(copy.text) { Task { await model.previewCopy(from: side.tool, to: target) } }
+                        .font(.caption2).buttonStyle(BatonButtonStyle(meaning: .action, compact: true)).disabled(!side.condition.exists)
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
         }.frame(maxWidth: .infinity, alignment: .topLeading)
     }
     private func strip(_ status: StatusResult) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+            if let note = model.note("screen.turn_by_turn") { Text(note.text).font(.caption.weight(.semibold)) }
             ForEach(model.tools, id: \.self) { tool in
                 HStack(alignment: .top, spacing: 8) {
-                    ToolDot(tool: tool).frame(width: 95, alignment: .leading)
+                    ToolDot(tool: tool, label: model.toolLabel(tool)).frame(width: 95, alignment: .leading)
                     Group {
                         if snapshot { stripBlocks(status, tool: tool) }
                         else { ScrollView(.horizontal) { stripBlocks(status, tool: tool) } }
                     }.frame(height: 27)
                 }
             }
+            }.frame(maxWidth: .infinity, alignment: .leading)
         }
     }
     private func stripBlocks(_ status: StatusResult, tool: String) -> some View {
@@ -114,6 +148,7 @@ public struct SyncStatusView: View {
                 if let note = model.note("filter." + filter.rawValue) {
                     Button(note.text) { model.setFilter(filter) }
                         .fontWeight(model.filter == filter ? .bold : .regular)
+                        .buttonStyle(BatonButtonStyle(meaning: model.filter == filter ? .action : .neutral, compact: true))
                 }
             }
         }.buttonStyle(.plain)
@@ -135,7 +170,7 @@ public struct SyncStatusView: View {
                 ForEach(model.tools, id: \.self) { tool in
                     if let reached = model.status?.sides[tool]?.syncedUpTo,
                        !model.displayedTurns.contains(where: { $0.id == reached.id }),
-                       let note = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(tool) }) {
+                       let note = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
                         Text(note.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
                     }
                 }
@@ -144,7 +179,7 @@ public struct SyncStatusView: View {
                 turnView(turn).id(turn.id)
                 ForEach(model.tools, id: \.self) { tool in
                     if model.status?.sides[tool]?.syncedUpTo?.id == turn.id,
-                       let reached = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(tool) }) {
+                       let reached = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
                         Text(reached.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
                     }
                 }
@@ -153,12 +188,15 @@ public struct SyncStatusView: View {
     }
     private func turnView(_ turn: Turn) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack { ToolDot(tool: turn.origin); Text(turn.startedAt).font(.caption).foregroundStyle(theme.secondaryText) }
-            HStack { ForEach(model.tools, id: \.self) { tool in
+            HStack(alignment: .top) {
+                HStack { ToolDot(tool: turn.origin, label: model.toolLabel(turn.origin)); Text(DisplayTime.string(turn.startedAt)).font(.caption).foregroundStyle(theme.secondaryText) }
+                Spacer(minLength: 12)
+                HStack { ForEach(model.tools, id: \.self) { tool in
                 if let state = turn.states[tool], let label = model.stateLabel(state) {
-                    VStack(alignment: .leading, spacing: 4) { ToolDot(tool: tool).font(.caption); StateChip(state: state, label: label) }
+                    VStack(alignment: .leading, spacing: 4) { ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption); StateChip(state: state, label: label) }
                 }
-            } }
+                } }
+            }
             ForEach(Array(model.messages(for: turn).enumerated()), id: \.offset) { _, message in
                 messageView(message, expanded: model.expandedReplies.contains(turn.id))
             }
@@ -177,12 +215,17 @@ public struct SyncStatusView: View {
         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
     }
     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            if let label = model.note("message." + message.kind) { Text(label.text).font(.caption.weight(.semibold)) }
-            Text(message.text).lineLimit(!expanded && model.messageNeedsExpansion(message) ? 4 : nil).textSelection(.enabled)
+        HStack {
+            if message.kind == "prompt" { Spacer(minLength: 50) }
+            VStack(alignment: .leading, spacing: 5) {
+                if let label = model.note("message." + message.kind) { Text(label.text).font(.caption.weight(.semibold)).foregroundStyle(theme.secondaryText) }
+                Text(message.text).font(.system(size: 13)).lineLimit(!expanded && model.messageNeedsExpansion(message) ? 4 : nil).textSelection(.enabled)
+            }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .background(message.kind == "prompt" ? theme.colour(for: .action).opacity(0.1) : theme.sidebar.opacity(0.45), in: RoundedRectangle(cornerRadius: 12))
+            if message.kind != "prompt" { Spacer(minLength: 50) }
         }
     }
-    @ViewBuilder private func labelButton(_ id: String, action: @escaping () -> Void) -> some View {
-        if let note = model.note(id) { Button(note.text, action: action) }
+    @ViewBuilder private func labelButton(_ id: String, meaning: StateColour = .action, action: @escaping () -> Void) -> some View {
+        if let note = model.note(id) { Button(note.text, action: action).buttonStyle(BatonButtonStyle(meaning: meaning, compact: true)) }
     }
 }

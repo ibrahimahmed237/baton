@@ -9,7 +9,8 @@
           "name": "Imaginary orchard",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Claude"
         },
         "codex": {
           "tool": "codex",
@@ -17,7 +18,8 @@
           "name": "Imaginary orchard",
           "folder": "/tmp/baton-sample",
           "updated_at": "2026-10-04T14:05:00Z",
-          "linked": true
+          "linked": true,
+          "tool_label": "Codex"
         }
       },
       "mode": "full_copy",

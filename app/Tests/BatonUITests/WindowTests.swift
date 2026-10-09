@@ -7,9 +7,12 @@ import BatonKit
 private actor RecordingWindowEngine: EngineTransport {
     let fixture: FixtureEngine
     var calls: [(String, [String])] = []
+    var fail = false
+    func setFail() { fail = true }
     init(state: String) { fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: state) }
     func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
         calls.append((command, arguments))
+        if fail { throw EngineCommandError(kind: "fixture_failure", note: Note(id: "fixture.failure", tone: "warning", values: [:], text: "Fixture refresh failed", buttons: [])) }
         return try await fixture.response(command: command, arguments: arguments, as: type)
     }
 }
@@ -45,6 +48,40 @@ private actor ChangingWindowEngine: EngineTransport {
 
 @Suite(.serialized)
 struct WindowTests {
+    @MainActor @Test
+    func refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() async throws {
+        try FileManager.default.createDirectory(at: ComponentTests.root.appendingPathComponent("Snapshots"),
+                                                withIntermediateDirectories: true)
+        for section in [WindowSection.linked, .attention] {
+            let engine = RecordingWindowEngine(state: "d3_filled")
+            let model = WindowViewModel(engine: engine); await model.refresh(); model.navigate(to: section)
+            let previousLinks = model.links
+            let before = try errorSurfacePixels(model)
+            await engine.setFail(); await model.refresh()
+            #expect(model.links == previousLinks)
+            #expect(model.selection == nil)
+            #expect(model.errorNote?.id == "fixture.failure")
+            let after = try errorSurfacePixels(model)
+            #expect(before != after)
+            for theme in Theme.allCases {
+                let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(theme)
+                    .environment(\.batonSnapshotPresentation, true))
+                let image = try #require(renderer.nsImage)
+                let tiff = try #require(image.tiffRepresentation)
+                let bitmap = try #require(NSBitmapImageRep(data: tiff))
+                let png = try #require(bitmap.representation(using: .png, properties: [:]))
+                let name = section == .linked ? "linked" : "attention"
+                try png.write(to: ComponentTests.root.appendingPathComponent("Snapshots/D4b-error-\(name)-\(theme.rawValue).png"))
+            }
+        }
+    }
+    @MainActor private func errorSurfacePixels(_ model: WindowViewModel) throws -> Data {
+        let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(.light)
+            .environment(\.batonSnapshotPresentation, true))
+        let image = try #require(renderer.cgImage)
+        let region = try #require(image.cropping(to: CGRect(x: 225, y: 20, width: 400, height: 100)))
+        return try #require(region.dataProvider?.data) as Data
+    }
     @MainActor @Test
     func navigationSelectionAndAttentionUseEngineFlags() async {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))

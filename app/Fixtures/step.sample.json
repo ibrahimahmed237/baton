@@ -30,5 +30,6 @@
       ],
       "status_line": "Sample ready"
     }
-  ]
+  ],
+  "tool_label": "Claude"
 }

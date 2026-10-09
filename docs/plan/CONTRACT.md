@@ -129,3 +129,9 @@ For fixture-built CP1 screens, `links` may include an optional top-level `notes:
 A link summary may also contain `needs_attention: bool`. The engine decides whether the link belongs in Needs attention; the app does not infer it from prose or tool names. Legacy engines that omit it retain the existing decision_needed fallback.
 
 For mapped, non-replayable tool activity, Turn.messages may additionally use `kind: "tool_text"`. It contains labelled ordinary text, never a native tool call or final reply. Existing kinds retain their meaning. The app groups this kind with expandable tool activity; real adapter writers serialize it as ordinary text.
+
+## CP1 reviewer additions: tool display labels (F2)
+
+Chat, Side, Step, and each setup tool object additionally contain `tool_label: string` next to `tool`. The engine supplies the display labels `Claude`, `Codex`, `OpenCode`, and `Cursor`; `tool` remains the stable lower-case identifier used in commands and map keys. The app displays the supplied label, without constructing tool names. Existing clients ignore this additive field; app models accept its absence in older payloads.
+
+For example: `{"tool": "claude", "tool_label": "Claude", ...}`. Note values referring to a coding app, including `{tool}`, use the display label. Tool-call names inside messages and mapping notes retain their existing meaning; a tool call is not a coding app label. C2 generates these fields and renders the note values; hand-made fixtures supply them through D4b.

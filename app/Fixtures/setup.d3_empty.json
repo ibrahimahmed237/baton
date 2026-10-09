@@ -20,7 +20,8 @@
         "checked_versions": [
           "sample-1"
         ]
-      }
+      },
+      "tool_label": "Claude"
     },
     {
       "tool": "codex",
@@ -42,7 +43,8 @@
         "checked_versions": [
           "sample-1"
         ]
-      }
+      },
+      "tool_label": "Codex"
     },
     {
       "tool": "opencode",
@@ -64,7 +66,8 @@
         "checked_versions": [
           "sample-1"
         ]
-      }
+      },
+      "tool_label": "OpenCode"
     },
     {
       "tool": "cursor",
@@ -86,7 +89,8 @@
         "checked_versions": [
           "sample-1"
         ]
-      }
+      },
+      "tool_label": "Cursor"
     }
   ]
 }

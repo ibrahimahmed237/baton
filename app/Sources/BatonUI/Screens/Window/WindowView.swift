@@ -4,6 +4,8 @@ import BatonKit
 /// Sidebar, lists and a detail host for the later screens.
 public struct WindowView: View {
     @Environment(\.batonTheme) private var theme
+    @Environment(\.batonGlass) private var glass
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @StateObject private var statusModel: SyncStatusViewModel
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
@@ -24,16 +26,26 @@ public struct WindowView: View {
                         }.buttonStyle(.plain)
                     }
                 }
+                if model.section == .linked || model.section == .attention {
+                    Rectangle().fill(theme.hairline).frame(height: 1).padding(.vertical, 8)
+                    WindowScrollArea { listContent }
+                }
             }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
-                .background(theme.sidebar)
-            VStack(alignment: .leading, spacing: 14) {
-                if let label = model.label(for: model.section) { Text(label.text).font(.title2.weight(.semibold)) }
-                if let error = model.errorNote { NoteView(note: error) }
-                WindowScrollArea { listContent }
-            }.padding(20).frame(width: 305).frame(maxHeight: .infinity, alignment: .top)
+                .background { Rectangle().fill(.regularMaterial).overlay(theme.sidebar.opacity(reduceTransparency ? 1 : glass / 200)) }
+            if model.section != .linked && model.section != .attention {
+                VStack(alignment: .leading, spacing: 14) {
+                    if let label = model.label(for: model.section) { Text(label.text).font(.title2.weight(.semibold)) }
+                    WindowScrollArea { listContent }
+                }.padding(20).frame(width: 260).frame(maxHeight: .infinity, alignment: .top)
+            }
             Rectangle().fill(theme.hairline).frame(width: 1)
-            WindowScrollArea { detail }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        }.frame(width: 1000, height: 600).background(theme.background)
+            WindowScrollArea {
+                VStack(alignment: .leading, spacing: 14) {
+                    if let error = model.errorNote { NoteView(note: error) }
+                    detail
+                }.frame(maxWidth: .infinity, alignment: .leading)
+            }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(width: 1000, height: 600).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
             .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
             .onChange(of: statusModel.removedLinkID) { _, removed in
                 if removed != nil { Task { await model.refresh() } }
@@ -66,7 +78,7 @@ public struct WindowView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             linkSummary(entry.link)
                             Text(entry.event.text).font(.callout)
-                            Text(entry.event.at).font(.caption).foregroundStyle(theme.secondaryText)
+                            Text(DisplayTime.string(entry.event.at)).font(.caption).foregroundStyle(theme.secondaryText)
                         }
                     }
                 }
@@ -116,7 +128,7 @@ public struct WindowView: View {
 
     private func chatSummary(_ chat: Chat) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            ToolDot(tool: chat.tool).font(.caption)
+            ToolDot(tool: chat.tool, label: chat.displayLabel).font(.caption)
             Text(chat.name).font(.headline)
             Text(chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
         }

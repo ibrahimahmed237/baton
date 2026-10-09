@@ -50,11 +50,11 @@ struct SyncStatusTests {
     @MainActor @Test
     func eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() async throws {
         let expectations: [(String, String, Int, Int, Int, String?)] = [
-            ("s1", "claude", 2, 2, 2, "write.chat_open"), ("s2", "claude", 4, 2, 0, "status.attached"),
+            ("s1", "claude", 2, 2, 2, "write.chat_open_release"), ("s2", "claude", 4, 2, 0, "status.attached"),
             ("s3", "claude", 4, 4, 0, nil), ("s4", "codex", 4, 4, 0, nil),
             ("s4b", "codex", 3, 3, 1, "status.chat_held"), ("s5", "codex", 0, 0, 12, "status.first_message"),
             ("s6", "codex", 12, 0, 0, "status.attached"), ("s7", "claude", 3, 3, 1, "merge.decision_needed"),
-            ("s8", "codex", 3, 3, 1, "setup.trust_once"), ("s9", "claude", 3, 3, 1, "write.chat_open"),
+            ("s8", "codex", 3, 3, 1, "setup.trust_once"), ("s9", "claude", 3, 3, 1, "write.chat_open_release"),
             ("s10", "claude", 4, 0, 0, "status.new_chat_relaunch"), ("s11", "codex", 4, 4, 0, nil),
             ("s12", "claude", 4, 4, 0, nil), ("paused", "claude", 2, 2, 2, "link.paused"),
             ("missing", "claude", 2, 2, 2, "side.missing"), ("hooks", "claude", 2, 2, 2, "setup.trust_once"),
@@ -67,7 +67,7 @@ struct SyncStatusTests {
             if let noteID { #expect(side.notes.contains { $0.id == noteID && !$0.text.isEmpty }) }
             #expect(side.notes.contains { $0.id == "status.summary" })
             #expect(side.notes.contains { $0.id == "status.context" })
-            #expect(side.notes.contains { $0.id == "status.since_you_left" })
+            #expect(side.notes.contains { $0.id == "status.since_you_left" } == (side.agentHas < side.total || side.waiting > 0))
             #expect(model.turns.count == side.total)
         }
         let s2 = await model("s2")
@@ -79,11 +79,64 @@ struct SyncStatusTests {
         #expect(s9.turns.last?.states["claude"] == "waiting")
         let s10 = await model("s10")
         #expect(s10.turns.allSatisfy { $0.states["claude"] == "added" })
-        #expect(s10.status?.sides["claude"]?.notes.first { $0.id == "status.new_chat_relaunch" }?.text == "Relaunch claude to see this chat.")
+        #expect(s10.status?.sides["claude"]?.notes.first { $0.id == "status.new_chat_relaunch" }?.text == "Relaunch Claude to see this chat.")
         #expect(!s10.status!.sides["claude"]!.notes.contains { $0.id == "new_chat.relaunch" })
         let s11 = await model("s11")
         #expect(s11.status?.sides["codex"]?.chat.name == "Renamed orchard tests")
         #expect(s11.status?.sides["claude"]?.chat.name == "Imaginary orchard")
+    }
+    @MainActor @Test
+    func suppliedToolLabelsAndIdleOffersRemainEngineData() async throws {
+        let model = await model("s1")
+        #expect(model.toolLabel("claude") == "Claude")
+        #expect(model.toolLabel("codex") == "Codex")
+        let reached = model.status?.notes.first { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel("claude")) }
+        #expect(reached != nil)
+        let engine = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_in_sync")
+        let popover = PopoverViewModel(engine: engine); await popover.refresh()
+        #expect(popover.continueNote(for: "claude") != nil)
+        #expect(popover.continueNote(for: "codex") != nil)
+        let window = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
+        await window.refresh()
+        #expect(window.label(for: .chats("claude"))?.values["tool"] == .string("Claude"))
+        var side = try #require(model.status?.sides["claude"])
+        side.toolLabel = "Fixture supplied name"
+        #expect(side.displayLabel == "Fixture supplied name")
+        #expect(model.sideButtons(side).map(\.id).contains("add_now"))
+        #expect(model.sideButtons(side).map(\.id).contains("close_sync_reopen"))
+        let sideData = try JSONEncoder().encode(side)
+        let object = try #require(JSONSerialization.jsonObject(with: sideData) as? [String: Any])
+        #expect(object["tool_label"] as? String == "Fixture supplied name")
+    }
+    @MainActor @Test
+    func anUpToDateSideCannotShowASinceYouLeftDigest() async throws {
+        let model = await model("s1")
+        var side = try #require(model.status?.sides["codex"])
+        #expect(side.agentHas == side.total)
+        #expect(side.sinceYouLeft == nil)
+        #expect(!model.displayedNotes(for: side).contains { $0.id == "status.since_you_left" })
+        side.notes.append(Note(id: "status.since_you_left", tone: "info", values: [:], text: "A stale digest", buttons: []))
+        #expect(!model.displayedNotes(for: side).contains { $0.id == "status.since_you_left" })
+        side.agentHas -= 1
+        #expect(model.displayedNotes(for: side).contains { $0.id == "status.since_you_left" })
+    }
+    @Test
+    func timestampPresentationUsesLocalCalendarDayAndSystemStyles() throws {
+        let parser = ISO8601DateFormatter()
+        let now = try #require(parser.date(from: "2026-10-05T01:00:00Z"))
+        let locale = Locale(identifier: "en_US")
+        let zone = try #require(TimeZone(secondsFromGMT: -7 * 3600))
+        var calendar = Calendar(identifier: .gregorian); calendar.timeZone = zone
+        let formatter = DateFormatter(); formatter.locale = locale; formatter.calendar = calendar; formatter.timeZone = zone
+        formatter.dateStyle = .none; formatter.timeStyle = .short
+        let sameLocalDay = try #require(parser.date(from: "2026-10-04T23:30:00Z"))
+        #expect(DisplayTime.string("2026-10-04T23:30:00Z", now: now, locale: locale, calendar: calendar, timeZone: zone) == formatter.string(from: sameLocalDay))
+        formatter.dateStyle = .short
+        let previous = try #require(parser.date(from: "2026-10-04T01:00:00Z"))
+        #expect(DisplayTime.string("2026-10-04T01:00:00Z", now: now, locale: locale, calendar: calendar, timeZone: zone) == formatter.string(from: previous))
+        #expect(DisplayTime.string("invalid timestamp") == "invalid timestamp")
+        let raw = "2026-10-04T01:00:00Z"
+        #expect(!DisplayTime.noteText("Last checked " + raw, values: ["at": .string(raw)]).contains(raw))
     }
     @MainActor @Test
     func filtersStripJumpAndFoldPreserveRealTurnIdentity() async throws {

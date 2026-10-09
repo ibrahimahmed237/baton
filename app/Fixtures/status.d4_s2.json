@@ -13,7 +13,8 @@
         "name": "Imaginary orchard",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Claude"
       },
       "condition": {
         "exists": true,
@@ -64,24 +65,19 @@
         "percent": 3.2,
         "limit": null
       },
-      "since_you_left": {
-        "turns": 2,
-        "files": 2,
-        "commands": 3,
-        "since": "2026-10-05T09:00:00Z"
-      },
+      "since_you_left": null,
       "notes": [
         {
           "id": "status.summary",
           "tone": "info",
           "values": {
-            "tool": "claude",
+            "tool": "Claude",
             "agent_has": 4,
             "total": 4,
             "chat_shows": 2,
             "waiting": 0
           },
-          "text": "claude's agent has 4 of 4 turns. Its chat shows 2; 0 are waiting.",
+          "text": "Claude's agent has 4 of 4 turns. Its chat shows 2; 0 are waiting.",
           "buttons": [],
           "status_line": null
         },
@@ -89,10 +85,10 @@
           "id": "status.attached",
           "tone": "info",
           "values": {
-            "tool": "claude",
+            "tool": "Claude",
             "n": 2
           },
-          "text": "claude's agent has 2 attached turns. They are not shown as messages in this chat.",
+          "text": "Claude's agent has 2 attached turns. They are not shown as messages in this chat.",
           "buttons": [],
           "status_line": null
         },
@@ -125,24 +121,12 @@
           "status_line": null
         },
         {
-          "id": "status.since_you_left",
-          "tone": "info",
-          "values": {
-            "n": 2,
-            "files": 2,
-            "commands": 3
-          },
-          "text": "Since you left: 2 turns, 2 files, 3 commands",
-          "buttons": [],
-          "status_line": null
-        },
-        {
           "id": "screen.open",
           "tone": "info",
           "values": {
-            "tool": "claude"
+            "tool": "Claude"
           },
-          "text": "Open in claude",
+          "text": "Open in Claude",
           "buttons": [],
           "status_line": null
         },
@@ -150,13 +134,14 @@
           "id": "status.setup_ready",
           "tone": "ok",
           "values": {
-            "tool": "claude"
+            "tool": "Claude"
           },
-          "text": "Baton's hooks are installed and trusted in claude.",
+          "text": "Baton's hooks are installed and trusted in Claude.",
           "buttons": [],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Claude"
     },
     "codex": {
       "tool": "codex",
@@ -166,7 +151,8 @@
         "name": "Orchard tests",
         "folder": "/tmp/baton-sample",
         "updated_at": "2026-10-04T14:05:00Z",
-        "linked": true
+        "linked": true,
+        "tool_label": "Codex"
       },
       "condition": {
         "exists": true,
@@ -217,24 +203,19 @@
         "percent": 3.2,
         "limit": null
       },
-      "since_you_left": {
-        "turns": 2,
-        "files": 2,
-        "commands": 3,
-        "since": "2026-10-05T09:00:00Z"
-      },
+      "since_you_left": null,
       "notes": [
         {
           "id": "status.summary",
           "tone": "info",
           "values": {
-            "tool": "codex",
+            "tool": "Codex",
             "agent_has": 4,
             "total": 4,
             "chat_shows": 4,
             "waiting": 0
           },
-          "text": "codex's agent has 4 of 4 turns. Its chat shows 4; 0 are waiting.",
+          "text": "Codex's agent has 4 of 4 turns. Its chat shows 4; 0 are waiting.",
           "buttons": [],
           "status_line": null
         },
@@ -267,24 +248,12 @@
           "status_line": null
         },
         {
-          "id": "status.since_you_left",
-          "tone": "info",
-          "values": {
-            "n": 2,
-            "files": 2,
-            "commands": 3
-          },
-          "text": "Since you left: 2 turns, 2 files, 3 commands",
-          "buttons": [],
-          "status_line": null
-        },
-        {
           "id": "screen.open",
           "tone": "info",
           "values": {
-            "tool": "codex"
+            "tool": "Codex"
           },
-          "text": "Open in codex",
+          "text": "Open in Codex",
           "buttons": [],
           "status_line": null
         },
@@ -292,13 +261,14 @@
           "id": "status.setup_ready",
           "tone": "ok",
           "values": {
-            "tool": "codex"
+            "tool": "Codex"
           },
-          "text": "Baton's hooks are installed and trusted in codex.",
+          "text": "Baton's hooks are installed and trusted in Codex.",
           "buttons": [],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   },
   "turns": [
@@ -404,9 +374,9 @@
       "id": "status.reached",
       "tone": "info",
       "values": {
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "claude's agent has everything above this line",
+      "text": "Claude's agent has everything above this line",
       "buttons": [],
       "status_line": null
     },
@@ -414,9 +384,9 @@
       "id": "status.reached",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "codex's agent has everything above this line",
+      "text": "Codex's agent has everything above this line",
       "buttons": [],
       "status_line": null
     },
@@ -472,7 +442,7 @@
       "id": "screen.copy",
       "tone": "info",
       "values": {},
-      "text": "Copy to\u2026",
+      "text": "Copy to…",
       "buttons": [],
       "status_line": null
     },
@@ -653,6 +623,22 @@
         "at": "2026-10-05T10:20:00Z"
       },
       "text": "Last checked 2026-10-05T10:20:00Z",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.turn_by_turn",
+      "tone": "info",
+      "values": {},
+      "text": "Turn by turn",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.conversation",
+      "tone": "info",
+      "values": {},
+      "text": "Conversation",
       "buttons": [],
       "status_line": null
     }

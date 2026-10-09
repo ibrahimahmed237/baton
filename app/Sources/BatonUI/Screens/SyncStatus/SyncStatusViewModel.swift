@@ -27,6 +27,14 @@ public final class SyncStatusViewModel: ObservableObject {
 
     public init(engine: any EngineClient) { self.engine = engine }
     public var tools: [String] { status?.sides.keys.sorted() ?? [] }
+    public func toolLabel(_ tool: String) -> String { status?.sides[tool]?.displayLabel ?? tool }
+    public func displayedNotes(for side: Side) -> [Note] {
+        side.notes.filter { $0.id != "status.since_you_left" || side.agentHas < side.total || side.waiting > 0 }
+    }
+    public func sideButtons(_ side: Side) -> [NoteButton] {
+        var seen: Set<String> = []
+        return displayedNotes(for: side).flatMap(\.buttons).filter { seen.insert($0.id).inserted }
+    }
     public var turns: [Turn] { status?.turns ?? [] }
     public var filteredTurns: [Turn] {
         turns.filter { turn in

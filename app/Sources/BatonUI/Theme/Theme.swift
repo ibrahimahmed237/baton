@@ -4,7 +4,7 @@ import SwiftUI
 public enum Theme: String, CaseIterable, Sendable {
     case light, graphite
 
-    public var background: Color { self == .light ? colour(0xf4f5f8) : colour(0x3e4148) }
+    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x50545d) }
     public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x484b52) }
     public var text: Color { self == .light ? colour(0x20242d) : colour(0xffffff) }
     public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xd5d8e0) }
@@ -91,7 +91,7 @@ public extension View {
     /// Applies the palette and the user's surface opacity setting.
     func batonTheme(_ theme: Theme, glass: Double = 62) -> some View {
         environment(\.batonTheme, theme).environment(\.batonGlass, min(95, max(40, glass)))
-            .preferredColorScheme(theme.scheme).foregroundStyle(theme.text)
+            .environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme).foregroundStyle(theme.text)
     }
 }
 
@@ -104,12 +104,33 @@ public struct GlassCard<Content: View>: View {
     /// Wraps content in a readable material surface.
     public init(@ViewBuilder content: () -> Content) { self.content = content() }
     public var body: some View {
-        content.padding(12)
+        content.padding(14)
             .background {
-                RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
-                    .overlay(RoundedRectangle(cornerRadius: 12)
-                        .fill(theme.background.opacity(reduceTransparency ? 1 : max(0.85, glass / 100))))
+                RoundedRectangle(cornerRadius: 14).fill(.regularMaterial)
+                    .overlay(RoundedRectangle(cornerRadius: 14)
+                        .fill(theme.background.opacity(reduceTransparency ? 1 : glass / 100)))
             }
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.hairline))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(theme.hairline))
+    }
+}
+
+/// Soft identity-colour pools behind the system material surfaces.
+public struct GlassBackdrop: View {
+    @Environment(\.batonTheme) private var theme
+    @Environment(\.batonGlass) private var glass
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    public init() {}
+    public var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                theme.background.opacity(reduceTransparency ? 1 : glass / 100)
+                Circle().fill(theme.colour(for: .claude).opacity(0.18))
+                    .frame(width: 360, height: 360).blur(radius: 90).offset(x: -geometry.size.width * 0.35, y: -180)
+                Circle().fill(theme.colour(for: .codex).opacity(0.16))
+                    .frame(width: 420, height: 420).blur(radius: 110).offset(x: geometry.size.width * 0.3, y: 160)
+                Circle().fill(theme.colour(for: .cursor).opacity(0.1))
+                    .frame(width: 320, height: 320).blur(radius: 90).offset(x: 80, y: -180)
+            }.frame(width: geometry.size.width, height: geometry.size.height).background(.regularMaterial).clipped()
+        }.accessibilityHidden(true)
     }
 }

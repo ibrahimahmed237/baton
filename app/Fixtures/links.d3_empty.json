@@ -61,9 +61,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "All claude chats",
+      "text": "All Claude chats",
       "buttons": [],
       "status_line": null
     },
@@ -71,9 +71,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "codex"
+        "tool": "Codex"
       },
-      "text": "All codex chats",
+      "text": "All Codex chats",
       "buttons": [],
       "status_line": null
     },
@@ -81,9 +81,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "opencode"
+        "tool": "OpenCode"
       },
-      "text": "All opencode chats",
+      "text": "All OpenCode chats",
       "buttons": [],
       "status_line": null
     },
@@ -91,9 +91,9 @@
       "id": "screen.all_chats",
       "tone": "info",
       "values": {
-        "tool": "cursor"
+        "tool": "Cursor"
       },
-      "text": "All cursor chats",
+      "text": "All Cursor chats",
       "buttons": [],
       "status_line": null
     }

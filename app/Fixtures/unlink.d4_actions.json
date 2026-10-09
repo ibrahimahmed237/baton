@@ -20,9 +20,9 @@
             "name": "Imaginary orchard",
             "other_name": "Orchard tests",
             "n": 2,
-            "tool": "claude"
+            "tool": "Claude"
           },
-          "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for claude will not be delivered.",
+          "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
           "buttons": [
             {
               "id": "unlink",
@@ -37,7 +37,8 @@
           ],
           "status_line": null
         }
-      ]
+      ],
+      "tool_label": "Claude"
     }
   ],
   "decision_needed": false,
@@ -49,9 +50,9 @@
         "name": "Imaginary orchard",
         "other_name": "Orchard tests",
         "n": 2,
-        "tool": "claude"
+        "tool": "Claude"
       },
-      "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for claude will not be delivered.",
+      "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
       "buttons": [
         {
           "id": "unlink",

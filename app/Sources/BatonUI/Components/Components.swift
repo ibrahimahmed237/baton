@@ -5,13 +5,14 @@ import BatonKit
 public struct ToolDot: View {
     @Environment(\.batonTheme) private var theme
     public let tool: String
+    public let label: String
     /// Creates a dot for the supplied tool identity.
-    public init(tool: String) { self.tool = tool }
+    public init(tool: String, label: String? = nil) { self.tool = tool; self.label = label ?? tool }
     public var body: some View {
         HStack(spacing: 6) {
             Circle().fill(theme.colour(for: ToolColour(tool: tool))).frame(width: 8, height: 8)
                 .accessibilityHidden(true)
-            Text(tool)
+            Text(label)
         }.accessibilityElement(children: .combine)
     }
 }
@@ -45,8 +46,8 @@ public struct NoteView: View {
             RoundedRectangle(cornerRadius: 2).fill(theme.colour(for: StateColour.tone(note.tone)))
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 8) {
-                Text(note.text).fixedSize(horizontal: false, vertical: true)
-                if let line = note.statusLine { Text(line).font(.caption).foregroundStyle(theme.secondaryText) }
+                Text(DisplayTime.noteText(note.text, values: note.values)).fixedSize(horizontal: false, vertical: true)
+                if let line = note.statusLine { Text(DisplayTime.noteText(line, values: note.values)).font(.caption).foregroundStyle(theme.secondaryText) }
                 HStack {
                     ForEach(note.buttons, id: \.id) { button in
                         Button(button.label) { if enabled(button) { action(button) } }
@@ -62,16 +63,17 @@ public struct NoteView: View {
 /// One turn's summary and state per tool.
 public struct TurnRow: View {
     public let turn: Turn
-    /// Presents one contract turn.
-    public init(turn: Turn) { self.turn = turn }
+    public let toolLabels: [String: String]
+    /// Presents one contract turn with labels supplied by its surrounding engine data.
+    public init(turn: Turn, toolLabels: [String: String] = [:]) { self.turn = turn; self.toolLabels = toolLabels }
     public var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack { Text(turn.seq, format: .number).monospacedDigit(); ToolDot(tool: turn.origin) }
+            HStack { Text(turn.seq, format: .number).monospacedDigit(); ToolDot(tool: turn.origin, label: toolLabels[turn.origin]) }
             Text(turn.firstLine).fixedSize(horizontal: false, vertical: true)
             HStack {
                 ForEach(turn.states.keys.sorted(), id: \.self) { tool in
                     VStack(alignment: .leading, spacing: 4) {
-                        ToolDot(tool: tool).font(.caption)
+                        ToolDot(tool: tool, label: toolLabels[tool]).font(.caption)
                         StateChip(state: turn.states[tool]!)
                     }
                 }
@@ -84,14 +86,15 @@ public struct TurnRow: View {
 public struct MessageBubble: View {
     @Environment(\.batonTheme) private var theme
     public let message: TurnMessage
-    /// Presents one contract message.
-    public init(message: TurnMessage) { self.message = message }
+    public let toolLabels: [String: String]
+    /// Presents one contract message with labels supplied by the surrounding engine data.
+    public init(message: TurnMessage, toolLabels: [String: String] = [:]) { self.message = message; self.toolLabels = toolLabels }
     public var body: some View {
         GlassCard {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(message.kind).font(.caption).foregroundStyle(theme.secondaryText)
-                    if let tool = message.tool { ToolDot(tool: tool).font(.caption) }
+                    if let tool = message.tool { ToolDot(tool: tool, label: toolLabels[tool]).font(.caption) }
                 }
                 Text(message.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, alignment: .leading)
@@ -119,7 +122,7 @@ public struct PlanSteps: View {
                     Text(index + 1, format: .number).font(.headline).monospacedDigit()
                         .foregroundStyle(theme.colour(for: StateColour.step(step.action)))
                     VStack(alignment: .leading, spacing: 8) {
-                        HStack { ToolDot(tool: step.tool); Text(step.action).font(.caption) }
+                        HStack { ToolDot(tool: step.tool, label: step.displayLabel); Text(step.action).font(.caption) }
                         ForEach(Array(displayedNotes(for: step).enumerated()), id: \.offset) { _, note in NoteView(note: note) }
                     }
                 }
@@ -177,16 +180,18 @@ public struct ConfirmBar: View {
 }
 
 /// SwiftUI-drawn buttons remain visible in ImageRenderer and preserve native actions.
-private struct BatonButtonStyle: ButtonStyle {
+struct BatonButtonStyle: ButtonStyle {
     @Environment(\.batonTheme) private var theme
     @Environment(\.isEnabled) private var enabled
     let meaning: StateColour
+    var compact = false
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.callout.weight(.semibold))
-            .padding(.horizontal, 10).padding(.vertical, 6)
+        configuration.label.font(compact ? .system(size: 10, weight: .semibold) : .callout.weight(.semibold))
+            .padding(.horizontal, compact ? 7 : 10).padding(.vertical, compact ? 5 : 6)
             .foregroundStyle(theme.colour(for: meaning))
             .background(theme.colour(for: meaning).opacity(configuration.isPressed ? 0.22 : 0.1),
                         in: RoundedRectangle(cornerRadius: 7))
+            .overlay(RoundedRectangle(cornerRadius: 7).stroke(theme.hairline))
             .opacity(enabled ? 1 : 0.5)
     }
 }

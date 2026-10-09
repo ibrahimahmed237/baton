@@ -30,3 +30,12 @@ class NoteCatalogueTest(unittest.TestCase):
         for note in CATALOGUE.values():
             for name in ("Claude", "Codex", "OpenCode", "Cursor"):
                 self.assertNotIn(name, note.template)
+
+    def test_idle_release_offer_is_separate_from_held_or_replying_offer(self):
+        generic = get("write.chat_open").to_dict({"tool": "Codex", "n": 2})
+        releasable = get("write.chat_open_release").to_dict({"tool": "Claude", "n": 2})
+        replying = get("write.when_idle").to_dict({"tool": "Claude", "n": 2})
+        self.assertEqual([b["id"] for b in releasable["buttons"]], ["close_sync_reopen", "add_now"])
+        self.assertEqual(releasable["buttons"][1]["label"], "Add them now")
+        self.assertNotIn("add_now", [b["id"] for b in generic["buttons"]])
+        self.assertNotIn("add_now", [b["id"] for b in replying["buttons"]])

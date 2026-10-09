@@ -82,7 +82,7 @@ Rules for this track:
 **Goal.** D1 to D4 look like the mockup boards, not just contain the same information.
 **From.** DESIGN 7 (glass, Graphite, colour by meaning); the mockup boards "Menu bar and window" and "Sync status"; reviewer findings F2 to F6 in STATUS.md.
 **Depends on.** D4.
-**Files.** `app/Sources/BatonUI/` (theme, components, the three screens), `app/Sources/BatonKit/Models/` (tool labels), `app/Fixtures/`.
+**Files.** `app/Sources/BatonUI/` (theme, components, the three screens), `app/Sources/Baton/BatonApp.swift` (native menu-bar scene integration), `app/Sources/BatonKit/Models/` (tool labels), `app/Fixtures/`, `app/Tests/BatonUITests/`; F2/F6 support also adds to `docs/plan/CONTRACT.md`, `baton/notes/catalogue.py`, and `tests/unit/test_notes.py` (no other engine behavior changes).
 **Steps.** 1. Glass panels with the see-through setting; window with sidebar and detail as on the board. 2. Sync status: both names and tool dots in the header, the two app cards side by side, each with its sentences, meter with its sentence, since-you-left only where it applies, offer buttons in one row. 3. Turn strip and conversation under the cards, messages as bubbles with the app chip and state per side. 4. Tool display names from `tool_label`; times formatted by the system. 5. Popover as on the board: pair dots, name, headline, state colour.
 **Tests.** View-model tests for F2, F3, F5, F6. PNGs for every state, light and Graphite.
 **Done when.** Ibrahim has looked at the running app next to the mockup and says the three screens match. The PNGs are for the orchestrator's own check before asking him.

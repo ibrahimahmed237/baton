@@ -52,6 +52,8 @@ public struct Note: Codable, Equatable, Sendable {
 /// Chat data returned by the engine.
 public struct Chat: Codable, Equatable, Sendable {
     public var tool: String
+    public var toolLabel: String?
+    public var displayLabel: String { toolLabel ?? tool }
     public var id: String
     public var name: String
     public var folder: String
@@ -59,8 +61,9 @@ public struct Chat: Codable, Equatable, Sendable {
     public var linked: Bool
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, id: String, name: String, folder: String, updatedAt: String, linked: Bool) {
+    public init(tool: String, id: String, name: String, folder: String, updatedAt: String, linked: Bool, toolLabel: String? = nil) {
         self.tool = tool
+        self.toolLabel = toolLabel
         self.id = id
         self.name = name
         self.folder = folder
@@ -70,6 +73,7 @@ public struct Chat: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case tool
+        case toolLabel = "tool_label"
         case id
         case name
         case folder
@@ -242,6 +246,8 @@ public struct Turn: Codable, Equatable, Sendable {
 /// Side data returned by the engine.
 public struct Side: Codable, Equatable, Sendable {
     public var tool: String
+    public var toolLabel: String?
+    public var displayLabel: String { toolLabel ?? tool }
     public var chat: Chat
     public var condition: SideCondition
     public var total: Int
@@ -260,8 +266,9 @@ public struct Side: Codable, Equatable, Sendable {
     public var notes: [Note]
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, chat: Chat, condition: SideCondition, total: Int, agentHas: Int, chatShows: Int, added: Int, attached: Int, waiting: Int, keptElsewhere: Int, skipped: Int, syncedUpTo: Turn? = nil, waitingReason: String? = nil, nextMessage: NextMessage, usage: Usage, sinceYouLeft: SinceYouLeft? = nil, notes: [Note]) {
+    public init(tool: String, chat: Chat, condition: SideCondition, total: Int, agentHas: Int, chatShows: Int, added: Int, attached: Int, waiting: Int, keptElsewhere: Int, skipped: Int, syncedUpTo: Turn? = nil, waitingReason: String? = nil, nextMessage: NextMessage, usage: Usage, sinceYouLeft: SinceYouLeft? = nil, notes: [Note], toolLabel: String? = nil) {
         self.tool = tool
+        self.toolLabel = toolLabel
         self.chat = chat
         self.condition = condition
         self.total = total
@@ -282,6 +289,7 @@ public struct Side: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case tool
+        case toolLabel = "tool_label"
         case chat
         case condition
         case total
@@ -304,6 +312,8 @@ public struct Side: Codable, Equatable, Sendable {
 /// Step data returned by the engine.
 public struct Step: Codable, Equatable, Sendable {
     public var tool: String
+    public var toolLabel: String?
+    public var displayLabel: String { toolLabel ?? tool }
     public var action: String
     public var turns: [Int]
     public var reason: String
@@ -311,8 +321,9 @@ public struct Step: Codable, Equatable, Sendable {
     public var notes: [Note]
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, action: String, turns: [Int], reason: String, needs: [String], notes: [Note]) {
+    public init(tool: String, action: String, turns: [Int], reason: String, needs: [String], notes: [Note], toolLabel: String? = nil) {
         self.tool = tool
+        self.toolLabel = toolLabel
         self.action = action
         self.turns = turns
         self.reason = reason
@@ -322,6 +333,7 @@ public struct Step: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case tool
+        case toolLabel = "tool_label"
         case action
         case turns
         case reason
@@ -382,6 +394,8 @@ public struct SetupFinding: Codable, Equatable, Sendable {
 /// SetupTool data returned by the engine.
 public struct SetupTool: Codable, Equatable, Sendable {
     public var tool: String
+    public var toolLabel: String?
+    public var displayLabel: String { toolLabel ?? tool }
     public var installed: Bool
     public var ready: Bool
     public var version: String?
@@ -389,8 +403,9 @@ public struct SetupTool: Codable, Equatable, Sendable {
     public var facts: [String: JSONValue]
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, installed: Bool, ready: Bool, version: String? = nil, findings: [SetupFinding], facts: [String: JSONValue]) {
+    public init(tool: String, installed: Bool, ready: Bool, version: String? = nil, findings: [SetupFinding], facts: [String: JSONValue], toolLabel: String? = nil) {
         self.tool = tool
+        self.toolLabel = toolLabel
         self.installed = installed
         self.ready = ready
         self.version = version
@@ -400,6 +415,7 @@ public struct SetupTool: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case tool
+        case toolLabel = "tool_label"
         case installed
         case ready
         case version

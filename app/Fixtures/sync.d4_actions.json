@@ -17,10 +17,10 @@
           "id": "write.release",
           "tone": "info",
           "values": {
-            "tool": "claude",
+            "tool": "Claude",
             "n": 2
           },
-          "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch claude to see them.",
+          "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch Claude to see them.",
           "buttons": [
             {
               "id": "add_now",
@@ -29,13 +29,14 @@
             },
             {
               "id": "relaunch",
-              "label": "Relaunch claude",
+              "label": "Relaunch Claude",
               "primary": false
             }
           ],
-          "status_line": "Relaunch claude to see 2 new turns"
+          "status_line": "Relaunch Claude to see 2 new turns"
         }
-      ]
+      ],
+      "tool_label": "Claude"
     }
   ],
   "decision_needed": false,
@@ -44,10 +45,10 @@
       "id": "write.release",
       "tone": "info",
       "values": {
-        "tool": "claude",
+        "tool": "Claude",
         "n": 2
       },
-      "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch claude to see them.",
+      "text": "Baton releases the idle chat and adds these 2 turns as real turns. Relaunch Claude to see them.",
       "buttons": [
         {
           "id": "add_now",
@@ -56,11 +57,11 @@
         },
         {
           "id": "relaunch",
-          "label": "Relaunch claude",
+          "label": "Relaunch Claude",
           "primary": false
         }
       ],
-      "status_line": "Relaunch claude to see 2 new turns"
+      "status_line": "Relaunch Claude to see 2 new turns"
     }
   ]
 }

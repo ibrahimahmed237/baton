@@ -18,12 +18,14 @@ struct ComponentPreviews: PreviewProvider {
                let turn = try? fixture("turn.sample.json", as: Turn.self),
                let message = try? fixture("turn-message.sample.json", as: TurnMessage.self),
                let plan = try? fixture("plan.sample.json", as: Plan.self) {
+                let setup = try? fixture("setup.sample.json", as: SetupResult.self)
+                let labels = Dictionary(uniqueKeysWithValues: (setup?.tools ?? []).map { ($0.tool, $0.displayLabel) })
                 let components: [(String, AnyView)] = [
-                    ("ToolDot", AnyView(ToolDot(tool: turn.origin))),
+                    ("ToolDot", AnyView(ToolDot(tool: turn.origin, label: labels[turn.origin]))),
                     ("StateChip", AnyView(StateChip(state: turn.states.values.sorted().first ?? ""))),
                     ("NoteView", AnyView(NoteView(note: note))),
-                    ("TurnRow", AnyView(TurnRow(turn: turn))),
-                    ("MessageBubble", AnyView(MessageBubble(message: message))),
+                    ("TurnRow", AnyView(TurnRow(turn: turn, toolLabels: labels))),
+                    ("MessageBubble", AnyView(MessageBubble(message: message, toolLabels: labels))),
                     ("PlanSteps", AnyView(PlanSteps(steps: plan.steps))),
                     ("ConfirmBar", AnyView(ConfirmBar(notes: plan.notes, buttons: note.buttons))),
                     ("MeterBar", AnyView(MeterBar(percent: 82, label: note.statusLine ?? note.text)))

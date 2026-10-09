@@ -48,7 +48,8 @@
         "checked_versions": [
           "sample-1"
         ]
-      }
+      },
+      "tool_label": "Claude"
     }
   ]
 }

@@ -27,7 +27,8 @@
           ],
           "status_line": "A decision is needed"
         }
-      ]
+      ],
+      "tool_label": "Codex"
     }
   ],
   "decision_needed": true,
