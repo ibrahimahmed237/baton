@@ -267,3 +267,17 @@ UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build p
 **Checks.** Assert the neutral outline palette and preserve source-image pixels; render menu mark with/without badge in both themes; snapshot the compact popover in both themes; run app build/tests and engine suite per the package loop. Inspect the refreshed fixture in dark appearance and compare its gray/burgundy balance to the previous version. Independently challenge the scoped diff.
 
 **Done when.** The popover is visually coherent at its compact size, the menu mark has contrast on both light and dark surfaces without a white tile, the dark palette reads as gray with a quiet remote burgundy cast, behavior and copy are unchanged, checks/review pass, and Ibrahim can inspect the running fixture.
+
+## UI10 — tighter Dock tile and glass-gray menu mark
+
+**Goal.** Reduce the excess white margin around the Dock identity and make the menu-bar mark read as a neutral, glassy grayscale symbol. Keep the signed burgundy-and-black artwork unchanged in the app and Dock.
+
+**From.** Ibrahim, 2026-10-06: shrink the white surround on the app/Dock icon and make the menu-bar icon glassy without colors.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Theme/Theme.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI10-2026-10-06.md`; `docs/plan/reports/patches/UI10.patch`.
+
+**Steps.** Crop only transparent source padding for the Dock renderer, retain a small clear margin around every mark and signature, and keep the original color pixels. Render the menu mark with a theme-aware neutral grayscale gradient and neutral decision badge on a transparent background; leave app/content and Dock colors unchanged.
+
+**Checks.** Assert Dock mark bounds expand while the signature remains visible and burgundy source colors remain. Assert menu icon pixels are grayscale in Light and Graphite with and without the decision badge; render all four snapshots. Run `swift build`, `swift test`, and the engine suite; inspect the rendered menu and Dock PNGs.
+
+**Done when.** The Dock white margin is visibly tighter without clipping the signature; the menu-bar mark and badge use only neutral grayscale on transparent surroundings; app and Dock identity colors stay intact; snapshots, checks and independent review pass.

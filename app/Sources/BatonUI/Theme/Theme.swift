@@ -14,6 +14,15 @@ public enum Theme: String, CaseIterable, Sendable {
     public var backdropInk: Color { self == .graphite ? colour(0x7c8086) : colour(0x8d8591) }
     /// Neutral silhouette edge that reads on the menu bar without adding a white tile.
     public var menuOutline: Color { self == .graphite ? colour(0xe8e9eb) : colour(0x55585e) }
+    /// A quiet grayscale highlight for the menu-bar mark, independent of the app palette.
+    public var menuGlass: LinearGradient {
+        let stops = self == .graphite
+            ? [colour(0xf4f5f6), colour(0xb9bdc2), colour(0xe7e9eb)]
+            : [colour(0x777c83), colour(0x30343a), colour(0x686d74)]
+        return LinearGradient(colors: stops, startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+    /// Contrasting neutral ring around the menu-bar decision badge.
+    public var menuBadgeOutline: Color { self == .graphite ? colour(0x45484e) : colour(0xffffff) }
     public var scheme: ColorScheme { self == .light ? .light : .dark }
 
     /// Returns a colour for a meaning, rather than for a particular screen.

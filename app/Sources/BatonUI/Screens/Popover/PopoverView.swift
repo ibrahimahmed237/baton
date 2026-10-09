@@ -128,8 +128,8 @@ public struct BatonMenuIcon: View {
             .frame(width: 26, height: 22, alignment: .leading)
             .overlay(alignment: .topTrailing) {
                 if needsDecision {
-                    Circle().fill(theme.colour(for: .danger)).frame(width: 5, height: 5)
-                        .overlay(Circle().strokeBorder(theme.background, lineWidth: 0.75))
+                    Circle().fill(theme.menuOutline).frame(width: 5, height: 5)
+                        .overlay(Circle().strokeBorder(theme.menuBadgeOutline, lineWidth: 0.75))
                 }
             }
     }
