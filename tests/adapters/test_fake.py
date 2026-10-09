@@ -53,6 +53,17 @@ class CursorLikeTests(FakeFixtures, AdapterSuite, unittest.TestCase):
 
 
 class FakeBehaviorTests(unittest.TestCase):
+    def test_fake_can_remove_an_older_append_without_losing_a_later_one(self):
+        adapter = FakeAdapter()
+        original = turns()
+        chat = adapter.build_chat(original[:1])
+        first = adapter.writer.add(chat, original[1:2])
+        second = adapter.writer.add(chat, original[2:])
+        adapter.writer.take_back(first.receipt)
+        self.assertEqual(adapter.reader.read(chat), [original[0], original[2]])
+        adapter.writer.take_back(second.receipt)
+        self.assertEqual(adapter.reader.read(chat), original[:1])
+
     def test_runner_returns_or_raises_and_records_requests(self):
         runner = FakeBackgroundRunner("canned")
         self.assertTrue(runner.available().ok)

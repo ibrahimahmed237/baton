@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 
-from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, Message, Turn
+from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Message, Turn
 
 # User records Claude Code writes for its own purposes. Records from current
 # versions carry `origin`; this list covers older records that do not.
@@ -29,6 +29,7 @@ _ON_THE_CHAIN = ("user", "assistant", "system", "attachment")
 
 
 def read_records(path: str) -> list[dict]:
+    """Read JSONL records, tolerating damaged lines for read-only use."""
     records = []
     with open(path, errors="replace") as fh:
         for line in fh:
@@ -79,6 +80,7 @@ def prompt_text(record: dict) -> str:
 
 
 def is_prompt(record: dict) -> bool:
+    """Distinguish real human or peer prompts from injected records."""
     if record.get("type") != "user" or record.get("isCompactSummary") or record.get("isVisibleInTranscriptOnly"):
         return False
     content = (record.get("message") or {}).get("content")
@@ -115,10 +117,10 @@ def _messages(record: dict) -> list[Message]:
         ident = uuid if len(content) == 1 else "%s#%d" % (uuid, index)
         kind = block.get("type")
         if record["type"] == "assistant" and kind == "text" and block.get("text", "").strip():
-            out.append(Message(id=ident, kind=REPLY, text=block["text"], at=at))
+            out.append(Message(id=ident, kind=TOOL_TEXT if record.get("batonMessageKind") == TOOL_TEXT else REPLY, text=block["text"], at=at))
         elif record["type"] == "assistant" and kind == "tool_use":
             out.append(Message(id=ident, kind=TOOL_CALL, at=at, tool=block.get("name", ""),
-                               tool_input=block.get("input"), call_id=block.get("id", "")))
+                               tool_input=block.get("input"), call_id=record.get("batonOriginalCallId", block.get("id", ""))))
         elif record["type"] == "user" and kind == "tool_result":
             out.append(Message(id=ident, kind=TOOL_RESULT, text=_result_text(block.get("content")), at=at,
                                call_id=block.get("tool_use_id", ""), is_error=bool(block.get("is_error"))))
@@ -126,6 +128,7 @@ def _messages(record: dict) -> list[Message]:
 
 
 def turns_from_records(records: list[dict]) -> list[Turn]:
+    """Read the live public conversation as whole turns."""
     turns: list[Turn] = []
     prompt, messages = None, []
     for record in live_chain(records):
@@ -142,4 +145,44 @@ def turns_from_records(records: list[dict]) -> list[Turn]:
 
 
 def read_chat(path: str) -> list[Turn]:
+    """Read public turns from one native chat file."""
     return turns_from_records(read_records(path))
+
+
+class ClaudeReader:
+    """Resolve stable sidebar ids, then read only the native live chain."""
+    def __init__(self, adapter): self.adapter = adapter
+    def read(self, chat_id):
+        """Read the public turns for the current stable chat identity."""
+        return read_chat(str(self.adapter.locator.session_path(chat_id)))
+    def usage(self, chat_id):
+        """Read the latest context usage and provider limit evidence."""
+        from datetime import datetime, timezone
+        from ...ports.tool import Usage
+        records = live_chain(read_records(str(self.adapter.locator.session_path(chat_id))))
+        tokens, size, reached, reset = 0, None, False, None
+        for record in reversed(records):
+            if record.get("type") != "assistant": continue
+            if record.get("isApiErrorMessage"):
+                quota = record.get("quotaLimits") or {}
+                reached = record.get("apiErrorStatus") == 429 or record.get("error") == "rate_limit"
+                if quota.get("resetsAt") is not None:
+                    reset = datetime.fromtimestamp(quota["resetsAt"], timezone.utc).isoformat().replace("+00:00", "Z")
+                continue
+            message = record.get("message") or {}
+            usage = message.get("usage")
+            if isinstance(usage, dict):
+                tokens = sum(usage.get(k, 0) or 0 for k in ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens", "output_tokens"))
+                size = self.adapter.context_sizes.get(message.get("model"))
+                break
+        return Usage(tokens, size, reached, reset)
+    def files_changed(self, turn):
+        """Extract paths changed by native edit or write tool calls."""
+        paths = []
+        for message in turn.messages:
+            if message.kind == TOOL_CALL and message.tool.lower() in ("write", "edit", "multiedit"):
+                values = message.tool_input or {}
+                if isinstance(values, dict):
+                    path = values.get("file_path") or values.get("path")
+                    if isinstance(path, str) and path not in paths: paths.append(path)
+        return paths

@@ -117,3 +117,13 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(marker('source'), get('history.marker').render({'tool': 'source'}).template)
         self.assertEqual(content_key(mapped[0]), content_key(original))
         self.assertEqual(for_created_chat([], CODEX_LIKE), [])
+
+    def test_native_call_id_and_record_id_share_the_same_display_number(self):
+        original = turn()
+        native = replace(original, messages=tuple(
+            replace(m, call_id='tool-use-1') if m.kind in (TOOL_CALL, TOOL_RESULT) else m
+            for m in original.messages))
+        mapped = for_target(native, CODEX_LIKE)
+        self.assertIn('Tool result for call 1:', mapped.messages[1].text)
+        self.assertEqual(content_key(native), content_key(original))
+        self.assertEqual(content_key(native), content_key(mapped))

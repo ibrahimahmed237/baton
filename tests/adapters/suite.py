@@ -67,7 +67,8 @@ class AdapterSuite:
         error = AppMustBeClosed if window == WriteWindow.APP_CLOSED else ChatHeld
         with self.assertRaises(error):
             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
-        with self.assertRaises(error):
+        # Renaming may need the whole app closed even when adding only needs a released chat.
+        with self.assertRaises((error, AppMustBeClosed)):
             self.adapter.writer.rename(self.chat, "changed")
         if window == WriteWindow.APP_CLOSED:
             with self.assertRaises(error):
@@ -78,9 +79,10 @@ class AdapterSuite:
         created = self.adapter.writer.create(self.turns[:1], "copy", "")
         first = self.adapter.writer.add(created.chat_id, self.turns[1:2])
         second = self.adapter.writer.add(created.chat_id, self.turns[2:])
-        self.adapter.writer.take_back(first.receipt)
-        self.assertEqual(self.adapter.reader.read(created.chat_id), [self.turns[0], self.turns[2]])
         self.adapter.writer.take_back(second.receipt)
+        self.assertEqual(self.adapter.reader.read(created.chat_id), self.turns[:2])
+        self.adapter.writer.take_back(first.receipt)
+        self.assertEqual(self.adapter.reader.read(created.chat_id), self.turns[:1])
         renamed = self.adapter.writer.rename(created.chat_id, "renamed")
         self.adapter.writer.take_back(renamed.receipt)
         self.assertEqual(self.adapter.locator.name(created.chat_id), "copy")

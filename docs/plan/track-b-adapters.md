@@ -35,6 +35,8 @@ All adapter tests run on files and databases built in a temporary folder that th
 
 ## B1. Claude
 
+**Files.** `baton/adapters/claude/`, `tests/adapters/test_claude.py`, `tests/fixtures/claude/`, related isolated unit tests; `tests/adapters/suite.py` and `tests/adapters/test_fake.py` for Ibrahim-approved reverse-order rollback and fake-only out-of-order preservation. `baton/services/mapping.py` and `tests/unit/test_mapping.py` for authentic native call-id/result pairing, and `baton/notes/catalogue.py` for setup findings. All roots/processes/commands in tests are explicit temporary fixtures or injected controls. Live evidence is separately gated.
+
 **Facts.** write window `CLOSED_OR_RELEASED`; new chat `AFTER_RELAUNCH`; added turn `AFTER_RELAUNCH`; can cut; cannot place; can release one idle chat; opens at chat; limit with reset time; context size per model; hooks need nothing.
 
 | Part | File | Details |

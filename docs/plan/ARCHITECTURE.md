@@ -244,3 +244,11 @@ Ledger combines internal links, turns, history and journal method groups behind 
 ### E7 merge transaction and follow-on dependencies (Orchestrator; separate reviewer checked)
 
 A confirmed merge completes linked chat replacements, canonical order, per-side delivery/skips and begun journal receipts in one store transaction, with one merge history event. The history retains pre-merge link/turn/receipt data for E8 undo. An approved merge resolves only its exact pending turns on its resulting chat identities; a newly completed conflicting turn must require a new decision. U9 is an E8 integration check; M12 depends on E9/E10 rather than a pretend brief implementation in E7.
+
+### Safe receipt rollback (Ibrahim approved, 2026-10-05)
+
+Adapter rollback receipts restore writes in reverse order. A stale receipt must refuse with ChatChanged if later outside changes would be overwritten. The shared suite tests reverse-order rollback, and individual real adapters prove stale-receipt refusal without mutation. The fake retains an additional out-of-order removal test for its in-memory implementation; this is not a required native-file operation.
+
+### B1 native adapter implementation boundary
+
+All tests use an explicit temporary root, injected process/command controls and hand-built native shapes. Native publication uses fsynced temporary files and atomic replacement while preserving the existing log byte prefix; a fsynced intent manifest precedes publication. Rollback handles either native path unpublished and refuses later outside changes. Native format checks include hidden sidebar targets. Release requires verified process/session ownership; real process arguments and desktop visibility remain live-check obligations. Hook installation/check does not claim readiness until C4 entry points can consume native stdin and resolve stable sidebar identities. Tool calls map by their native call ID as well as their record ID.

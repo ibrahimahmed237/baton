@@ -64,6 +64,8 @@ class Note:
 
 
 CATALOGUE = {note.id: note for note in (
+    Note("setup.hooks", "warning", "Baton's hooks are not ready in {tool}. Install Baton's hooks and check again."),
+    Note("setup.runner", "warning", "{tool} cannot run a background brief. Check its command and sign in, or use the offline brief."),
     Note("nothing_unusual", "info", "Nothing unusual."),
     Note("new_chat.at_once", "info", "The new chat appears in {tool} right away. No relaunch."),
     Note("new_chat.relaunch", "info", "Baton closes {tool}, creates the chat, and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel"), "Relaunch {tool} to see this chat"),

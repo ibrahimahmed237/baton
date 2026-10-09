@@ -28,8 +28,11 @@ def _messages(turn: Turn):
     calls = {m.id: index for index, m in enumerate(
         (m for m in messages if m.kind == TOOL_CALL), start=1)}
     for message in messages:
+        if message.kind == TOOL_CALL and message.call_id:
+            calls[message.call_id] = calls[message.id]
+    for message in messages:
         if message.kind == TOOL_RESULT and message.call_id and message.call_id not in calls:
-            calls[message.call_id] = len(calls) + 1
+            calls[message.call_id] = max(calls.values(), default=0) + 1
     return messages, calls
 
 
