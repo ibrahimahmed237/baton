@@ -24,6 +24,7 @@ Decisions (Reviewer):
 
 ## Now
 
+- UI4 follow-up in progress: reached notes sit inside their reached turn cards, directly below the messages, with a short inset rail instead of the long divider. If filtering/folding hides that turn, the note uses the same rail treatment above the visible subset; empty filters still suppress it. Rebuilt and reopened `/private/tmp/BatonUIReview.app`; both inline notes are visible in the running fixture. Independent review's fallback-style finding is closed. App tests remain unrun; see reports/UI4-2026-10-06.md.
 - UI3 complete, independently reviewed and native fixture checked: ordinary launch opens the main window, standard controls work, native fullscreen entry/Escape exit and sidebar response pass. Ibrahim confirms the window and red/yellow/green controls are visible. Root 377 engine / 74 app / Swift build pass with installed SDK26.5 and TestingMacros command flags. Ready-to-commit patch follows E8; no real chats or Git writes.
 
 - UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is complete and independently reviewed in its fixture scope, with approved capability-based undo and additive recovery/store scope.
@@ -37,6 +38,8 @@ Decisions (Reviewer):
 ## Next
 
 UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
+
+Run app tests when explicitly requested/permitted, then close UI4. After UI4 closes, continue E9/E10 and D6/D7 in parallel as previously listed.
 
 UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
 
@@ -634,6 +637,8 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - 2026-10-06 — E8 completed, root and separate reviewer checked; 377 engine / 71 app tests and Swift build pass. Five independent/root findings closed (expiry, cumulative visibility, moved-chat identity, merge preview notes, split restore), plus bounded release and acknowledged attachment regressions. UI2/E8 ordered patches ready; no real chats and no Git writes.
 
 - 2026-10-06 — UI2 title bar completed, independently reviewed; 71 app tests and isolated 334 engine tests. Hosted minimum-size test passed. Rebuilt fixture launch and native CUA light chrome/full-screen entry observed; no real coding app touched. E8 continues.
+
+- 2026-10-06 — UI4 latest build passes with installed SDK26.5/TestingMacros flags. CUA verified path chips and conversation in a fresh review bundle; Attached showed no turns or boundary elements. Independent reviewer confirmed removing text selection closes conflict with row navigation. The replaced bundle failed to reopen, so a fresh temporary review bundle was built and launched successfully. App tests remain unrun; no system setting changed. See reports/UI4-2026-10-06.md.
 
 - 2026-10-06 — Ibrahim requested a UI bug/enhancement audit. UI1 fixes independently reviewed; all three reviewer findings closed. 334 engine / 68 app / build pass; click-shape mutation fails as expected. Existing package patches preserved, UI1 ready after CP2-record.
 

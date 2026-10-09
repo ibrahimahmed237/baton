@@ -55,7 +55,7 @@ public struct SyncStatusView: View {
                 if let note = model.note("screen.sync_status") { Text(note.text).font(.caption).foregroundStyle(theme.secondaryText) }
                 HStack(spacing: 12) {
                     ForEach(model.tools, id: \.self) { tool in
-                        if tool != model.tools.first { Image(systemName: "arrow.left.arrow.right").font(.caption).foregroundStyle(theme.secondaryText).accessibilityHidden(true) }
+                        if tool != model.tools.first { linkBridge }
                         if let side = status.sides[tool] {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(side.chat.name).font(.system(size: 17, weight: .semibold))
@@ -74,6 +74,20 @@ public struct SyncStatusView: View {
                 labelButton("screen.refresh") { Task { await model.load(link: status.linkID) } }
             }.font(.caption).buttonStyle(.plain)
         }
+    }
+
+    private var linkBridge: some View {
+        HStack(spacing: 0) {
+            Capsule().fill(theme.hairline).frame(width: 10, height: 1)
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(theme.colour(for: .action))
+                .padding(8)
+                .background(theme.sidebar.opacity(0.72), in: Circle())
+                .overlay(Circle().strokeBorder(theme.hairline, lineWidth: 1))
+            Capsule().fill(theme.hairline).frame(width: 10, height: 1)
+        }
+        .accessibilityHidden(true)
     }
 
     private func sideCard(_ side: Side) -> some View {
@@ -170,35 +184,44 @@ public struct SyncStatusView: View {
         VStack(alignment: .leading, spacing: 16) {
             if model.foldedCount > 0, let folded = model.note("screen.earlier_turns") {
                 Button(folded.text) { model.unfold() }.buttonStyle(.plain)
-                ForEach(model.tools, id: \.self) { tool in
-                    if let reached = model.status?.sides[tool]?.syncedUpTo,
-                       !model.displayedTurns.contains(where: { $0.id == reached.id }),
-                       let note = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
-                        Text(note.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
-                    }
+            }
+            if !model.displayedTurns.isEmpty {
+                let hiddenTurnNotes = model.tools.compactMap { tool -> Note? in
+                    guard let reached = model.status?.sides[tool]?.syncedUpTo,
+                          !model.displayedTurns.contains(where: { $0.id == reached.id }) else { return nil }
+                    return model.status?.notes.first(where: {
+                        $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
+                    })
+                }
+                if !hiddenTurnNotes.isEmpty {
+                    reachedBoundaryGroup(hiddenTurnNotes)
                 }
             }
             ForEach(model.displayedTurns, id: \.id) { turn in
                 turnView(turn).id(turn.id)
-                ForEach(model.tools, id: \.self) { tool in
-                    if model.status?.sides[tool]?.syncedUpTo?.id == turn.id,
-                       let reached = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
-                        Text(reached.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
-                    }
-                }
             }
         }
     }
     private func turnView(_ turn: Turn) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top) {
-                HStack { ToolDot(tool: turn.origin, label: model.toolLabel(turn.origin)); Text(DisplayTime.string(turn.startedAt)).font(.caption).foregroundStyle(theme.secondaryText) }
-                Spacer(minLength: 12)
-                HStack { ForEach(model.tools, id: \.self) { tool in
-                if let state = turn.states[tool], let label = model.stateLabel(state) {
-                    VStack(alignment: .leading, spacing: 4) { ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption); StateChip(state: state, label: label) }
+            HStack(alignment: .center, spacing: 8) {
+                Text("Turn \(turn.seq)")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(theme.sidebar, in: Capsule())
+                ToolDot(tool: turn.origin, label: model.toolLabel(turn.origin)).font(.caption.weight(.medium))
+                Text(DisplayTime.string(turn.startedAt)).font(.caption).foregroundStyle(theme.secondaryText)
+                Spacer(minLength: 8)
+            }
+            HStack(alignment: .center, spacing: 8) {
+                ForEach(model.tools, id: \.self) { tool in
+                    if let state = turn.states[tool], let label = model.stateLabel(state) {
+                        HStack(spacing: 6) {
+                            ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption)
+                            StateChip(state: state, label: label)
+                        }
+                    }
                 }
-                } }
             }
             ForEach(Array(model.messages(for: turn).enumerated()), id: \.offset) { _, message in
                 messageView(message, expanded: model.expandedReplies.contains(turn.id))
@@ -215,7 +238,38 @@ public struct SyncStatusView: View {
                     ForEach(Array(model.toolMessages(for: turn).enumerated()), id: \.offset) { _, message in messageView(message, expanded: true) }
                 }
             }
+            let reachedNotes = model.tools.compactMap { tool -> Note? in
+                guard model.status?.sides[tool]?.syncedUpTo?.id == turn.id else { return nil }
+                return model.status?.notes.first(where: {
+                    $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
+                })
+            }
+            if !reachedNotes.isEmpty {
+                reachedBoundaryGroup(reachedNotes).padding(.top, 2)
+            }
         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+    }
+    private func reachedBoundaryGroup(_ notes: [Note]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(notes.enumerated()), id: \.offset) { _, note in
+                reachedBoundary(note)
+            }
+        }
+        .padding(.leading, 10)
+        .overlay(alignment: .leading) {
+            Capsule().fill(theme.colour(for: .added).opacity(0.65)).frame(width: 2)
+        }
+        .accessibilityElement(children: .contain)
+    }
+    private func reachedBoundary(_ note: Note) -> some View {
+        HStack(alignment: .center, spacing: 7) {
+            Image(systemName: "arrow.turn.down.right")
+                .font(.caption2.weight(.semibold))
+                .accessibilityHidden(true)
+            Text(note.text).font(.caption.weight(.semibold))
+        }
+        .foregroundStyle(theme.colour(for: .added))
+        .accessibilityElement(children: .combine)
     }
     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
         HStack {

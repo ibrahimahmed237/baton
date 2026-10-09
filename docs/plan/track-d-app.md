@@ -180,3 +180,17 @@ Empty states, loading and error states for every screen, keyboard navigation, Vo
 UI3 continuation (Ibrahim, 2026-10-06): main window opens on Finder launch and reopen, with close/minimize/full-screen controls; menu icon remains. Scope also includes app/Sources/Baton/BatonApp.swift and a shared main-window controller in WindowPresentation.swift. A single window/model is reused, rather than separate review and ordinary windows. Tests cover native style/control presence and close/reopen identity.
 
 UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; separate code review no blocker; ordinary fixture launch plus native full-screen/Escape/sidebar verified; Ibrahim confirms visible controls. Ctrl-Command-F wiring remains in keyboard polish, not claimed fixed.
+
+## UI4 — orient the conversation timeline
+
+**Goal.** Make it immediately clear which turn a message belongs to, which app produced it, what each app has received, where the reached boundary sits, and which folder a linked chat belongs to.
+
+**From.** Ibrahim's 2026-10-06 report that the Attention conversation's messages and “has everything above this line” notes are difficult to interpret; sync-status R9, R10, R11 and R13.
+
+**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Sources/BatonUI/Screens/Window/WindowView.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI4-2026-10-06.md`; `docs/plan/reports/patches/UI4.patch`.
+
+**Steps.** Label each conversation card with its turn sequence, source app and time; group the per-app state with each app identity; place each existing reached note inside its reached turn card, directly below its messages, with an inset connector rail instead of a full-width divider. If filtering or folding hides that reached turn, show its note above the visible subset; suppress it when no turns remain visible. Show chat folders as compact path chips with middle truncation and the full path available on hover and to accessibility tools. Keep engine wording, ordering, filtering, folding, jump behavior, and the existing palette.
+
+**Checks.** Challenge the diff against S1–S12 and R9–R13; run the repository's app build and tests when permitted; inspect the actual fixture rendering before closing visual acceptance. Do not infer the display copy from tool names or create user-facing sentences in the view.
+
+**Done when.** Each visible card is self-identifying, both sides' state is adjacent to its tool identity, reached notes appear only when there are visible turns and their “above this line” wording matches their position, and folder paths read as intentional location labels. No message or state ordering changes.

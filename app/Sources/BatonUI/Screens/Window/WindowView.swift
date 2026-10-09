@@ -169,7 +169,7 @@ public struct WindowView: View {
         VStack(alignment: .leading, spacing: 4) {
             ToolDot(tool: chat.tool, label: chat.displayLabel).font(.caption)
             Text(chat.name).font(.headline)
-            Text(chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
+            FolderPathLabel(path: chat.folder)
         }
     }
 
@@ -187,4 +187,34 @@ private struct IdentifiedSuggestion: Identifiable {
 private struct DialogItem: Identifiable {
     let model: LinkDialogViewModel
     var id: ObjectIdentifier { ObjectIdentifier(model) }
+}
+
+private struct FolderPathLabel: View {
+    @Environment(\.batonTheme) private var theme
+    let path: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "folder")
+                .font(.system(size: 10, weight: .medium))
+                .accessibilityHidden(true)
+            Text(path)
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .foregroundStyle(theme.secondaryText)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.sidebar.opacity(0.72), in: RoundedRectangle(cornerRadius: 7))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7)
+                .stroke(theme.hairline.opacity(0.75), lineWidth: 0.7)
+        }
+        .help(path)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(path)
+    }
 }
