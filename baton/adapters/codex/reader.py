@@ -115,3 +115,10 @@ def turns_from_records(records: list[dict]) -> list[Turn]:
 
 def read_chat(path: str) -> list[Turn]:
     return turns_from_records(read_records(path))
+
+
+def commands_run(turn: Turn) -> int:
+    """Count native shell/exec calls; polling and ordinary tools are not commands."""
+    names = {'shell', 'shell_command', 'exec_command'}
+    return sum(message.kind == TOOL_CALL and message.tool.rsplit('.', 1)[-1] in names
+               for message in turn.messages)

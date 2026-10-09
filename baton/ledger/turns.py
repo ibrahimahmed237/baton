@@ -31,7 +31,8 @@ class TurnsRecords:
                 self._event(link_id, at, "not_confirmed", side, turn_ids=turn_ids)
 
 
-    def record_turns(self, link_id: int, side: str, turns: Iterable[Turn]) -> list[int]:
+    def record_turns(self, link_id: int, side: str, turns: Iterable[Turn],
+                     in_progress: str = "") -> list[int]:
         """Take in turns read from one side's chat; return the ids of the new ones.
 
         A turn is new when it was written on that side: not recorded before, and
@@ -49,6 +50,14 @@ class TurnsRecords:
         with self.db:
             for turn in turns:
                 if turn.id in known:
+                    origin = self.db.execute('select id from turns where link_id=? and origin=? and origin_id=?',
+                                             (link_id, side, turn.id)).fetchone()
+                    if origin is not None:
+                        accepted = self._record_evidence(origin['id'], turn, verified=False,
+                                                         complete=turn.id != in_progress)
+                        if accepted:
+                            self.db.execute('update turns set ended_at=?,size=? where id=?',
+                                            (turn.ended_at, _size(turn), origin['id']))
                     continue
                 known.add(turn.id)
                 seq += 1
@@ -62,6 +71,8 @@ class TurnsRecords:
                     [(cur.lastrowid, side, WRITTEN_HERE, turn.id)]
                     + [(cur.lastrowid, tool, WAITING, "") for tool in others])
                 added.append(cur.lastrowid)
+                self._record_evidence(cur.lastrowid, turn, verified=True,
+                                      complete=turn.id != in_progress)
         return added
 
 

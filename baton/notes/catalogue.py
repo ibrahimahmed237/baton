@@ -301,6 +301,28 @@ CATALOGUE = {note.id: note for note in (
     Note("handoff.writer_choices", "info", "Choose how to write the brief.", (Button("automatic", "Automatic", True), Button("offline", "Offline"))),
     Note("handoff.preview", "info", "Review before continuing"),
     Note("handoff.actions", "info", "Review your choice.", (Button("review", "Review", True), Button("cancel", "Cancel"))),
+    # E9, working-across W1 to W8. Times and counts arrive already formatted.
+    Note("limit.reached", "warning", "{tool} has reached its usage limit."),
+    Note("limit.available_at", "info", "{tool} is available again at {time}.", (), "{tool} is available again at {time}"),
+    Note("limit.available", "ok", "{tool} is available again.", (), "{tool} is available again"),
+    Note("limit.offer_linked", "warning", "{tool} has reached its usage limit. It resets at {time}. Continue this chat in {other_tool}? {other_tool} already has every turn.", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_linked_behind", "warning", "{tool} has reached its usage limit. It resets at {time}. Continue this chat in {other_tool}?", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_linked_no_reset", "warning", "{tool} has reached its usage limit. Continue this chat in {other_tool}? {other_tool} already has every turn.", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_linked_no_reset_behind", "warning", "{tool} has reached its usage limit. Continue this chat in {other_tool}?", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_unlinked", "warning", "{tool} has reached its usage limit. It resets at {time}. This chat is not linked to a {other_tool} chat yet.", (Button("link_and_continue", "Link it and continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_unlinked_no_reset", "warning", "{tool} has reached its usage limit. This chat is not linked to a {other_tool} chat yet.", (Button("link_and_continue", "Link it and continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("context.in_use", "info", "About {tokens} tokens in use, {percent}% of {size}."),
+    Note("context.in_use_no_size", "info", "About {tokens} tokens in use."),
+    Note("context.nearly_full", "warning", "{tool} will soon summarise this chat by itself. Continuing in {other_tool}, or handing off with a brief, avoids that."),
+    Note("context.nearly_full_alone", "warning", "{tool} will soon summarise this chat by itself. Handing off with a brief avoids that."),
+    Note("digest.since_you_left", "info", "Since your last message here at {at}, {tool} did {turns}, changed {files} and ran {commands}.", (Button("show_changes", "Show what changed", True),)),
+    Note("digest.turns_one", "info", "{n} turn"),
+    Note("digest.turns_other", "info", "{n} turns"),
+    Note("digest.files_one", "info", "{n} file"),
+    Note("digest.files_other", "info", "{n} files"),
+    Note("digest.commands_one", "info", "{n} command"),
+    Note("digest.commands_other", "info", "{n} commands"),
+    Note("catch_up.block", "info", "<baton-catch-up>\n{body}\n</baton-catch-up>"),
 )}
 
 

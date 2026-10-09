@@ -33,6 +33,17 @@ class ClaudeReaderTest(unittest.TestCase):
         self.assertEqual(turns[0].reply_text, "Login added.")
         self.assertEqual(turns[1].reply_text, "Logout added.")
 
+    def test_commands_count_bash_only_and_exclude_reads_edits_searches_results(self):
+        chat = ClaudeChat()
+        chat.prompt('work')
+        for index, tool in enumerate(('Bash', 'Read', 'Edit', 'Grep', 'Glob', 'Write', 'bash')):
+            call = 'call-' + str(index)
+            chat.tool_call(tool, {'command': 'pwd'}, call)
+            chat.tool_result(call, 'ok')
+        chat.reply('done')
+        turn = self.read(chat)[0]
+        self.assertEqual(claude_reader.ClaudeReader(None).commands_run(turn), 2)
+
     def test_records_claude_writes_for_itself_are_not_prompts(self):
         chat = ClaudeChat()
         chat.prompt("real question")

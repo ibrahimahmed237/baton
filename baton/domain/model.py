@@ -6,7 +6,7 @@ tracks each message by the ID its own tool gave it.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 PROMPT = "prompt"
@@ -53,3 +53,19 @@ class Turn:
             if message.kind == REPLY:
                 return message.text
         return ""
+
+
+def turn_extends(previous: Turn, current: Turn) -> bool:
+    """Permit append-only activity and a suffix on an unfinished final reply."""
+    if previous.prompt != current.prompt:
+        return False
+    before, after = previous.messages, current.messages
+    count = len(before)
+    if before == after[:count]:
+        return True
+    if not before or len(after) < count or before[:-1] != after[:count - 1]:
+        return False
+    old, new = before[-1], after[count - 1]
+    return (old.kind in (REPLY, TOOL_TEXT)
+            and replace(old, text=new.text, at=new.at) == new
+            and new.text.startswith(old.text))

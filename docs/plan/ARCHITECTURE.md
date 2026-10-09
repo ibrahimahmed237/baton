@@ -93,6 +93,7 @@ class ChatReader(Protocol):
     def read(self, chat_id: str) -> list[Turn]: ...
     def usage(self, chat_id: str) -> Usage: ...      # tokens in context, size if known, limit if hit
     def files_changed(self, turn: Turn) -> list[str]: ...   # for the same-file warning and the digest
+    def commands_run(self, turn: Turn) -> int: ...           # native shell execution evidence; other tools/results excluded
 
 class ChatState(Protocol):
     def condition(self, chat_id: str) -> SideCondition: ...   # exists, open, replying, hooks_ready
@@ -261,3 +262,11 @@ All tests use an explicit temporary root, injected process/command controls and 
 Ibrahim approved resolving U9 using capability-based undo: native cuts where supported, shorter copies otherwise, and preserving merge-created chats while moving the link back. Undo/restore require additive atomic RecordStore finalization and an additive ChatWriter.restore(receipt) operation with a fresh pre-write recovery receipt. An empty keep-through ID means cut to the empty-chat boundary; adapters must verify this with temporary fixtures. The saved old receipt is never consumed to bypass journaling a restore.
 
 E8 stores verified cuts, copy moves and restores with complete_undo in one transaction, with paused link metadata and fresh journal receipts. Saved pre-undo observations preserve canonical turn payloads after native origins are cut; this does not permit stale active-chat writes. Removed-display evidence accumulates across cuts until a later app start or explicit seen event, and subtracts restored turns. Restore expiry is checked both when previewed and immediately before applying. Created-chat moveback refuses subsequent native writes. Merge history adds post-merge observations for safe moveback validation; missing older evidence conservatively refuses.
+
+### E9 evidence and durable offers (Orchestrator; independent review accepted)
+
+Limit offers use an atomic RecordStore.claim_limit_offer(key, at) insertion, including unlinked chats. Disabled offers do not consume the key. The explicit MemoryOffers compatibility helper is for isolated tests; production defaults to the persistent store. Routing values retain raw source/destination IDs independently of display labels.
+
+Additive canonical evidence retains full originating turn payloads and provenance on the existing ledger connection. Fresh ingestion/link finalization can establish verified evidence; known legacy rows without saved payload seed an observed-now baseline with verified=false. This never proves the earlier content unchanged. A digest requiring that evidence refuses with NotAvailable instead of silently counting partial/unverified content. A fresh explicit link establishes a new verified baseline; legacy link records remain readable and are not erased or upgraded by migration.
+
+Unfinished turns accept only checked append growth through a pure domain helper. Completion advances their retained end time/size; completed payloads cannot be overwritten by a conflicting read. Refresh validates canonical sources before record/delivery changes. Sanctioned undo/restore observations can retain removed origins; arbitrary missing active origins cannot reuse stale archived content. Digest command counts come from ChatReader.commands_run, not a generic count of all tool calls. Above-80 context warning uses the raw ratio; display rounding stays separate.

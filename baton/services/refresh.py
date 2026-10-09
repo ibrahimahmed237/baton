@@ -22,6 +22,7 @@ class ChatRefresh:
         observed = {}
         names = {}
         missing = []
+        moves = {}
         for side, chat in link.chats.items():
             adapter = self.adapters[side]
             try:
@@ -33,10 +34,13 @@ class ChatRefresh:
                 missing.append(side)
                 continue
             if ref.id != chat:
-                self.store.move_link(link_id, side, ref.id, at=self.clock.now())
+                moves[side] = ref.id
             names[side] = ref.name
             observed[side] = adapter.reader.read(ref.id)
         sources = canonical_sources(self.store, link_id, observed)
+        for side, chat in moves.items():
+            self.store.move_link(link_id, side, chat, at=self.clock.now())
+        link = self.store.get_link(link_id)
         for side, values in observed.items():
             local_ids = self.store.local_ids(link_id, side)
             read = {t.id: t for t in values}
@@ -49,7 +53,8 @@ class ChatRefresh:
                 if actual is None or source is None or content_key(actual) != content_key(source):
                     bypassed.append(recorded.id)
             self.store.reset_delivery(link_id, side, bypassed, self.clock.now())
-            self.store.record_turns(link_id, side, values)
+            in_progress = values[-1].id if values and self.adapters[side].state.condition(link.chat(side)).replying else ''
+            self.store.record_turns(link_id, side, values, in_progress=in_progress)
         link = self.store.get_link(link_id)
         conditions = {s: condition(self.adapters,s,c) for s,c in link.chats.items()}
         facts = {s: self.adapters[s].facts for s in link.sides}

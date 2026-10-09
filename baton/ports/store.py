@@ -42,8 +42,17 @@ class RecordStore(Protocol):
         """Point one side at another chat."""
         ...
 
-    def record_turns(self, link_id: int, side: str, turns: Iterable[Turn]) -> list[int]:
+    def record_turns(self, link_id: int, side: str, turns: Iterable[Turn],
+                     in_progress: str = "") -> list[int]:
         """Record new turns read from one side."""
+        ...
+
+    def turn_evidence(self, link_id: int) -> dict[int, dict[str, Any]]:
+        """Read canonical payloads, including whether their baseline was verified and completed."""
+        ...
+
+    def claim_limit_offer(self, key: str, at: str) -> bool:
+        """Atomically claim an offer once, including for an unlinked chat."""
         ...
 
     def turns(self, link_id: int) -> list[LedgerTurn]:

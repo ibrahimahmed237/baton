@@ -186,3 +186,8 @@ class ClaudeReader:
                     path = values.get("file_path") or values.get("path")
                     if isinstance(path, str) and path not in paths: paths.append(path)
         return paths
+
+    def commands_run(self, turn: Turn) -> int:
+        """Count Bash invocations, excluding edits, reads and results."""
+        return sum(message.kind == TOOL_CALL and message.tool.lower() == 'bash'
+                   for message in turn.messages)

@@ -136,6 +136,7 @@ class LinksRecords:
                     (link_id,seq,row['origin'],turn.id,turn.started_at,turn.ended_at,
                      turn.prompt.text.strip()[:_FIRST_LINE_CHARS],_size(turn)))
                 turn_id = cur.lastrowid
+                self._record_evidence(turn_id, turn, verified=True, complete=row.get('complete', True))
                 for side,state in row['states'].items():
                     event_id = self._event(link_id,at,'create' if entry_id else 'aligned',side,turn_ids=(turn_id,)) if state in (SHOWN,ADDED) else None
                     self.db.execute('insert into turn_states(turn_id,side,state,local_id,event_id) values(?,?,?,?,?)',

@@ -78,3 +78,16 @@ create table if not exists created_copies(
  primary key(tool,chat_id)
 );
 """
+
+EVIDENCE_SCHEMA = """
+create table if not exists turn_evidence(
+ turn_id integer primary key references turns(id),
+ payload text not null,
+ verified integer not null,
+ complete integer not null
+);
+create table if not exists limit_offers(
+ key text primary key,
+ offered_at text not null
+);
+"""

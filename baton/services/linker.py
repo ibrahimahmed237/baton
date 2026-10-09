@@ -330,6 +330,10 @@ class Linker:
                 target_turns = self._turns(plan.observations[plan.target]['turns'])
                 state,receipt = SHOWN,None
             rows = self._rows(plan.source,plan.target,source_turns,target_turns,state)
+            if (target_turns and plan.observations.get(plan.target, {}).get('condition', {}).get('replying')):
+                for row in rows:
+                    if row['origin'] == plan.target and row['turn'].id == target_turns[-1].id:
+                        row['complete'] = False
             if plan.action == 'full_copy':
                 link = self.store.complete_link_copy(plan.old_link_id,plan.target,target_chat,
                                                      plan.turn_ids,result.local_ids,state,

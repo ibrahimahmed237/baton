@@ -24,3 +24,5 @@ Ibrahim approved the product and CP2/CP3 decisions in [CP2-REPAIR-PLAN.md](CP2-R
 CP2 has not passed. B1 and B2 fixture success does not establish native compatibility. No real app/chat was accessed in this resume. Existing baseline/findings are in reports/CP2-resume-2026-10-09.md; current approved repair acceptance is in CP2-REPAIR-PLAN.md. Update this page, STATUS and MAP after every package.
 
 Direct Engine callers must hold engine.command_lock() before first service access through planning/applying. C4 must bound lock acquisition within its two-second hook deadline. Ibrahim's prior live-run go remains limited to explicitly named throwaway chats and the listed run; every app closure still needs a fresh go.
+
+Current boundary: E9/D6 independently accepted; working670 engine/129 app/build. E9 isolated staged555 engine. Commits/isolated D6 verification being finalized; no new package starts because five-hour usage reached100%. E10/D7/B2 unfinished files preserved; C2/live remain. Resume exact STATUS Next after this boundary, not the earlier baseline.

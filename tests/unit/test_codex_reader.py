@@ -67,6 +67,16 @@ class CodexReaderTest(unittest.TestCase):
         self.assertEqual((messages[1].call_id, messages[1].text), ("call-1", "12 passing"))
         self.assertEqual((messages[2].tool, messages[2].tool_input), ("apply_patch", "*** Begin Patch"))
         self.assertEqual(messages[3].text, '{"ok": true}')
+        self.assertEqual(codex_reader.commands_run(self.read(chat)[0]), 1)
+
+    def test_commands_exclude_read_edit_search_and_command_polling(self):
+        chat = CodexChat()
+        chat.user('work')
+        for name in ('functions.exec_command', 'shell_command', 'read_file', 'apply_patch', 'search', 'write_stdin'):
+            chat.function_call(name, {'command': 'true'}, name)
+            chat.function_output(name, 'done')
+        chat.assistant('done')
+        self.assertEqual(codex_reader.commands_run(self.read(chat)[0]), 2)
 
     def test_turns_without_ids_are_identified_by_their_ordinal(self):
         # Turns Codex imported from Claude, and turns Baton appends, carry no message ID.

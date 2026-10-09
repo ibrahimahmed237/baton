@@ -6,26 +6,24 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-Codex has taken over from Claude. Existing package files are preserved. Two independent reviewer agents were used; root owns fixes and the record. G2 committed as `dab931c`, G3 as `7f6e39f`, C1 as `e15e076`. The two-agent [CP2 repair plan](CP2-REPAIR-PLAN.md) is reviewed and approved for its product/contract decisions. E9 and D6 repairs start in parallel; root coordinates shared files. Ibrahim explicitly authorized self-commits on 2026-10-09. Normal approved Git writes work; sandbox-only Git writes remain restricted. No push.
-
-Resume baseline: **640 engine tests, 1 fixture failure**; current measurement is green. **App check now passes: 115 tests and build**, after fixing writable module caches and nested manifest sandbox execution. Engine now passes all 650 tests after the C1 safety regressions; D7 fixture receipts corrected. Reports' earlier green counts are historical only.
+Stopping at the E9/D6 package boundary: the measured five-hour usage window is100% consumed. No E10/D7 repair was started. E9 is accepted after root/independent review; D6 fixture-screen repair is accepted after five routing findings were fixed. Final working tree **670 engine /129 app**, build green. Isolated staged E9 passes **555 engine** without unfinished E10/B2. G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, approved plan record `825137e` committed; no push.
 
 | Package | Current state | Owned files |
 |---|---|---|
-| G2/G3 | G2 `dab931c`, G3 `7f6e39f` committed | `app/scripts/check.sh`, `app/README.md`, `app/Package.swift`, `app/Tests/BatonUITests/BrandTests.swift` |
-| E9/E10 | E9 repair started; engine agent owns its scoped core/ports/ledger/readers/tests. E10 waits for E9 | `baton/services/{usage,digest,limit_offer,noteformat,brief,transcripts}.py`, corresponding unit/scenario tests, E9/E10 catalogue blocks |
-| B2 | Native Codex fixture implementation preserved; root/separate review still owed; live not verified | `baton/adapters/codex/`, `tests/fixtures/codex/`, `tests/adapters/test_codex.py` |
-| C1 | Committed `e15e076`; 119 focused tests and separate review passed | `baton/cli/`, `pyproject.toml`, `tests/contract/`, `tests/unit/test_cli.py`, `error.unexpected` catalogue note |
-| D6/D7 | D6 repair started; app agent owns PlanReview/BatonKit gate/models/tests. D7 waits for D6/E10 output | `app/Sources/BatonUI/Screens/{PlanReview,HandOff}/`, focused tests and `*.d6_*`/`*.d7_*` fixtures |
+| E9 | Accepted; staged for own commit | Scope/outputs in reports/E9-2026-10-09.md; isolated Codex/catalogue hunks |
+| D6 | Accepted fixture screen; final isolated app scope check/commit next | PlanReview, additive BatonKit models/ConfirmationGate, tests and d6 fixtures |
+| E10 | Preserved unfinished implementation, privacy/lifecycle repairs NOT started | services/brief.py, transcripts.py, test_brief and test_working_across_brief; catalogue E10 block; test_merge M12 intent test |
+| B2 | Preserved unfinished native fixture implementation; safety repairs/live owed | adapters/codex except committed reader classifier, native fixtures/tests/report |
+| D7 | Preserved unfinished hand-off; repair NOT started | HandOff production/tests and d7 fixtures; D6 API/Continue compatibility edits retained here |
+| C2 | Not started | Planned read projections/commands and generated fixture manifest |
 
-Full findings: [CP2-resume-2026-10-09.md](reports/CP2-resume-2026-10-09.md). No new package is called done from a builder report alone.
 
 ## Next
 
-1. Run E9 engine repairs and D6 app repairs in parallel under the approved [CP2 repair plan](CP2-REPAIR-PLAN.md). G2/G3/C1 committed; G1 cleared. Preserve remaining unfinished files.
-2. Independently review and commit E9/D6 after all acceptance tests pass; then E10/D7. Product decisions are approved; keep CP3 execution clearly deferred. Updated baseline: 650 engine / 115 app, build green. Update STATUS, MAP and HANDOFF after each package.
-3. Fix and accept E9, E10, B2, D6, D7 in dependency order, resolving the recorded review blockers first. E10 needs real journaled brief creation, not only a plan object.
-4. C2 read commands and generated fixtures; then the specifically approved Claude/Codex throwaway live run. Each app close still needs Ibrahim's go at that moment. Record CP2 checks; continue to CP3 only when they pass.
+1. Finish the E9/D6 isolated commit records at this green boundary. Resume E10 engine and D7 app repairs in parallel next session under CP2-REPAIR-PLAN.md; preserve all unfinished files.
+2. Independently review each repair and commit one package at a time; update STATUS/MAP/HANDOFF after each. Approved Git writes work; no push.
+3. B2 safety repairs/review, then C2 safe reads and deterministic generated fixtures. C2 must label future-only providers and add service-backed effects; D6 modeled transport is routing evidence only.
+4. Explicitly scope the Claude/Codex throwaway live run after blockers close; each app closure still needs Ibrahim's go. Record every CP2 check; CP2 remains unpassed.
 
 ## Done
 
@@ -62,7 +60,44 @@ Full findings: [CP2-resume-2026-10-09.md](reports/CP2-resume-2026-10-09.md). No 
 
 ## Ready to commit
 
-None. G2, G3 and C1 committed separately using the approved Git path. All other package code remains unfinished and unstaged.
+### E9
+
+- `baton/adapters/claude/reader.py`
+- `baton/adapters/codex/reader.py`
+- `baton/adapters/fake/tool.py`
+- `baton/domain/model.py`
+- `baton/ledger/evidence.py`
+- `baton/ledger/links.py`
+- `baton/ledger/schema.py`
+- `baton/ledger/sqlite_store.py`
+- `baton/ledger/turns.py`
+- `baton/notes/catalogue.py`
+- `baton/ports/store.py`
+- `baton/ports/tool.py`
+- `baton/services/digest.py`
+- `baton/services/limit_offer.py`
+- `baton/services/linker.py`
+- `baton/services/noteformat.py`
+- `baton/services/observations.py`
+- `baton/services/refresh.py`
+- `baton/services/usage.py`
+- `tests/scenarios/test_working_across.py`
+- `tests/unit/test_claude_reader.py`
+- `tests/unit/test_codex_reader.py`
+- `tests/unit/test_digest.py`
+- `tests/unit/test_evidence.py`
+- `tests/unit/test_usage.py`
+- `docs/plan/ARCHITECTURE.md`
+- `docs/plan/CP2-REPAIR-PLAN.md`
+- `docs/plan/track-e-core.md`
+- `docs/plan/STATUS.md`
+- `docs/plan/MAP.md`
+- `docs/plan/HANDOFF.md`
+- `docs/plan/reports/E9-2026-10-09.md`
+
+Subject: Keep usage offers and catch-up evidence reliable
+
+Body: Persist limit offers across processes and validate completed source content before catch-up. Keep unfinished replies and legacy observations distinct so digest counts cannot imply missing or changed history was received.
 
 ## Decisions and reviewer findings
 
@@ -77,8 +112,8 @@ None. G2, G3 and C1 committed separately using the approved Git path. All other 
 
 ## Questions and unresolved work
 
-- E9/E10 review: source-writer brief privacy, immutable per-content transcripts, real brief creation/link movement, durable offer memory, digest on a fully received side, command classification, changed known IDs and exact >80% threshold. See the report; none is waived.
-- D6/D7 review: 17 unknown catalogue IDs and 17 differing note occurrences in 27 fixtures; request-aware button and side routing; preserving creation through relaunch/attach choices; deferred-sync contract; ordinary/brief confirmation; actual catalogue IDs and wording; writer selection; preview for selected mode; fixed destination on a limit offer. See the report; none is waived.
+- E9 durable offers/digest/raw80/content evidence accepted. E10 source-writer privacy, immutable transcripts, real journaled creation/link movement, caches and summary coverage remain; no issue is waived.
+- D6 routing/display repairs accepted for fixture screens; C2 service-backed/generated acceptance remains. D7 catalogue/receipt, writer/mode preview and fixed offer destination repairs remain; no issue is waived.
 - C1 is complete as a skeleton; C2/C3 commands and installed entry-point verification remain. Direct Engine callers must hold command_lock before first service access through apply. C4 must bound lock acquisition within its two-second deadline.
 - B2 report explicitly lists guessed native schema/index/hook-trust assumptions. Those are not live evidence. B1's fixture acceptance also still needs its live check.
 - Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.

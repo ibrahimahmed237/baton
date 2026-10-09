@@ -12,7 +12,7 @@ from ...domain.capabilities import Capabilities, HookNeed, Visibility, WriteWind
 from ...domain.conditions import SideCondition
 from ...domain.errors import (AppMustBeClosed, ChatChanged, ChatHeld, ChatReplying,
                               NotAvailable, UnknownFormat)
-from ...domain.model import Message, Turn
+from ...domain.model import TOOL_CALL, Message, Turn
 from ...ports.tool import ChatRef, FormatCheck, SetupFinding, Usage, WriteReceipt, WriteResult
 from .facts import OPENCODE_LIKE
 
@@ -31,6 +31,7 @@ class FakeAdapter:
         self.format = FormatCheck(True, facts.checked_versions[0])
         self.usage_values: dict[str, Usage] = {}
         self.changed_files: dict[str, list[str]] = {}
+        self.command_counts: dict[str, int] = {}
         self.locator = FakeLocator(self)
         self.reader = FakeReader(self)
         self.state = FakeState(self)
@@ -111,6 +112,11 @@ class FakeReader:
     def files_changed(self, turn: Turn) -> list[str]:
         """Return the configured files changed by a turn."""
         return list(self.adapter.changed_files.get(turn.id, []))
+
+    def commands_run(self, turn: Turn) -> int:
+        """Return explicit fixture command evidence, or recognized fake shell calls."""
+        return self.adapter.command_counts.get(turn.id, sum(
+            message.kind == TOOL_CALL and message.tool == 'shell' for message in turn.messages))
 
 
 class FakeState:

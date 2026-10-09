@@ -42,7 +42,7 @@ P4 does not waive product behavior: the future execution remains owed at CP3 and
 
 ## 1. E9 — usage, durable limits and exact digest
 
-Owner: engine worker, with root coordinating additive interfaces. Paths: `baton/services/{usage,digest,limit_offer}.py`, scoped catalogue notes, additive `baton/ports/{tool,store}.py`, ledger schema/methods and canonical completed-turn payload/fingerprint evidence, fake/Claude/Codex reader additions; corresponding unit, adapter and working-across scenario tests. Announce expanded track scope before edits.
+Owner: engine worker, with root coordinating additive interfaces. Paths: `baton/services/{usage,digest,limit_offer}.py`, scoped catalogue notes, additive domain growth helper/Linker evidence and `baton/ports/{tool,store}.py`, ledger schema/methods and canonical completed-turn payload/fingerprint evidence, fake/Claude/Codex reader additions; corresponding unit, adapter and working-across scenario tests. Announce expanded track scope before edits.
 
 - Use the raw ratio for above 80% (`tokens * 100 > size * 80`); preserve display rounding. Unknown/invalid size produces no invented percentage.
 - Persist once-per-limit claims in the record store with an atomic unique-key insert. Key includes tool, chat and limit event identity, including unlinked chats. An offer-disabled setting does not consume the event. Reopening the store/process must not redisplay a dismissed/claimed event; a new limit may offer again.

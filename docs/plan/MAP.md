@@ -2,7 +2,7 @@
 
 One page that shows the whole road. [STATUS.md](STATUS.md) says what is happening this hour; this page says how far the whole build is. Updated whenever a package or checkpoint changes state.
 
-**Last updated:** 2026-10-09 · **You are here:** CP2 review/repair; G2/G3/C1 committed; repair plan approved; E9/D6 repairs running
+**Last updated:** 2026-10-09 · **You are here:** CP2 review/repair; G2/G3/C1 committed; E9/D6 accepted; green commit boundary, CP2 not passed
 
 ```
 CP0 ✅ ── CP1 ✅ ── CP2 ◐ ── CP3 ○ ── CP4 ○ ── CP5 ○ ── works on my Mac ○
