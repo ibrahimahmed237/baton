@@ -8,6 +8,34 @@ public enum BatonWindowConfiguration {
         window.styleMask.insert(.resizable)
         window.collectionBehavior.insert(.fullScreenPrimary)
         window.contentMinSize = NSSize(width: 1000, height: 600)
+        applyGlass(to: window, theme: .graphite)
+    }
+    /// Extends the app palette behind the title bar while retaining native traffic-light controls.
+    @MainActor public static func applyGlass(to window: NSWindow, theme: Theme) {
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.styleMask.insert(.fullSizeContentView)
+        window.backgroundColor = NSColor(theme.background)
+        window.appearance = NSAppearance(named: theme == .graphite ? .darkAqua : .aqua)
+    }
+}
+
+/// Applies the same glass chrome to windows created by SwiftUI and by the fixture launcher.
+struct WindowGlassChrome: NSViewRepresentable {
+    let theme: Theme
+    func makeNSView(context: Context) -> ChromeProbe { ChromeProbe(theme: theme) }
+    func updateNSView(_ view: ChromeProbe, context: Context) {
+        view.theme = theme; view.configure()
+    }
+    final class ChromeProbe: NSView {
+        var theme: Theme
+        init(theme: Theme) { self.theme = theme; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { nil }
+        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); configure() }
+        func configure() {
+            guard let window else { return }
+            BatonWindowConfiguration.applyGlass(to: window, theme: theme)
+        }
     }
 }
 

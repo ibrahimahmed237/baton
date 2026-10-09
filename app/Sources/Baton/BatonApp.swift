@@ -35,7 +35,7 @@ struct BatonApp: App {
         .menuBarExtraStyle(.window)
         Window("Baton", id: "links") {
             WindowView(model: windowState).task { await windowState.refresh() }
-        }.defaultSize(width: 1000, height: 600).windowResizability(.contentMinSize)
+        }.defaultSize(width: 1000, height: 600).windowResizability(.contentMinSize).windowStyle(.hiddenTitleBar)
     }
 }
 

@@ -46,7 +46,8 @@ public struct WindowView: View {
                     detail
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+        }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop().ignoresSafeArea(.container, edges: .top) }
+            .background(WindowGlassChrome(theme: theme)).environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
             .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
             .sheet(item: Binding(get: { linkDialog.map(DialogItem.init) }, set: { if $0 == nil { linkDialog = nil } })) { item in
                 LinkDialogView(model: item.model)

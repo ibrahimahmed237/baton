@@ -24,15 +24,17 @@ Decisions (Reviewer):
 
 ## Now
 
+- UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is in progress with approved capability-based undo and additive recovery/store scope; its final root checks are pending.
+
 - UI1 interaction audit complete and independently reviewed: resize/full-screen controls, blank row click targets, repeated navigation/turn jumps, native overlay scrolling and long dialog/popover overflow are repaired. Final checks: 334 engine / 68 app tests and Swift build pass. Native fixture mouse/scroll tests pass; desktop capture failed, so the actual macOS full-screen transition and live appearance need human confirmation. See reports/UI1-2026-10-06.md.
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Current working tree: 334 engine tests, 68 app tests, Swift build pass. Git remains read-only; no commit, escalation or push. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Last complete isolated UI2 boundary: 334 engine tests, 71 app tests, Swift build pass. E8 draft is green at the worker's interim 363-engine-test check; its final root rerun and independent review are pending. Git remains read-only; no commit, escalation or push. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
 
-UI1 is ready to commit after CP2-record. Human-check resize/full screen and the overlay scroll appearance on the rebuilt fixture. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
+UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
 
 Continue E8 (including merge U9), then E9/E10 (including M12), and D6/D7 in parallel. B2 and C1/C2 remain; C2 must generate labels/notes/fixtures and dispatch remembered automatic merges after refresh. B1 needs a separately authorized live run after listing the exact throwaway writes and release/close/reopen actions. No real-app run is authorized by commit/continue.
 
@@ -57,6 +59,7 @@ Continue E8 (including merge U9), then E9/E10 (including M12), and D6/D7 in para
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
 | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
 
 ## Ready to commit
@@ -475,6 +478,26 @@ fix(app): make window navigation and scrolling respond reliably
 The fixture window and fixed content size prevented expansion. Padded rows missed clicks, repeated navigation erased selection, and long content could hide actions. Restore native window controls, full-row hits and accessible overlay scrolling without replacing the glass style.
 ```
 
+### UI2 — glass title bar
+
+Patch: `docs/plan/reports/patches/UI2.patch`, applies after UI1. Exact paths:
+
+- `app/Sources/Baton/BatonApp.swift`
+- `app/Sources/BatonUI/Components/WindowPresentation.swift`
+- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
+- `app/Tests/BatonUITests/WindowInteractionTests.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI2-2026-10-06.md`
+
+Commit message:
+
+```text
+fix(app): blend the title bar into the glass window
+
+The separate system title bar broke the approved glass palette. Extend the backdrop behind transparent native chrome while preserving window controls and content safe areas.
+```
+
 ## Decisions
 
 Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
@@ -514,14 +537,21 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 22. **UI interaction fixes (Ibrahim request, 2026-10-06; implementation independently reviewed):** preserve existing glass style while repairing expansion/full-screen controls, row hit areas and scrolling. Native overlay scrollers are used within Baton only; no system preference changed. Wider layouts are supported; minimum width remains 1000 to preserve the current two-card layout.
 
+23. **Merge undo (Ibrahim, 2026-10-06):** U9 means native cut where can_cut supports it, otherwise a shorter copy as A9 requires. Merge-created chats are preserved; the link moves back to the earlier chat. Approved after explicit safety recommendation.
+24. **E8 scope correction (Orchestrator, implementation only):** additive atomic complete_undo store API and ledger mixin, additive writer restore with fresh pre-write recovery receipt, empty cut boundary for fake/Claude adapters, and catalogue wording from existing specs are permitted; tests use temporary fixtures only.
+
+25. **Glass title bar (Ibrahim, 2026-10-06):** requested native top bar in the existing glass palette. Transparent full-size chrome extends only the backdrop through the safe area; controls remain native. No system appearance setting changed.
+
 ## Questions
 
-- UI1: desktop capture returned ScreenCaptureKit -3811. Full-screen Space transitions and visual scrollbar appearance remain a human check; native fixture controls/click/overflow tests pass. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
+- UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
 
 - F2 explicitly assigns engine-generated labels to C2, although findings precede CP2. Contract/UI/fixtures are complete; the C2 obligation remains tracked until implemented.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 and M12 integration checks are tracked for E8 and E9/E10 respectively.
 
 ## Log
+
+- 2026-10-06 — UI2 title bar completed, independently reviewed; 71 app tests and isolated 334 engine tests. Hosted minimum-size test passed. Rebuilt fixture launch and native CUA light chrome/full-screen entry observed; no real coding app touched. E8 continues.
 
 - 2026-10-06 — Ibrahim requested a UI bug/enhancement audit. UI1 fixes independently reviewed; all three reviewer findings closed. 334 engine / 68 app / build pass; click-shape mutation fails as expected. Existing package patches preserved, UI1 ready after CP2-record.
 

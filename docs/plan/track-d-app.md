@@ -106,6 +106,14 @@ Rules for this track:
 **Tests.** Native fixture window controls, actual blank-row mouse events, repeat navigation/jump requests, full-size renders in both themes, native SwiftUI overlay attachment/overflow, scroll to end of long dialog. Mutation of click shapes must fail the click test.
 **Done when.** These regression checks and the full engine/app checks pass, and the independent review has no blockers. Human confirmation of the actual full-screen transition and live visual appearance remains explicitly pending when desktop capture is unavailable. Broader polish stays tracked in the UI1 report and D13.
 
+## UI2. Glass title bar
+
+**Goal.** Blend native window chrome into the approved light/graphite app palette.
+**From.** Ibrahim's title-bar request, 2026-10-06.
+**Files.** BatonApp.swift; Components/WindowPresentation.swift; WindowView.swift; WindowInteractionTests.swift; plan status/track/report.
+**Tests.** Native title-bar flags/colors/controls in both themes, theme-change attachment, hosted content at minimum size, existing click/resize tests and full app suite.
+**Done when.** Native title bar uses the existing palette without losing controls or clipping body content, independent review and checks pass. Native CUA confirmed light chrome and actual full-screen entry; graphite is checked by native configuration tests.
+
 ## D6. What-will-happen and confirmation
 
 **Board.** What will happen, per tool; Relaunch warning. **From.** more-tools notes table, G4a, G4b; A6; T5, T6.

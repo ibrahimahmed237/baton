@@ -19,6 +19,56 @@ struct WindowInteractionTests {
         window.close()
     }
 
+    @MainActor @Test func titleBarUsesTheAppPaletteAndRetainsNativeControls() throws {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        for theme in Theme.allCases {
+            BatonWindowConfiguration.applyGlass(to: window, theme: theme)
+            #expect(window.titlebarAppearsTransparent)
+            #expect(window.titleVisibility == .hidden)
+            #expect(window.styleMask.contains(.fullSizeContentView))
+            #expect(window.backgroundColor == NSColor(theme.background))
+            #expect(window.appearance?.name == (theme == .graphite ? .darkAqua : .aqua))
+            #expect(window.standardWindowButton(.closeButton) != nil)
+            #expect(window.standardWindowButton(.miniaturizeButton) != nil)
+            #expect(window.standardWindowButton(.zoomButton) != nil)
+            #expect(window.contentLayoutRect.height < window.contentView!.bounds.height)
+        }
+        window.close()
+    }
+
+    @MainActor @Test func swiftUIWindowChromeUpdatesWhenTheThemeChanges() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let probe = WindowGlassChrome.ChromeProbe(theme: .light)
+        window.contentView?.addSubview(probe)
+        #expect(window.titlebarAppearsTransparent)
+        #expect(window.appearance?.name == .aqua)
+        probe.theme = .graphite; probe.configure()
+        #expect(window.appearance?.name == .darkAqua)
+        #expect(window.backgroundColor == NSColor(Theme.graphite.background))
+        window.close()
+    }
+
+    @MainActor @Test func glassWindowMinimumSizeFitsHostedContent() async {
+        let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
+        await model.refresh()
+        let host = NSHostingView(rootView: WindowView(model: model))
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        BatonWindowConfiguration.apply(to: window)
+        window.contentView = host
+        window.setContentSize(window.contentMinSize)
+        host.layoutSubtreeIfNeeded()
+        try? await Task.sleep(for: .milliseconds(40))
+        #expect(host.fittingSize.height <= host.bounds.height)
+        #expect(host.fittingSize.width <= host.bounds.width)
+        window.close()
+    }
+
     @MainActor @Test func repeatedSidebarClickPreservesTheSelectedChat() async {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
         await model.refresh()
@@ -68,7 +118,7 @@ struct WindowInteractionTests {
         host.layoutSubtreeIfNeeded()
         try await Task.sleep(for: .milliseconds(60))
         // The right-hand blank space of the third sidebar row, beyond its text.
-        let location = NSPoint(x: 180, y: 600 - 116)
+        let location = NSPoint(x: 180, y: window.contentLayoutRect.maxY - 116)
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             let event = try #require(NSEvent.mouseEvent(with: type, location: location, modifierFlags: [],
                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
