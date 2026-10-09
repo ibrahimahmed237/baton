@@ -15,11 +15,13 @@ from ..ports.clock import Clock, SystemClock
 from ..ports.store import RecordStore
 from ..ports.tool import ToolAdapter
 from ..services.applier import Applier
+from ..services.brief import BriefService
 from ..services.linker import Linker
 from ..services.merger import Merger
 from ..services.undo import Undo
+from ..services.transcripts import FolderTranscripts
 from .plans import FilePlanStore, PlanBook
-from .tools import TOOLS, ToolEntry
+from .tools import TOOLS, ToolEntry, label
 from .storage import command_lock, private_directory, private_file
 
 logger = logging.getLogger(__name__)
@@ -97,9 +99,15 @@ class Engine:
         return Applier(self.store, self.adapters, self.clock)
 
     @cached_property
+    def briefs(self) -> BriefService:
+        """Consented brief generation and creation with private immutable transcripts."""
+        return BriefService(self.store, self.adapters, self.clock,
+                            FolderTranscripts(self.root / "transcripts"), label)
+
+    @cached_property
     def linker(self) -> Linker:
         """Linking, copying, changing and removing links."""
-        return Linker(self.store, self.adapters, self.clock)
+        return Linker(self.store, self.adapters, self.clock, brief_service=self.briefs)
 
     @cached_property
     def merger(self) -> Merger:

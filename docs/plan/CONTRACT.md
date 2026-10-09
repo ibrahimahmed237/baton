@@ -179,3 +179,7 @@ Limit offer Note.values may carry stable routing keys: `offer_key`, `link_id`, `
 Hand-off choices are Automatic or Offline. Full mode previews delivery/Continue rather than generating a brief. New-chat alternatives preserve source/destination/mode/linking intent and require a counterpart before attachment is successful. Unsupported close/create/reopen and ordinary deferred-sync execution remain visibly unavailable until E13/C3/C5; they cannot be dispatched as an unrelated relaunch.
 
 C2 fixture generation covers built D0–D7/UI states: actual read-command output, implemented service previews/receipts and explicitly labelled future-only contract-provider samples. Continue opening/apply, relaunch and notify are not claimed as implemented commands by those samples. Production action/hook/notification execution remains CP3/CP4. Fixture manifests identify each provider and unavailable execution; no hand-written fake-applied result is acceptance evidence.
+
+### Brief review details (additive, CP2)
+
+BriefDetails additionally carries optional `text`, `summary`, and `pinned_tokens` (size of the destination-safe pinned originals). Creation review requires a non-empty exact artifact/text and the destination create step. Generation notes disclose the bounded total of candidate request estimates; Offline requests cannot accept a generation stage. These fields make the already approved generation/result review and W15 pinned-size presentation explicit.

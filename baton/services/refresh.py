@@ -54,7 +54,9 @@ class ChatRefresh:
                     bypassed.append(recorded.id)
             self.store.reset_delivery(link_id, side, bypassed, self.clock.now())
             in_progress = values[-1].id if values and self.adapters[side].state.condition(link.chat(side)).replying else ''
-            self.store.record_turns(link_id, side, values, in_progress=in_progress)
+            coverage = self.store.summary_coverage(link_id, side)
+            original_values = [t for t in values if not coverage or t.id != coverage['opening_id']]
+            self.store.record_turns(link_id, side, original_values, in_progress=in_progress)
         link = self.store.get_link(link_id)
         conditions = {s: condition(self.adapters,s,c) for s,c in link.chats.items()}
         facts = {s: self.adapters[s].facts for s in link.sides}

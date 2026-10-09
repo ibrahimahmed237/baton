@@ -61,8 +61,9 @@ def _fingerprint(data: dict) -> str:
 
 class Linker:
     """Preview, confirm and atomically record link changes and new copies."""
-    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
+    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock, brief_service=None):
         self.store, self.adapters, self.clock = store, adapters, clock
+        self.brief_service = brief_service
         self.guard = Guard(store)
         self.journal = Journal(store,adapters,clock)
         self.recovery = self.journal.recover()
@@ -121,6 +122,11 @@ class Linker:
                    and_link: bool = True) -> LinkPlan:
         if source == target or source not in self.adapters or target not in self.adapters:
             raise NotAvailable()
+        if mode == 'brief':
+            if target_chat is not None or self.brief_service is None or not and_link:
+                raise NotAvailable()
+            return self.brief_service.plan_new(source, chat, target, title_tag=title_tag,
+                                               replace_link_id=old_link_id)
         if mode not in ('full_copy','attached_history'):
             raise NotAvailable()
         if target_chat is None and mode == 'attached_history':
@@ -193,6 +199,9 @@ class Linker:
         for origin,observed in observations.items():
             known = set(self.store.local_ids(link_id,origin).values())
             known.update(t.origin_id for t in all_recorded if t.origin == origin)
+            coverage = self.store.summary_coverage(link_id, origin)
+            if coverage:
+                known.add(coverage["opening_id"])
             if any(t['prompt']['id'] not in known for t in observed['turns']):
                 # Refresh records new completed turns; read-only previews must not omit them.
                 raise ChatChanged()
@@ -297,6 +306,11 @@ class Linker:
 
     def apply(self, plan: LinkPlan, plan_id: str | None = None) -> LinkResult:
         """Apply only a still-current preview, rolling back an uncommitted creation."""
+        from .brief import BriefPlan
+        if isinstance(plan, BriefPlan):
+            if self.brief_service is None:
+                raise NotAvailable()
+            return self.brief_service.confirm(plan, plan_id)
         self._validate(plan)
         if plan_id is not None and plan_id != plan.plan_id:
             raise ChatChanged()

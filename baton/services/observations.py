@@ -63,6 +63,12 @@ def canonical_sources(store: RecordStore, link_id: int,
     evidence = store.turn_evidence(link_id)
     live = {s: {t.id: t for t in values} for s, values in observed.items()}
     events = store.history(link_id)
+    for side in link.sides:
+        coverage = store.summary_coverage(link_id, side)
+        if coverage and side in observed:
+            opening = live[side].get(coverage['opening_id'])
+            if opening is None or content_key(opening) != coverage['opening_fingerprint']:
+                raise ChatChanged()
     # The latest native undo/restore snapshot decides which absent origins are
     # intentional. An older undo must not conceal deletion after a restore.
     sanctioned = set()
@@ -91,9 +97,10 @@ def canonical_sources(store: RecordStore, link_id: int,
             source = saved.get(row['origin'], {}).get(row['origin_id'])
             if source is not None:
                 archived.setdefault(row['id'], source)
+    brief_archived = store.archived_brief_origins(link_id)
     sources = {}
     for row in rows:
-        actual = live.get(row.origin, {}).get(row.origin_id) or archived.get(row.id)
+        actual = live.get(row.origin, {}).get(row.origin_id) or archived.get(row.id) or brief_archived.get(row.id)
         if actual is None:
             if row.origin in observed:
                 raise ChatChanged()

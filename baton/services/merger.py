@@ -63,6 +63,9 @@ class Merger:
         for side, observed in originals.items():
             known = set(self.store.local_ids(link_id, side).values())
             known.update(t.origin_id for t in rows if t.origin == side)
+            coverage = self.store.summary_coverage(link_id, side)
+            if coverage:
+                known.add(coverage["opening_id"])
             if not set(observed).issubset(known):
                 raise ChatChanged()
         try:
@@ -173,6 +176,23 @@ class Merger:
         plan = MergePlan('', delivery, tuple(t.id for t in ordered), preset, keep, split,
                          skips, tuple(screen['same_files']), automatic)
         return replace(plan, plan_id=self._fingerprint(plan))
+
+    def plan_brief(self, link_id: int, to: str, briefs, *, order: Sequence[int] | None = None,
+                   writer: str | None = None, recent_turns: int = 3):
+        """M12: an explicit brief decision uses the same checked merge order."""
+        link, rows, observations, _ = self._observed(link_id)
+        if any(o['condition']['replying'] for o in observations.values()):
+            raise NotAvailable()
+        pending = planner.unsynced(rows)
+        if len({r.origin for r in pending}) < 2:
+            raise NotAvailable()
+        by_id = {r.id: r for r in pending}
+        ordered = planner.merge_order(rows) if order is None else [by_id.get(ident) for ident in order]
+        if any(row is None for row in ordered):
+            raise OrderNotAllowed()
+        planner.check_order(rows, ordered)
+        return briefs.plan(link_id, to, writer=writer, recent_turns=recent_turns,
+                           order=[row.id for row in ordered])
 
     def merge_if_automatic(self, link_id: int, *, merge_setting: str = 'ask',
                            add_when_idle: Collection[str] = ()) -> MergeResult | None:

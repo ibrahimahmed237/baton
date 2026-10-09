@@ -149,3 +149,42 @@ class RecordStore(Protocol):
                       at: str, detail: dict) -> int:
         """Atomically pause, restore identities/states and finalize undo write receipts."""
         ...
+
+    def save_brief_plan(self, ident: str, stage: str, payload: dict) -> None:
+        """Persist one exact stage approval before returning its token."""
+        ...
+    def brief_plan(self, ident: str) -> dict:
+        """Read the persisted stage, payload and consumption state."""
+        ...
+    def consume_brief_plan(self, ident: str, stage: str) -> dict:
+        """Atomically consume one matching stage approval exactly once."""
+        ...
+    def save_brief_artifact(self, ident: str, payload: dict) -> None:
+        """Persist immutable generated content, refusing changed identity reuse."""
+        ...
+    def brief_artifact(self, ident: str) -> dict:
+        """Read the immutable artifact required for native creation."""
+        ...
+    def brief_cache_get(self, key: str) -> dict | None:
+        """Read the summary cached for a privacy-bound writer input."""
+        ...
+    def brief_cache_put(self, key: str, payload: dict) -> None:
+        """Replace only the cache for one privacy-bound writer input."""
+        ...
+    def summary_coverage(self, link_id: int, side: str, chat_id: str | None = None) -> dict | None:
+        """Read coverage belonging to the selected or current native chat."""
+        ...
+    def archived_brief_origins(self, link_id: int) -> dict:
+        """Read missing origins only through active sanctioned summary coverage."""
+        ...
+    def complete_brief(self, link_id: int, side: str, chat_id: str, artifact_id: str,
+                       opening_id: str, original_ids: list[int], local_ids: list[str], state: str,
+                       entry_id: int, receipt: dict, expected: dict, at: str, after_snapshot: dict) -> int:
+        """Atomically finalize a verified brief replacement and its receipt."""
+        ...
+
+    def complete_brief_link(self, request: dict, chat_id: str, artifact_id: str,
+                            opening_id: str, original_ids: list[int], local_ids: list[str], state: str,
+                            entry_id: int, receipt: dict, at: str, after_snapshot: dict) -> tuple[int, int]:
+        """Atomically create or relink source-scoped brief coverage and its receipt."""
+        ...

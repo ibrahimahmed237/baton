@@ -110,7 +110,9 @@ class Undo:
         event = next((e for e in self.store.history(link_id) if e.id == event_id), None)
         if event is None:
             raise NotAvailable()
-        if event.kind == 'merge':
+        if event.kind in ('merge', 'brief'):
+            if event.kind == 'brief' and event.detail.get('initial'):
+                raise NotAvailable()
             return self._merge_plan(link_id, event, record)
         if link.removed_at:
             raise NotAvailable()
@@ -127,12 +129,19 @@ class Undo:
         for row in rows:
             if row.origin == side:
                 by_local.setdefault(row.origin_id, row.id)
+        coverage = self.store.summary_coverage(link_id, side)
+        if coverage:
+            by_local[coverage['opening_id']] = 0
         if any(t.id not in by_local for t in observed):
             # Refresh must register native writes so their identities survive undo.
             raise ChatChanged()
         later = [e for e in self.store.history(link_id) if e.id >= event_id and e.side == side
                  and e.kind in ('add', 'added', 'delivered', 'place', 'attached', 'create')]
         delivered = {ident for e in later for ident in e.turn_ids}
+        if coverage and delivered.intersection(coverage['turn_ids']):
+            # The confirmed history boundary precedes an immutable summary.
+            # A native cut cannot remove content embedded in its opening.
+            raise ChatChanged()
         boundary = []
         attachments = []
         for index, turn in enumerate(observed):
@@ -165,7 +174,7 @@ class Undo:
                          keep_through_local_id=kept[-1].id if kept else '')
         detail = {'side': side, 'removed_ids': sorted(removed_ids),
                   'attachments': attachments, 'earlier_chat': link.chat(side),
-                  'kept_ids': list(step.turn_ids)}
+                  'kept_ids': list(step.turn_ids), 'summary_before': coverage}
         note = self._undo_note(facts, action)
         notes = (note,)
         if any(r['only_here'] for r in removes):
@@ -420,14 +429,26 @@ class Undo:
                                if r['origin'] == side and r['id'] in local}
                 if plan.operation == 'restore':
                     origins = {r['id']: r['origin_id'] for r in undo['before']['turns'] if r['origin'] == side}
-                writes.append({'side': side, 'action': step.action, 'chat_id': resulting_chat,
+                if 0 in local:
+                    opening_local = local.pop(0)
+                    states.pop(0, None)
+                else:
+                    opening_local = None
+                summary = self.store.summary_coverage(plan.link_id, side)
+                if summary and step.action == 'create_shorter' and opening_local:
+                    summary = dict(summary, chat_id=resulting_chat, opening_id=opening_local)
+                writes.append({'summary_coverage': summary, 'side': side, 'action': step.action, 'chat_id': resulting_chat,
                                'states': states, 'local_ids': local, 'origin_ids': origins,
                                'entry_id': entry, 'receipt': receipt})
             self._check_snapshots(working)
             after = {w['side']: self._snapshot(w['side'], w['chat_id']) for w in writes}
             detail = {'operation': plan.operation, 'target': plan.event_id, 'before': plan.record,
                       'before_chats': plan.snapshots, 'after': after,
-                      'order': plan.detail.get('order', [])}
+                      'order': plan.detail.get('order', []),
+                      'restored_mode': (plan.detail['undo_event']['detail']['before']['link']['mode']
+                                        if plan.operation == 'restore' else
+                                        next((e.detail['before']['link']['mode'] for e in self.store.history(plan.link_id)
+                                              if e.id == plan.event_id and e.kind == 'brief'), plan.record['link']['mode']))}
             event = self.store.complete_undo(plan.link_id, plan.record, writes, self.clock.now(), detail)
             return UndoResult(plan.plan_id, True, event)
         except Exception as error:

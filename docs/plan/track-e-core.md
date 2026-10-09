@@ -131,10 +131,12 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Offline brief, and agent brief with fallback.
 **From.** DESIGN 6; working-across W4, W14, W15; V4, V13, V14.
 **Depends on.** E5, E9.
-**Files.** `baton/services/brief.py`.
+**Files.** `baton/services/{brief,transcripts,observations,linker,preview,refresh,merger,status,undo,digest}.py`, additive domain/ports/ledger and fake adapter, scoped catalogue; `baton/cli/wiring.py` binds the service for initial brief links; corresponding unit/scenario tests. Expanded CP2 repair scope is approved in [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md).
 **Steps.** 1. Offline brief: first prompt, every pinned turn in full, the last N turns, files touched, and the path of the saved full history. 2. Agent brief: prompt template, run through `BackgroundRunner.ask(read_only=True)`. 3. Writer order: the destination tool, else the other tool, else offline; a tool at its limit or with no runner is skipped, with a note. 4. Kept-back turns never included for the other tool. 5. A brief always creates a new chat.
 **Tests.** V4, V13, V14; `tests/unit/test_brief.py` for the fallback order.
 **Done when.** Those pass with a fake runner that can be made to fail.
+
+**CP2 repair acceptance (Ibrahim approved, 2026-10-09).** Generation preview calls no runner; confirmed generation stores an immutable safe artifact under a fresh creation token, with disclosed candidate costs and bounded fallback. Creation is journaled and atomically moves the link with distinct summary coverage/native original identities. Destination and writer privacy intersect, keeping wins over pins, transcripts are private immutable snapshots, delta caches invalidate on privacy/order/content changes. Refresh, future sync, restart, undo and restore retain truthful summary coverage. Initial link/brief and actual M12 must work through services; action commands remain C3/C6. See repair-plan section 2 for failure injections and exact requirements.
 
 ## E11. Keep, pin, pause, names
 

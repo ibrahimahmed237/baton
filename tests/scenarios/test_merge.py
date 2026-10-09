@@ -2,6 +2,8 @@
 from copy import deepcopy
 from dataclasses import replace
 from itertools import permutations
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -13,8 +15,10 @@ from baton.domain.link import WAITING, SKIPPED
 from baton.ledger.sqlite_store import Ledger
 from baton.ports.clock import FixedClock
 from baton.services.applier import Applier
+from baton.services.brief import BriefService
 from baton.services.linker import Linker
 from baton.services.merger import Merger
+from baton.services.transcripts import FolderTranscripts
 
 FACTS = {'claude': CLAUDE_LIKE, 'codex': CODEX_LIKE,
          'opencode': OPENCODE_LIKE, 'cursor': CURSOR_LIKE}
@@ -208,6 +212,46 @@ class MergeScenarios(unittest.TestCase):
         self.assertTrue(shown['automatic_allowed'])
         self.assertIsNone(service.merge_if_automatic(link, merge_setting='ask'))
         self.assertTrue(service.merge_if_automatic(link, merge_setting='by_time').applied)
+
+    def test_M12_large_merged_copy_offers_a_brief_in_the_new_chat_instead_of_the_full_history(self):
+        for first, second in permutations(FACTS, 2):
+            with self.subTest(first=first, second=second):
+                store, adapters, service, link, ids = self.make(first, second)
+                folder = tempfile.TemporaryDirectory()
+                self.addCleanup(folder.cleanup)
+                briefs = BriefService(store, adapters, service.clock,
+                                      FolderTranscripts(Path(folder.name)), str.title)
+                small, large = service.show(link), service.show(link, brief_threshold_tokens=1)
+                self.assertFalse(small['offer_brief'])
+                self.assertTrue(large['offer_brief'])
+                before = {s: deepcopy(a.chats) for s, a in adapters.items()}
+                for side, outcome in large['outcome'].items():
+                    self.assertEqual(outcome, 'merged_copy')
+                    self.assertIsNone(briefs.offer(link, side, 10 ** 9, merged_copy=True))
+                    offer = briefs.offer(link, side, 1, merged_copy=True)
+                    self.assertEqual(offer.id, 'merge.large_copy')
+                    brief = briefs.plan(link, side, order=large['order'], writer='offline')
+                    # A new chat, holding the whole merged conversation in the merged order.
+                    self.assertEqual(brief.action, 'create')
+                    text = brief.text
+                    self.assertLess(text.index('2. C1'), text.index('3. X1'))
+                    self.assertLess(text.index('3. X1'), text.index('4. C2'))
+                self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
+                confirmed = service.plan_brief(link, second, briefs, order=large['order'], writer='offline', recent_turns=0)
+                result = briefs.confirm(confirmed)
+                self.assertTrue(result.applied, result)
+                current = store.get_link(link)
+                self.assertNotIn(current.chat(second), before[second])
+                self.assertEqual(current.chat(first), next(iter(before[first])))
+                native = adapters[second].reader.read(result.chat_id)
+                self.assertEqual(native[0], confirmed.turn)
+                self.assertEqual(len(native), 1)
+                for side in (first, second):
+                    for chat, turns in before[side].items():
+                        self.assertEqual(adapters[side].reader.read(chat), turns)
+                self.assertEqual(store.summary_coverage(link, second)['turn_ids'], [ids['shared'], ids['C1'], ids['X1'], ids['C2']])
+                self.assertEqual([t.first_line for t in store.turns(link)], ['shared', 'C1', 'X1', 'C2'])
+
 
     def test_show_while_replying_is_read_only_and_apply_has_no_incomplete_copy(self):
         store, adapters, service, link, ids = self.make()

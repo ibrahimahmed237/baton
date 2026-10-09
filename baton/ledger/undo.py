@@ -6,7 +6,7 @@ import json
 from typing import Sequence
 
 from ..domain.errors import AlreadyLinked, ChatChanged
-from ..domain.link import ADDED, ATTACHED, KEPT_BACK, SHOWN, SKIPPED, WAITING, WRITTEN_HERE
+from ..domain.link import ADDED, ATTACHED, KEPT_BACK, SHOWN, SKIPPED, WAITING, WRITTEN_HERE, SUMMARIZED
 
 
 class UndoRecords:
@@ -28,7 +28,7 @@ class UndoRecords:
         for write in writes:
             side = write['side']
             if (side not in link.sides or not set(write['states']).issubset(ids) or
-                    not set(write['states'].values()).issubset({ADDED, ATTACHED, KEPT_BACK, SHOWN, SKIPPED, WAITING, WRITTEN_HERE}) or
+                    not set(write['states'].values()).issubset({ADDED, ATTACHED, KEPT_BACK, SHOWN, SKIPPED, WAITING, WRITTEN_HERE, SUMMARIZED}) or
                     not set(write['local_ids']).issubset(set(write['states']))):
                 raise ValueError('undo_side')
             linked = self.link_for(side, write['chat_id'])
@@ -56,6 +56,10 @@ class UndoRecords:
                     if ident in write.get('origin_ids', {}):
                         self.db.execute('update turns set origin_id=? where id=? and origin=?',
                                         (write['origin_ids'][ident], ident, side))
+                coverage = write.get('summary_coverage')
+                if coverage and coverage['chat_id'] == write['chat_id']:
+                    self.db.execute('insert or ignore into brief_coverage(link_id,side,chat_id,artifact_id,opening_id,turn_ids,opening_fingerprint) values(?,?,?,?,?,?,?)',
+                                    (link_id, side, coverage['chat_id'], coverage['artifact_id'], coverage['opening_id'], json.dumps(coverage['turn_ids']), coverage['opening_fingerprint']))
                 if write.get('entry_id') is not None:
                     if write['receipt']['kind'] == 'create':
                         self._record_copy(write['receipt'], at)
@@ -64,5 +68,6 @@ class UndoRecords:
             if detail.get('order'):
                 for seq, ident in enumerate(detail['order'], 1):
                     self.db.execute('update turns set seq=? where id=? and link_id=?', (seq, ident, link_id))
-            self.db.execute('update links set paused=1,removed_at=null where id=?', (link_id,))
+            self.db.execute('update links set paused=1,removed_at=null,mode=? where id=?',
+                            (detail.get('restored_mode', link.mode), link_id))
         return event

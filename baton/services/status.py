@@ -188,7 +188,7 @@ def _synced_up_to(turns: Sequence[LedgerTurn], side: str) -> LedgerTurn | None:
     last = None
     for turn in turns:
         state = turn.states.get(side)
-        if state == link_states.WAITING:
+        if state in (link_states.WAITING, link_states.SUMMARIZED):
             break
         if state in link_states.AGENT_HAS:
             last = turn
@@ -203,8 +203,11 @@ def visible_added_turn_ids(turns: Sequence[LedgerTurn], side: str, facts: Capabi
         return tuple(added)
     delivered = {}
     for event in sorted(history, key=lambda item: item.id):
-        if event.side == side and event.kind in ("added", "twin_created", "created", "synced", "delivered", "add", "add_after_release", "create", "place"):
+        if event.side == side and event.kind in ("added", "twin_created", "created", "synced", "delivered", "add", "add_after_release", "create", "place", "brief"):
             for turn_id in event.turn_ids:
+                delivered[turn_id] = event.at
+        if event.kind == 'brief' and event.side == side:
+            for turn_id in event.detail.get('original_ids', ()):
                 delivered[turn_id] = event.at
         if event.kind == "merge":
             for write in event.detail.get("writes", ()):

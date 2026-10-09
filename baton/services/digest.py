@@ -10,14 +10,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, tzinfo
 from typing import Any, Mapping, Sequence
 
-from ..domain.link import AGENT_HAS, KEPT_BACK, SKIPPED, LedgerTurn
+from ..domain.link import AGENT_HAS, KEPT_BACK, SKIPPED, SUMMARIZED, LedgerTurn
 from ..domain.errors import ChatChanged
 from ..notes.catalogue import get
 from ..ports.clock import Clock
 from ..ports.store import RecordStore
 from ..ports.tool import ChatReader
 from .noteformat import Label, NoteRef, clock_time, day_of, parse_time, plural
-from .observations import verified_source
+from .observations import canonical_sources, verified_source
 
 _EARLIEST = datetime.min.replace(tzinfo=timezone.utc)
 
@@ -66,7 +66,7 @@ class DigestBuilder:
         (other,) = link.others(side)
         rows = self.store.turns(link_id)
         eligible = [turn for turn in rows if turn.states.get(side) not in (KEPT_BACK, SKIPPED)]
-        if all(turn.states.get(side) in AGENT_HAS for turn in eligible):
+        if all(turn.states.get(side) in (*AGENT_HAS, SUMMARIZED) for turn in eligible):
             return None
         own = [turn for turn in rows if turn.origin == side]
         if not own:
@@ -75,7 +75,7 @@ class DigestBuilder:
         # newest prompt has no timestamp. An older clock cannot replace it.
         last = max(own, key=lambda turn: turn.seq)
         later = [turn for turn in rows if turn.origin == other and _after(turn, last)
-                 and turn.states.get(side) not in (KEPT_BACK, SKIPPED)]
+                 and turn.states.get(side) not in (KEPT_BACK, SKIPPED, SUMMARIZED)]
         evidence = self.store.turn_evidence(link_id)
         later = [turn for turn in later if evidence.get(turn.id, {}).get('complete', True)]
         if not later:
@@ -86,14 +86,16 @@ class DigestBuilder:
             own_content = {turn.id: turn for turn in self.readers[side].read(link.chat(side))}
         except KeyError:
             raise ChatChanged() from None
-        verified_source(self.store, link_id, last, own_content.get(last.origin_id), evidence)
+        resolved = canonical_sources(self.store, link_id,
+                                     {other: list(content.values()), side: list(own_content.values())})
+        verified_source(self.store, link_id, last, resolved.get(last.id), evidence)
         files: list[str] = []
         commands = 0
         for row in later:
-            turn = verified_source(self.store, link_id, row, content.get(row.origin_id), evidence)
+            turn = verified_source(self.store, link_id, row, resolved.get(row.id), evidence)
             files.extend(path for path in reader.files_changed(turn) if path not in files)
             commands += reader.commands_run(turn)
-        until = max((content[row.origin_id].ended_at or row.started_at for row in later),
+        until = max((resolved[row.id].ended_at or row.started_at for row in later),
                     key=lambda t: parse_time(t) or _EARLIEST)
         return Digest(side, other, last.started_at, until, len(later), tuple(files), commands)
 

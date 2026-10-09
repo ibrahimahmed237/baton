@@ -13,7 +13,8 @@ TOOLS = (CLAUDE, CODEX, OPENCODE, CURSOR)
 # How a link was made (DESIGN.md, section 4).
 FULL_COPY = "full_copy"
 ATTACHED_HISTORY = "attached_history"
-MODES = (FULL_COPY, ATTACHED_HISTORY)
+BRIEF = "brief"
+MODES = (FULL_COPY, ATTACHED_HISTORY, BRIEF)
 
 # The state of one turn on one side.
 WRITTEN_HERE = "written_here"
@@ -23,6 +24,7 @@ ATTACHED = "attached"
 WAITING = "waiting"
 SKIPPED = "skipped"
 KEPT_BACK = "kept_back"
+SUMMARIZED = "summarized"
 
 DELIVERED = (SHOWN, ADDED, ATTACHED)
 AGENT_HAS = (WRITTEN_HERE,) + DELIVERED

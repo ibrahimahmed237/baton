@@ -6,27 +6,27 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-Stopped at a green E9/D6 package boundary because the measured five-hour usage window is 100% consumed. **E9 `650a8d1` and D6 `604e6d8` are committed**, after root checks and separate reviewer agents closed every scoped finding. E10/D7 repairs were not started. No push and no real-app/chat access.
+**E10 and D7 are independently approved and preparing separate commits.** Root measured **702 engine /143 app tests and build pass**. Engine privacy/cache/atomic creation and undo fixes were challenged; app cost/artifact/offer/stale gates were reviewed. Five-hour usage reached95%, so stop after these commits at a green package boundary; do not start B2/C2 this batch. No push or real-chat access.
 
-Final working tree: **670 engine tests, 129 app tests and build pass**. Isolated committed package verification: **555 engine**, **119 app and build**, excluding unfinished E10/B2/D7. Full evidence and each CP2 gate: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md). **CP2 has not passed.**
+Resume baseline (before E10/D7 edits): **670 engine tests, 129 app tests and build pass**. Previous isolated committed package verification: **555 engine**, **119 app and build**, excluding unfinished E10/B2/D7. Full evidence and each CP2 gate: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md). **CP2 has not passed.**
 
 | Package | State and preserved ownership |
 |---|---|
 | E9 | Committed `650a8d1`; [report](reports/E9-2026-10-09.md). Legacy baselines stay unverified; ordinary refresh readable, digest unavailable until a fresh explicit link establishes verified scope. |
 | D6 | Committed `604e6d8`; [report](reports/D6-2026-10-09.md). Fixture-screen routing/display acceptance; C2 service-backed evidence and CP3 execution still owed. |
-| E10 | Unfinished `services/brief.py`, `transcripts.py`, E10 catalogue block, `test_brief.py`, `test_working_across_brief.py`, M12 additions in `test_merge.py`; privacy/lifecycle/caching repairs NOT started. |
+| E10 | Accepted after independent re-review and root checks; commit preparing. Report: [E10](reports/E10-2026-10-09.md). |
 | B2 | Unfinished `adapters/codex/` native implementation and native fixtures/tests/report; only E9 standalone reader classifier committed. Safety repairs and live acceptance owed. |
-| D7 | Unfinished HandOff production/tests and d7 fixtures; D6 receipt-API/Continue-note compatibility retained in this scope. Repair NOT started. |
+| D7 | Accepted for CP2 fixture-screen scope after independent re-review; 143 app/build pass. Commit follows E10 catalogue. C2 generation still owed. |
 | C2 | Not started: read projections/commands, authoritative generation and manifest. |
 
 G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825137e` were committed earlier in this batch. Normal approved Git writes work; sandbox-only `.git` remains read-only. Preserve every unfinished file.
 
 ## Next
 
-1. Resume **E10 engine and D7 app repairs** next batch in parallel under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md), using at most two active agents. Shared product/contract decisions are approved; do not start with discarded/recreated unfinished files.
-2. Independently review each package, close findings, run both common checks, commit separately and update STATUS/MAP/HANDOFF. Never push.
-3. Repair/review B2 native safety, then C2 safe reads and deterministic generated fixtures. C2 must identify future-only providers and prove actual service effects; D6 modeled counters are routing evidence only.
-4. After blockers close, list the exact Claude/Codex throwaway live run and ask for each app closure. Record every CP2 check; do not mark CP2 passed without its live evidence.
+1. Finish recording the separate accepted E10 and D7 commits, then stop at this green boundary because five-hour usage is95%.
+2. Next batch: repair/review **B2 native safety**, then **C2 safe reads and deterministic generated fixtures**, under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md). Preserve all unfinished native files; at most two agents.
+3. C2 must prove service effects and identify future-only providers; D6/D7 transport counters are routing evidence only.
+4. After blockers close, list exact Claude/Codex throwaway live scope and ask for each app closure. CP2 cannot pass without its live evidence.
 
 ## Done
 
@@ -65,7 +65,7 @@ G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825
 
 ## Ready to commit
 
-None. G2, G3, C1, E9 and D6 committed separately. Remaining package files are unfinished and unstaged.
+E10 and D7 accepted; normal approved Git commits are being prepared separately. Exact paths and messages are in their package reports. B2 remains unfinished; C2 not started.
 
 ## Decisions and reviewer findings
 
@@ -80,13 +80,17 @@ None. G2, G3, C1, E9 and D6 committed separately. Remaining package files are un
 
 ## Questions and unresolved work
 
-- E9 durable offers/digest/raw80/content evidence accepted. E10 source-writer privacy, immutable transcripts, real journaled creation/link movement, caches and summary coverage remain; no issue is waived.
-- D6 routing/display repairs accepted for fixture screens; C2 service-backed/generated acceptance remains. D7 catalogue/receipt, writer/mode preview and fixed offer destination repairs remain; no issue is waived.
+- E9 and E10 accepted after independent review. B2 safety/live and C2 safe read serialization/generated fixtures remain; no issue is waived.
+- D6/D7 accepted for fixture screens; C2 service-backed/generated acceptance and D12 production integration remain. No native execution is inferred from screen transport tests.
 - C1 is complete as a skeleton; C2/C3 commands and installed entry-point verification remain. Direct Engine callers must hold command_lock before first service access through apply. C4 must bound lock acquisition within its two-second deadline.
 - B2 report explicitly lists guessed native schema/index/hook-trust assumptions. Those are not live evidence. B1's fixture acceptance also still needs its live check.
 - Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.
 
 ## Log
+
+- 2026-10-09 — E10/D7 independently accepted. Root702 engine/143 app/build; privacy, durable replay and summary-boundary undo mutants detected. Five-hour usage95%: commit both and stop before B2/C2. No live access/push.
+
+- 2026-10-09 — Resumed E10/D7 repairs with preserved dirty scope and at most two agents. Fresh baseline confirmed: 670 engine /129 app, build pass.
 
 - 2026-10-09 — D6 committed604e6d8 after five routing/provenance findings were fixed and independently re-reviewed. Root full670/129/build; isolated555 engine/119 app/build. Usage window100%: stop at this package boundary. CP2 report marks remaining gates fail; no live access/push.
 

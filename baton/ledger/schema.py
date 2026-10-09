@@ -91,3 +91,26 @@ create table if not exists limit_offers(
  offered_at text not null
 );
 """
+
+BRIEF_SCHEMA = """
+create table if not exists brief_plans(
+ id text primary key, stage text not null, payload text not null,
+ consumed integer not null default 0
+);
+create table if not exists brief_artifacts(
+ id text primary key, payload text not null
+);
+create table if not exists brief_cache(
+ key text primary key, payload text not null
+);
+create table if not exists brief_coverage(
+ link_id integer not null references links(id), side text not null,
+ chat_id text not null, artifact_id text not null, opening_id text not null,
+ turn_ids text not null, opening_fingerprint text not null, primary key(link_id,side,chat_id)
+);
+create table if not exists brief_origins(
+ link_id integer not null references links(id), turn_id integer not null references turns(id),
+ origin_chat text not null, payload text not null,
+ primary key(link_id,turn_id,origin_chat)
+);
+"""
