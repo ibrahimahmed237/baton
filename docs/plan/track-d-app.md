@@ -311,3 +311,19 @@ UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build p
 **Done when.** The complete Dock tile is visibly smaller, the signed logo is back in the menu bar with only gray glass values, badge/plain states remain distinct, and the build/tests and visual review pass.
 
 UI12 completion 2026-10-06: 379 engine tests, 96 app tests and Swift build pass with the installed SDK flags. Dock and all four menu PNGs were inspected; the final signed fixture launches and shows the main window. Independent review found a repeated large-image crop and a self-referential menu test; both were fixed and the reviewer found no remaining blocker. Actual system menu-bar pixels were not captured.
+
+## UI13 — clearer conversation receipt and reading order
+
+**Goal.** Make the point each agent has reached easy to understand while reading a turn, without the near-black receipt box overwhelming the messages.
+
+**From.** Ibrahim, 2026-10-07: the black history area in the conversation looks out of place, and it is hard to tell what is going on.
+
+**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Tests/BatonUITests/ReceiptTests.swift`; `app/Fixtures/status*.json`; `baton/notes/catalogue.py`; `tests/unit/test_notes.py`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI13-2026-10-07.md`; `docs/plan/reports/patches/UI13.patch`.
+
+**Steps.** Present the receipt as a small timeline endpoint attached to its exact turn, using the same graphite/light surface as the conversation. Put one plain explanation of agent context versus visible chat messages near the conversation heading. Clarify receipt copy in the note catalogue and fixture projections. Preserve filtered and folded receipt placement and per-side turn states.
+
+**Checks.** Render the shared, separate and hidden receipt states in Light and Graphite; inspect the resulting PNGs and the running fixture. Assert the note copy and model receipt grouping, including an empty filter. Run Swift build/tests and the engine suite, then independent review.
+
+**Done when.** A reader can follow a turn to the endpoint marker and understand what both agents have, while the card has no near-black inset; hidden and filtered states remain truthful, and all checks pass.
+
+UI13 completion 2026-10-07: 380 engine tests, 96 app tests and Swift build pass with installed SDK flags. Shared, separate and hidden receipt renders were inspected in both themes, and the final signed fixture shows the updated conversation. Independent review caught copy that overstated receipt continuity and a missing separate-endpoint render; both were fixed, then review found no remaining blocker. The receipt is a position in the combined order, not a guarantee that every earlier turn was received after a skip.

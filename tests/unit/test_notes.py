@@ -48,7 +48,7 @@ class UI8PresentationCatalogueTests(unittest.TestCase):
         from pathlib import Path
         from baton.notes.catalogue import get
         root = Path(__file__).resolve().parents[2] / "app" / "Fixtures"
-        prefixes = ("screen.received_", "settings.", "quit.")
+        prefixes = ("screen.received_", "screen.conversation_guide", "settings.", "quit.")
         checked = 0
         for path in root.glob("*.json"):
             data = json.loads(path.read_text())
@@ -73,3 +73,17 @@ class UI8PresentationCatalogueTests(unittest.TestCase):
                 if reached:
                     self.assertFalse(any(turn["seq"] <= reached["seq"] and turn["states"].get(tool) == "waiting"
                                          for turn in status.get("turns", [])), (path.name, tool))
+
+    def test_receipts_do_not_claim_every_earlier_turn_after_a_skip(self):
+        """A merge can skip an earlier turn while the latest agent turn advances."""
+        cases = (
+            ("screen.received_both", {}),
+            ("screen.received_one", {"tool": "Claude"}),
+            ("screen.received_hidden_tool", {"tool": "Claude", "seq": 3}),
+        )
+        for note_id, values in cases:
+            with self.subTest(note=note_id):
+                text = get(note_id).render(values).template
+                self.assertNotIn("every earlier turn", text)
+                self.assertNotIn("all history", text)
+                self.assertNotIn("latest turn", text)

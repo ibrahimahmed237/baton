@@ -835,6 +835,14 @@
       "status_line": null
     },
     {
+      "id": "screen.conversation_guide",
+      "tone": "info",
+      "values": {},
+      "text": "An agent may have a turn even when its chat does not show it.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
       "id": "empty.conversation.title",
       "tone": "info",
       "values": {},
@@ -878,7 +886,7 @@
       "id": "screen.received_here",
       "tone": "info",
       "values": {},
-      "text": "History received through this turn",
+      "text": "Position in this conversation",
       "buttons": [],
       "status_line": null
     },
@@ -886,7 +894,7 @@
       "id": "screen.received_both",
       "tone": "info",
       "values": {},
-      "text": "Both agents have the conversation through this turn.",
+      "text": "Both agents reached this turn.",
       "buttons": [],
       "status_line": null
     },
@@ -894,7 +902,7 @@
       "id": "screen.received_hidden",
       "tone": "info",
       "values": {},
-      "text": "Received history outside this view",
+      "text": "Position outside this view",
       "buttons": [],
       "status_line": null
     },
@@ -904,7 +912,7 @@
       "values": {
         "tool": "Claude"
       },
-      "text": "Claude has the conversation through this turn.",
+      "text": "Claude reached this turn.",
       "buttons": [],
       "status_line": null
     },
@@ -915,7 +923,7 @@
         "tool": "Claude",
         "seq": 12
       },
-      "text": "Claude has history through turn 12.",
+      "text": "Claude reached turn 12 in this conversation.",
       "buttons": [],
       "status_line": null
     },
@@ -925,7 +933,7 @@
       "values": {
         "tool": "Codex"
       },
-      "text": "Codex has the conversation through this turn.",
+      "text": "Codex reached this turn.",
       "buttons": [],
       "status_line": null
     },
@@ -936,7 +944,7 @@
         "tool": "Codex",
         "seq": 12
       },
-      "text": "Codex has history through turn 12.",
+      "text": "Codex reached turn 12 in this conversation.",
       "buttons": [],
       "status_line": null
     }

@@ -14,6 +14,8 @@ struct ReceiptTests {
         #expect(model.reachedTools(at: shared.id) == ["claude", "codex"])
         let notes = model.receiptNotes(for: model.reachedTools(at: shared.id))
         #expect(notes.map(\.id) == ["screen.received_both"])
+        #expect(notes.first?.text == "Both agents reached this turn.")
+        #expect(model.note("screen.conversation_guide")?.text == "An agent may have a turn even when its chat does not show it.")
         #expect(model.hiddenReachedTools.isEmpty)
         for filter in [ConversationFilter.attached, .waiting, .kept] {
             model.setFilter(filter)
@@ -29,10 +31,12 @@ struct ReceiptTests {
             let reached = try #require(status.sides[tool]?.syncedUpTo)
             #expect(model.reachedTools(at: reached.id) == [tool])
             #expect(model.receiptNotes(for: [tool]).first?.id == "screen.received_one")
+            #expect(model.receiptNotes(for: [tool]).first?.text == "\(model.toolLabel(tool)) reached this turn.")
         }
         model.setFilter(.pinned)
         let hidden = model.hiddenReachedTools
         #expect(!hidden.isEmpty)
+        #expect(model.note("screen.received_hidden")?.text == "Position outside this view")
         for tool in hidden {
             let reached = try #require(status.sides[tool]?.syncedUpTo)
             let note = try #require(model.receiptNotes(for: [tool], hidden: true).first)
@@ -40,8 +44,17 @@ struct ReceiptTests {
             #expect(note.values["seq"] == .number(Double(reached.seq)))
         }
         let output = ComponentTests.root.appendingPathComponent("Snapshots")
-        for link in [3, 5] {
+        for (link, filter, state) in [(3, ConversationFilter.all, "separate"),
+                                      (3, .pinned, "hidden"),
+                                      (5, .all, "shared")] {
             await model.load(link: link)
+            model.setFilter(filter)
+            if state == "separate" {
+                model.unfold()
+                #expect(model.tools.allSatisfy { tool in
+                    model.displayedTurns.contains { model.reachedTools(at: $0.id).contains(tool) }
+                })
+            }
             for theme in Theme.allCases {
                 let renderer = ImageRenderer(content: SyncStatusView(model: model).padding(20).frame(width: 780)
                     .environment(\.batonSnapshotPresentation, true).background(theme.background).batonTheme(theme))
@@ -49,7 +62,7 @@ struct ReceiptTests {
                 let image = try #require(renderer.nsImage)
                 let tiff = try #require(image.tiffRepresentation)
             let pixels = try #require(NSBitmapImageRep(data: tiff))
-                try #require(pixels.representation(using: .png, properties: [:])).write(to: output.appendingPathComponent("UI8-receipt-\(link)-\(theme.rawValue).png"))
+                try #require(pixels.representation(using: .png, properties: [:])).write(to: output.appendingPathComponent("UI13-receipt-\(state)-\(theme.rawValue).png"))
             }
         }
     }

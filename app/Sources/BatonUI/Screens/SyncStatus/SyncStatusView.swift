@@ -24,10 +24,15 @@ public struct SyncStatusView: View {
                 strip(status)
                 GlassCard {
                     VStack(alignment: .leading, spacing: 14) {
-                        HStack {
-                            if let note = model.note("screen.conversation") { Text(note.text).font(.caption.weight(.semibold)) }
-                            Spacer(minLength: 0)
-                            filters
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                if let note = model.note("screen.conversation") { Text(note.text).font(.caption.weight(.semibold)) }
+                                Spacer(minLength: 0)
+                                filters
+                            }
+                            if !model.turns.isEmpty, let guide = model.note("screen.conversation_guide") {
+                                Text(guide.text).font(.caption).foregroundStyle(theme.secondaryText)
+                            }
                         }
                         conversation
                     }.frame(maxWidth: .infinity, alignment: .leading)
@@ -190,16 +195,12 @@ public struct SyncStatusView: View {
             if model.foldedCount > 0, let folded = model.note("screen.earlier_turns") {
                 Button(folded.text) { model.unfold() }.buttonStyle(.plain)
             }
+            if !model.hiddenReachedTools.isEmpty {
+                reachedBoundaryGroup(model.hiddenReachedTools, hidden: true)
+                    .padding(.horizontal, 12)
+            }
             ForEach(model.displayedTurns, id: \.id) { turn in
-                VStack(alignment: .leading, spacing: 0) {
-                    if turn.id == model.displayedTurns.first?.id, !model.hiddenReachedTools.isEmpty {
-                        reachedBoundaryGroup(model.hiddenReachedTools, hidden: true).padding(.leading, 12)
-                        Capsule().fill(theme.colour(for: .added).opacity(0.65))
-                            .frame(width: 2, height: 16).padding(.leading, 12)
-                            .accessibilityHidden(true)
-                    }
-                    turnView(turn)
-                }.id(turn.id)
+                turnView(turn).id(turn.id)
             }
         }
     }
@@ -240,28 +241,31 @@ public struct SyncStatusView: View {
                 }
             }
             let reached = model.reachedTools(at: turn.id)
-            if !reached.isEmpty { reachedBoundaryGroup(reached).padding(.top, 2) }
+            if !reached.isEmpty { reachedBoundaryGroup(reached).padding(.top, 5) }
         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
     }
     private func reachedBoundaryGroup(_ tools: [String], hidden: Bool = false) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: hidden ? "clock.arrow.circlepath" : "checkmark.circle.fill")
-                .foregroundStyle(theme.colour(for: .added)).font(.system(size: 17))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 7) {
-                if let heading = model.note(hidden ? "screen.received_hidden" : "screen.received_here") {
-                    Text(heading.text).font(.caption.weight(.semibold)).foregroundStyle(theme.text)
-                }
+        VStack(alignment: .leading, spacing: 10) {
+            Rectangle().fill(theme.hairline).frame(height: 1).accessibilityHidden(true)
+            HStack(alignment: .top, spacing: 10) {
+                Circle().fill(theme.colour(for: .added))
+                    .frame(width: 7, height: 7).padding(.top, 5)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    if hidden, let heading = model.note("screen.received_hidden") {
+                        Text(heading.text).font(.caption.weight(.semibold)).foregroundStyle(theme.text)
+                    }
+                    ForEach(Array(model.receiptNotes(for: tools, hidden: hidden).enumerated()), id: \.offset) { _, note in
+                        Text(note.text)
+                            .font(hidden ? .caption : .caption.weight(.semibold))
+                            .foregroundStyle(hidden ? theme.secondaryText : theme.text)
+                    }
+                }.frame(maxWidth: .infinity, alignment: .leading)
                 HStack(spacing: 10) {
-                    ForEach(tools, id: \.self) { tool in ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption) }
+                    ForEach(tools, id: \.self) { tool in ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption2) }
                 }
-                ForEach(Array(model.receiptNotes(for: tools, hidden: hidden).enumerated()), id: \.offset) { _, note in
-                    Text(note.text).font(.caption).foregroundStyle(theme.secondaryText)
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-        }.padding(12)
-            .background(theme == .graphite ? Color(white: 0.10) : Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 9))
-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(theme.colour(for: .added).opacity(0.35)))
+            }
+        }.padding(.horizontal, 4).padding(.vertical, 3)
             .accessibilityElement(children: .combine)
     }
     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
