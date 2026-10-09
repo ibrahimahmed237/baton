@@ -14,7 +14,7 @@ from baton.ports.store import RecordStore
 
 class PortsTests(unittest.TestCase):
     def test_store_signatures(self):
-        public = lambda cls: {name for name, value in vars(cls).items()
+        public = lambda cls: {name for name, value in inspect.getmembers(cls)
                               if not name.startswith("_") and inspect.isfunction(value)}
         self.assertEqual(public(RecordStore), public(Ledger))
         for name in public(RecordStore):

@@ -163,3 +163,13 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Steps.** 1. Setup: per tool, installed, format version known, hooks installed and approved, runner available and signed in; each finding has a note with its fix. 2. Relaunch plan: chats replying (named), steps close → write → reopen, `when_idle` variant that waits. 3. Never forces an app to quit; if it does not quit within a minute, nothing is written and the user is told.
 **Tests.** T5, T6, X5; `tests/unit/test_relaunch.py` with a fake `AppControl`.
 **Done when.** Those pass.
+
+## R10. Separate storage and delivery responsibilities before CP2
+
+**Goal.** Preserve the reviewed CP1 behavior while giving storage and delivery concerns separate modules.
+**From.** Reviewer decision R10 in STATUS.md; ARCHITECTURE single responsibility and atomic completion rules.
+**Depends on.** E5 and E6 reviewed at CP1.
+**Files.** `baton/ledger/`, `baton/services/applier.py`, new preview/fingerprint and refresh modules under `baton/services/`, `tests/unit/` (preservation checks).
+**Steps.** Separate links, turns, history and journal implementations behind the existing Ledger/RecordStore interface and one shared SQLite connection. Extract confirmation previews and chat refresh from Applier while retaining its existing entry points and ordering.
+**Tests.** All existing engine tests; durable rollback and commit boundaries across the extracted concerns; unchanged public signatures and confirmation payloads.
+**Done when.** Separate reviewer challenge and all orchestration checks pass, with no behavioral or dependency change.

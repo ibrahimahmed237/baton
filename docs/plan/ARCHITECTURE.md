@@ -35,12 +35,21 @@ baton/
     store.py          RecordStore
     clock.py          Clock (now), for tests
   ledger/
-    sqlite_store.py   RecordStore on SQLite              (exists: baton/ledger.py)
+    sqlite_store.py   Ledger/RecordStore facade; one SQLite connection
+    links.py          link identity and atomic creation/replacement
+    turns.py          turn identity, order and per-side states
+    history.py        event records
+    journal.py        rollback receipts and atomic delivery completion
+    records.py        shared validation and metadata helpers
     schema.py         tables and migrations
   services/
     status.py         where each side stands              (exists: baton/status.py)
     planner.py        what a sync or merge would do       (exists: baton/planner.py)
     applier.py        carries a plan out
+    delivery_plan.py  confirmation and delivery data types (reexported by applier)
+    preview.py        complete observation snapshots and confirmation fingerprints
+    refresh.py        reconcile content, names and explicit visibility evidence
+    observations.py   shared condition, history and local identity helpers
     linker.py         link, copy, change, remove
     merger.py         applies a chosen merge
     undo.py           back to a history entry
@@ -227,3 +236,7 @@ Reviewer decision: bypass marks the missing delivery waiting. If a new completed
 Link creation/replacement and journal completion commit together after read-back verification. A failed transaction preserves the prior link and removes the uncommitted created chat via its pre-write receipt. Full-copy replacement preserves the link and canonical turn IDs, order and pins; it reconciles local and originating IDs for the replaced side. Copies from a linked side reconstruct the canonical public conversation, including attached history, and refuse stale unrecorded native turns until refresh.
 
 Canonical copy payloads confirm the exact record snapshot used to choose turns, including keep/skip/order, rather than a later record read. Unlinked creation time and monotonic visibility are stored separately in created_copies, keyed by tool/chat, independently of 30-day rollback-receipt retention. Unlink observes metadata only and never requires readable chat content.
+
+### R10 responsibility boundaries (Reviewer)
+
+Ledger combines internal links, turns, history and journal method groups behind the existing RecordStore interface. All groups share the connection owned by Ledger; they do not open their own connections or introduce extra commits. Atomic delivery/history/journal completion and atomic creation/replacement retain their original transaction boundaries. Applier delegates confirmation construction to PreviewBuilder and reconciliation to ChatRefresh. ApplyStep and PreparedPlan remain importable from applier for compatibility. This extraction changes ownership only, not delivery decisions or recovery behavior.

@@ -2,9 +2,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import asdict, dataclass, replace
-from hashlib import sha256
-import json
+from dataclasses import asdict, dataclass
 from time import monotonic, sleep
 from typing import Callable, Collection, Mapping, Sequence
 
@@ -17,36 +15,12 @@ from ..ports.clock import Clock
 from ..ports.store import RecordStore
 from ..ports.tool import ToolAdapter
 from .journal import Guard, Journal
-from .mapping import for_target, content_key
-from .planner import plan_sync
-from .status import link_status, visible_added_turn_ids
-
-
-@dataclass(frozen=True)
-class ApplyStep:
-    """A single confirmed action with its complete turn payload."""
-    side: str
-    action: str
-    turn_ids: tuple[int, ...] = ()
-    turns: tuple[Turn, ...] = ()
-    reason: str = ''
-    needs: tuple[str, ...] = ()
-    name: str = ''
-    folder: str = ''
-    before_local_id: str = ''
-    keep_through_local_id: str = ''
-    alternatives: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class PreparedPlan:
-    """An immutable preview token and the observations it confirms."""
-    plan_id: str
-    link_id: int | None
-    steps: tuple[ApplyStep, ...]
-    snapshots: dict[str, dict]
-    record: dict
-    decision_needed: bool = False
+from .mapping import content_key
+from .delivery_plan import ApplyStep, PreparedPlan
+from .preview import PreviewBuilder
+from .refresh import ChatRefresh
+from .observations import condition, decode_turns, initial_history_sides, local_turn
+from .status import link_status
 
 
 @dataclass(frozen=True)
@@ -78,107 +52,36 @@ class Applier:
                  elapsed: Callable[[], float] = monotonic, wait: Callable[[float], None] = sleep):
         self.store, self.adapters, self.clock = store, adapters, clock
         self.elapsed, self.wait = elapsed, wait
+        self._preview = PreviewBuilder(store, adapters)
+        self._refresh = ChatRefresh(store, adapters, clock)
         self.guard = Guard(store)
         self.journal = Journal(store, adapters, clock)
         self.recovery = self.journal.recover()
 
     def _record(self, link_id: int | None) -> dict:
-        if link_id is None:
-            return {}
-        return {'link': asdict(self.store.get_link(link_id)),
-                'turns': [asdict(t) for t in self.store.turns(link_id)]}
+        return self._preview._record(link_id)
 
     def _snapshot(self, side: str, chat_id: str) -> dict:
-        adapter = self.adapters[side]
-        ref = adapter.locator.resolve(chat_id)
-        return {'chat_id': ref.id, 'ref': asdict(ref),
-                'turns': [asdict(t) for t in adapter.reader.read(ref.id)],
-                'condition': asdict(self._condition(side, ref.id)),
-                'facts': {k: getattr(v, 'value', v) for k,v in asdict(adapter.facts).items()}}
+        return self._preview._snapshot(side, chat_id)
 
     def prepare(self, link_id: int | None, steps: Sequence[ApplyStep],
                 chats: Mapping[str, str], decision_needed: bool = False) -> PreparedPlan:
         """Fingerprint complete planned actions, chat contents and current records."""
-        snapshots = {side: self._snapshot(side, chat) for side, chat in chats.items()}
-        record = self._record(link_id)
-        if link_id is not None and any(record['link']['chats'].get(side) != snapshot['chat_id']
-                                       for side, snapshot in snapshots.items()):
-            raise ChatChanged()
-        steps = tuple(deepcopy(list(steps)))
-        data = {'link_id': link_id, 'steps': [asdict(s) for s in steps],
-                'snapshots': snapshots, 'record': record, 'decision_needed': decision_needed}
-        plan_id = 'p_' + sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
-        return PreparedPlan(plan_id, link_id, steps, snapshots, record, decision_needed)
+        return self._preview.prepare(link_id, steps, chats, decision_needed)
 
     def _initial_history_sides(self, link, observed: Mapping[str, Sequence[Turn]]) -> tuple[str, ...]:
-        if link.mode != 'attached_history':
-            return ()
-        delivered = {e.side for e in self.store.history(link.id)
-                     if e.kind in ('attached', 'add', 'create', 'place', 'shown', 'added', 'delivered')}
-        return tuple(s for s in link.sides if not observed.get(s) and s not in delivered)
+        return initial_history_sides(self.store, link, observed)
 
     def preview(self, link_id: int, add_when_idle: Collection[str] = ()) -> PreparedPlan:
         """Build delivery actions from freshly observed whole turns and facts."""
-        link = self.store.get_link(link_id)
-        if link.removed_at:
-            raise NotAvailable()
-        for side, chat in link.chats.items():
-            try:
-                canonical = self.adapters[side].locator.resolve(chat).id
-            except KeyError:
-                continue
-            if canonical != chat:
-                # Refresh records moved chats; a preview must not silently mutate a link.
-                raise ChatChanged()
-        conditions = {s: self._condition(s, c) for s, c in link.chats.items()}
-        facts = {s: self.adapters[s].facts for s in link.sides}
-        observed = {s: self.adapters[s].reader.read(c) for s,c in link.chats.items()}
-        plan = plan_sync(link, self.store.turns(link_id), conditions,
-                         add_when_idle=add_when_idle, facts=facts,
-                         initial_history_sides=self._initial_history_sides(link, observed))
-        source = {s: {t.id: t for t in values} for s, values in observed.items()}
-        steps = []
-        for step in plan.steps.values():
-            turns = []
-            for recorded in step.turns:
-                try:
-                    original = source[recorded.origin][recorded.origin_id]
-                except KeyError:
-                    raise ChatChanged() from None
-                if (conditions[recorded.origin].replying and observed[recorded.origin]
-                        and original.id == observed[recorded.origin][-1].id):
-                    raise NotAvailable()
-                mapped = for_target(original, facts[step.side])
-                turns.append(self._local_turn(mapped, link_id, recorded.id))
-            steps.append(ApplyStep(step.side, step.action, tuple(t.id for t in step.turns),
-                                   tuple(turns), step.reason, step.needs, alternatives=step.alternatives))
-        prepared = self.prepare(link_id, steps, link.chats, plan.decision_needed)
-        for side in link.sides:
-            # A changed read during preview must not confirm an older mapped payload.
-            snapshot = prepared.snapshots[side]
-            current_facts = {k: getattr(v, 'value', v) for k,v in asdict(facts[side]).items()}
-            if (snapshot['turns'] != [asdict(t) for t in observed[side]] or
-                    snapshot['condition'] != asdict(conditions[side]) or
-                    snapshot['facts'] != current_facts):
-                raise ChatChanged()
-        return prepared
+        return self._preview.preview(link_id, add_when_idle)
 
-    @staticmethod
-    def _local_turn(turn: Turn, link_id: int, turn_id: int) -> Turn:
-        ids = {message.id: f'baton_{link_id}_{turn_id}_{index}'
-               for index, message in enumerate((turn.prompt, *turn.messages))}
-        return Turn(replace(turn.prompt, id=ids[turn.prompt.id]), tuple(
-            replace(m, id=ids[m.id], call_id=ids.get(m.call_id, m.call_id)) for m in turn.messages))
+    _local_turn = staticmethod(local_turn)
 
-    @staticmethod
-    def _turns(values) -> list[Turn]:
-        from ..domain.model import Message
-        return [Turn(Message(**t['prompt']), tuple(Message(**m) for m in t['messages'])) for t in values]
+    _turns = staticmethod(decode_turns)
 
     def _condition(self, side: str, chat: str) -> SideCondition:
-        adapter = self.adapters[side]
-        condition = adapter.state.condition(chat)
-        return replace(condition, format_known=condition.format_known and adapter.state.format_version().known)
+        return condition(self.adapters, side, chat)
 
     def apply_confirmed(self, link_id: int, plan_id: str,
                         add_when_idle: Collection[str] = ()) -> ApplyResult:
@@ -358,55 +261,7 @@ class Applier:
 
     def refresh(self, link_id: int) -> dict:
         """Reconcile fresh names, content and visibility evidence with turn states."""
-        link = self.store.get_link(link_id)
-        observed = {}
-        names = {}
-        missing = []
-        for side, chat in link.chats.items():
-            adapter = self.adapters[side]
-            try:
-                ref = adapter.locator.resolve(chat)
-            except KeyError:
-                missing.append(side)
-                continue
-            if not adapter.state.condition(ref.id).exists:
-                missing.append(side)
-                continue
-            if ref.id != chat:
-                self.store.move_link(link_id, side, ref.id, at=self.clock.now())
-            names[side] = ref.name
-            observed[side] = adapter.reader.read(ref.id)
-        for side, values in observed.items():
-            local_ids = self.store.local_ids(link_id, side)
-            read = {t.id: t for t in values}
-            bypassed = []
-            for recorded in self.store.turns(link_id):
-                if recorded.states.get(side) not in (ADDED, SHOWN):
-                    continue
-                actual = read.get(local_ids.get(recorded.id))
-                source = next((t for t in observed.get(recorded.origin, ())
-                               if t.id == recorded.origin_id), None)
-                if actual is None or source is None or content_key(actual) != content_key(source):
-                    bypassed.append(recorded.id)
-            self.store.reset_delivery(link_id, side, bypassed, self.clock.now())
-            self.store.record_turns(link_id, side, values)
-        link = self.store.get_link(link_id)
-        conditions = {s: self._condition(s,c) for s,c in link.chats.items()}
-        facts = {s: self.adapters[s].facts for s in link.sides}
-        for side in link.sides:
-            if side in missing:
-                continue
-            shown = visible_added_turn_ids(self.store.turns(link_id), side, facts[side],
-                                           conditions[side], self.store.history(link_id))
-            self.store.mark_shown(link_id, side, shown)
-        turns = self.store.turns(link_id)
-        return {'link': link, 'status': link_status(link, turns, conditions, facts=facts,
-                                                  history=self.store.history(link_id),
-                                                  initial_history_sides=self._initial_history_sides(link, observed)),
-                'names': names, 'turns': turns,
-                'messages': {s: [for_target(t, replace(facts[s], replays_tool_calls=True)) for t in values]
-                             for s,values in observed.items()}, 'checked_at': self.clock.now(),
-                'missing': tuple(missing)}
+        return self._refresh.refresh(link_id)
 
     def mark_seen(self, link_id: int, side: str, turn_ids: Sequence[int] | None = None) -> int:
         """Accept explicit user visibility evidence only for reopen-visible chats."""
