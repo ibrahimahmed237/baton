@@ -99,10 +99,10 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Apply a decision when both sides have new turns.
 **From.** merge.md M1 to M12; U1 to U9.
 **Depends on.** E5.
-**Files.** `baton/services/merger.py`, small additions to `planner.py`.
+**Files.** `baton/services/merger.py`, small additions to `planner.py`, `status.py`, `preview.py`, `applier.py` (recognize an exact approved merge until new completed turns invalidate it), additive `baton/ports/store.py`, `baton/ledger/links.py`, `baton/ledger/sqlite_store.py` for atomic merge completion; `tests/scenarios/test_merge.py` and related unit tests; `baton/adapters/fake/tool.py` (JSON-portable receipt comparison needed by recovery fault regression); `baton/notes/catalogue.py` for specified merge wording.
 **Steps.** 1. `show(link)`: last shared turn, unsynced turns, default order, outcome per side, overlaps, same-file list. 2. Same-file detection: files changed per turn from the readers' tool calls (adapter gives `files_changed(turn)`). 3. `plan(link, order|preset|keep|split)`: `keeps_chat` side → `add` the other's turns; `merged_copy` side → `create` a new chat in merged order and `move_link`; `dont_reorder` → `add` both ways; `keep` → `skip` then sync; `split` → `unlink`. 4. Large merged copy offers a brief (E10). 5. "Always by time" setting, except when same-file applies.
 **Tests.** `tests/scenarios/test_merge.py` U1 to U9.
-**Done when.** U1 to U9 pass.
+**Done when.** U1 to U8 pass, including atomic recoverable merge history. U9 runs when E8 supplies undo; CP2 requires U1 to U9. E7 cannot prove an undo operation before E8 exists. M12 uses the usage/brief offer supplied by E9/E10 and must be completed by that boundary.
 
 ## E8. Undo and restore
 

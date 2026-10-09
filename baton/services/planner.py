@@ -17,7 +17,7 @@ from typing import Collection, Mapping, Sequence
 
 from . import status
 from ..domain import link as link_states
-from ..domain.link import LedgerTurn, Link
+from ..domain.link import Event, LedgerTurn, Link
 from ..domain.conditions import SideCondition
 from ..domain.capabilities import Capabilities
 from ..domain.errors import OrderNotAllowed
@@ -64,11 +64,12 @@ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
               conditions: Mapping[str, SideCondition] | None = None,
               add_when_idle: Collection[str] = (), *,
               facts: Mapping[str, Capabilities],
-              initial_history_sides: Collection[str] = ()) -> Plan:
+              initial_history_sides: Collection[str] = (),
+              history: Sequence[Event] = ()) -> Plan:
     """Choose delivery from capabilities and current state, without tool names."""
     conditions = conditions or {}
     current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle,
-                                 initial_history_sides=initial_history_sides)
+                                 initial_history_sides=initial_history_sides, history=history)
     steps = {}
     for side, side_status in current.sides.items():
         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)

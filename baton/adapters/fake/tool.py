@@ -1,6 +1,8 @@
 """Settable chat facts, writes and app behavior without external I/O."""
 from __future__ import annotations
 
+import json
+
 from copy import deepcopy
 from dataclasses import asdict, replace
 from typing import Any, Sequence
@@ -278,7 +280,7 @@ class FakeWriter:
                 not self.adapter.state.condition(receipt.chat_id).exists):
             raise ValueError("receipt does not belong to an outstanding write")
         if key in self.writes:
-            if self.writes[key][0] != receipt:
+            if json.dumps(asdict(self.writes[key][0]), sort_keys=True) != json.dumps(asdict(receipt), sort_keys=True):
                 raise ValueError("receipt mismatch")
             undo = self.writes[key][1]
         elif "undo" in receipt.data:

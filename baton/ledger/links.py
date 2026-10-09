@@ -2,14 +2,102 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict
 from typing import Mapping, Sequence
-from ..domain.link import ADDED, MODES, SHOWN, TOOLS, WAITING, WRITTEN_HERE, Link
+from ..domain.link import ADDED, MODES, SHOWN, SKIPPED, TOOLS, WAITING, WRITTEN_HERE, Link
 from ..domain.errors import AlreadyLinked
 from .records import _FIRST_LINE_CHARS, _size, _tool, now
 
 
 class LinksRecords:
     """Internal method group; transaction boundaries remain on the shared connection."""
+
+    def complete_merge(self, link_id: int, order: Sequence[int], writes: Sequence[dict],
+                       skips: Sequence[tuple[int, str]], at: str, detail: dict) -> int:
+        """Commit every side and its rollback receipt as one history operation."""
+        link = self.get_link(link_id)
+        if link.removed_at or (link.paused and not detail.get("split")):
+            raise ValueError('link_unavailable')
+        rows = self.turns(link_id)
+        expected = detail.get('before')
+        current = {'link': asdict(link), 'turns': [asdict(t) for t in rows],
+                   'history': [asdict(e) for e in self.history(link_id)],
+                   'local_ids': {s: self.local_ids(link_id, s) for s in link.sides}}
+        if expected != current:
+            raise ValueError('merge_record_changed')
+        pending = [t.id for t in rows if WAITING in t.states.values()]
+        if sorted(order) != sorted(pending) or len(set(order)) != len(order):
+            raise ValueError('merge_order')
+        for side in link.sides:
+            own = [t.id for t in rows if t.id in pending and t.origin == side]
+            if [ident for ident in order if self._origin(link_id, ident) == side] != own:
+                raise ValueError('merge_origin_order')
+        if len({w['side'] for w in writes}) != len(writes):
+            raise ValueError('merge_side_duplicate')
+        for write in writes:
+            side, action = write['side'], write['action']
+            if side not in link.sides or action not in ('add', 'create', 'attach'):
+                raise ValueError('merge_action')
+            ids = write['turn_ids']
+            if len(set(ids)) != len(ids):
+                raise ValueError('merge_duplicate_turn')
+            for ident in ids:
+                if action != 'create' and self._state(link_id, ident, side) != WAITING:
+                    raise ValueError('merge_not_waiting')
+                self._origin(link_id, ident)
+            if action == 'attach':
+                if write['chat_id'] != link.chat(side):
+                    raise ValueError('merge_chat')
+                continue
+            receipt = write['receipt']
+            entry = self.journal_entry(write['entry_id'])
+            if (entry['state'] != 'begun' or entry['link_id'] != link_id or
+                    entry['tool'] != side or entry['action'] != action or
+                    entry['chat_id'] != receipt['chat_id'] or
+                    receipt['tool'] != side or receipt['kind'] != action or
+                    receipt['chat_id'] != write['chat_id'] or
+                    (action == 'add' and receipt['chat_id'] != link.chat(side)) or
+                    len(ids) != len(write['local_ids']) or
+                    len(set(write['local_ids'])) != len(write['local_ids']) or
+                    write['state'] not in (SHOWN, ADDED)):
+                raise ValueError('merge_receipt')
+            if action == 'create' and self.link_for(side, write['chat_id']):
+                raise AlreadyLinked(side, self.link_for(side, write['chat_id']))
+        for ident, side in skips:
+            if self._state(link_id, ident, side) != WAITING:
+                raise ValueError('merge_skip')
+        detail = dict(detail, chats={s: next((w['chat_id'] for w in writes
+                                            if w['side'] == s and w['action'] == 'create'), link.chat(s))
+                                    for s in link.sides},
+                      pending={w['side']: list(w['turn_ids']) for w in writes if w['action'] == 'attach'})
+        with self.db:
+            event = self._event(link_id, at, 'merge', detail=detail, turn_ids=order)
+            seqs = sorted(t.seq for t in rows if t.id in pending)
+            self.db.executemany('update turns set seq=? where id=?', zip(seqs, order))
+            for ident, side in skips:
+                self.db.execute('update turn_states set state=?,event_id=? where turn_id=? and side=?',
+                                (SKIPPED, event, ident, side))
+            for write in writes:
+                side, action = write['side'], write['action']
+                if action == 'attach':
+                    continue
+                if action == 'create':
+                    self.db.execute('update link_chats set chat=? where link_id=? and tool=?',
+                                    (write['chat_id'], link_id, side))
+                    self._record_copy(write['receipt'], at)
+                for ident, local_id in zip(write['turn_ids'], write['local_ids']):
+                    self.db.execute('update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?',
+                                    (write['state'], local_id, event, ident, side))
+                    if action == 'create':
+                        self.db.execute('update turns set origin_id=? where id=? and origin=?',
+                                        (local_id, ident, side))
+                self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
+                                (at, json.dumps(write['receipt']), write['entry_id']))
+            if detail.get('split'):
+                self.db.execute('update links set removed_at=? where id=?', (at, link_id))
+                self.db.execute('update link_chats set active=0 where link_id=?', (link_id,))
+        return event
+
 
     def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
                       entry_id: int | None = None, receipt: dict | None = None,

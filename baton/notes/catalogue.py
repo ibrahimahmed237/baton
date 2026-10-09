@@ -1,7 +1,7 @@
-"""CP1 user-facing wording from the feature specifications.
+"""User-facing wording from the feature specifications.
 
 Templates substitute tool names and counts instead of branching on a tool.
-E12 will complete the catalogue for the later work packages.
+E12 completes and audits the catalogue; earlier packages add their specified wording.
 """
 from dataclasses import dataclass
 from string import Formatter
@@ -166,6 +166,15 @@ CATALOGUE = {note.id: note for note in (
     Note("status.attached", "info", "{tool}'s agent has {n} attached turns. They are not shown as messages in this chat."),
     Note("status.setup_ready", "ok", "Baton's hooks are installed and trusted in {tool}."),
     Note("status.new_chat_relaunch", "info", "Relaunch {tool} to see this chat.", ("Relaunch {tool}",), "Relaunch {tool} to see this chat"),
+    Note("merge.header", "warning", "Both chats have new turns. {first_tool} has {first_count} turns {second_tool} never received, and {second_tool} has {second_count} that {first_tool} never received. Nothing has been changed yet."),
+    Note("merge.order_help", "info", "Move a turn up or down to change where it goes. Turns from the same app keep their order."),
+    Note("merge.dont_reorder", "warning", "Each chat gets the other's turns at its end. No new chat. The two chats will hold the same turns in a different order."),
+    Note("merge.same_file", "warning", "Both agents changed {file}, in turns {turns}. Baton does not merge files. Check that file."),
+    Note("merge.large_copy", "info", "This merged copy is about {tokens} tokens. A brief in a new chat is available instead."),
+    Note("merge.keeps_chat", "info", "{tool} keeps its chat. {other_tool}'s {turns} turns are added at the end."),
+    Note("merge.merged_copy", "info", "{tool} gets a merged copy as a new chat. The old chat stays as it is."),
+    Note("merge.keep", "warning", "Only {tool}'s turns are sent across. {other_tool}'s unsynced turns stay where they were written and are marked skipped."),
+    Note("merge.split", "warning", "The link is removed and the two chats continue separately."),
 )}
 
 

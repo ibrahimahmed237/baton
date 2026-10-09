@@ -130,3 +130,8 @@ class RecordStore(Protocol):
     def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
         """Commit an unlinked creation and durable visibility metadata atomically."""
         ...
+
+    def complete_merge(self, link_id: int, order: Sequence[int], writes: Sequence[dict],
+                       skips: Sequence[tuple[int, str]], at: str, detail: dict) -> int:
+        """Atomically record all sides, journal receipts and one recoverable merge event."""
+        ...

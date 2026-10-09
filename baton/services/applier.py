@@ -254,7 +254,8 @@ class Applier:
             raise NotAvailable()
         if link_status(link, self.store.turns(link_id),
                        {s: self._condition(s,c) for s,c in link.chats.items()},
-                       facts={s: self.adapters[s].facts for s in link.sides}).decision_needed:
+                       facts={s: self.adapters[s].facts for s in link.sides},
+                       history=self.store.history(link_id)).decision_needed:
             raise DecisionNeeded()
         return self.store.deliver(link_id, side, turn_ids, ATTACHED, 'attached', self.clock.now(),
                                   detail={'message_id': message_id})

@@ -35,7 +35,8 @@ class PreviewBuilder:
         if link_id is None:
             return {}
         return {'link': asdict(self.store.get_link(link_id)),
-                'turns': [asdict(t) for t in self.store.turns(link_id)]}
+                'turns': [asdict(t) for t in self.store.turns(link_id)],
+                'history': [asdict(e) for e in self.store.history(link_id)]}
 
 
     def _snapshot(self, side: str, chat_id: str) -> dict:
@@ -80,7 +81,8 @@ class PreviewBuilder:
         observed = {s: self.adapters[s].reader.read(c) for s,c in link.chats.items()}
         plan = plan_sync(link, self.store.turns(link_id), conditions,
                          add_when_idle=add_when_idle, facts=facts,
-                         initial_history_sides=self._initial_history_sides(link, observed))
+                         initial_history_sides=self._initial_history_sides(link, observed),
+                         history=self.store.history(link_id))
         source = {s: {t.id: t for t in values} for s, values in observed.items()}
         steps = []
         for step in plan.steps.values():

@@ -240,3 +240,7 @@ Canonical copy payloads confirm the exact record snapshot used to choose turns, 
 ### R10 responsibility boundaries (Reviewer)
 
 Ledger combines internal links, turns, history and journal method groups behind the existing RecordStore interface. All groups share the connection owned by Ledger; they do not open their own connections or introduce extra commits. Atomic delivery/history/journal completion and atomic creation/replacement retain their original transaction boundaries. Applier delegates confirmation construction to PreviewBuilder and reconciliation to ChatRefresh. ApplyStep and PreparedPlan remain importable from applier for compatibility. This extraction changes ownership only, not delivery decisions or recovery behavior.
+
+### E7 merge transaction and follow-on dependencies (Orchestrator; separate reviewer checked)
+
+A confirmed merge completes linked chat replacements, canonical order, per-side delivery/skips and begun journal receipts in one store transaction, with one merge history event. The history retains pre-merge link/turn/receipt data for E8 undo. An approved merge resolves only its exact pending turns on its resulting chat identities; a newly completed conflicting turn must require a new decision. U9 is an E8 integration check; M12 depends on E9/E10 rather than a pretend brief implementation in E7.

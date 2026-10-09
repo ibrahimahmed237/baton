@@ -82,10 +82,22 @@ def link_status(link: Link, turns: Sequence[LedgerTurn],
                 initial_history_sides: Collection[str] = ()) -> LinkStatus:
     """Compute status from facts and explicit delivery/relaunch evidence."""
     conditions = conditions or {}
-    in_conflict = _in_conflict(turns)
+    in_conflict = set() if merge_decision_applies(link, turns, history) else _in_conflict(turns)
     sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle, side in initial_history_sides)
              for side in link.sides}
     return LinkStatus(sides, link.paused, bool(in_conflict))
+
+
+def merge_decision_applies(link: Link, turns: Sequence[LedgerTurn], history: Sequence[Event]) -> bool:
+    """Only the exact pending deliveries explicitly approved for these chats bypass S7."""
+    merge = next((event for event in history if event.kind == 'merge'), None)
+    if merge is None or merge.detail.get('chats') != link.chats:
+        return False
+    approved = merge.detail.get('pending', {})
+    pending = {(turn.id, side) for turn in turns for side, state in turn.states.items()
+               if state == link_states.WAITING}
+    allowed = {(ident, side) for side, ids in approved.items() for ident in ids}
+    return bool(pending) and pending.issubset(allowed)
 
 
 def _in_conflict(turns: Sequence[LedgerTurn]) -> set[str]:
@@ -169,6 +181,11 @@ def visible_added_turn_ids(turns: Sequence[LedgerTurn], side: str, facts: Capabi
         if event.side == side and event.kind in ("added", "twin_created", "created", "synced", "delivered", "add", "add_after_release", "create", "place"):
             for turn_id in event.turn_ids:
                 delivered[turn_id] = event.at
+        if event.kind == "merge":
+            for write in event.detail.get("writes", ()):
+                if write.get("side") == side and write.get("action") in ("add", "create"):
+                    for turn_id in write.get("turn_ids", ()):
+                        delivered[turn_id] = event.at
     return tuple(turn_id for turn_id in added
                  if _later(condition.app_started_at, delivered.get(turn_id, "")))
 
