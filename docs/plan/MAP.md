@@ -2,7 +2,7 @@
 
 One page that shows the whole road. [STATUS.md](STATUS.md) says what is happening this hour; this page says how far the whole build is. Updated whenever a package or checkpoint changes state.
 
-**Last updated:** 2026-10-09 · **You are here:** CP2 review/repair; G2/G3/C1 committed; E9/D6 committed; E10/D7 accepted, commits preparing; CP2 not passed
+**Last updated:** 2026-10-09 · **You are here:** CP2 review/repair; G2/G3/C1 committed; E9/D6 committed; E10/D7 committed; CP2 not passed
 
 ```
 CP0 ✅ ── CP1 ✅ ── CP2 ◐ ── CP3 ○ ── CP4 ○ ── CP5 ○ ── works on my Mac ○
@@ -13,7 +13,7 @@ fixed     fakes      adapters   commands,    real        use     on throwaway
 
 ✅ passed · ◐ in progress · ○ not started
 
-G2 common app check, G3 brand assertion and C1 accepted on 2026-10-09; G2 dab931c, G3 7f6e39f and C1 e15e076 committed separately. Ibrahim authorized approved self-commits; no push. E9 `650a8d1` and D6 `604e6d8` now committed after independent reviews. Resume baseline: 670 engine /129 app and build; isolated committed packages: 555 engine /119 app and build. E10/D7 independently accepted:702 engine/143 app/build pass. E10 committed `ec88983`; D7 commit preparing; usage95% means stop at this package boundary. B2/C2 and live acceptance remain.
+G2 common app check, G3 brand assertion and C1 accepted on 2026-10-09; G2 dab931c, G3 7f6e39f and C1 e15e076 committed separately. Ibrahim authorized approved self-commits; no push. E9 `650a8d1` and D6 `604e6d8` now committed after independent reviews. Resume baseline: 670 engine /129 app and build; isolated committed packages: 555 engine /119 app and build. E10/D7 independently accepted:702 engine/143 app/build pass. E10 `ec88983` and D7 `c8720bf` committed; usage95% means stopped at this package boundary. B2/C2 and live acceptance remain.
 
 ## Packages
 

@@ -173,3 +173,7 @@ Evidence: [E8-2026-10-06.md](reports/E8-2026-10-06.md), [UI2-2026-10-06.md](repo
 ### CP2 progress — 2026-10-09, E9/D6 green boundary (not passed)
 
 G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, E9 `650a8d1` and D6 `604e6d8` committed after independent review. Working tree670 engine/129 app/build; isolated committed scope555 engine/119 app/build. E9 usage/digest and D6 fixture confirmation acceptance pass. Existing Claude/Codex fixture and E7/E8 scenario checks pass; E10 actual brief/privacy/lifecycle, B2 safety/native acceptance, C2 authoritative generation, D7 and the live throwaway run remain FAIL/incomplete. No CP2 pass recorded. Stop at package boundary because five-hour usage reached100%; unfinished files preserved. Every row and pasted output: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md).
+
+### CP2 progress — 2026-10-09, E10/D7 green boundary (not passed)
+
+E10 `ec88983` and D7 `c8720bf` committed separately after independent cross-review and root challenge. Full702 engine /143 app/build pass; isolated staged E10 scope622 engine pass without unfinished B2/D7. E10 actual brief privacy/lifecycle/native effects/summary undo and D7 fixture-screen acceptance pass. B2 native safety, C2 authoritative generated fixtures and required Claude/Codex live run remain FAIL/incomplete. Stop at a package boundary because five-hour usage measured95%; unfinished B2 files preserved and no push/live access. Full output, reviewer findings and each checkpoint row: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md).
