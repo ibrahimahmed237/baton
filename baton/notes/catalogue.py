@@ -206,7 +206,7 @@ CATALOGUE = {note.id: note for note in (
     Note("status.synced_up_to", "info", "Synced up to {first_line}"),
     Note("status.since_you_left", "info", "Since you left: {n} turns, {files} files, {commands} commands"),
     Note("status.context", "info", "Context in use: {tokens} tokens"),
-    Note("status.reached", "info", "{tool}'s agent has everything above this line"),
+    Note("status.reached", "info", "{tool}'s agent has reached here"),
     Note("screen.earlier_turns", "info", "{n} earlier turns, in both chats"),
     Note("screen.copy", "info", "Copy to…"),
     Note("screen.resume", "info", "Resume sync"),

@@ -102,7 +102,7 @@ Each side's status also shows how full its agent's context is and what the other
 - Each turn carries its state on Claude and on Codex, in words.
 - Text that the apps or Baton added around a message (reminders, hook text) is not shown.
 
-**R10. Where each side stands, inside the conversation.** The conversation marks the point each side has reached: a line reading "Claude's agent has everything above this line", and the same for Codex when it differs. Turns below a side's line are waiting for it.
+**R10. Where each side stands, inside the conversation.** The conversation marks the point each side has reached: a line reading "Claude's agent has reached here", and the same for Codex when it differs. Turns below a side's line are waiting for it. A turn above the line that this side was told to skip (keep-one-side merge, kept back) is marked on the turn itself, so the line never claims the agent has every turn above it.
 
 **R11. Turn-by-turn strip.** Above the conversation, one strip per side with a block per turn, coloured by state, so the two sides can be compared at a glance. Choosing a block jumps to that turn.
 

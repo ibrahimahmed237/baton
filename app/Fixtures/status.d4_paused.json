@@ -398,7 +398,7 @@
       "values": {
         "tool": "Claude"
       },
-      "text": "Claude's agent has everything above this line",
+      "text": "Claude's agent has reached here",
       "buttons": [],
       "status_line": null
     },
@@ -408,7 +408,7 @@
       "values": {
         "tool": "Codex"
       },
-      "text": "Codex's agent has everything above this line",
+      "text": "Codex's agent has reached here",
       "buttons": [],
       "status_line": null
     },
