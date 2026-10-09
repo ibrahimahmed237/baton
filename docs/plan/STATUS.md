@@ -6,24 +6,27 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-Stopping at the E9/D6 package boundary: the measured five-hour usage window is100% consumed. No E10/D7 repair was started. E9 committed `650a8d1` after root/independent review; D6 fixture-screen repair is accepted after five routing findings were fixed. Final working tree **670 engine /129 app**, build green. Isolated staged E9 passes **555 engine** without unfinished E10/B2. G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, approved plan record `825137e` committed; no push.
+Stopped at a green E9/D6 package boundary because the measured five-hour usage window is 100% consumed. **E9 `650a8d1` and D6 `604e6d8` are committed**, after root checks and separate reviewer agents closed every scoped finding. E10/D7 repairs were not started. No push and no real-app/chat access.
 
-| Package | Current state | Owned files |
-|---|---|---|
-| E9 | Committed `650a8d1`; isolated555/full670 engine pass | Scope/outputs in reports/E9-2026-10-09.md; isolated Codex/catalogue hunks |
-| D6 | Accepted fixture screen; isolated staged build/tests pass119, commit prepared | PlanReview, additive BatonKit models/ConfirmationGate, tests and d6 fixtures |
-| E10 | Preserved unfinished implementation, privacy/lifecycle repairs NOT started | services/brief.py, transcripts.py, test_brief and test_working_across_brief; catalogue E10 block; test_merge M12 intent test |
-| B2 | Preserved unfinished native fixture implementation; safety repairs/live owed | adapters/codex except committed reader classifier, native fixtures/tests/report |
-| D7 | Preserved unfinished hand-off; repair NOT started | HandOff production/tests and d7 fixtures; D6 API/Continue compatibility edits retained here |
-| C2 | Not started | Planned read projections/commands and generated fixture manifest |
+Final working tree: **670 engine tests, 129 app tests and build pass**. Isolated committed package verification: **555 engine**, **119 app and build**, excluding unfinished E10/B2/D7. Full evidence and each CP2 gate: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md). **CP2 has not passed.**
 
+| Package | State and preserved ownership |
+|---|---|
+| E9 | Committed `650a8d1`; [report](reports/E9-2026-10-09.md). Legacy baselines stay unverified; ordinary refresh readable, digest unavailable until a fresh explicit link establishes verified scope. |
+| D6 | Committed `604e6d8`; [report](reports/D6-2026-10-09.md). Fixture-screen routing/display acceptance; C2 service-backed evidence and CP3 execution still owed. |
+| E10 | Unfinished `services/brief.py`, `transcripts.py`, E10 catalogue block, `test_brief.py`, `test_working_across_brief.py`, M12 additions in `test_merge.py`; privacy/lifecycle/caching repairs NOT started. |
+| B2 | Unfinished `adapters/codex/` native implementation and native fixtures/tests/report; only E9 standalone reader classifier committed. Safety repairs and live acceptance owed. |
+| D7 | Unfinished HandOff production/tests and d7 fixtures; D6 receipt-API/Continue-note compatibility retained in this scope. Repair NOT started. |
+| C2 | Not started: read projections/commands, authoritative generation and manifest. |
+
+G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825137e` were committed earlier in this batch. Normal approved Git writes work; sandbox-only `.git` remains read-only. Preserve every unfinished file.
 
 ## Next
 
-1. E9 committed650a8d1; finish D6 commit/records at this green boundary. Resume E10 engine and D7 app repairs in parallel next session under CP2-REPAIR-PLAN.md; preserve all unfinished files.
-2. Independently review each repair and commit one package at a time; update STATUS/MAP/HANDOFF after each. Approved Git writes work; no push.
-3. B2 safety repairs/review, then C2 safe reads and deterministic generated fixtures. C2 must label future-only providers and add service-backed effects; D6 modeled transport is routing evidence only.
-4. Explicitly scope the Claude/Codex throwaway live run after blockers close; each app closure still needs Ibrahim's go. Record every CP2 check; CP2 remains unpassed.
+1. Resume **E10 engine and D7 app repairs** next batch in parallel under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md), using at most two active agents. Shared product/contract decisions are approved; do not start with discarded/recreated unfinished files.
+2. Independently review each package, close findings, run both common checks, commit separately and update STATUS/MAP/HANDOFF. Never push.
+3. Repair/review B2 native safety, then C2 safe reads and deterministic generated fixtures. C2 must identify future-only providers and prove actual service effects; D6 modeled counters are routing evidence only.
+4. After blockers close, list the exact Claude/Codex throwaway live run and ask for each app closure. Record every CP2 check; do not mark CP2 passed without its live evidence.
 
 ## Done
 
@@ -57,39 +60,12 @@ Stopping at the E9/D6 package boundary: the measured five-hour usage window is10
 | G2 | 2026-10-09 | `dab931c` | 650 engine, 115 app; build green |
 | G3 | 2026-10-09 | `7f6e39f` | 115 app green |
 | C1 | 2026-10-09 | `e15e076` | 650 working-tree engine / 115 app green |
-| E9 | 2026-10-09 | `650a8d1` | 555 isolated /670 working-tree engine;129 app build green |
+| E9 | 2026-10-09 | `650a8d1` | 555 isolated / 670 working-tree engine; 129 app, build green |
+| D6 | 2026-10-09 | `604e6d8` | 119 isolated / 129 working-tree app; build green |
 
 ## Ready to commit
 
-### D6
-
-- `app/Fixtures/link.d6_new_chat_claude.json`
-- `app/Fixtures/link.d6_new_chat_codex.json`
-- `app/Fixtures/link.d6_new_chat_cursor.json`
-- `app/Fixtures/relaunch.d6_idle.json`
-- `app/Fixtures/relaunch.d6_replying.json`
-- `app/Fixtures/relaunch.d6_when_idle.json`
-- `app/Fixtures/setup.d6_labels.json`
-- `app/Fixtures/sync.d6_claude_open_idle.json`
-- `app/Fixtures/sync.d6_claude_replying.json`
-- `app/Fixtures/sync.d6_codex_holding.json`
-- `app/Fixtures/sync.d6_cursor_running.json`
-- `app/Fixtures/sync.d6_opencode_any_time.json`
-- `app/Sources/BatonKit/Models/Results.swift`
-- `app/Sources/BatonKit/Models/Shared.swift`
-- `app/Sources/BatonUI/Components/Components.swift`
-- `app/Sources/BatonUI/Screens/PlanReview/PlanReviewView.swift`
-- `app/Sources/BatonUI/Screens/PlanReview/PlanReviewViewModel.swift`
-- `app/Tests/BatonUITests/PlanReviewTests.swift`
-- `docs/plan/track-d-app.md`
-- `docs/plan/STATUS.md`
-- `docs/plan/MAP.md`
-- `docs/plan/HANDOFF.md`
-- `docs/plan/reports/D6-2026-10-09.md`
-
-Subject: Keep plan confirmations tied to the displayed action
-
-Body: Preserve the original request and offering side when choices change, and block stale or unsupported confirmations. Explicit catalogue controls and token-aware tests prevent attachment or future relaunch samples from claiming the wrong action succeeded.
+None. G2, G3, C1, E9 and D6 committed separately. Remaining package files are unfinished and unstaged.
 
 ## Decisions and reviewer findings
 
@@ -112,6 +88,10 @@ Body: Preserve the original request and offering side when choices change, and b
 
 ## Log
 
+- 2026-10-09 — D6 committed604e6d8 after five routing/provenance findings were fixed and independently re-reviewed. Root full670/129/build; isolated555 engine/119 app/build. Usage window100%: stop at this package boundary. CP2 report marks remaining gates fail; no live access/push.
+
+- 2026-10-09 — E9 committed650a8d1 after durable subprocess/evidence checks, mixed-timestamp root fix and independent acceptance. Focused73/full670/isolated555 engine; final app129/build. Three regression mutations detected. No E10/D7 repair started.
+
 - 2026-10-09 — Ibrahim approved both repair-plan questions. Two GPT-6.1 agents reviewed the written plan; lifecycle, fallback costs, coverage, canonical-evidence ordering, read projections and live allowlist refinements incorporated. E9/D6 starting with shared additive contract/catalogue settled.
 
 - 2026-10-09 — C1 committed `e15e076`, with only its catalogue hunk and exact reviewed files. Staging whitespace check exposed an extra EOF blank line but commit was not gated; follow-up removes that whitespace without behavior change. All other package files preserved; reviewed repair plan is next.
@@ -127,7 +107,3 @@ Body: Preserve the original request and offering side when choices change, and b
 - 2026-10-09 — G2 accepted with independent review. Bare check script builds and passes 115 app tests; explicit SDKROOT BrandTests check passes 4. Ready entry recorded; no Git writes.
 
 - 2026-10-09 — Codex resumed the CP2 hand-off. Preserved all unfinished files; git read-only. Measured 640 engine tests with a D7 fixture failure; check script probe failed on unwritable module cache. Two independent reviewer agents found E9/E10 and D6/D7 blockers; G3 has no review blocker. C1 review and G2 repair started. Long prior status archived without discarding records.
-
-- 2026-10-06 — UI12 complete at a green boundary: 379 engine / 96 app tests and Swift build pass with installed SDK flags. Ibrahim asked for a smaller application icon and the real signed logo in grayscale glass in the menu bar. The Dock tile now has transparent outer room; the menu renders the cached, cropped logo at 3× with the neutral decision badge. Independent review found a repeated 1254×1254 crop and a self-referential test; both were fixed, re-reviewed and retested. The previous fixture process was closed through its own Quit confirmation, the new temporary bundle signed/verified and relaunched, and Computer Use confirmed the current window. PNGs show both themes and badge states; the actual system menu-bar pixels were not captured. UI12 patch/report and ready entry recorded; no Git write, push or real chat access.
-
-- 2026-10-06 — UI7 complete:377 engine/83 app/build pass with installedSDKflags. Kept exact existing B/I.A artwork after Ibrahim clarified surroundings only; no alternate-color asset adopted. Content is bare, Dock tile white, selector visible at sidebar bottom. Native Light/Dark switches inspected; user later selected System/Activity, so no further automation or relaunch. Review warning fixed with mounted offscreen native theme/retained-state assertions after layout settles; final full suite passes. UI7 ready after UI6; no Git or real-chat writes.

@@ -169,3 +169,7 @@ Evidence: [CP1-findings-2026-10-05.md](reports/CP1-findings-2026-10-05.md). Orig
 | Fixture UI chrome | PASS scoped — native light glass title bar and full-screen entry seen with CUA; no real chat integration claim |
 
 Evidence: [E8-2026-10-06.md](reports/E8-2026-10-06.md), [UI2-2026-10-06.md](reports/UI2-2026-10-06.md). Ordered patches through UI2/E8; no Git commit/write.
+
+### CP2 progress — 2026-10-09, E9/D6 green boundary (not passed)
+
+G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, E9 `650a8d1` and D6 `604e6d8` committed after independent review. Working tree670 engine/129 app/build; isolated committed scope555 engine/119 app/build. E9 usage/digest and D6 fixture confirmation acceptance pass. Existing Claude/Codex fixture and E7/E8 scenario checks pass; E10 actual brief/privacy/lifecycle, B2 safety/native acceptance, C2 authoritative generation, D7 and the live throwaway run remain FAIL/incomplete. No CP2 pass recorded. Stop at package boundary because five-hour usage reached100%; unfinished files preserved. Every row and pasted output: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md).

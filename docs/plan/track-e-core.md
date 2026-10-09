@@ -119,7 +119,7 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** How full each side is, limits, "since you left".
 **From.** working-across W1 to W8; V1 to V8.
 **Depends on.** E1.
-**Status.** E9 accepted 2026-10-09 after root checks and separate review; commit prepared. See [E9 report](reports/E9-2026-10-09.md).
+**Status.** E9 accepted 2026-10-09 after root checks and separate review; committed `650a8d1`. See [E9 report](reports/E9-2026-10-09.md).
 **Files.** `baton/services/{usage,digest,limit_offer,refresh,observations,linker}.py` (Linker evidence only); additive `baton/domain/model.py` growth helper; additive `baton/ports/{tool,store}.py`; `baton/ledger/{schema,sqlite_store,turns,links,evidence}.py`; fake/Claude/Codex reader command evidence; corresponding unit, reader, adapter and working-across scenario tests. Root coordinates catalogue/contract edits.
 **Repair acceptance.** Raw above-80 threshold, durable atomic once-per-limit claims across processes, stable routing metadata, exact command classification, fully-received digest suppression and refusal of missing/changed eligible content. Completed-turn evidence distinguishes verified ingestion from legacy observed-now baselines. See the repair plan for complete tests and limits.
 **Steps.** 1. `Usage` from the reader: tokens, size or none, percent only when size is known. 2. Limit: reached or not, reset time or none; "available again" only with a reset time. 3. Digest: turns, files changed, commands run on the other side since this side's last prompt. 4. The digest is the first block of the attached text.
