@@ -166,3 +166,17 @@ Rules for this track:
 
 Empty states, loading and error states for every screen, keyboard navigation, VoiceOver labels on chips and dots (state and tool names spoken), reduced-transparency setting honoured, notifications for offers.
 **Done when.** Each screen has its empty, loading and error snapshot in both themes.
+
+## UI3 — native full-screen routing
+
+**Goal:** Correct Ibrahim’s reported normal window zoom and transition chrome churn.
+
+**Files:** app/Sources/BatonUI/Components/WindowPresentation.swift; app/Tests/BatonUITests/WindowInteractionTests.swift; plan status/report records.
+
+**Tests:** Both window paths receive fullScreenPrimary without conflicting auxiliary/none flags; repeated chrome updates do not mutate window geometry/styles; native fixture enter/exit full screen and sidebar click after transition.
+
+**Done when:** Green control enters native full screen on the ordinary window, transitions preserve interaction, full regression/build gates pass and independent review completes.
+
+UI3 continuation (Ibrahim, 2026-10-06): main window opens on Finder launch and reopen, with close/minimize/full-screen controls; menu icon remains. Scope also includes app/Sources/Baton/BatonApp.swift and a shared main-window controller in WindowPresentation.swift. A single window/model is reused, rather than separate review and ordinary windows. Tests cover native style/control presence and close/reopen identity.
+
+UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; separate code review no blocker; ordinary fixture launch plus native full-screen/Escape/sidebar verified; Ibrahim confirms visible controls. Ctrl-Command-F wiring remains in keyboard polish, not claimed fixed.

@@ -1,22 +1,55 @@
 import AppKit
 import SwiftUI
 
-/// Gives the fixture review window the same resize and full-screen affordances as the app scene.
+/// Shared native chrome and full-screen eligibility for Baton windows.
 public enum BatonWindowConfiguration {
-    /// Preserves standard window controls and allows expansion beyond the initial content size.
+    /// Configures both the ordinary SwiftUI window and the fixture review window.
     @MainActor public static func apply(to window: NSWindow) {
-        window.styleMask.insert(.resizable)
-        window.collectionBehavior.insert(.fullScreenPrimary)
-        window.contentMinSize = NSSize(width: 1000, height: 600)
-        applyGlass(to: window, theme: .graphite)
+        apply(to: window, theme: .graphite)
     }
-    /// Extends the app palette behind the title bar while retaining native traffic-light controls.
+    @MainActor public static func apply(to window: NSWindow, theme: Theme) {
+        let controls: NSWindow.StyleMask = [.titled, .closable, .miniaturizable, .resizable]
+        if !window.styleMask.isSuperset(of: controls) { window.styleMask.formUnion(controls) }
+        var behavior = window.collectionBehavior
+        behavior.subtract([.fullScreenAuxiliary, .fullScreenNone])
+        behavior.insert(.fullScreenPrimary)
+        if behavior != window.collectionBehavior { window.collectionBehavior = behavior }
+        let minimum = NSSize(width: 1000, height: 600)
+        if window.contentMinSize != minimum { window.contentMinSize = minimum }
+        applyGlass(to: window, theme: theme)
+    }
+    /// Avoids relayout on ordinary SwiftUI updates and preserves AppKit's full-screen state.
     @MainActor public static func applyGlass(to window: NSWindow, theme: Theme) {
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-        window.styleMask.insert(.fullSizeContentView)
-        window.backgroundColor = NSColor(theme.background)
-        window.appearance = NSAppearance(named: theme == .graphite ? .darkAqua : .aqua)
+        if !window.titlebarAppearsTransparent { window.titlebarAppearsTransparent = true }
+        if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
+        if !window.styleMask.contains(.fullSizeContentView) { window.styleMask.insert(.fullSizeContentView) }
+        let color = NSColor(theme.background)
+        if window.backgroundColor != color { window.backgroundColor = color }
+        let appearance: NSAppearance.Name = theme == .graphite ? .darkAqua : .aqua
+        if window.appearance?.name != appearance { window.appearance = NSAppearance(named: appearance) }
+    }
+}
+
+/// Owns one main window across launch, menu-bar actions and reopening after close.
+@MainActor public final class BatonMainWindowController: NSWindowController {
+    public let model: WindowViewModel
+    public init(model: WindowViewModel) {
+        self.model = model
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                              backing: .buffered, defer: false)
+        BatonWindowConfiguration.apply(to: window)
+        window.title = "Baton"
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: WindowView(model: model).task { await model.refresh() })
+        window.center()
+        super.init(window: window)
+    }
+    public required init?(coder: NSCoder) { nil }
+    public override func showWindow(_ sender: Any?) {
+        if let window, window.isMiniaturized { window.deminiaturize(sender) }
+        super.showWindow(sender)
+        window?.makeKeyAndOrderFront(sender)
     }
 }
 
@@ -34,7 +67,7 @@ struct WindowGlassChrome: NSViewRepresentable {
         override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); configure() }
         func configure() {
             guard let window else { return }
-            BatonWindowConfiguration.applyGlass(to: window, theme: theme)
+            BatonWindowConfiguration.apply(to: window, theme: theme)
         }
     }
 }

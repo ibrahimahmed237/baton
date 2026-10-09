@@ -24,15 +24,19 @@ Decisions (Reviewer):
 
 ## Now
 
+- UI3 complete, independently reviewed and native fixture checked: ordinary launch opens the main window, standard controls work, native fullscreen entry/Escape exit and sidebar response pass. Ibrahim confirms the window and red/yellow/green controls are visible. Root 377 engine / 74 app / Swift build pass with installed SDK26.5 and TestingMacros command flags. Ready-to-commit patch follows E8; no real chats or Git writes.
+
 - UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is complete and independently reviewed in its fixture scope, with approved capability-based undo and additive recovery/store scope.
 
 - UI1 interaction audit complete and independently reviewed: resize/full-screen controls, blank row click targets, repeated navigation/turn jumps, native overlay scrolling and long dialog/popover overflow are repaired. Final checks: 334 engine / 68 app tests and Swift build pass. Native fixture mouse/scroll tests pass; desktop capture failed, so the actual macOS full-screen transition and live appearance need human confirmation. See reports/UI1-2026-10-06.md.
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Final working tree: 377 engine tests, 71 app tests and Swift build pass, checked by the orchestrator after independent E8 review. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Current working tree: 377 engine tests, 74 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI3 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
+
+UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
 
 UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
 
@@ -59,6 +63,7 @@ Continue E9/E10 (including M12), and D6/D7 in parallel; E8/U9 is now fixture-ver
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI3 normal launch and native window controls | 2026-10-06 | Ready to commit — independent review, native checks, Ibrahim confirms visible controls | 377 engine / 74 app with installed SDK flags |
 | E8 undo and restore | 2026-10-06 | Ready to commit — independent review blockers fixed; fixtures only | 377 engine / 71 app |
 | UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
 | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
@@ -536,7 +541,28 @@ feat(core): keep undo recoverable across chat changes
 Users need to return to a history point without losing messages or trusting stale previews. Journal cuts and exact restorations, create shorter copies where cutting is unsafe, and atomically pause and move the link after verification.
 ```
 
+### UI3 — normal launch and native window controls
+
+Patch: `docs/plan/reports/patches/UI3.patch`, applies after E8. Separate reviewer found no code blocker; native checks and Ibrahim’s visible-control confirmation passed. Ready to commit. Exact paths:
+
+- `app/Sources/Baton/BatonApp.swift`
+- `app/Sources/BatonUI/Components/WindowPresentation.swift`
+- `app/Tests/BatonUITests/WindowInteractionTests.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI3-2026-10-06.md`
+
+Commit message:
+
+```text
+fix(app): open the main window with native controls
+
+Normal launch only exposed the menu icon, while separate window paths had different full-screen behavior. Reuse one retained window on launch and reopen, keep native controls, and avoid redundant chrome changes during updates.
+```
+
 ## Decisions
+
+27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
 
 Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
@@ -584,6 +610,10 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 ## Questions
 
+- UI3 native functions and Ibrahim’s visible-controls check pass. Ctrl-Command-F shortcut is not wired after removal of the SwiftUI Window scene; Escape exits native fullscreen, standard green control works. Track standard command integration in D13/keyboard polish; do not claim it repaired.
+
+- Earlier UI3 launch approval timeouts are resolved by the successful normal fixture launch and Ibrahim’s confirmation. Default Swift6.4/macOS27 build/test macro loading remains an environment issue; exact installed SDK26.5/TestingMacros commands pass.
+
 - C3 must select the side for history markers with no tool/direction; E8 accepts explicit side and a verified subsequent delivery boundary, and refuses without one. No guessed timestamps/boundaries. Cut/copy restore is supported; restoring metadata-only split undo is refused. Older merge events without saved post-merge observations conservatively refuse created-chat undo.
 
 - UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
@@ -592,6 +622,14 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-06 — UI3 completed at green boundary. Ibrahim answered “Yes, the window and controls are visible” for the running updated fixture. Native launch/fullscreen/Escape/sidebar gates passed; root377/74/build and independent review pass. Ready entry/ordered patch follow E8; no commit or push because Git remains read-only.
+
+- 2026-10-06 — UI3 launch continuation checked by root and separate reviewer, no code blocker. Root377/74/build pass local SDK flags. Updated temporary fixture resources under Contents/Resources, LSUIElement=false, binary replaced; approved normal LaunchServices launch exited0. CUA confirms a main window directly, native full-screen button plus close/minimize, entry/exit via Escape, one-click sidebar after transition. Traffic-light screenshot area has a purple sharing overlay; Ibrahim’s visual confirmation pending. No real chat/tool app or Git write.
+
+- 2026-10-06 — Ibrahim asked to open the temporary app or show how to find it. Renewed elevated and native desktop launches also timed out in automatic approval review, with no policy rejection. Finder instructions supplied for /private/tmp/BatonFixture.app; no successful new launch or native acceptance claimed. UI3 candidate remains held.
+
+- 2026-10-06 — UI3 correction built; ordinary window zoom reproduced, new regressions fail on old code, root corrected gates pass 377 engine/73 app/build with installedSDK flags. Relaunch review timed out twice, so live gate remains unverified and package is not Done. All earlier changes preserved; no Git write or real chat action.
 
 - 2026-10-06 — E8 completed, root and separate reviewer checked; 377 engine / 71 app tests and Swift build pass. Five independent/root findings closed (expiry, cumulative visibility, moved-chat identity, merge preview notes, split restore), plus bounded release and acknowledged attachment regressions. UI2/E8 ordered patches ready; no real chats and no Git writes.
 

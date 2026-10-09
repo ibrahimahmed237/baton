@@ -19,6 +19,69 @@ struct WindowInteractionTests {
         window.close()
     }
 
+    @MainActor @Test func ordinaryWindowProbeEnablesNativeFullScreen() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let probe = WindowGlassChrome.ChromeProbe(theme: .light)
+        window.contentView?.addSubview(probe)
+        for conflict in [NSWindow.CollectionBehavior.fullScreenAuxiliary, .fullScreenNone] {
+            window.collectionBehavior = [conflict, .moveToActiveSpace]
+            probe.configure()
+            #expect(window.collectionBehavior.contains(.fullScreenPrimary))
+            #expect(!window.collectionBehavior.contains(.fullScreenAuxiliary))
+            #expect(!window.collectionBehavior.contains(.fullScreenNone))
+            #expect(window.collectionBehavior.contains(.moveToActiveSpace))
+            #expect(window.contentMinSize == NSSize(width: 1000, height: 600))
+        }
+        window.close()
+    }
+
+    @MainActor @Test func repeatedChromeUpdatesDoNotResetWindowStyleOrFrame() {
+        let window = StyleCountingWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                                         styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let probe = WindowGlassChrome.ChromeProbe(theme: .light)
+        window.contentView?.addSubview(probe)
+        window.setContentSize(NSSize(width: 1400, height: 900))
+        let frame = window.frame
+        let assignments = window.styleAssignments
+        for _ in 0..<20 { probe.configure() }
+        #expect(window.styleAssignments == assignments)
+        #expect(window.frame == frame)
+        #expect(window.appearance?.name == .aqua)
+        window.close()
+    }
+
+    @MainActor @Test func mainWindowRetainsStandardControlsAndReopensTheSameContent() async throws {
+        let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
+        await model.refresh()
+        let controller = BatonMainWindowController(model: model)
+        let window = try #require(controller.window)
+        // Native behavior is exercised off screen; no other application's windows are touched.
+        window.setFrameOrigin(NSPoint(x: -10000, y: -10000))
+        #expect(window.styleMask.isSuperset(of: [.titled, .closable, .miniaturizable, .resizable]))
+        for control in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+            let button = try #require(window.standardWindowButton(control))
+            #expect(!button.isHidden)
+            #expect(button.isEnabled)
+        }
+        #expect(window.collectionBehavior.contains(.fullScreenPrimary))
+        controller.showWindow(nil)
+        #expect(window.isVisible)
+        let content = window.contentView
+        model.navigate(to: .suggestions)
+        window.close()
+        #expect(!window.isVisible)
+        controller.showWindow(nil)
+        #expect(controller.window === window)
+        #expect(window.contentView === content)
+        #expect(controller.model === model)
+        #expect(model.section == .suggestions)
+        #expect(window.isVisible)
+        window.close()
+    }
+
     @MainActor @Test func titleBarUsesTheAppPaletteAndRetainsNativeControls() throws {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -205,5 +268,12 @@ struct WindowInteractionTests {
         #expect(!scroll.drawsBackground)
         #expect(scroll.hasVerticalScroller)
         #expect(scroll.documentView === content)
+    }
+}
+
+@MainActor private final class StyleCountingWindow: NSWindow {
+    var styleAssignments = 0
+    override var styleMask: NSWindow.StyleMask {
+        didSet { styleAssignments += 1 }
     }
 }
