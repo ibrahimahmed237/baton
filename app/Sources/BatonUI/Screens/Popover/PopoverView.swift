@@ -114,19 +114,17 @@ public struct BatonMenuIcon: View {
     }
     /// Flattens the icon and its badge into the image accepted by the system menu bar.
     @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme, reduceTransparency: Bool? = nil) -> NSImage? {
+        guard BatonBrand.nativeIcon() != nil else { return nil }
         let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision,
             reduceTransparency: reduceTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
-            .font(.system(size: 16, weight: .semibold)).foregroundStyle(theme.text)
             .frame(width: 26, height: 22).batonTheme(theme))
-        renderer.scale = 2
+        renderer.scale = 3
         let image = renderer.nsImage
         image?.isTemplate = false
         return image
     }
     public var body: some View {
-        Image(systemName: "link")
-            .symbolRenderingMode(.monochrome)
-            .foregroundStyle(theme.menuGlass)
+        BrandMark(size: 19, placement: .menu)
             .frame(width: 26, height: 22, alignment: .leading)
             .overlay(alignment: .topTrailing) {
                 if needsDecision {

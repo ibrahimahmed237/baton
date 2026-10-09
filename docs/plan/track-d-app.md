@@ -295,3 +295,19 @@ UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build p
 **Checks.** Assert the Dock mark occupies a bounded conventional fraction of its tile and the complete signature remains visible. Check the menu image's near-opaque pixels for neutral grayscale, transparent background, clear badge state and distinct Light/Graphite rendering. Snapshot both Dock sizes and all menu states; run the app build/tests and engine suite.
 
 **Done when.** The Dock mark reads at a familiar macOS app-icon scale with the entire signature; the menu image is crisp, monochrome, glass-like, and visible in both themes; all snapshots and tests pass and independent review finds no issue.
+
+## UI12 — compact Dock tile and signed monochrome menu mark
+
+**Goal.** Make the whole Baton Dock icon sit more quietly beside other apps and restore the B/I.A logo to the menu bar without colored pixels.
+
+**From.** Ibrahim, 2026-10-06: the application icon still looks too large, and UI11's chain symbol no longer looks like Baton's own logo. Use the same signed logo in a glassy monochrome menu treatment.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI12-2026-10-06.md`; `docs/plan/reports/patches/UI12.patch`.
+
+**Steps.** Fit the white Dock tile and its complete colored artwork inside a smaller transparent app-icon canvas. Render the bundled signed mark, cropped to its alpha bounds, as a high-resolution grayscale gradient in the menu bar; keep the neutral decision badge. Do not change the content logo or its source colors.
+
+**Checks.** Measure transparent space outside the Dock tile, white inside the tile, bounded mark size and surviving I.A pixels. Compare the plain menu image to a render of the signed mark so a generic link cannot replace it unnoticed; check all menu pixels remain neutral in both themes and badge states. Inspect the generated PNGs and the running fixture, then run the app and engine gates and review the diff.
+
+**Done when.** The complete Dock tile is visibly smaller, the signed logo is back in the menu bar with only gray glass values, badge/plain states remain distinct, and the build/tests and visual review pass.
+
+UI12 completion 2026-10-06: 379 engine tests, 96 app tests and Swift build pass with the installed SDK flags. Dock and all four menu PNGs were inspected; the final signed fixture launches and shows the main window. Independent review found a repeated large-image crop and a self-referential menu test; both were fixed and the reviewer found no remaining blocker. Actual system menu-bar pixels were not captured.

@@ -7,13 +7,20 @@ public enum BrandPlacement: Sendable { case content, menu, dock }
 /// Supplies the signed burgundy-and-black identity bundled with BatonUI.
 public enum BatonBrand {
     /// Loads the transparent handoff mark and I.A signature without a baked-in tile.
-    public static func nativeIcon() -> NSImage? {
+    @MainActor public static func nativeIcon() -> NSImage? { sourceIcon }
+
+    @MainActor private static let sourceIcon: NSImage? = {
         guard let url = Bundle.module.url(forResource: "baton-mark", withExtension: "png", subdirectory: "Brand") else { return nil }
         return NSImage(contentsOf: url)
-    }
+    }()
 
-    /// Removes only the transparent canvas around the full signed artwork for the Dock tile.
-    fileprivate static func dockIcon(from image: NSImage) -> NSImage? {
+    @MainActor fileprivate static let compactIcon: NSImage? = {
+        guard let icon = sourceIcon else { return nil }
+        return croppedIcon(from: icon) ?? icon
+    }()
+
+    /// Removes transparent canvas around the complete signed artwork at compact sizes.
+    fileprivate static func croppedIcon(from image: NSImage) -> NSImage? {
         var proposed = NSRect(origin: .zero, size: image.size)
         guard let source = image.cgImage(forProposedRect: &proposed, context: nil, hints: nil) else { return nil }
         guard let providerData = source.dataProvider?.data,
@@ -68,18 +75,8 @@ public struct BrandMark: View {
 
     public var body: some View {
         Group {
-            if let icon = BatonBrand.nativeIcon() {
-                let displayedIcon = placement == .dock ? (BatonBrand.dockIcon(from: icon) ?? icon) : icon
+            if let displayedIcon = placement == .content ? BatonBrand.nativeIcon() : BatonBrand.compactIcon {
                 ZStack {
-                    if placement == .menu {
-                        // Outline the silhouette behind the original pixels, not the artwork itself.
-                        ForEach(0..<8) { step in
-                            Image(nsImage: displayedIcon).resizable().renderingMode(.template).scaledToFit()
-                                .foregroundStyle(theme.menuOutline)
-                                .offset(x: cos(Double(step) * .pi / 4) * 0.72,
-                                        y: sin(Double(step) * .pi / 4) * 0.72)
-                        }
-                    }
                     if placement == .menu {
                         Image(nsImage: displayedIcon).resizable().interpolation(.high).renderingMode(.template).scaledToFit()
                             .foregroundStyle(theme.menuGlass)
@@ -89,15 +86,17 @@ public struct BrandMark: View {
                 }
             }
         }
-        // The source is trimmed to its alpha bounds first, so this inset preserves the signature.
-        .frame(width: placement == .dock ? size * 0.86 : size, height: placement == .dock ? size * 0.86 : size)
-        .frame(width: size, height: size)
+        // Keep the complete signed mark and its white tile inside a smaller Dock canvas.
+        .frame(width: placement == .dock ? size * 0.88 * 0.86 : size,
+               height: placement == .dock ? size * 0.88 * 0.86 : size)
+        .frame(width: placement == .dock ? size * 0.88 : size,
+               height: placement == .dock ? size * 0.88 : size)
         .background {
             if placement == .dock {
-                RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white)
-
+                RoundedRectangle(cornerRadius: size * 0.88 * 0.22).fill(Color.white)
             }
         }
+        .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
 }

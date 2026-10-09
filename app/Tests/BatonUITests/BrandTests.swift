@@ -56,11 +56,13 @@ struct BrandTests {
             let dock = try #require(BatonBrand.applicationIcon(theme: theme))
             let dockTiff = try #require(dock.tiffRepresentation)
             let dockPixels = try #require(NSBitmapImageRep(data: dockTiff))
-            let border = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
-            #expect(border.alphaComponent > 0.99)
-            #expect(min(border.redComponent, border.greenComponent, border.blueComponent) > 0.99)
+            let outside = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+            #expect(outside.alphaComponent < 0.1)
+            let tile = try #require(dockPixels.colorAt(x: 40, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+            #expect(tile.alphaComponent > 0.99)
+            #expect(min(tile.redComponent, tile.greenComponent, tile.blueComponent) > 0.99)
             let png = try #require(dockPixels.representation(using: .png, properties: [:]))
-            try png.write(to: directory.appendingPathComponent("UI11-dock-\(theme.rawValue).png"))
+            try png.write(to: directory.appendingPathComponent("UI12-dock-\(theme.rawValue).png"))
         }
         let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
         let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
@@ -78,7 +80,7 @@ struct BrandTests {
         #expect(light.tiffRepresentation != dark.tiffRepresentation)
         #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
     }
-    @MainActor @Test func dockMarkUsesConventionalTileMarginsAndKeepsSignature() throws {
+    @MainActor @Test func dockTileIsCompactAndKeepsSignature() throws {
         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
         let dockData = try #require(dock.tiffRepresentation)
         let pixels = try #require(NSBitmapImageRep(data: dockData))
@@ -91,8 +93,8 @@ struct BrandTests {
                 }
             }
         }
-        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.76)
-        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.85)
+        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.66)
+        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.75)
         var signaturePixels = 0
         for y in Int(Double(pixels.pixelsHigh) * 0.80)..<pixels.pixelsHigh {
             for x in Int(Double(pixels.pixelsWide) * 0.76)..<pixels.pixelsWide {
@@ -106,9 +108,23 @@ struct BrandTests {
         let tiny = try #require(NSBitmapImageRep(data: data))
         #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
     }
-    @MainActor @Test func menuMarkUsesGrayscaleGlassWhileDockKeepsBrandColors() throws {
+    @MainActor @Test func menuUsesTheSignedGrayscaleMarkWhileDockKeepsBrandColors() throws {
         let directory = ComponentTests.root.appendingPathComponent("Snapshots")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+        let menuData = try #require(menu.tiffRepresentation)
+        let silhouette = try #require(NSBitmapImageRep(data: menuData))
+        #expect(silhouette.pixelsWide == 78 && silhouette.pixelsHigh == 66)
+        #expect(try #require(silhouette.colorAt(x: 30, y: 9)).alphaComponent > 0.6)
+        #expect(try #require(silhouette.colorAt(x: 24, y: 24)).alphaComponent < 0.1)
+        #expect(try #require(silhouette.colorAt(x: 24, y: 48)).alphaComponent > 0.6)
+        var signaturePixels = 0
+        for y in 50..<60 {
+            for x in 48..<59 {
+                if try #require(silhouette.colorAt(x: x, y: y)).alphaComponent > 0.35 { signaturePixels += 1 }
+            }
+        }
+        #expect(signaturePixels > 3, "the detached I.A signature must remain in the menu mark")
         for theme in Theme.allCases {
             for needsDecision in [false, true] {
                 let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: needsDecision, theme: theme))
@@ -126,7 +142,7 @@ struct BrandTests {
                 }
                 #expect(shadedPixels > 80)
                 let png = try #require(pixels.representation(using: .png, properties: [:]))
-                try png.write(to: directory.appendingPathComponent("UI11-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
+                try png.write(to: directory.appendingPathComponent("UI12-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
             }
         }
         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
