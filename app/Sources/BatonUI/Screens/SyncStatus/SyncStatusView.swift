@@ -124,8 +124,8 @@ public struct SyncStatusView: View {
                     ToolDot(tool: tool, label: model.toolLabel(tool)).frame(width: 95, alignment: .leading)
                     Group {
                         if snapshot { stripBlocks(status, tool: tool) }
-                        else { ScrollView(.horizontal) { stripBlocks(status, tool: tool) } }
-                    }.frame(height: 27)
+                        else { WindowScrollArea(.horizontal) { stripBlocks(status, tool: tool) } }
+                    }.frame(height: snapshot ? 27 : 40)
                 }
             }
             }.frame(maxWidth: .infinity, alignment: .leading)
@@ -157,9 +157,12 @@ public struct SyncStatusView: View {
         if snapshot { conversationContent }
         else {
             ScrollViewReader { proxy in
-                ScrollView { conversationContent }.frame(minHeight: 300, maxHeight: 450).onChange(of: model.focusedTurn) { _, turn in
-                    if let turn { proxy.scrollTo(turn, anchor: .top) }
+                WindowScrollArea { conversationContent }.frame(minHeight: 300, maxHeight: 450).onChange(of: model.focusRequest) { _, _ in
+                    if let turn = model.focusedTurn { proxy.scrollTo(turn, anchor: .top) }
                 }.onAppear { if let turn = model.focusedTurn { proxy.scrollTo(turn, anchor: .top) } }
+                    .onChange(of: model.displayedTurns.map(\.id)) { _, _ in
+                        if let turn = model.focusedTurn { proxy.scrollTo(turn, anchor: .top) }
+                    }
             }
         }
     }

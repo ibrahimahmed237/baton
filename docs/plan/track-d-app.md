@@ -96,6 +96,16 @@ Rules for this track:
 **Fixture states.** one per target tool; already linked; a way greyed out with its reason; large chat suggesting a brief.
 **Done when.** Switching the tool swaps the notes with no text in the view.
 
+## UI1. Window, navigation and scroll interaction audit
+
+**Goal.** Repair the interaction defects Ibrahim reported on 2026-10-06, preserving the accepted glass appearance.
+**From.** Ibrahim's UI review request; D3/D4/D5 existing screens. No feature spec is changed.
+**Depends on.** D4b and D5 working-tree implementations.
+**Files.** BatonApp.swift; WindowView/WindowViewModel; SyncStatusView/SyncStatusViewModel; LinkDialogView; PopoverView; Components/WindowPresentation.swift; WindowInteractionTests, PopoverTests, LinkDialogTests; plan status, this track and UI1 report.
+**Steps.** Allow native resize/full screen and flexible content; make padded row areas clickable; retain selection on repeated navigation; bound long dialog/popover content and use native overlay scrolling; repair repeated turn jumps; independently challenge and validate.
+**Tests.** Native fixture window controls, actual blank-row mouse events, repeat navigation/jump requests, full-size renders in both themes, native SwiftUI overlay attachment/overflow, scroll to end of long dialog. Mutation of click shapes must fail the click test.
+**Done when.** These regression checks and the full engine/app checks pass, and the independent review has no blockers. Human confirmation of the actual full-screen transition and live visual appearance remains explicitly pending when desktop capture is unavailable. Broader polish stays tracked in the UI1 report and D13.
+
 ## D6. What-will-happen and confirmation
 
 **Board.** What will happen, per tool; Relaunch warning. **From.** more-tools notes table, G4a, G4b; A6; T5, T6.

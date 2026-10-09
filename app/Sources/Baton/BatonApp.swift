@@ -35,7 +35,7 @@ struct BatonApp: App {
         .menuBarExtraStyle(.window)
         Window("Baton", id: "links") {
             WindowView(model: windowState).task { await windowState.refresh() }
-        }
+        }.defaultSize(width: 1000, height: 600).windowResizability(.contentMinSize)
     }
 }
 
@@ -51,6 +51,7 @@ private final class BatonAppDelegate: NSObject, NSApplicationDelegate {
         let model = WindowViewModel(engine: FixtureEngine(directory: fixtures, state: "d3_filled"))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
                               styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        BatonWindowConfiguration.apply(to: window)
         window.title = "Baton"
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: WindowView(model: model).task { await model.refresh() })

@@ -5,9 +5,11 @@ import BatonKit
 public struct LinkDialogView: View {
     @ObservedObject private var model: LinkDialogViewModel
     @Environment(\.batonTheme) private var theme
+    @Environment(\.batonSnapshotPresentation) private var snapshot
     @State private var choosingChat = false
     public init(model: LinkDialogViewModel) { self.model = model }
     public var body: some View {
+        WindowScrollArea(snapshotClips: false) {
         VStack(alignment: .leading, spacing: 16) {
             if let title = model.label("dialog.link") { Text(title.text).font(.title2.weight(.semibold)) }
             if let source = model.source {
@@ -43,7 +45,7 @@ public struct LinkDialogView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Button { Task { await model.selectMode(option.mode) } } label: {
                             HStack { Text(option.label.text); Spacer(); if let tag = option.tag { Text(tag.text).font(.caption) } }
-                                .padding(10).background(theme.colour(for: .action).opacity(model.mode == option.mode ? 0.12 : 0.03), in: RoundedRectangle(cornerRadius: 8))
+                                .padding(10).contentShape(Rectangle()).background(theme.colour(for: .action).opacity(model.mode == option.mode ? 0.12 : 0.03), in: RoundedRectangle(cornerRadius: 8))
                         }.buttonStyle(.plain).disabled(!option.available || (model.targetChat != nil && option.mode == "brief"))
                         if let reason = option.reason { NoteView(note: reason) }
                         if model.targetChat != nil && option.mode == "brief", let reason = model.label("mode.brief_new_chat") { NoteView(note: reason) }
@@ -56,10 +58,10 @@ public struct LinkDialogView: View {
                             Text(model.targetChats.first(where: { $0.id == model.targetChat })?.name ?? newChat.text)
                             Spacer()
                             Image(systemName: "chevron.down")
-                        }.padding(10).background(theme.colour(for: .action).opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        }.padding(10).contentShape(Rectangle()).background(theme.colour(for: .action).opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain)
                     if choosingChat {
-                        ScrollView {
+                        WindowScrollArea {
                             VStack(alignment: .leading, spacing: 8) {
                                 Button(newChat.text) { choosingChat = false; Task { await model.selectChat(nil) } }
                                 ForEach(model.targetChats, id: \.id) { chat in
@@ -93,7 +95,8 @@ public struct LinkDialogView: View {
                         .disabled(button.id == "change_link" && model.currentLink == nil)
                 }
             }
-        }.padding(22).frame(width: 650).background { GlassBackdrop() }
+        }.padding(22)
+        }.frame(width: 650, height: snapshot ? nil : 560).background { GlassBackdrop() }
             .environment(\.colorScheme, theme.scheme).disabled(model.isApplying)
     }
     private var confirmationID: String {

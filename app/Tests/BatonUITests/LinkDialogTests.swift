@@ -187,7 +187,7 @@ struct LinkDialogTests {
         for state in Self.states {
             let model = try await loaded(state)
             for theme in Theme.allCases {
-                let renderer = ImageRenderer(content: LinkDialogView(model: model).environment(\.batonTheme, theme))
+                let renderer = ImageRenderer(content: LinkDialogView(model: model).environment(\.batonTheme, theme).environment(\.batonSnapshotPresentation, true))
                 let image = try #require(renderer.nsImage)
                 let tiff = try #require(image.tiffRepresentation)
                 let bitmap = try #require(NSBitmapImageRep(data: tiff))

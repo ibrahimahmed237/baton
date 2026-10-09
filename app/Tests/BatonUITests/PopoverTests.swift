@@ -94,7 +94,7 @@ struct PopoverTests {
         changedStep.notes[0].text += "!"
         #expect(PlanSteps(steps: plan.steps, excludingNotes: plan.notes).displayedNotes(for: changedStep) == changedStep.notes)
         for theme in Theme.allCases {
-            let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme))
+            let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
             renderer.scale = 2
             let image = try #require(renderer.nsImage)
             let tiff = try #require(image.tiffRepresentation)
@@ -132,7 +132,7 @@ struct PopoverTests {
             }
             if let id = model.selectedLinkID { model.select(linkID: id) }
             for theme in Theme.allCases {
-                let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme))
+                let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
                 renderer.scale = 2
                 let image = try #require(renderer.nsImage)
                 #expect(image.size.width > 0 && image.size.height > 0)

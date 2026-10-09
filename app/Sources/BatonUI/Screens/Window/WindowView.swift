@@ -22,7 +22,7 @@ public struct WindowView: View {
                         Button { model.navigate(to: destination) } label: {
                             HStack { Text(note.text); Spacer(minLength: 0) }
                                 .font(.callout.weight(model.section == destination ? .semibold : .regular))
-                                .padding(10).background(theme.colour(for: .action)
+                                .padding(10).contentShape(Rectangle()).background(theme.colour(for: .action)
                                     .opacity(model.section == destination ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 8))
                         }.buttonStyle(.plain)
                     }
@@ -46,7 +46,7 @@ public struct WindowView: View {
                     detail
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        }.frame(width: 1000, height: 600).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+        }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
             .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
             .sheet(item: Binding(get: { linkDialog.map(DialogItem.init) }, set: { if $0 == nil { linkDialog = nil } })) { item in
                 LinkDialogView(model: item.model)
@@ -149,7 +149,7 @@ public struct WindowView: View {
 
     private func row<Content: View>(_ selection: WindowSelection, @ViewBuilder content: () -> Content) -> some View {
         Button { model.select(selection) } label: {
-            content().frame(maxWidth: .infinity, alignment: .leading).padding(10)
+            content().frame(maxWidth: .infinity, alignment: .leading).padding(10).contentShape(Rectangle())
                 .background(theme.colour(for: .action).opacity(model.selection == selection ? 0.1 : 0),
                             in: RoundedRectangle(cornerRadius: 9))
         }.buttonStyle(.plain)
@@ -174,37 +174,6 @@ public struct WindowView: View {
 
     private func suggestionSummary(_ suggestion: Suggestion) -> some View {
         VStack(alignment: .leading, spacing: 10) { chatSummary(suggestion.a); chatSummary(suggestion.b) }
-    }
-}
-
-/// Native macOS scrolling is not drawn by ImageRenderer. Snapshot presentation
-/// lays out the very same content directly; live windows keep their scroll area.
-private struct SnapshotPresentationKey: EnvironmentKey {
-    static let defaultValue = false
-}
-
-extension EnvironmentValues {
-    var batonSnapshotPresentation: Bool {
-        get { self[SnapshotPresentationKey.self] }
-        set { self[SnapshotPresentationKey.self] = newValue }
-    }
-}
-
-struct WindowScrollArea<Content: View>: View {
-    @Environment(\.batonSnapshotPresentation) private var snapshot
-    private let content: Content
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
-    var body: some View {
-        Group {
-            if snapshot {
-                GeometryReader { geometry in
-                    content.frame(width: geometry.size.width, alignment: .topLeading)
-                        .frame(height: geometry.size.height, alignment: .topLeading).clipped()
-                }
-            } else {
-                ScrollView { content }
-            }
-        }
     }
 }
 

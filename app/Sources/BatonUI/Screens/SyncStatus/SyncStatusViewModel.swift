@@ -12,6 +12,7 @@ public final class SyncStatusViewModel: ObservableObject {
     @Published public private(set) var errorNote: Note?
     @Published public private(set) var filter: ConversationFilter = .all
     @Published public private(set) var focusedTurn: Int?
+    @Published public private(set) var focusRequest = 0
     @Published public private(set) var expandedReplies: Set<Int> = []
     @Published public private(set) var expandedTools: Set<Int> = []
     @Published public private(set) var unfolded = false
@@ -63,7 +64,7 @@ public final class SyncStatusViewModel: ObservableObject {
     public func setFilter(_ value: ConversationFilter) { filter = value }
     public func jump(to turn: Int) {
         guard turns.contains(where: { $0.id == turn }) else { return }
-        filter = .all; unfolded = true; focusedTurn = turn
+        filter = .all; unfolded = true; focusedTurn = turn; focusRequest += 1
     }
     public func unfold() { unfolded = true }
     public func toggleReply(_ turn: Int) { if !expandedReplies.insert(turn).inserted { expandedReplies.remove(turn) } }

@@ -5,6 +5,7 @@ import BatonKit
 /// A fixture-ready menu-bar popover; every label comes from engine data.
 public struct PopoverView: View {
     @Environment(\.batonTheme) private var theme
+    @Environment(\.batonSnapshotPresentation) private var snapshot
     @ObservedObject private var model: PopoverViewModel
     private let linkRecent: () -> Void
 
@@ -14,6 +15,7 @@ public struct PopoverView: View {
     }
 
     public var body: some View {
+        WindowScrollArea(snapshotClips: false) {
         VStack(alignment: .leading, spacing: 14) {
             if let note = model.errorNote { NoteView(note: note) }
             if model.links.isEmpty, let empty = model.notes.first(where: { $0.id == "screen.empty" }) {
@@ -40,7 +42,7 @@ public struct PopoverView: View {
                                 .foregroundStyle(theme.colour(for: .danger))
                                 .accessibilityLabel(link.headline.text)
                         }
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10).contentShape(Rectangle())
                         .background(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.1 : 0),
                                     in: RoundedRectangle(cornerRadius: 9))
                 }.buttonStyle(.plain)
@@ -64,7 +66,8 @@ public struct PopoverView: View {
                 ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
                 PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
             }
-        }.padding(16).frame(width: 380).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+        }.padding(16)
+        }.frame(width: 380, height: snapshot ? nil : 460).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
     }
 
     private func rowMeaning(_ link: LinkSummary) -> StateColour {

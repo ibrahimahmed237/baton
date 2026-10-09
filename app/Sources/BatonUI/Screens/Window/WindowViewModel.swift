@@ -113,7 +113,7 @@ public final class WindowViewModel: ObservableObject {
 
     /// Navigates only to a destination still supported by the current setup.
     public func navigate(to destination: WindowSection) {
-        guard sections.contains(destination) else { return }
+        guard sections.contains(destination), section != destination else { return }
         section = destination; selection = nil
     }
 
