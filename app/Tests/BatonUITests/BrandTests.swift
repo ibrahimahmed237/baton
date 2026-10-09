@@ -60,7 +60,7 @@ struct BrandTests {
             #expect(border.alphaComponent > 0.99)
             #expect(min(border.redComponent, border.greenComponent, border.blueComponent) > 0.99)
             let png = try #require(dockPixels.representation(using: .png, properties: [:]))
-            try png.write(to: directory.appendingPathComponent("UI10-dock-\(theme.rawValue).png"))
+            try png.write(to: directory.appendingPathComponent("UI11-dock-\(theme.rawValue).png"))
         }
         let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
         let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
@@ -77,29 +77,8 @@ struct BrandTests {
         #expect(!light.isTemplate && !dark.isTemplate)
         #expect(light.tiffRepresentation != dark.tiffRepresentation)
         #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
-        let lightTIFF = try #require(light.tiffRepresentation)
-        let darkTIFF = try #require(dark.tiffRepresentation)
-        let lightPixels = try #require(NSBitmapImageRep(data: lightTIFF))
-        let darkPixels = try #require(NSBitmapImageRep(data: darkTIFF))
-        var outlinePixels = 0
-        for y in 0..<min(lightPixels.pixelsHigh, darkPixels.pixelsHigh) {
-            for x in 0..<min(lightPixels.pixelsWide, darkPixels.pixelsWide) {
-                guard let lightColor = lightPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
-                      let darkColor = darkPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
-                      lightColor.alphaComponent > 0.2, darkColor.alphaComponent > 0.2 else { continue }
-                let lightSpread = max(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
-                    - min(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
-                let darkSpread = max(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
-                    - min(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
-                let lightBrightness = (lightColor.redComponent + lightColor.greenComponent + lightColor.blueComponent) / 3
-                let darkBrightness = (darkColor.redComponent + darkColor.greenComponent + darkColor.blueComponent) / 3
-                if lightSpread < 0.025, darkSpread < 0.025, lightBrightness < 0.5, darkBrightness > 0.82,
-                   abs(lightBrightness - darkBrightness) > 0.3 { outlinePixels += 1 }
-            }
-        }
-        #expect(outlinePixels > 2)
     }
-    @MainActor @Test func dockMarkUsesMoreOfItsTileAndMenuOutlineStaysTransparentOutside() throws {
+    @MainActor @Test func dockMarkUsesConventionalTileMarginsAndKeepsSignature() throws {
         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
         let dockData = try #require(dock.tiffRepresentation)
         let pixels = try #require(NSBitmapImageRep(data: dockData))
@@ -112,7 +91,8 @@ struct BrandTests {
                 }
             }
         }
-        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.82)
+        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.76)
+        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.85)
         var signaturePixels = 0
         for y in Int(Double(pixels.pixelsHigh) * 0.80)..<pixels.pixelsHigh {
             for x in Int(Double(pixels.pixelsWide) * 0.76)..<pixels.pixelsWide {
@@ -124,14 +104,6 @@ struct BrandTests {
         let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
         let data = try #require(menu.tiffRepresentation)
         let tiny = try #require(NSBitmapImageRep(data: data))
-        var lightNeutralEdge = 0
-        for y in 0..<tiny.pixelsHigh {
-            for x in 0..<tiny.pixelsWide {
-                let c = try #require(tiny.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
-                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.82 { lightNeutralEdge += 1 }
-            }
-        }
-        #expect(lightNeutralEdge > 15)
         #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
     }
     @MainActor @Test func menuMarkUsesGrayscaleGlassWhileDockKeepsBrandColors() throws {
@@ -154,7 +126,7 @@ struct BrandTests {
                 }
                 #expect(shadedPixels > 80)
                 let png = try #require(pixels.representation(using: .png, properties: [:]))
-                try png.write(to: directory.appendingPathComponent("UI10-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
+                try png.write(to: directory.appendingPathComponent("UI11-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
             }
         }
         let dock = try #require(BatonBrand.applicationIcon(theme: .light))

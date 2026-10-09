@@ -90,7 +90,7 @@ public struct BrandMark: View {
             }
         }
         // The source is trimmed to its alpha bounds first, so this inset preserves the signature.
-        .frame(width: placement == .dock ? size * 0.92 : size, height: placement == .dock ? size * 0.92 : size)
+        .frame(width: placement == .dock ? size * 0.86 : size, height: placement == .dock ? size * 0.86 : size)
         .frame(width: size, height: size)
         .background {
             if placement == .dock {

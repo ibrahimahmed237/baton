@@ -24,13 +24,13 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI10 is complete: the Dock tile has a tighter white margin with the entire I.A signature intact; its signed burgundy-and-black artwork is unchanged. The menu-bar mark and decision badge use a theme-aware grayscale glass treatment. Dock and four menu snapshots were inspected; the running app was not relaunched.
-- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI10 are the commit route. No push or real chats.
-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI10 implementation records remain ready to commit as listed below. UI10's independent review found no remaining issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI10's menu output was inspected through rendered snapshots.
+- UI11 is complete and independently reviewed with no findings. The Dock mark uses a more conventional safe area; the menu-bar mark is a crisp vector link symbol with a monochrome glass finish. App and Dock artwork colors are preserved. The first refreshed fixture launch crashed because its temporary bundle omitted `Baton_BatonUI.bundle`; that built resource bundle is now in `Contents/Resources`, and relaunch returned success. Computer Use could not confirm the visible window; no later crash report was present when checked.
+- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI11 are ready. No push or real chats.
+- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI11 implementation records remain ready to commit as listed below. UI10 and UI11 independent reviews found no remaining issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI10 and UI11 menu output was inspected through rendered snapshots.
 
 ## Next
 
-Review/commit the ordered patches through UI10. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+Review/commit the ordered patches through UI11. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
 
 ## Done
 
@@ -64,10 +64,32 @@ Review/commit the ordered patches through UI10. Continue E9/E10 and D6/D7, with 
 | UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
 | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
 | UI10 Dock margin and grayscale glass menu mark | 2026-10-06 | Ready to commit — review findings fixed; rendered Dock/menu images inspected | 379 engine / 96 app |
+| UI11 conventional Dock scale and crisp vector menu symbol | 2026-10-06 | Ready to commit — independent reviewer found no findings; snapshots inspected | 379 engine / 96 app |
 
 ## Ready to commit
 
 Historical CP1 patches have been committed; do not reapply them.
+
+### UI11 — conventional Dock scale and crisp menu-bar symbol
+
+Patch: `docs/plan/reports/patches/UI11.patch`, applies after UI10 on HEAD `4546808`. Report: `docs/plan/reports/UI11-2026-10-06.md`.
+
+Exact paths:
+
+- `app/Sources/BatonUI/Components/BrandMark.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
+- `app/Tests/BatonUITests/BrandTests.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI11-2026-10-06.md`
+
+Commit message:
+
+```text
+Scale the Dock brand and sharpen the menu-bar mark
+
+Give the signed Dock artwork a familiar safe area and use a native vector link symbol at menu-bar size. The grayscale glass finish stays crisp without changing the app and Dock brand colors.
+```
 
 ### UI10 — tighter Dock tile and glass-gray menu mark
 

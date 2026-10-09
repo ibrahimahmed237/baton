@@ -281,3 +281,17 @@ UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build p
 **Checks.** Assert Dock mark bounds expand while the signature remains visible and burgundy source colors remain. Assert menu icon pixels are grayscale in Light and Graphite with and without the decision badge; render all four snapshots. Run `swift build`, `swift test`, and the engine suite; inspect the rendered menu and Dock PNGs.
 
 **Done when.** The Dock white margin is visibly tighter without clipping the signature; the menu-bar mark and badge use only neutral grayscale on transparent surroundings; app and Dock identity colors stay intact; snapshots, checks and independent review pass.
+
+## UI11 — conventional Dock scale and crisp menu-bar symbol
+
+**Goal.** Bring the B/I.A artwork closer to the visual scale of other macOS Dock icons and keep the menu-bar mark sharp at its small size, with a neutral glass finish and no colors.
+
+**From.** Ibrahim, 2026-10-06: the Dock artwork still looks oversized beside other apps; the menu-bar artwork looks pixelated and should be colorless glass like ChatGPT.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI11-2026-10-06.md`; `docs/plan/reports/patches/UI11.patch`.
+
+**Steps.** Scale only the complete signed Dock artwork down to a conventional safe area while preserving the white rounded tile and B/I.A colors. Replace the tiny raster menu mark with a native vector link symbol, use the existing grayscale glass gradient, and keep the decision dot neutral.
+
+**Checks.** Assert the Dock mark occupies a bounded conventional fraction of its tile and the complete signature remains visible. Check the menu image's near-opaque pixels for neutral grayscale, transparent background, clear badge state and distinct Light/Graphite rendering. Snapshot both Dock sizes and all menu states; run the app build/tests and engine suite.
+
+**Done when.** The Dock mark reads at a familiar macOS app-icon scale with the entire signature; the menu image is crisp, monochrome, glass-like, and visible in both themes; all snapshots and tests pass and independent review finds no issue.

@@ -116,7 +116,7 @@ public struct BatonMenuIcon: View {
     @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme, reduceTransparency: Bool? = nil) -> NSImage? {
         let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision,
             reduceTransparency: reduceTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
-            .font(.system(size: 14)).foregroundStyle(theme.text)
+            .font(.system(size: 16, weight: .semibold)).foregroundStyle(theme.text)
             .frame(width: 26, height: 22).batonTheme(theme))
         renderer.scale = 2
         let image = renderer.nsImage
@@ -124,7 +124,9 @@ public struct BatonMenuIcon: View {
         return image
     }
     public var body: some View {
-        BrandMark(size: 22, reduceTransparency: reduceTransparency, placement: .menu)
+        Image(systemName: "link")
+            .symbolRenderingMode(.monochrome)
+            .foregroundStyle(theme.menuGlass)
             .frame(width: 26, height: 22, alignment: .leading)
             .overlay(alignment: .topTrailing) {
                 if needsDecision {
