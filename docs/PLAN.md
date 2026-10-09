@@ -9,7 +9,7 @@ What gets built, in what order, and when each piece counts as done. This page is
 - Both spikes: how each of the four tools stores chats, takes writes, attaches text and reports a finished reply ([SPIKE-M0.md](SPIKE-M0.md), [features/more-tools.md](features/more-tools.md)).
 - Dark theme: Graphite. Colour rules in DESIGN.md section 7.
 
-**Checkpoint CP1 passed 2026-10-05** ([plan/CHECKPOINTS.md](plan/CHECKPOINTS.md)), CP0 before it: delivery by each tool's facts, journal and safety, turn mapping, the applier, linking and copying are built and tested on a fake tool (268 engine tests); the app has its theme, menu-bar popover, window and sync status screen on fixtures (44 tests). Six review findings are being closed. Live status: [plan/STATUS.md](plan/STATUS.md). Next: merge, undo, usage, briefs, the Claude and Codex adapters, the command line, and three more screens, towards CP2.
+**Checkpoint CP1 passed 2026-10-05; CP2 in progress (reviewed 2026-10-09).** Built and committed: delivery by each tool's facts, journal and safety, turn mapping, applier, linking and copying, merge, undo and restore, the Claude adapter on built fixtures (380 engine tests), and the app's theme, menu-bar popover, window, sync status, link and copy dialogs, brand and early settings (95 of 96 app tests). Still owed for CP2: usage and limits, briefs, the Codex adapter, the command line, two more screens, and the live run on throwaway chats. Live status and open findings: [plan/STATUS.md](plan/STATUS.md).
 
 **Built** (`baton/` and `app/`, 129 engine tests and 15 app tests)
 - `model.py`: turns and messages.

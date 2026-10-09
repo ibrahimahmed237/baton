@@ -1,0 +1,1086 @@
+diff --git a/app/Sources/Baton/BatonApp.swift b/app/Sources/Baton/BatonApp.swift
+--- a/app/Sources/Baton/BatonApp.swift
++++ b/app/Sources/Baton/BatonApp.swift
+@@ -35,7 +35,7 @@
+         .menuBarExtraStyle(.window)
+         Window("Baton", id: "links") {
+             WindowView(model: windowState).task { await windowState.refresh() }
+-        }.defaultSize(width: 1000, height: 600).windowResizability(.contentMinSize)
++        }.defaultSize(width: 1000, height: 600).windowResizability(.contentMinSize).windowStyle(.hiddenTitleBar)
+     }
+ }
+ 
+diff --git a/app/Sources/BatonUI/Components/WindowPresentation.swift b/app/Sources/BatonUI/Components/WindowPresentation.swift
+--- a/app/Sources/BatonUI/Components/WindowPresentation.swift
++++ b/app/Sources/BatonUI/Components/WindowPresentation.swift
+@@ -8,6 +8,34 @@
+         window.styleMask.insert(.resizable)
+         window.collectionBehavior.insert(.fullScreenPrimary)
+         window.contentMinSize = NSSize(width: 1000, height: 600)
++        applyGlass(to: window, theme: .graphite)
++    }
++    /// Extends the app palette behind the title bar while retaining native traffic-light controls.
++    @MainActor public static func applyGlass(to window: NSWindow, theme: Theme) {
++        window.titlebarAppearsTransparent = true
++        window.titleVisibility = .hidden
++        window.styleMask.insert(.fullSizeContentView)
++        window.backgroundColor = NSColor(theme.background)
++        window.appearance = NSAppearance(named: theme == .graphite ? .darkAqua : .aqua)
++    }
++}
++
++/// Applies the same glass chrome to windows created by SwiftUI and by the fixture launcher.
++struct WindowGlassChrome: NSViewRepresentable {
++    let theme: Theme
++    func makeNSView(context: Context) -> ChromeProbe { ChromeProbe(theme: theme) }
++    func updateNSView(_ view: ChromeProbe, context: Context) {
++        view.theme = theme; view.configure()
++    }
++    final class ChromeProbe: NSView {
++        var theme: Theme
++        init(theme: Theme) { self.theme = theme; super.init(frame: .zero) }
++        required init?(coder: NSCoder) { nil }
++        override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); configure() }
++        func configure() {
++            guard let window else { return }
++            BatonWindowConfiguration.applyGlass(to: window, theme: theme)
++        }
+     }
+ }
+ 
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowView.swift b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+--- a/app/Sources/BatonUI/Screens/Window/WindowView.swift
++++ b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+@@ -46,7 +46,8 @@
+                     detail
+                 }.frame(maxWidth: .infinity, alignment: .leading)
+             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+-        }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
++        }.frame(minWidth: 1000, idealWidth: 1000, maxWidth: .infinity, minHeight: 600, idealHeight: 600, maxHeight: .infinity).background { GlassBackdrop().ignoresSafeArea(.container, edges: .top) }
++            .background(WindowGlassChrome(theme: theme)).environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+             .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
+             .sheet(item: Binding(get: { linkDialog.map(DialogItem.init) }, set: { if $0 == nil { linkDialog = nil } })) { item in
+                 LinkDialogView(model: item.model)
+diff --git a/app/Tests/BatonUITests/WindowInteractionTests.swift b/app/Tests/BatonUITests/WindowInteractionTests.swift
+--- a/app/Tests/BatonUITests/WindowInteractionTests.swift
++++ b/app/Tests/BatonUITests/WindowInteractionTests.swift
+@@ -16,6 +16,56 @@
+         #expect(window.contentMinSize == NSSize(width: 1000, height: 600))
+         window.setContentSize(NSSize(width: 1400, height: 900))
+         #expect(window.contentView?.bounds.size == NSSize(width: 1400, height: 900))
++        window.close()
++    }
++
++    @MainActor @Test func titleBarUsesTheAppPaletteAndRetainsNativeControls() throws {
++        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
++                              styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false
++        for theme in Theme.allCases {
++            BatonWindowConfiguration.applyGlass(to: window, theme: theme)
++            #expect(window.titlebarAppearsTransparent)
++            #expect(window.titleVisibility == .hidden)
++            #expect(window.styleMask.contains(.fullSizeContentView))
++            #expect(window.backgroundColor == NSColor(theme.background))
++            #expect(window.appearance?.name == (theme == .graphite ? .darkAqua : .aqua))
++            #expect(window.standardWindowButton(.closeButton) != nil)
++            #expect(window.standardWindowButton(.miniaturizeButton) != nil)
++            #expect(window.standardWindowButton(.zoomButton) != nil)
++            #expect(window.contentLayoutRect.height < window.contentView!.bounds.height)
++        }
++        window.close()
++    }
++
++    @MainActor @Test func swiftUIWindowChromeUpdatesWhenTheThemeChanges() {
++        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
++                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false
++        let probe = WindowGlassChrome.ChromeProbe(theme: .light)
++        window.contentView?.addSubview(probe)
++        #expect(window.titlebarAppearsTransparent)
++        #expect(window.appearance?.name == .aqua)
++        probe.theme = .graphite; probe.configure()
++        #expect(window.appearance?.name == .darkAqua)
++        #expect(window.backgroundColor == NSColor(Theme.graphite.background))
++        window.close()
++    }
++
++    @MainActor @Test func glassWindowMinimumSizeFitsHostedContent() async {
++        let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
++        await model.refresh()
++        let host = NSHostingView(rootView: WindowView(model: model))
++        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
++                              styleMask: [.titled, .resizable], backing: .buffered, defer: false)
++        window.isReleasedWhenClosed = false
++        BatonWindowConfiguration.apply(to: window)
++        window.contentView = host
++        window.setContentSize(window.contentMinSize)
++        host.layoutSubtreeIfNeeded()
++        try? await Task.sleep(for: .milliseconds(40))
++        #expect(host.fittingSize.height <= host.bounds.height)
++        #expect(host.fittingSize.width <= host.bounds.width)
+         window.close()
+     }
+ 
+@@ -68,7 +118,7 @@
+         host.layoutSubtreeIfNeeded()
+         try await Task.sleep(for: .milliseconds(60))
+         // The right-hand blank space of the third sidebar row, beyond its text.
+-        let location = NSPoint(x: 180, y: 600 - 116)
++        let location = NSPoint(x: 180, y: window.contentLayoutRect.maxY - 116)
+         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+             let event = try #require(NSEvent.mouseEvent(with: type, location: location, modifierFlags: [],
+                 timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber,
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,15 +24,17 @@
+ 
+ ## Now
+ 
++- UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is in progress with approved capability-based undo and additive recovery/store scope; its final root checks are pending.
++
+ - UI1 interaction audit complete and independently reviewed: resize/full-screen controls, blank row click targets, repeated navigation/turn jumps, native overlay scrolling and long dialog/popover overflow are repaired. Final checks: 334 engine / 68 app tests and Swift build pass. Native fixture mouse/scroll tests pass; desktop capture failed, so the actual macOS full-screen transition and live appearance need human confirmation. See reports/UI1-2026-10-06.md.
+ 
+ - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
+ - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
+-- Current working tree: 334 engine tests, 68 app tests, Swift build pass. Git remains read-only; no commit, escalation or push. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
++- Last complete isolated UI2 boundary: 334 engine tests, 71 app tests, Swift build pass. E8 draft is green at the worker's interim 363-engine-test check; its final root rerun and independent review are pending. Git remains read-only; no commit, escalation or push. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+ 
+ ## Next
+ 
+-UI1 is ready to commit after CP2-record. Human-check resize/full screen and the overlay scroll appearance on the rebuilt fixture. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
++UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
+ 
+ Continue E8 (including merge U9), then E9/E10 (including M12), and D6/D7 in parallel. B2 and C1/C2 remain; C2 must generate labels/notes/fixtures and dispatch remembered automatic merges after refresh. B1 needs a separately authorized live run after listing the exact throwaway writes and release/close/reopen actions. No real-app run is authorized by commit/continue.
+ 
+@@ -57,6 +59,7 @@
+ | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
+ | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
+ | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
++| UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
+ | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
+ 
+ ## Ready to commit
+@@ -475,6 +478,26 @@
+ The fixture window and fixed content size prevented expansion. Padded rows missed clicks, repeated navigation erased selection, and long content could hide actions. Restore native window controls, full-row hits and accessible overlay scrolling without replacing the glass style.
+ ```
+ 
++### UI2 — glass title bar
++
++Patch: `docs/plan/reports/patches/UI2.patch`, applies after UI1. Exact paths:
++
++- `app/Sources/Baton/BatonApp.swift`
++- `app/Sources/BatonUI/Components/WindowPresentation.swift`
++- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
++- `app/Tests/BatonUITests/WindowInteractionTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI2-2026-10-06.md`
++
++Commit message:
++
++```text
++fix(app): blend the title bar into the glass window
++
++The separate system title bar broke the approved glass palette. Extend the backdrop behind transparent native chrome while preserving window controls and content safe areas.
++```
++
+ ## Decisions
+ 
+ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
+@@ -514,14 +537,21 @@
+ 
+ 22. **UI interaction fixes (Ibrahim request, 2026-10-06; implementation independently reviewed):** preserve existing glass style while repairing expansion/full-screen controls, row hit areas and scrolling. Native overlay scrollers are used within Baton only; no system preference changed. Wider layouts are supported; minimum width remains 1000 to preserve the current two-card layout.
+ 
++23. **Merge undo (Ibrahim, 2026-10-06):** U9 means native cut where can_cut supports it, otherwise a shorter copy as A9 requires. Merge-created chats are preserved; the link moves back to the earlier chat. Approved after explicit safety recommendation.
++24. **E8 scope correction (Orchestrator, implementation only):** additive atomic complete_undo store API and ledger mixin, additive writer restore with fresh pre-write recovery receipt, empty cut boundary for fake/Claude adapters, and catalogue wording from existing specs are permitted; tests use temporary fixtures only.
++
++25. **Glass title bar (Ibrahim, 2026-10-06):** requested native top bar in the existing glass palette. Transparent full-size chrome extends only the backdrop through the safe area; controls remain native. No system appearance setting changed.
++
+ ## Questions
+ 
+-- UI1: desktop capture returned ScreenCaptureKit -3811. Full-screen Space transitions and visual scrollbar appearance remain a human check; native fixture controls/click/overflow tests pass. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
++- UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
+ 
+ - F2 explicitly assigns engine-generated labels to C2, although findings precede CP2. Contract/UI/fixtures are complete; the C2 obligation remains tracked until implemented.
+ - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 and M12 integration checks are tracked for E8 and E9/E10 respectively.
+ 
+ ## Log
++
++- 2026-10-06 — UI2 title bar completed, independently reviewed; 71 app tests and isolated 334 engine tests. Hosted minimum-size test passed. Rebuilt fixture launch and native CUA light chrome/full-screen entry observed; no real coding app touched. E8 continues.
+ 
+ - 2026-10-06 — Ibrahim requested a UI bug/enhancement audit. UI1 fixes independently reviewed; all three reviewer findings closed. 334 engine / 68 app / build pass; click-shape mutation fails as expected. Existing package patches preserved, UI1 ready after CP2-record.
+ 
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -106,6 +106,14 @@
+ **Tests.** Native fixture window controls, actual blank-row mouse events, repeat navigation/jump requests, full-size renders in both themes, native SwiftUI overlay attachment/overflow, scroll to end of long dialog. Mutation of click shapes must fail the click test.
+ **Done when.** These regression checks and the full engine/app checks pass, and the independent review has no blockers. Human confirmation of the actual full-screen transition and live visual appearance remains explicitly pending when desktop capture is unavailable. Broader polish stays tracked in the UI1 report and D13.
+ 
++## UI2. Glass title bar
++
++**Goal.** Blend native window chrome into the approved light/graphite app palette.
++**From.** Ibrahim's title-bar request, 2026-10-06.
++**Files.** BatonApp.swift; Components/WindowPresentation.swift; WindowView.swift; WindowInteractionTests.swift; plan status/track/report.
++**Tests.** Native title-bar flags/colors/controls in both themes, theme-change attachment, hosted content at minimum size, existing click/resize tests and full app suite.
++**Done when.** Native title bar uses the existing palette without losing controls or clipping body content, independent review and checks pass. Native CUA confirmed light chrome and actual full-screen entry; graphite is checked by native configuration tests.
++
+ ## D6. What-will-happen and confirmation
+ 
+ **Board.** What will happen, per tool; Relaunch warning. **From.** more-tools notes table, G4a, G4b; A6; T5, T6.
+diff --git a/docs/plan/reports/UI2-2026-10-06.md b/docs/plan/reports/UI2-2026-10-06.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI2-2026-10-06.md
+@@ -0,0 +1,850 @@
++# UI2 — glass title bar, 2026-10-06
++
++The window title bar now blends into the existing app glass palette. A transparent full-size native title bar lets the GlassBackdrop extend through the top safe area; the body retains its safe area, native traffic-light controls, resizing and full-screen support. A shared probe applies palette changes to both the SwiftUI scene and the diagnostic fixture window; no system settings are changed.
++
++App tests: **68 → 71**, Swift build pass. Engine at UI2's isolated ordered patch boundary: **334 pass**. E8 was developing concurrently: an intermediate whole-tree check caught 357 engine tests with 3 errors in its draft; this is pasted below and is not presented as a green boundary. E8 must be green before stopping.
++
++## Files / commit
++
++- `app/Sources/Baton/BatonApp.swift`
++- `app/Sources/BatonUI/Components/WindowPresentation.swift`
++- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
++- `app/Tests/BatonUITests/WindowInteractionTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI2-2026-10-06.md`
++
++Git is protected; ready-to-commit patch UI2 applies after UI1. Message:
++
++```text
++fix(app): blend the title bar into the glass window
++
++The separate system title bar broke the approved glass palette. Extend the backdrop behind transparent native chrome while preserving window controls and content safe areas.
++```
++
++## Challenge and validation
++
++Independent reviewer found no confirmed blockers, but requested checking native minimum-size layout. Added glassWindowMinimumSizeFitsHostedContent: a real NSHostingView at the window's contentMinSize has fitting height/width within its bounds. It passes, as do the blank-padding mouse click and resizing regressions. Light/graphite native backing colors, appearances, transparent/full-size chrome and standard controls are asserted; the probe's theme update is checked.
++
++The authorized fixture-only executable and hand-made resource bundle were copied to /private/tmp/BatonFixture.app and launched with open --args --review-window (exit 0). No exact-path old fixture process was running (pkill exit 1, no other process targeted). CUA now successfully shows “Baton Fixture Review”, unlike the prior capture failure. Native screenshot visually confirms the light glass/title-bar continuity. Clicking its full-screen control removed normal-window controls and screenshot showed the enlarged full-screen layout. The user changed the fixture while inspection was ongoing; further UI actions were stopped, and latest state was read. No actual real coding app or chat was accessed. Graphite live appearance is not separately observed; native palette tests cover configuration.
++
++ImageRenderer snapshots alone cannot capture native title-bar chrome. No fabricated title-bar PNG is presented as live proof.
++
++## All checks — concurrent whole-tree output, pasted
++
++### Engine
++
++Command: `python3 -m unittest discover -s tests -t .`
++
++```text
++..................................E.............E....................................................E...............................................................................................................................................................................................................................................................
++======================================================================
++ERROR: test_restore_refuses_intervening_write_without_mutation (tests.adapters.test_claude.ClaudeSuite.test_restore_refuses_intervening_write_without_mutation)
++----------------------------------------------------------------------
++Traceback (most recent call last):
++  File "/Users/ibrahimahmed/Desktop/projects/baton/tests/adapters/suite.py", line 124, in test_restore_refuses_intervening_write_without_mutation
++    with self.assertRaises(ChatChanged):
++                           ^^^^^^^^^^^
++NameError: name 'ChatChanged' is not defined
++
++======================================================================
++ERROR: test_restore_refuses_intervening_write_without_mutation (tests.adapters.test_fake.ClaudeLikeTests.test_restore_refuses_intervening_write_without_mutation)
++----------------------------------------------------------------------
++Traceback (most recent call last):
++  File "/Users/ibrahimahmed/Desktop/projects/baton/tests/adapters/suite.py", line 124, in test_restore_refuses_intervening_write_without_mutation
++    with self.assertRaises(ChatChanged):
++                           ^^^^^^^^^^^
++NameError: name 'ChatChanged' is not defined
++
++======================================================================
++ERROR: test_restore_refuses_intervening_write_without_mutation (tests.adapters.test_fake.OpenCodeLikeTests.test_restore_refuses_intervening_write_without_mutation)
++----------------------------------------------------------------------
++Traceback (most recent call last):
++  File "/Users/ibrahimahmed/Desktop/projects/baton/tests/adapters/suite.py", line 124, in test_restore_refuses_intervening_write_without_mutation
++    with self.assertRaises(ChatChanged):
++                           ^^^^^^^^^^^
++NameError: name 'ChatChanged' is not defined
++
++----------------------------------------------------------------------
++Ran 357 tests in 1.304s
++
++FAILED (errors=3)
++```
++
++Exit: 1
++
++### Layer rule
++
++Command: `grep -rnE '^(from|import) .*(adapters|ledger)' baton/domain baton/ports baton/services`
++
++```text
++```
++
++Exit: 1
++
++### Core tool-name rule
++
++Command: `grep -rniE 'claude|codex|opencode|cursor' baton/ports baton/services tests/adapters/suite.py`
++
++```text
++```
++
++Exit: 1
++
++### Sentence candidates
++
++Command: `python3 /tmp/baton_sentence_scan.py`
++
++```text
++Executable multiword string candidates in services/ports: []
++This scan supports manual sentence review; it does not classify every possible user-facing string.
++```
++
++Exit: 0
++
++### UI literal scan
++
++Command: `rg -n 'Text\("|Button\("|Color\(' app/Sources/BatonUI --glob '!**/Theme/**'`
++
++```text
++app/Sources/BatonUI/Components/WindowPresentation.swift:18:        window.backgroundColor = NSColor(theme.background)
++app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift:72:                labelButton("screen.history") { Task { await model.showHistory() } }
++app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift:73:                labelButton("screen.remove", meaning: .danger) { Task { await model.previewRemoval() } }
++app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift:74:                labelButton("screen.refresh") { Task { await model.load(link: status.linkID) } }
++```
++
++Exit: 0
++
++### App build
++
++Command: `swift build --disable-sandbox` in `app/`, with process-local `CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache`
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++[0/1] Planning build
++Building for debugging...
++[0/3] Write swift-version--1AB21518FC5DEDBE.txt
++Build complete! (0.17s)
++```
++
++Exit: 0
++
++### App tests
++
++Command: `swift test --disable-sandbox` in `app/`, with process-local `CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache`
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++[0/1] Planning build
++Building for debugging...
++[0/4] Write swift-version--1AB21518FC5DEDBE.txt
++Build complete! (0.16s)
++◇ Test run started.
++↳ Testing Library Version: 124
++↳ Target Platform: arm64e-apple-macos14.0
++◇ Suite ComponentTests started.
++◇ Suite WindowInteractionTests started.
++◇ Suite LinkDialogTests started.
++◇ Suite ProcessEngineTests started.
++◇ Suite LinkFixtureRoutingTests started.
++◇ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() started.
++◇ Suite WindowTests started.
++◇ Suite PopoverTests started.
++◇ Suite SyncStatusTests started.
++◇ Test testMalformedSuccessRemainsADecodingError() started.
++◇ Test testRefusalAndCrashBothCarryTheEngineNote() started.
++◇ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() started.
++◇ Suite ImmediateCommandTests started.
++◇ Suite FixtureEngineTests started.
++◇ Suite FixtureDecodingTests started.
++◇ Test testBothOutputPipesAreDrained() started.
++◇ Test eachTargetShowsItsOwnEngineNotesAndEligibility() started.
++◇ Test reviewWindowAllowsResizeAndFullScreen() started.
++◇ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() started.
++◇ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() started.
++◇ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() started.
++◇ Test selectionContinueAndDecisionBadgeUseEngineData() started.
++◇ Test testConcurrentProcessesDrainBothPipes() started.
++◇ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() started.
++◇ Test testSubcommandDispatchAndPreview() started.
++◇ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() started.
++◇ Test testSnakeCaseEncodingAndOptionalButtonPrimary() started.
++◇ Test testEveryFixtureDecodesAndIgnoresUnknownFields() started.
++◇ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() started.
++◇ Test testFixtureErrorPreservesNote() started.
++◇ Test testEveryCommandThroughEngineClient() started.
++◇ Test testMissingFixtureThrows() started.
++◇ Test testStateSelection() started.
++◇ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() started.
++✔ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() passed after 0.009 seconds.
++✔ Test testSnakeCaseEncodingAndOptionalButtonPrimary() passed after 0.009 seconds.
++✔ Test testMissingFixtureThrows() passed after 0.009 seconds.
++✔ Suite LinkFixtureRoutingTests passed after 0.009 seconds.
++✔ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() passed after 0.010 seconds.
++✔ Suite ImmediateCommandTests passed after 0.010 seconds.
++✔ Test testStateSelection() passed after 0.010 seconds.
++✔ Test testFixtureErrorPreservesNote() passed after 0.011 seconds.
++✔ Test testEveryCommandThroughEngineClient() passed after 0.023 seconds.
++✔ Suite FixtureEngineTests passed after 0.023 seconds.
++✔ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() passed after 0.073 seconds.
++◇ Test confirmationRequiresExactDisplayedNotes() started.
++✔ Test confirmationRequiresExactDisplayedNotes() passed after 0.001 seconds.
++◇ Test semanticMappingsCoverStatesAndPlanActions() started.
++✔ Test semanticMappingsCoverStatesAndPlanActions() passed after 0.001 seconds.
++◇ Test snapshotsEachComponentInBothThemes() started.
++✔ Test testEveryFixtureDecodesAndIgnoresUnknownFields() passed after 0.101 seconds.
++✔ Suite FixtureDecodingTests passed after 0.101 seconds.
++✔ Test reviewWindowAllowsResizeAndFullScreen() passed after 0.121 seconds.
++◇ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() started.
++✔ Test testSubcommandDispatchAndPreview() passed after 0.226 seconds.
++✔ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() passed after 0.227 seconds.
++✔ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() passed after 0.236 seconds.
++✔ Test testBothOutputPipesAreDrained() passed after 0.239 seconds.
++✔ Test snapshotsEachComponentInBothThemes() passed after 0.170 seconds.
++✔ Suite ComponentTests passed after 0.244 seconds.
++✔ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() passed after 0.126 seconds.
++◇ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() started.
++✔ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() passed after 0.003 seconds.
++◇ Test repeatedSidebarClickPreservesTheSelectedChat() started.
++✔ Test selectionContinueAndDecisionBadgeUseEngineData() passed after 0.252 seconds.
++◇ Test omittedPresentationNotesRemainCompatible() started.
++✔ Test omittedPresentationNotesRemainCompatible() passed after 0.001 seconds.
++◇ Test refreshingInvalidatesAnInFlightPreview() started.
++✔ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() passed after 0.285 seconds.
++✔ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() passed after 0.285 seconds.
++✔ Test testMalformedSuccessRemainsADecodingError() passed after 0.285 seconds.
++✔ Test testConcurrentProcessesDrainBothPipes() passed after 0.305 seconds.
++✔ Test refreshingInvalidatesAnInFlightPreview() passed after 0.112 seconds.
++◇ Test continuePreviewRendersInBothThemes() started.
++✔ Test repeatedSidebarClickPreservesTheSelectedChat() passed after 0.115 seconds.
++◇ Test expandedWindowUsesTheAvailableSpaceInBothThemes() started.
++✔ Test continuePreviewRendersInBothThemes() passed after 0.052 seconds.
++◇ Test snapshotsAllEightStatesInBothThemes() started.
++✔ Test testRefusalAndCrashBothCarryTheEngineNote() passed after 0.432 seconds.
++✔ Suite ProcessEngineTests passed after 0.432 seconds.
++✔ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() passed after 0.527 seconds.
++◇ Test navigationSelectionAndAttentionUseEngineFlags() started.
++✔ Test expandedWindowUsesTheAvailableSpaceInBothThemes() passed after 0.530 seconds.
++◇ Test sidebarBlankAreaRespondsToOneClick() started.
++✔ Test snapshotsAllEightStatesInBothThemes() passed after 0.666 seconds.
++✔ Suite PopoverTests passed after 1.085 seconds.
++✔ Test eachTargetShowsItsOwnEngineNotesAndEligibility() passed after 1.086 seconds.
++◇ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() started.
++✔ Test navigationSelectionAndAttentionUseEngineFlags() passed after 0.560 seconds.
++◇ Test uninstalledToolIsNeverOfferedOrQueried() started.
++✔ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() passed after 1.088 seconds.
++◇ Test suppliedToolLabelsAndIdleOffersRemainEngineData() started.
++✔ Test uninstalledToolIsNeverOfferedOrQueried() passed after 0.002 seconds.
++◇ Test legacyAttentionFlagIsOptional() started.
++✔ Test legacyAttentionFlagIsOptional() passed after 0.001 seconds.
++◇ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() started.
++✔ Test suppliedToolLabelsAndIdleOffersRemainEngineData() passed after 0.004 seconds.
++◇ Test anUpToDateSideCannotShowASinceYouLeftDigest() started.
++✔ Test anUpToDateSideCannotShowASinceYouLeftDigest() passed after 0.001 seconds.
++◇ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() started.
++✔ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() passed after 0.003 seconds.
++◇ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() started.
++✔ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() passed after 0.002 seconds.
++◇ Test longReplyAndToolActivityExpandWithoutHookText() started.
++✔ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() passed after 0.009 seconds.
++◇ Test fractionalHistoryTimesSortAfterWholeSeconds() started.
++✔ Test longReplyAndToolActivityExpandWithoutHookText() passed after 0.001 seconds.
++◇ Test buttonsUseImmediateCommandsAndPreviewWritingActions() started.
++✔ Test fractionalHistoryTimesSortAfterWholeSeconds() passed after 0.002 seconds.
++◇ Test snapshotsEveryListEmptyFilledAndMissingTool() started.
++✔ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() passed after 0.407 seconds.
++◇ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() started.
++✔ Test sidebarBlankAreaRespondsToOneClick() passed after 0.996 seconds.
++◇ Test longDialogCanScrollToItsFinalActions() started.
++✔ Test buttonsUseImmediateCommandsAndPreviewWritingActions() passed after 0.796 seconds.
++◇ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() started.
++✔ Test snapshotsEveryListEmptyFilledAndMissingTool() passed after 0.844 seconds.
++✔ Suite WindowTests passed after 1.948 seconds.
++✔ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() passed after 0.470 seconds.
++◇ Test replacementRoutesNameRetainedSideAndSelectedMode() started.
++✔ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() passed after 0.066 seconds.
++◇ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() started.
++✔ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() passed after 0.002 seconds.
++◇ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() started.
++✔ Test replacementRoutesNameRetainedSideAndSelectedMode() passed after 0.002 seconds.
++◇ Test applyingLocksTheSelectionUntilTheResultIsVisible() started.
++✔ Test longDialogCanScrollToItsFinalActions() passed after 0.132 seconds.
++◇ Test repeatedTurnJumpIssuesANewScrollRequest() started.
++✔ Test repeatedTurnJumpIssuesANewScrollRequest() passed after 0.004 seconds.
++◇ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() started.
++✔ Test applyingLocksTheSelectionUntilTheResultIsVisible() passed after 0.077 seconds.
++◇ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() started.
++✔ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() passed after 0.002 seconds.
++◇ Test copyAndFullCopyNeverBypassUnavailableFullHistory() started.
++✔ Test copyAndFullCopyNeverBypassUnavailableFullHistory() passed after 0.002 seconds.
++◇ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() started.
++✔ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() passed after 0.077 seconds.
++◇ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() started.
++✔ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() passed after 0.062 seconds.
++◇ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() started.
++✔ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() passed after 0.001 seconds.
++◇ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() started.
++✔ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() passed after 0.001 seconds.
++◇ Test eachFixtureRendersInBothThemes() started.
++✔ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() passed after 0.060 seconds.
++✔ Suite WindowInteractionTests passed after 2.169 seconds.
++✔ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() passed after 0.291 seconds.
++◇ Test narrowWindowHostsReadableStatusAndPreservesBothNames() started.
++✔ Test narrowWindowHostsReadableStatusAndPreservesBothNames() passed after 0.187 seconds.
++◇ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() started.
++✔ Test eachFixtureRendersInBothThemes() passed after 0.428 seconds.
++✔ Suite LinkDialogTests passed after 2.545 seconds.
++✔ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() passed after 0.118 seconds.
++◇ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() started.
++✔ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() passed after 0.001 seconds.
++◇ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() started.
++✔ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() passed after 0.067 seconds.
++◇ Test changedLinkAndEngineFailureNeverShowThePreviousChat() started.
++✔ Test changedLinkAndEngineFailureNeverShowThePreviousChat() passed after 0.001 seconds.
++◇ Test snapshotsEverySpecifiedStateAndExpandedReply() started.
++✔ Test snapshotsEverySpecifiedStateAndExpandedReply() passed after 1.945 seconds.
++✔ Suite SyncStatusTests passed after 4.581 seconds.
++✔ Test run with 70 tests passed after 4.581 seconds.
++```
++
++Exit: 0
++
++### Scope
++
++Command: `git status --short --untracked-files=all`
++
++```text
++ M app/Fixtures/ask-add.sample.json
++ M app/Fixtures/brief.sample.json
++ M app/Fixtures/chat.sample.json
++ M app/Fixtures/chats.d3_filled.json
++ M app/Fixtures/chats.d3_tool_missing.json
++ M app/Fixtures/chats.sample.json
++ M app/Fixtures/continue.d2_decision_needed.json
++ M app/Fixtures/continue.d2_paused.json
++ M app/Fixtures/continue.d2_relaunch_needed.json
++ M app/Fixtures/continue.d2_setup_incomplete.json
++ M app/Fixtures/continue.d2_waiting.json
++ M app/Fixtures/continue.sample.json
++ M app/Fixtures/copy.d4_actions.json
++ M app/Fixtures/copy.sample.json
++ M app/Fixtures/link-summary.sample.json
++ M app/Fixtures/link.sample.json
++ M app/Fixtures/links.d2_decision_needed.json
++ M app/Fixtures/links.d2_in_sync.json
++ M app/Fixtures/links.d2_no_links.json
++ M app/Fixtures/links.d2_one_side_ahead.json
++ M app/Fixtures/links.d2_paused.json
++ M app/Fixtures/links.d2_relaunch_needed.json
++ M app/Fixtures/links.d2_setup_incomplete.json
++ M app/Fixtures/links.d2_waiting.json
++ M app/Fixtures/links.d3_empty.json
++ M app/Fixtures/links.d3_filled.json
++ M app/Fixtures/links.d3_tool_missing.json
++ M app/Fixtures/links.sample.json
++ M app/Fixtures/merge.sample.json
++ M app/Fixtures/plan.sample.json
++ M app/Fixtures/plan.unlinked.json
++ M app/Fixtures/relaunch.d4_actions.json
++ M app/Fixtures/relaunch.sample.json
++ M app/Fixtures/relink.sample.json
++ M app/Fixtures/rename.sample.json
++ M app/Fixtures/restore.sample.json
++ M app/Fixtures/setup-install.sample.json
++ M app/Fixtures/setup-tool.sample.json
++ M app/Fixtures/setup.d3_empty.json
++ M app/Fixtures/setup.d3_filled.json
++ M app/Fixtures/setup.d3_tool_missing.json
++ M app/Fixtures/setup.sample.json
++ M app/Fixtures/side.empty.json
++ M app/Fixtures/side.sample.json
++ M app/Fixtures/status.d3_filled.json
++ M app/Fixtures/status.d3_filled_3.json
++ M app/Fixtures/status.d3_filled_4.json
++ M app/Fixtures/status.d3_filled_5.json
++ M app/Fixtures/status.d4_hooks.json
++ M app/Fixtures/status.d4_missing.json
++ M app/Fixtures/status.d4_paused.json
++ M app/Fixtures/status.d4_s1.json
++ M app/Fixtures/status.d4_s10.json
++ M app/Fixtures/status.d4_s11.json
++ M app/Fixtures/status.d4_s12.json
++ M app/Fixtures/status.d4_s2.json
++ M app/Fixtures/status.d4_s3.json
++ M app/Fixtures/status.d4_s4.json
++ M app/Fixtures/status.d4_s4b.json
++ M app/Fixtures/status.d4_s5.json
++ M app/Fixtures/status.d4_s6.json
++ M app/Fixtures/status.d4_s7.json
++ M app/Fixtures/status.d4_s8.json
++ M app/Fixtures/status.d4_s9.json
++ M app/Fixtures/status.d4_unknown.json
++ M app/Fixtures/status.sample.json
++ M app/Fixtures/step.sample.json
++ M app/Fixtures/suggestion.sample.json
++ M app/Fixtures/suggestions.d2_decision_needed.json
++ M app/Fixtures/suggestions.d2_in_sync.json
++ M app/Fixtures/suggestions.d2_one_side_ahead.json
++ M app/Fixtures/suggestions.d2_paused.json
++ M app/Fixtures/suggestions.d2_relaunch_needed.json
++ M app/Fixtures/suggestions.d2_setup_incomplete.json
++ M app/Fixtures/suggestions.d2_waiting.json
++ M app/Fixtures/suggestions.d3_filled.json
++ M app/Fixtures/suggestions.d3_tool_missing.json
++ M app/Fixtures/suggestions.sample.json
++ M app/Fixtures/sync.d4_actions.json
++ M app/Fixtures/sync.sample.json
++ M app/Fixtures/undo.empty.json
++ M app/Fixtures/undo.sample.json
++ M app/Fixtures/unlink.d4_actions.json
++ M app/Fixtures/unlink.sample.json
++ M app/Sources/Baton/BatonApp.swift
++ M app/Sources/BatonKit/Engine/EngineClient.swift
++ M app/Sources/BatonKit/Engine/FixtureEngine.swift
++ M app/Sources/BatonKit/Models/Results.swift
++ M app/Sources/BatonKit/Models/Shared.swift
++ M app/Sources/BatonUI/Components/ComponentPreviews.swift
++ M app/Sources/BatonUI/Components/Components.swift
++ M app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++ M app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift
++ M app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
++ M app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift
++ M app/Sources/BatonUI/Screens/Window/WindowView.swift
++ M app/Sources/BatonUI/Screens/Window/WindowViewModel.swift
++ M app/Sources/BatonUI/Theme/Theme.swift
++ M app/Tests/BatonUITests/ComponentTests.swift
++ M app/Tests/BatonUITests/PopoverTests.swift
++ M app/Tests/BatonUITests/SyncStatusTests.swift
++ M app/Tests/BatonUITests/WindowTests.swift
++ M baton/adapters/claude/__init__.py
++ M baton/adapters/claude/reader.py
++ M baton/adapters/fake/tool.py
++ M baton/ledger/schema.py
++ M baton/ledger/sqlite_store.py
++ M baton/notes/catalogue.py
++ M baton/ports/store.py
++ M baton/ports/tool.py
++ M baton/services/applier.py
++ M baton/services/mapping.py
++ M baton/services/planner.py
++ M baton/services/status.py
++ M docs/plan/ARCHITECTURE.md
++ M docs/plan/CHECKPOINTS.md
++ M docs/plan/CONTRACT.md
++ M docs/plan/STATUS.md
++ M docs/plan/reports/CP1-2026-10-05.md
++ M docs/plan/track-b-adapters.md
++ M docs/plan/track-c-cli-hooks.md
++ M docs/plan/track-d-app.md
++ M docs/plan/track-e-core.md
++ M tests/adapters/suite.py
++ M tests/adapters/test_fake.py
++ M tests/unit/test_mapping.py
++ M tests/unit/test_notes.py
++ M tests/unit/test_ports.py
++?? app/Fixtures/chat.d5_already.json
++?? app/Fixtures/chat.d5_claude.json
++?? app/Fixtures/chat.d5_codex.json
++?? app/Fixtures/chat.d5_cursor.json
++?? app/Fixtures/chat.d5_large.json
++?? app/Fixtures/chat.d5_opencode.json
++?? app/Fixtures/chat.d5_unavailable.json
++?? app/Fixtures/chats.d5_already.json
++?? app/Fixtures/chats.d5_claude.json
++?? app/Fixtures/chats.d5_codex.json
++?? app/Fixtures/chats.d5_cursor.json
++?? app/Fixtures/chats.d5_large.json
++?? app/Fixtures/chats.d5_opencode.json
++?? app/Fixtures/chats.d5_unavailable.json
++?? app/Fixtures/copy.d5_already_opencode.json
++?? app/Fixtures/copy.d5_claude_claude.json
++?? app/Fixtures/copy.d5_codex_codex.json
++?? app/Fixtures/copy.d5_cursor_cursor.json
++?? app/Fixtures/copy.d5_large_codex.json
++?? app/Fixtures/copy.d5_opencode_claude.json
++?? app/Fixtures/copy.d5_opencode_codex.json
++?? app/Fixtures/copy.d5_opencode_cursor.json
++?? app/Fixtures/copy.d5_opencode_opencode.json
++?? app/Fixtures/copy.d5_unavailable_opencode.json
++?? app/Fixtures/link.d5_already.json
++?? app/Fixtures/link.d5_already_opencode.json
++?? app/Fixtures/link.d5_already_opencode_attached_history.json
++?? app/Fixtures/link.d5_already_opencode_brief.json
++?? app/Fixtures/link.d5_already_replace_codex.json
++?? app/Fixtures/link.d5_already_replace_opencode.json
++?? app/Fixtures/link.d5_claude.json
++?? app/Fixtures/link.d5_claude_claude.json
++?? app/Fixtures/link.d5_claude_claude_attached_history.json
++?? app/Fixtures/link.d5_claude_claude_brief.json
++?? app/Fixtures/link.d5_claude_replace_claude.json
++?? app/Fixtures/link.d5_codex.json
++?? app/Fixtures/link.d5_codex_codex.json
++?? app/Fixtures/link.d5_codex_codex_attached_history.json
++?? app/Fixtures/link.d5_codex_codex_brief.json
++?? app/Fixtures/link.d5_codex_replace_codex.json
++?? app/Fixtures/link.d5_cursor.json
++?? app/Fixtures/link.d5_cursor_cursor.json
++?? app/Fixtures/link.d5_cursor_cursor_attached_history.json
++?? app/Fixtures/link.d5_cursor_cursor_brief.json
++?? app/Fixtures/link.d5_cursor_replace_cursor.json
++?? app/Fixtures/link.d5_large.json
++?? app/Fixtures/link.d5_large_codex.json
++?? app/Fixtures/link.d5_large_codex_attached_history.json
++?? app/Fixtures/link.d5_large_codex_brief.json
++?? app/Fixtures/link.d5_large_replace_codex.json
++?? app/Fixtures/link.d5_opencode.json
++?? app/Fixtures/link.d5_opencode_claude.json
++?? app/Fixtures/link.d5_opencode_claude_attached_history.json
++?? app/Fixtures/link.d5_opencode_claude_brief.json
++?? app/Fixtures/link.d5_opencode_codex.json
++?? app/Fixtures/link.d5_opencode_codex_attached_history.json
++?? app/Fixtures/link.d5_opencode_codex_brief.json
++?? app/Fixtures/link.d5_opencode_cursor.json
++?? app/Fixtures/link.d5_opencode_cursor_attached_history.json
++?? app/Fixtures/link.d5_opencode_cursor_brief.json
++?? app/Fixtures/link.d5_opencode_opencode.json
++?? app/Fixtures/link.d5_opencode_opencode_attached_history.json
++?? app/Fixtures/link.d5_opencode_opencode_brief.json
++?? app/Fixtures/link.d5_opencode_replace_claude.json
++?? app/Fixtures/link.d5_opencode_replace_codex.json
++?? app/Fixtures/link.d5_opencode_replace_cursor.json
++?? app/Fixtures/link.d5_opencode_replace_opencode.json
++?? app/Fixtures/link.d5_unavailable.json
++?? app/Fixtures/link.d5_unavailable_opencode.json
++?? app/Fixtures/link.d5_unavailable_opencode_attached_history.json
++?? app/Fixtures/link.d5_unavailable_opencode_brief.json
++?? app/Fixtures/link.d5_unavailable_replace_opencode.json
++?? app/Fixtures/links.d5_already.json
++?? app/Fixtures/links.d5_claude.json
++?? app/Fixtures/links.d5_codex.json
++?? app/Fixtures/links.d5_cursor.json
++?? app/Fixtures/links.d5_large.json
++?? app/Fixtures/links.d5_opencode.json
++?? app/Fixtures/links.d5_unavailable.json
++?? app/Fixtures/relink.d5_already_opencode.json
++?? app/Fixtures/relink.d5_already_opencode_attached_history.json
++?? app/Fixtures/relink.d5_already_opencode_brief.json
++?? app/Fixtures/relink.d5_claude_claude.json
++?? app/Fixtures/relink.d5_claude_claude_attached_history.json
++?? app/Fixtures/relink.d5_claude_claude_brief.json
++?? app/Fixtures/relink.d5_codex_codex.json
++?? app/Fixtures/relink.d5_codex_codex_attached_history.json
++?? app/Fixtures/relink.d5_codex_codex_brief.json
++?? app/Fixtures/relink.d5_cursor_cursor.json
++?? app/Fixtures/relink.d5_cursor_cursor_attached_history.json
++?? app/Fixtures/relink.d5_cursor_cursor_brief.json
++?? app/Fixtures/relink.d5_large_codex.json
++?? app/Fixtures/relink.d5_large_codex_attached_history.json
++?? app/Fixtures/relink.d5_large_codex_brief.json
++?? app/Fixtures/relink.d5_opencode_claude.json
++?? app/Fixtures/relink.d5_opencode_claude_attached_history.json
++?? app/Fixtures/relink.d5_opencode_claude_brief.json
++?? app/Fixtures/relink.d5_opencode_codex.json
++?? app/Fixtures/relink.d5_opencode_codex_attached_history.json
++?? app/Fixtures/relink.d5_opencode_codex_brief.json
++?? app/Fixtures/relink.d5_opencode_cursor.json
++?? app/Fixtures/relink.d5_opencode_cursor_attached_history.json
++?? app/Fixtures/relink.d5_opencode_cursor_brief.json
++?? app/Fixtures/relink.d5_opencode_opencode.json
++?? app/Fixtures/relink.d5_opencode_opencode_attached_history.json
++?? app/Fixtures/relink.d5_opencode_opencode_brief.json
++?? app/Fixtures/relink.d5_unavailable_opencode.json
++?? app/Fixtures/relink.d5_unavailable_opencode_attached_history.json
++?? app/Fixtures/relink.d5_unavailable_opencode_brief.json
++?? app/Fixtures/setup.d5_already.json
++?? app/Fixtures/setup.d5_claude.json
++?? app/Fixtures/setup.d5_codex.json
++?? app/Fixtures/setup.d5_cursor.json
++?? app/Fixtures/setup.d5_large.json
++?? app/Fixtures/setup.d5_opencode.json
++?? app/Fixtures/setup.d5_unavailable.json
++?? app/Sources/BatonKit/Models/LinkDialog.swift
++?? app/Sources/BatonUI/Components/DisplayTime.swift
++?? app/Sources/BatonUI/Components/WindowPresentation.swift
++?? app/Sources/BatonUI/Screens/Link/LinkDialogView.swift
++?? app/Sources/BatonUI/Screens/Link/LinkDialogViewModel.swift
++?? app/Tests/BatonUITests/LinkDialogTests.swift
++?? app/Tests/BatonUITests/WindowInteractionTests.swift
++?? baton/adapters/claude/app.py
++?? baton/adapters/claude/facts.py
++?? baton/adapters/claude/hooks.py
++?? baton/adapters/claude/locator.py
++?? baton/adapters/claude/runner.py
++?? baton/adapters/claude/state.py
++?? baton/adapters/claude/tool.py
++?? baton/adapters/claude/writer.py
++?? baton/ledger/history.py
++?? baton/ledger/journal.py
++?? baton/ledger/links.py
++?? baton/ledger/records.py
++?? baton/ledger/turns.py
++?? baton/ledger/undo.py
++?? baton/services/delivery_plan.py
++?? baton/services/merger.py
++?? baton/services/observations.py
++?? baton/services/preview.py
++?? baton/services/refresh.py
++?? baton/services/undo.py
++?? docs/plan/reports/CP1-findings-2026-10-05.md
++?? docs/plan/reports/CP2-2026-10-05.md
++?? docs/plan/reports/UI1-2026-10-06.md
++?? docs/plan/reports/patches/B1.patch
++?? docs/plan/reports/patches/CP2-record.patch
++?? docs/plan/reports/patches/D4b.patch
++?? docs/plan/reports/patches/D5.patch
++?? docs/plan/reports/patches/E7.patch
++?? docs/plan/reports/patches/R10.patch
++?? docs/plan/reports/patches/UI1.patch
++?? tests/adapters/test_claude.py
++?? tests/fixtures/claude/__init__.py
++?? tests/fixtures/claude/build.py
++?? tests/scenarios/test_merge.py
++?? tests/scenarios/test_undo.py
++?? tests/unit/test_store_atomicity.py
++```
++
++Exit: 0
++
++## Isolated UI2 engine boundary — pasted
++
++```text
++Command: python3 -m unittest discover -s tests -t .
++Working directory: /var/folders/8c/h2t3v_p97sxgmcbmn8brj63w0000gp/T/baton-ui2-boundary-79izfqmu (HEAD + R10/D4b/E7/D5/B1/CP2-record/UI1 + UI2 app changes; no .git)
++..............................................................................................................................................................................................................................................................................................................................................
++----------------------------------------------------------------------
++Ran 334 tests in 1.067s
++
++OK
++Exit: 0
++```
++
++## Final app rerun after minimum-size regression — pasted
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[0/4] Write swift-version--1AB21518FC5DEDBE.txt
++Build complete! (0.14s)
++◇ Test run started.
++↳ Testing Library Version: 124
++↳ Target Platform: arm64e-apple-macos14.0
++◇ Suite FixtureEngineTests started.
++◇ Suite FixtureDecodingTests started.
++◇ Suite ImmediateCommandTests started.
++◇ Suite ProcessEngineTests started.
++◇ Suite LinkFixtureRoutingTests started.
++◇ Test testMissingFixtureThrows() started.
++◇ Test testEveryCommandThroughEngineClient() started.
++◇ Suite WindowTests started.
++◇ Suite ComponentTests started.
++◇ Test testSnakeCaseEncodingAndOptionalButtonPrimary() started.
++◇ Test testStateSelection() started.
++◇ Test testFixtureErrorPreservesNote() started.
++◇ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() started.
++◇ Test testEveryFixtureDecodesAndIgnoresUnknownFields() started.
++◇ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() started.
++◇ Suite WindowInteractionTests started.
++◇ Suite SyncStatusTests started.
++◇ Suite LinkDialogTests started.
++◇ Test testMalformedSuccessRemainsADecodingError() started.
++◇ Suite PopoverTests started.
++◇ Test testSubcommandDispatchAndPreview() started.
++◇ Test testRefusalAndCrashBothCarryTheEngineNote() started.
++◇ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() started.
++◇ Test testBothOutputPipesAreDrained() started.
++◇ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() started.
++◇ Test testConcurrentProcessesDrainBothPipes() started.
++◇ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() started.
++◇ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() started.
++◇ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() started.
++◇ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() started.
++◇ Test eachTargetShowsItsOwnEngineNotesAndEligibility() started.
++◇ Test reviewWindowAllowsResizeAndFullScreen() started.
++◇ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() started.
++◇ Test selectionContinueAndDecisionBadgeUseEngineData() started.
++✔ Test testMissingFixtureThrows() passed after 0.009 seconds.
++✔ Test testSnakeCaseEncodingAndOptionalButtonPrimary() passed after 0.009 seconds.
++✔ Test testStateSelection() passed after 0.009 seconds.
++✔ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() passed after 0.009 seconds.
++✔ Suite ImmediateCommandTests passed after 0.010 seconds.
++✔ Test testFixtureErrorPreservesNote() passed after 0.010 seconds.
++✔ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() passed after 0.012 seconds.
++✔ Suite LinkFixtureRoutingTests passed after 0.012 seconds.
++✔ Test testEveryCommandThroughEngineClient() passed after 0.014 seconds.
++✔ Suite FixtureEngineTests passed after 0.014 seconds.
++✔ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() passed after 0.037 seconds.
++◇ Test confirmationRequiresExactDisplayedNotes() started.
++✔ Test confirmationRequiresExactDisplayedNotes() passed after 0.001 seconds.
++◇ Test semanticMappingsCoverStatesAndPlanActions() started.
++✔ Test semanticMappingsCoverStatesAndPlanActions() passed after 0.001 seconds.
++◇ Test snapshotsEachComponentInBothThemes() started.
++✔ Test reviewWindowAllowsResizeAndFullScreen() passed after 0.048 seconds.
++◇ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() started.
++✔ Test testEveryFixtureDecodesAndIgnoresUnknownFields() passed after 0.087 seconds.
++✔ Suite FixtureDecodingTests passed after 0.087 seconds.
++✔ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() passed after 0.110 seconds.
++✔ Test testSubcommandDispatchAndPreview() passed after 0.116 seconds.
++✔ Test testBothOutputPipesAreDrained() passed after 0.126 seconds.
++✔ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() passed after 0.127 seconds.
++✔ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() passed after 0.133 seconds.
++✔ Test snapshotsEachComponentInBothThemes() passed after 0.098 seconds.
++✔ Suite ComponentTests passed after 0.137 seconds.
++✔ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() passed after 0.082 seconds.
++◇ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() started.
++✔ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() passed after 0.003 seconds.
++◇ Test glassWindowMinimumSizeFitsHostedContent() started.
++✔ Test selectionContinueAndDecisionBadgeUseEngineData() passed after 0.135 seconds.
++◇ Test omittedPresentationNotesRemainCompatible() started.
++✔ Test omittedPresentationNotesRemainCompatible() passed after 0.001 seconds.
++◇ Test refreshingInvalidatesAnInFlightPreview() started.
++✔ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() passed after 0.181 seconds.
++✔ Test testMalformedSuccessRemainsADecodingError() passed after 0.188 seconds.
++✔ Test testConcurrentProcessesDrainBothPipes() passed after 0.196 seconds.
++✔ Test refreshingInvalidatesAnInFlightPreview() passed after 0.122 seconds.
++◇ Test continuePreviewRendersInBothThemes() started.
++✔ Test continuePreviewRendersInBothThemes() passed after 0.052 seconds.
++◇ Test snapshotsAllEightStatesInBothThemes() started.
++✔ Test glassWindowMinimumSizeFitsHostedContent() passed after 0.178 seconds.
++◇ Test repeatedSidebarClickPreservesTheSelectedChat() started.
++✔ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() passed after 0.432 seconds.
++◇ Test navigationSelectionAndAttentionUseEngineFlags() started.
++✔ Test testRefusalAndCrashBothCarryTheEngineNote() passed after 0.466 seconds.
++✔ Suite ProcessEngineTests passed after 0.466 seconds.
++✔ Test repeatedSidebarClickPreservesTheSelectedChat() passed after 0.182 seconds.
++◇ Test expandedWindowUsesTheAvailableSpaceInBothThemes() started.
++✔ Test expandedWindowUsesTheAvailableSpaceInBothThemes() passed after 0.401 seconds.
++◇ Test sidebarBlankAreaRespondsToOneClick() started.
++✔ Test eachTargetShowsItsOwnEngineNotesAndEligibility() passed after 0.898 seconds.
++◇ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() started.
++✔ Test navigationSelectionAndAttentionUseEngineFlags() passed after 0.477 seconds.
++◇ Test uninstalledToolIsNeverOfferedOrQueried() started.
++✔ Test snapshotsAllEightStatesInBothThemes() passed after 0.622 seconds.
++✔ Suite PopoverTests passed after 0.943 seconds.
++✔ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() passed after 0.934 seconds.
++◇ Test suppliedToolLabelsAndIdleOffersRemainEngineData() started.
++✔ Test uninstalledToolIsNeverOfferedOrQueried() passed after 0.051 seconds.
++◇ Test legacyAttentionFlagIsOptional() started.
++✔ Test legacyAttentionFlagIsOptional() passed after 0.001 seconds.
++◇ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() started.
++✔ Test suppliedToolLabelsAndIdleOffersRemainEngineData() passed after 0.019 seconds.
++◇ Test anUpToDateSideCannotShowASinceYouLeftDigest() started.
++✔ Test anUpToDateSideCannotShowASinceYouLeftDigest() passed after 0.001 seconds.
++◇ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() started.
++✔ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() passed after 0.003 seconds.
++◇ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() started.
++✔ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() passed after 0.002 seconds.
++◇ Test longReplyAndToolActivityExpandWithoutHookText() started.
++✔ Test longReplyAndToolActivityExpandWithoutHookText() passed after 0.001 seconds.
++◇ Test buttonsUseImmediateCommandsAndPreviewWritingActions() started.
++✔ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() passed after 0.011 seconds.
++◇ Test fractionalHistoryTimesSortAfterWholeSeconds() started.
++✔ Test fractionalHistoryTimesSortAfterWholeSeconds() passed after 0.003 seconds.
++◇ Test snapshotsEveryListEmptyFilledAndMissingTool() started.
++✔ Test buttonsUseImmediateCommandsAndPreviewWritingActions() passed after 0.006 seconds.
++◇ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() started.
++✔ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() passed after 0.436 seconds.
++◇ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() started.
++✔ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() passed after 0.768 seconds.
++◇ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() started.
++✔ Test sidebarBlankAreaRespondsToOneClick() passed after 0.839 seconds.
++◇ Test longDialogCanScrollToItsFinalActions() started.
++✔ Test snapshotsEveryListEmptyFilledAndMissingTool() passed after 0.820 seconds.
++✔ Suite WindowTests passed after 1.797 seconds.
++✔ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() passed after 0.466 seconds.
++◇ Test replacementRoutesNameRetainedSideAndSelectedMode() started.
++✔ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() passed after 0.067 seconds.
++◇ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() started.
++✔ Test replacementRoutesNameRetainedSideAndSelectedMode() passed after 0.002 seconds.
++◇ Test applyingLocksTheSelectionUntilTheResultIsVisible() started.
++✔ Test longDialogCanScrollToItsFinalActions() passed after 0.125 seconds.
++◇ Test repeatedTurnJumpIssuesANewScrollRequest() started.
++✔ Test repeatedTurnJumpIssuesANewScrollRequest() passed after 0.003 seconds.
++◇ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() started.
++✔ Test applyingLocksTheSelectionUntilTheResultIsVisible() passed after 0.074 seconds.
++◇ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() started.
++✔ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() passed after 0.002 seconds.
++◇ Test copyAndFullCopyNeverBypassUnavailableFullHistory() started.
++✔ Test copyAndFullCopyNeverBypassUnavailableFullHistory() passed after 0.002 seconds.
++◇ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() started.
++✔ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() passed after 0.077 seconds.
++◇ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() started.
++✔ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() passed after 0.062 seconds.
++◇ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() started.
++✔ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() passed after 0.001 seconds.
++◇ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() started.
++✔ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() passed after 0.001 seconds.
++◇ Test eachFixtureRendersInBothThemes() started.
++✔ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() passed after 0.057 seconds.
++✔ Suite WindowInteractionTests passed after 2.010 seconds.
++✔ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() passed after 0.281 seconds.
++◇ Test narrowWindowHostsReadableStatusAndPreservesBothNames() started.
++✔ Test narrowWindowHostsReadableStatusAndPreservesBothNames() passed after 0.185 seconds.
++◇ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() started.
++✔ Test eachFixtureRendersInBothThemes() passed after 0.416 seconds.
++✔ Suite LinkDialogTests passed after 2.376 seconds.
++✔ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() passed after 0.118 seconds.
++◇ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() started.
++✔ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() passed after 0.001 seconds.
++◇ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() started.
++✔ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() passed after 0.067 seconds.
++◇ Test changedLinkAndEngineFailureNeverShowThePreviousChat() started.
++✔ Test changedLinkAndEngineFailureNeverShowThePreviousChat() passed after 0.001 seconds.
++◇ Test snapshotsEverySpecifiedStateAndExpandedReply() started.
++✔ Test snapshotsEverySpecifiedStateAndExpandedReply() passed after 1.926 seconds.
++✔ Suite SyncStatusTests passed after 4.395 seconds.
++✔ Test run with 71 tests passed after 4.395 seconds.
++```
++
++Layer/name searches found no violations; UI literal scan matches identifiers such as NSColor/labelButton, not a new sentence. Source git diff --check passes. Existing prior patches are preserved. E8 source is not part of UI2.
++
++## Remaining checkpoint work
++
++UI2 does not complete CP2. E8 is in progress; E9/E10, B2, C1/C2, D6/D7 and real adapter acceptance remain as recorded in STATUS and the CP2 report.
++
++## Ordered patch check — pasted
++
++```text
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/CP2-record.patch:4478: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/CP2-record.patch:4483: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/CP2-record.patch:4550: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/CP2-record.patch:4551: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/CP2-record.patch:4570: trailing whitespace.
++ 
++warning: squelched 90 whitespace errors
++warning: 95 lines add whitespace errors.
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/UI1.patch:1283: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/UI1.patch:1285: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/UI1.patch:1287: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/UI1.patch:1289: trailing whitespace.
++ 
++/Users/ibrahimahmed/Desktop/projects/baton/docs/plan/reports/patches/UI1.patch:1291: trailing whitespace.
++ 
++warning: 5 lines add whitespace errors.
++R10 PASS
++D4b PASS
++E7 PASS
++D5 PASS
++B1 PASS
++CP2-record PASS
++UI1 PASS
++UI2 PASS
++Reviewed package reconstruction: PASS
++```
++
++Warnings originate from embedded historical patch/check output whitespace; source diff check passes.

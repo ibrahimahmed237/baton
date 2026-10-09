@@ -2,7 +2,33 @@
 
 The one place that says where the build stands. Kept current by the orchestrator ([ORCHESTRATOR.md](ORCHESTRATOR.md)); every entry is a fact that was checked, not a plan.
 
-**Branch:** `chore/project-setup` · **Last checkpoint checked:** CP1, 2026-10-05 — approved by reviewer; findings F1–F6 and R10 precede CP2
+**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last reviewed:** 2026-10-09
+
+## Reviewer notes — 2026-10-09
+
+Reviewed by Claude at Ibrahim's request after the Codex chat `01a1115f` had worked for several days. Twenty packages were waiting uncommitted (331 files). All are now committed one by one, in the order they were written, and pushed.
+
+**Measured by the reviewer**
+- Engine: 380 tests pass, on the tree and again on the committed state in a clean copy. Layer and naming rules hold.
+- App: builds; 95 of 96 tests pass. One fails here: `menuUsesTheSignedGrayscaleMarkWhileDockKeepsBrandColors` (BrandTests.swift:139, colour spread above its limit). The status said 96.
+- Looked at the latest rendered sync-status screen: tool names, readable times, two cards side by side, turn strip and conversation are there. Findings F2, F3, F4 from CP1 are closed as far as an image can show.
+
+**Where the build stands**
+- Done since CP1: R10 (modules split), D4b (glass layout), E7 (merge), E8 (undo and restore), D5 (link and copy dialogs), B1 (Claude adapter on built fixtures), and thirteen UI rounds UI1 to UI13 done with Ibrahim (window behaviour, title bar, native controls, conversation layout, brand mark, appearance selector, receipts, early settings, confirmed Quit, menu popover, Dock and menu-bar icon).
+- **CP2 is not passed.** Still to do for it: E9 (usage, limits, digest), E10 (briefs), B2 (Codex adapter), C1 and C2 (command line and generated fixtures), D6 (what-will-happen and confirmation), D7 (hand-off and limit offer), and the **live run** of the Claude and Codex adapters on throwaway chats. B1 has passed only on built fixtures.
+
+**Findings to close**
+- **G1. Work sat uncommitted for four days.** One mistaken `git checkout .` would have lost it. From now on: when three packages are waiting, stop and ask Ibrahim to have them committed, or work in a session that can write to git and commit each package as it is accepted.
+- **G2. The app's build command was not written down** and the plain one stopped working after a toolchain update. What works here: `cd app && SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk swift build`, and for tests the same with `-Xswiftc -plugin-path -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing`. Put this in `app/README.md` and in a script (`app/scripts/check.sh`) that the orchestrator and the reviewer both run, so "passes" means the same thing for everyone.
+- **G3. The failing brand test** depends on how an image is rendered on the machine. Make it robust (compare the mark's own pixels with a tolerance that holds on this Mac in both appearances) or assert the property another way. Do not loosen it until it passes without understanding why it fails.
+- **G4. Thirteen UI packages are not in the plan.** Add a short "UI rounds" section to track-d-app.md listing UI1 to UI13 with one line each and their commits, so the plan matches what exists.
+- **G5. This file had grown past a thousand lines.** It is a status page, not a history. Keep Now, Next, Done, open Questions and the last ten log lines here; everything else belongs in `reports/`.
+- **G6. B1's live acceptance is still owed** before any package depends on the Claude adapter being right.
+
+**Decisions waiting for Ibrahim** (none of these may be decided by an agent)
+- **Q1. Wording of the reached line (sync-status R10).** The spec's example says an agent "has everything above this line". After a keep-one-side merge a skipped turn can sit above it, so that is not always true. Reviewer's recommendation: change the spec to "*agent* has reached here" and state skipped turns separately. Needs your yes to edit docs/features/sync-status.md.
+- **Q2. Where the theme setting lives.** The app keeps it in its own preferences; the contract has it as an engine setting. Reviewer's recommendation: the engine setting is the one source, the app reads and writes it through `baton settings` once D12 wires the app to the engine.
+- **Q3. Go for the live run** of the Claude and Codex adapters on two throwaway chats (CP2).
 
 ## Reviewer notes — CP1, 2026-10-05
 
@@ -24,13 +50,14 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI11 is complete and independently reviewed with no findings. The Dock mark uses a more conventional safe area; the menu-bar mark is a crisp vector link symbol with a monochrome glass finish. App and Dock artwork colors are preserved. The first refreshed fixture launch crashed because its temporary bundle omitted `Baton_BatonUI.bundle`; that built resource bundle is now in `Contents/Resources`, and relaunch returned success. Computer Use could not confirm the visible window; no later crash report was present when checked.
-- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI11 are ready. No push or real chats.
-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI11 implementation records remain ready to commit as listed below. UI10 and UI11 independent reviews found no remaining issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI10 and UI11 menu output was inspected through rendered snapshots.
+- UI13 is complete and independently reviewed. The conversation uses a quiet receipt endpoint instead of a black inset, explains agent context versus chat visibility, and keeps filtered endpoints separate from visible turns. The final signed fixture is open on the updated view.
+- UI12 is complete and independently reviewed with no remaining findings. The complete Dock tile is smaller, and the menu uses the signed B/I.A mark as a cached grayscale glass mask instead of UI11's generic link symbol. The final signed fixture launches and Computer Use confirms the current window is visible; menu and Dock renders were inspected as PNGs.
+- Current shared tree: **380 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI13 are ready. No push or real chats.
+- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI13 implementation records remain ready to commit as listed below. UI13 independent review found and closed wording and render-coverage issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI12 menu output was inspected through rendered snapshots.
 
 ## Next
 
-Review/commit the ordered patches through UI11. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+Review/commit the ordered patches through UI13. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
 
 ## Done
 
@@ -40,6 +67,27 @@ Review/commit the ordered patches through UI11. Continue E9/E10 and D6/D7, with 
 | E1 ports and capabilities | 2026-10-05 | `cb11c88` | — |
 | B0 fake tool and adapter suite | 2026-10-05 | `fcd3f41` | 129 engine |
 | D0 app skeleton | 2026-10-05 | `bc2e180` | 15 app |
+| E2 to E6, D1 to D4 | 2026-10-05 | `38a984a` … `dcb698e` | CP1: 268 engine, 44 app |
+| R10 | 2026-10-09 | `b8701f5` | Keep storage and delivery changes separate |
+| D4b | 2026-10-09 | `783fe02` | Make Baton match the glass mockup |
+| E7 | 2026-10-09 | `c9ac1f7` | Merge without rewriting either chat |
+| D5 | 2026-10-09 | `e5aa6b4` | Explain link and copy choices before creating chats |
+| B1 | 2026-10-09 | `045e46b` | Guard native chat writes with durable rollback receipts |
+| (records) | 2026-10-09 | `8397468` | Record the state of the plan while working towards CP2 |
+| UI1 | 2026-10-09 | `67e7190` | Make window navigation and scrolling respond reliably |
+| UI2 | 2026-10-09 | `47ea8cc` | Blend the title bar into the glass window |
+| E8 | 2026-10-09 | `9bf51dc` | Keep undo recoverable across chat changes |
+| UI3 | 2026-10-09 | `ae5980a` | Open the main window with native controls |
+| UI4 | 2026-10-09 | `fe9c4cc` | Make conversation ownership and sync boundaries clear |
+| UI5 | 2026-10-09 | `9d56587` | Give Baton a signed identity and explain empty views |
+| UI6 | 2026-10-09 | `3e068db` | Carry the signed mark across both app appearances |
+| UI7 | 2026-10-09 | `7049874` | Keep logo colors fixed and make appearance selectable |
+| UI8 | 2026-10-09 | `980449a` | Show clear receipts, configuration and a confirmed Quit |
+| UI9 | 2026-10-09 | `53f4365` | Make the compact menu surface easier to read |
+| UI10 | 2026-10-09 | `70a8d32` | Tighten the Dock mark and soften the menu icon |
+| UI11 | 2026-10-09 | `3e3e6c6` | Scale the Dock brand and sharpen the menu-bar mark |
+| UI12 | 2026-10-09 | `e4a5fc8` | Make Baton recognizable at both system icon sizes |
+| UI13 | 2026-10-09 | `44e106b` | Make conversation sync positions easier to read |
 | E2 delivery by capabilities and CP1 notes | 2026-10-05 | `38a984a` — reviewer approved | 156 engine |
 | D1 theme and components | 2026-10-05 | `94f161c` — reviewer approved | 18 app |
 | D2 menu-bar popover | 2026-10-05 | `d214e44` — reviewer approved | 23 app |
@@ -65,893 +113,16 @@ Review/commit the ordered patches through UI11. Continue E9/E10 and D6/D7, with 
 | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
 | UI10 Dock margin and grayscale glass menu mark | 2026-10-06 | Ready to commit — review findings fixed; rendered Dock/menu images inspected | 379 engine / 96 app |
 | UI11 conventional Dock scale and crisp vector menu symbol | 2026-10-06 | Ready to commit — independent reviewer found no findings; snapshots inspected | 379 engine / 96 app |
+| UI12 compact Dock tile and signed monochrome menu mark | 2026-10-06 | Ready to commit — independent review findings closed; signed fixture running | 379 engine / 96 app |
+| UI13 clearer conversation receipt and reading order | 2026-10-07 | Ready to commit — independent review findings closed; final fixture inspected | 380 engine / 96 app |
 
 ## Ready to commit
 
-Historical CP1 patches have been committed; do not reapply them.
-
-### UI11 — conventional Dock scale and crisp menu-bar symbol
-
-Patch: `docs/plan/reports/patches/UI11.patch`, applies after UI10 on HEAD `4546808`. Report: `docs/plan/reports/UI11-2026-10-06.md`.
-
-Exact paths:
-
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI11-2026-10-06.md`
-
-Commit message:
-
-```text
-Scale the Dock brand and sharpen the menu-bar mark
-
-Give the signed Dock artwork a familiar safe area and use a native vector link symbol at menu-bar size. The grayscale glass finish stays crisp without changing the app and Dock brand colors.
-```
-
-### UI10 — tighter Dock tile and glass-gray menu mark
-
-Patch: `docs/plan/reports/patches/UI10.patch`, applies after UI9 on HEAD `4546808`. Report: `docs/plan/reports/UI10-2026-10-06.md`.
-
-Exact paths:
-
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Theme/Theme.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI10-2026-10-06.md`
-
-Commit message:
-
-```text
-Tighten the Dock mark and soften the menu icon
-
-Trim only transparent Dock-image margins so the white tile fits the complete signed mark. Give the menu-bar image and decision badge a neutral grayscale glass treatment while preserving the original app and Dock colors.
-```
-
-### UI9 — calm graphite and a refined menu popover
-
-Patch: `docs/plan/reports/patches/UI9.patch`, applies after UI8 on HEAD `4546808`. Report: `docs/plan/reports/UI9-2026-10-06.md`.
-
-Exact paths:
-
-- `app/Sources/BatonUI/Theme/Theme.swift`
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `app/Tests/BatonUITests/PopoverTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI9-2026-10-06.md`
-
-Commit message:
-
-```text
-Make the compact menu surface easier to read
-
-Use a softer graphite foundation with a restrained burgundy haze, neutral theme-aware silhouette edges, and distinct compact row and action treatments. Keep engine copy fully visible and test both compact themes.
-```
-
-### R10 — storage and delivery responsibilities
-
-Patch: `docs/plan/reports/patches/R10.patch`, applies to HEAD `4546808`.
-
-Exact paths:
-
-- `baton/ledger/sqlite_store.py`
-- `baton/ledger/schema.py`
-- `baton/ledger/history.py`
-- `baton/ledger/journal.py`
-- `baton/ledger/links.py`
-- `baton/ledger/records.py`
-- `baton/ledger/turns.py`
-- `baton/services/applier.py`
-- `baton/services/delivery_plan.py`
-- `baton/services/observations.py`
-- `baton/services/preview.py`
-- `baton/services/refresh.py`
-- `tests/unit/test_ports.py`
-- `tests/unit/test_store_atomicity.py`
-- `docs/plan/ARCHITECTURE.md`
-- `docs/plan/track-e-core.md`
-
-Message:
-
-```text
-Keep storage and delivery changes separate
-
-Links, turns, history and recovery need distinct ownership without losing atomic completion. Share one SQLite connection behind the existing store interface and separate preview and refresh logic while preserving confirmation payloads and recovery behavior.
-```
-
-### D4b — glass layout and fixture launch
-
-Patch: `docs/plan/reports/patches/D4b.patch`, applies after R10 on HEAD `4546808`. Independently reviewed; Ibrahim accepted the retained appearance and instructed commit/continue. Ordinary menu/window routing is not newly verified by that acceptance.
-
-Exact paths:
-
-- `app/Fixtures/ask-add.sample.json`
-- `app/Fixtures/brief.sample.json`
-- `app/Fixtures/chat.sample.json`
-- `app/Fixtures/chats.d3_filled.json`
-- `app/Fixtures/chats.d3_tool_missing.json`
-- `app/Fixtures/chats.sample.json`
-- `app/Fixtures/continue.d2_decision_needed.json`
-- `app/Fixtures/continue.d2_paused.json`
-- `app/Fixtures/continue.d2_relaunch_needed.json`
-- `app/Fixtures/continue.d2_setup_incomplete.json`
-- `app/Fixtures/continue.d2_waiting.json`
-- `app/Fixtures/continue.sample.json`
-- `app/Fixtures/copy.d4_actions.json`
-- `app/Fixtures/copy.sample.json`
-- `app/Fixtures/link-summary.sample.json`
-- `app/Fixtures/link.sample.json`
-- `app/Fixtures/links.d2_decision_needed.json`
-- `app/Fixtures/links.d2_in_sync.json`
-- `app/Fixtures/links.d2_no_links.json`
-- `app/Fixtures/links.d2_one_side_ahead.json`
-- `app/Fixtures/links.d2_paused.json`
-- `app/Fixtures/links.d2_relaunch_needed.json`
-- `app/Fixtures/links.d2_setup_incomplete.json`
-- `app/Fixtures/links.d2_waiting.json`
-- `app/Fixtures/links.d3_empty.json`
-- `app/Fixtures/links.d3_filled.json`
-- `app/Fixtures/links.d3_tool_missing.json`
-- `app/Fixtures/links.sample.json`
-- `app/Fixtures/merge.sample.json`
-- `app/Fixtures/plan.sample.json`
-- `app/Fixtures/plan.unlinked.json`
-- `app/Fixtures/relaunch.d4_actions.json`
-- `app/Fixtures/relaunch.sample.json`
-- `app/Fixtures/relink.sample.json`
-- `app/Fixtures/rename.sample.json`
-- `app/Fixtures/restore.sample.json`
-- `app/Fixtures/setup-install.sample.json`
-- `app/Fixtures/setup-tool.sample.json`
-- `app/Fixtures/setup.d3_empty.json`
-- `app/Fixtures/setup.d3_filled.json`
-- `app/Fixtures/setup.d3_tool_missing.json`
-- `app/Fixtures/setup.sample.json`
-- `app/Fixtures/side.empty.json`
-- `app/Fixtures/side.sample.json`
-- `app/Fixtures/status.d3_filled.json`
-- `app/Fixtures/status.d3_filled_3.json`
-- `app/Fixtures/status.d3_filled_4.json`
-- `app/Fixtures/status.d3_filled_5.json`
-- `app/Fixtures/status.d4_hooks.json`
-- `app/Fixtures/status.d4_missing.json`
-- `app/Fixtures/status.d4_paused.json`
-- `app/Fixtures/status.d4_s1.json`
-- `app/Fixtures/status.d4_s10.json`
-- `app/Fixtures/status.d4_s11.json`
-- `app/Fixtures/status.d4_s12.json`
-- `app/Fixtures/status.d4_s2.json`
-- `app/Fixtures/status.d4_s3.json`
-- `app/Fixtures/status.d4_s4.json`
-- `app/Fixtures/status.d4_s4b.json`
-- `app/Fixtures/status.d4_s5.json`
-- `app/Fixtures/status.d4_s6.json`
-- `app/Fixtures/status.d4_s7.json`
-- `app/Fixtures/status.d4_s8.json`
-- `app/Fixtures/status.d4_s9.json`
-- `app/Fixtures/status.d4_unknown.json`
-- `app/Fixtures/status.sample.json`
-- `app/Fixtures/step.sample.json`
-- `app/Fixtures/suggestion.sample.json`
-- `app/Fixtures/suggestions.d2_decision_needed.json`
-- `app/Fixtures/suggestions.d2_in_sync.json`
-- `app/Fixtures/suggestions.d2_one_side_ahead.json`
-- `app/Fixtures/suggestions.d2_paused.json`
-- `app/Fixtures/suggestions.d2_relaunch_needed.json`
-- `app/Fixtures/suggestions.d2_setup_incomplete.json`
-- `app/Fixtures/suggestions.d2_waiting.json`
-- `app/Fixtures/suggestions.d3_filled.json`
-- `app/Fixtures/suggestions.d3_tool_missing.json`
-- `app/Fixtures/suggestions.sample.json`
-- `app/Fixtures/sync.d4_actions.json`
-- `app/Fixtures/sync.sample.json`
-- `app/Fixtures/undo.empty.json`
-- `app/Fixtures/undo.sample.json`
-- `app/Fixtures/unlink.d4_actions.json`
-- `app/Fixtures/unlink.sample.json`
-- `app/Sources/BatonKit/Models/Shared.swift`
-- `app/Sources/BatonUI/Components/ComponentPreviews.swift`
-- `app/Sources/BatonUI/Components/Components.swift`
-- `app/Sources/BatonUI/Components/DisplayTime.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
-- `app/Sources/BatonUI/Theme/Theme.swift`
-- `app/Tests/BatonUITests/ComponentTests.swift`
-- `app/Tests/BatonUITests/SyncStatusTests.swift`
-- `app/Tests/BatonUITests/WindowTests.swift`
-- `baton/notes/catalogue.py`
-- `tests/unit/test_notes.py`
-- `docs/plan/CONTRACT.md`
-- `docs/plan/track-c-cli-hooks.md`
-- `docs/plan/track-d-app.md`
-- `app/Sources/Baton/BatonApp.swift`
-
-Message:
-
-```text
-Make Baton match the glass mockup
-
-Show supplied app names, local times and waiting-side offers together with both chats and their conversation. Keep fixture launch and menu rendering reviewable, while retaining the existing glass appearance Ibrahim chose.
-```
-
-### E7 — independently accepted implementation
-
-Patch: `docs/plan/reports/patches/E7.patch`, applies after D4b.
-
-Exact paths:
-
-- `baton/services/merger.py`
-- `baton/services/planner.py`
-- `baton/services/status.py`
-- `baton/services/preview.py`
-- `baton/services/applier.py`
-- `baton/ports/store.py`
-- `baton/ledger/links.py`
-- `baton/adapters/fake/tool.py`
-- `tests/scenarios/test_merge.py`
-- `baton/notes/catalogue.py`
-- `docs/plan/track-e-core.md`
-- `docs/plan/ARCHITECTURE.md`
-
-Message:
-
-```text
-Merge without rewriting either chat
-
-Preserve each app's own turn order and commit the chosen merge as one recoverable operation. Record exact pending attachments and visibility evidence so a merge stays truthful until delivery or a new conflict.
-```
-
-### D5 — independently accepted implementation
-
-Patch: `docs/plan/reports/patches/D5.patch`, applies after E7.
-
-Exact paths:
-
-- `app/Sources/BatonKit/Engine/EngineClient.swift`
-- `app/Sources/BatonKit/Engine/FixtureEngine.swift`
-- `app/Sources/BatonKit/Models/Shared.swift`
-- `app/Sources/BatonKit/Models/Results.swift`
-- `app/Sources/BatonKit/Models/LinkDialog.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
-- `app/Sources/BatonUI/Screens/Link/LinkDialogView.swift`
-- `app/Sources/BatonUI/Screens/Link/LinkDialogViewModel.swift`
-- `app/Tests/BatonUITests/LinkDialogTests.swift`
-- `app/Fixtures/chat.d5_already.json`
-- `app/Fixtures/chat.d5_claude.json`
-- `app/Fixtures/chat.d5_codex.json`
-- `app/Fixtures/chat.d5_cursor.json`
-- `app/Fixtures/chat.d5_large.json`
-- `app/Fixtures/chat.d5_opencode.json`
-- `app/Fixtures/chat.d5_unavailable.json`
-- `app/Fixtures/chats.d5_already.json`
-- `app/Fixtures/chats.d5_claude.json`
-- `app/Fixtures/chats.d5_codex.json`
-- `app/Fixtures/chats.d5_cursor.json`
-- `app/Fixtures/chats.d5_large.json`
-- `app/Fixtures/chats.d5_opencode.json`
-- `app/Fixtures/chats.d5_unavailable.json`
-- `app/Fixtures/copy.d5_already_opencode.json`
-- `app/Fixtures/copy.d5_claude_claude.json`
-- `app/Fixtures/copy.d5_codex_codex.json`
-- `app/Fixtures/copy.d5_cursor_cursor.json`
-- `app/Fixtures/copy.d5_large_codex.json`
-- `app/Fixtures/copy.d5_opencode_claude.json`
-- `app/Fixtures/copy.d5_opencode_codex.json`
-- `app/Fixtures/copy.d5_opencode_cursor.json`
-- `app/Fixtures/copy.d5_opencode_opencode.json`
-- `app/Fixtures/copy.d5_unavailable_opencode.json`
-- `app/Fixtures/link.d5_already.json`
-- `app/Fixtures/link.d5_already_opencode.json`
-- `app/Fixtures/link.d5_already_opencode_attached_history.json`
-- `app/Fixtures/link.d5_already_opencode_brief.json`
-- `app/Fixtures/link.d5_already_replace_opencode.json`
-- `app/Fixtures/link.d5_claude.json`
-- `app/Fixtures/link.d5_claude_claude.json`
-- `app/Fixtures/link.d5_claude_claude_attached_history.json`
-- `app/Fixtures/link.d5_claude_claude_brief.json`
-- `app/Fixtures/link.d5_claude_replace_claude.json`
-- `app/Fixtures/link.d5_codex.json`
-- `app/Fixtures/link.d5_codex_codex.json`
-- `app/Fixtures/link.d5_codex_codex_attached_history.json`
-- `app/Fixtures/link.d5_codex_codex_brief.json`
-- `app/Fixtures/link.d5_codex_replace_codex.json`
-- `app/Fixtures/link.d5_cursor.json`
-- `app/Fixtures/link.d5_cursor_cursor.json`
-- `app/Fixtures/link.d5_cursor_cursor_attached_history.json`
-- `app/Fixtures/link.d5_cursor_cursor_brief.json`
-- `app/Fixtures/link.d5_cursor_replace_cursor.json`
-- `app/Fixtures/link.d5_large.json`
-- `app/Fixtures/link.d5_large_codex.json`
-- `app/Fixtures/link.d5_large_codex_attached_history.json`
-- `app/Fixtures/link.d5_large_codex_brief.json`
-- `app/Fixtures/link.d5_large_replace_codex.json`
-- `app/Fixtures/link.d5_opencode.json`
-- `app/Fixtures/link.d5_opencode_claude.json`
-- `app/Fixtures/link.d5_opencode_claude_attached_history.json`
-- `app/Fixtures/link.d5_opencode_claude_brief.json`
-- `app/Fixtures/link.d5_opencode_codex.json`
-- `app/Fixtures/link.d5_opencode_codex_attached_history.json`
-- `app/Fixtures/link.d5_opencode_codex_brief.json`
-- `app/Fixtures/link.d5_opencode_cursor.json`
-- `app/Fixtures/link.d5_opencode_cursor_attached_history.json`
-- `app/Fixtures/link.d5_opencode_cursor_brief.json`
-- `app/Fixtures/link.d5_opencode_opencode.json`
-- `app/Fixtures/link.d5_opencode_opencode_attached_history.json`
-- `app/Fixtures/link.d5_opencode_opencode_brief.json`
-- `app/Fixtures/link.d5_opencode_replace_claude.json`
-- `app/Fixtures/link.d5_opencode_replace_codex.json`
-- `app/Fixtures/link.d5_opencode_replace_cursor.json`
-- `app/Fixtures/link.d5_opencode_replace_opencode.json`
-- `app/Fixtures/link.d5_unavailable.json`
-- `app/Fixtures/link.d5_unavailable_opencode.json`
-- `app/Fixtures/link.d5_unavailable_opencode_attached_history.json`
-- `app/Fixtures/link.d5_unavailable_opencode_brief.json`
-- `app/Fixtures/link.d5_unavailable_replace_opencode.json`
-- `app/Fixtures/links.d5_already.json`
-- `app/Fixtures/links.d5_claude.json`
-- `app/Fixtures/links.d5_codex.json`
-- `app/Fixtures/links.d5_cursor.json`
-- `app/Fixtures/links.d5_large.json`
-- `app/Fixtures/links.d5_opencode.json`
-- `app/Fixtures/links.d5_unavailable.json`
-- `app/Fixtures/relink.d5_already_opencode.json`
-- `app/Fixtures/relink.d5_already_opencode_attached_history.json`
-- `app/Fixtures/relink.d5_already_opencode_brief.json`
-- `app/Fixtures/relink.d5_claude_claude.json`
-- `app/Fixtures/relink.d5_claude_claude_attached_history.json`
-- `app/Fixtures/relink.d5_claude_claude_brief.json`
-- `app/Fixtures/relink.d5_codex_codex.json`
-- `app/Fixtures/relink.d5_codex_codex_attached_history.json`
-- `app/Fixtures/relink.d5_codex_codex_brief.json`
-- `app/Fixtures/relink.d5_cursor_cursor.json`
-- `app/Fixtures/relink.d5_cursor_cursor_attached_history.json`
-- `app/Fixtures/relink.d5_cursor_cursor_brief.json`
-- `app/Fixtures/relink.d5_large_codex.json`
-- `app/Fixtures/relink.d5_large_codex_attached_history.json`
-- `app/Fixtures/relink.d5_large_codex_brief.json`
-- `app/Fixtures/relink.d5_opencode_claude.json`
-- `app/Fixtures/relink.d5_opencode_claude_attached_history.json`
-- `app/Fixtures/relink.d5_opencode_claude_brief.json`
-- `app/Fixtures/relink.d5_opencode_codex.json`
-- `app/Fixtures/relink.d5_opencode_codex_attached_history.json`
-- `app/Fixtures/relink.d5_opencode_codex_brief.json`
-- `app/Fixtures/relink.d5_opencode_cursor.json`
-- `app/Fixtures/relink.d5_opencode_cursor_attached_history.json`
-- `app/Fixtures/relink.d5_opencode_cursor_brief.json`
-- `app/Fixtures/relink.d5_opencode_opencode.json`
-- `app/Fixtures/relink.d5_opencode_opencode_attached_history.json`
-- `app/Fixtures/relink.d5_opencode_opencode_brief.json`
-- `app/Fixtures/relink.d5_unavailable_opencode.json`
-- `app/Fixtures/relink.d5_unavailable_opencode_attached_history.json`
-- `app/Fixtures/relink.d5_unavailable_opencode_brief.json`
-- `app/Fixtures/setup.d5_already.json`
-- `app/Fixtures/setup.d5_claude.json`
-- `app/Fixtures/setup.d5_codex.json`
-- `app/Fixtures/setup.d5_cursor.json`
-- `app/Fixtures/setup.d5_large.json`
-- `app/Fixtures/setup.d5_opencode.json`
-- `app/Fixtures/setup.d5_unavailable.json`
-- `app/Fixtures/link.d5_already_replace_codex.json`
-- `baton/notes/catalogue.py`
-- `docs/plan/CONTRACT.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/track-c-cli-hooks.md`
-
-Message:
-
-```text
-Explain link and copy choices before creating chats
-
-Show engine-provided tool eligibility and the exact destination plan before confirmation. Preserve existing command calls while adding explicit retained-side, selected-mode and full-copy replacement routes.
-```
-
-### B1 — native fixture implementation; live acceptance pending
-
-Patch: `docs/plan/reports/patches/B1.patch`, applies after D5.
-
-This is a commit-ready implementation boundary, not a claim that B1’s real-app Done-when condition or CP2 has passed. No live run was performed.
-
-Exact paths:
-
-- `baton/adapters/claude/facts.py`
-- `baton/adapters/claude/runner.py`
-- `baton/adapters/claude/hooks.py`
-- `baton/adapters/claude/__init__.py`
-- `baton/adapters/claude/locator.py`
-- `baton/adapters/claude/reader.py`
-- `baton/adapters/claude/app.py`
-- `baton/adapters/claude/writer.py`
-- `baton/adapters/claude/tool.py`
-- `baton/adapters/claude/state.py`
-- `tests/adapters/test_claude.py`
-- `tests/fixtures/claude/__init__.py`
-- `tests/fixtures/claude/build.py`
-- `tests/adapters/suite.py`
-- `tests/adapters/test_fake.py`
-- `baton/services/mapping.py`
-- `tests/unit/test_mapping.py`
-- `baton/notes/catalogue.py`
-- `docs/plan/track-b-adapters.md`
-- `docs/plan/ARCHITECTURE.md`
-
-Message:
-
-```text
-Guard native chat writes with durable rollback receipts
-
-Implement the measured native sidebar and chat shapes behind the shared ports. Keep unknown formats, active holders and outside edits protected, while allowing interrupted publication to recover from persisted receipts; live acceptance remains separately gated.
-```
-
-### Coordination records — after the five package commits
-
-Keep the following handoff records in a separate documentation commit; they record the accepted boundaries, remaining gates and reusable patches. `CP2-record.patch` applies after B1 and carries these records; it is a generated transport artifact and does not include itself.
-
-Exact paths:
-
-- `docs/plan/STATUS.md`
-- `docs/plan/CHECKPOINTS.md`
-- `docs/plan/reports/CP1-2026-10-05.md`
-- `docs/plan/reports/CP1-findings-2026-10-05.md`
-- `docs/plan/reports/CP2-2026-10-05.md`
-- `docs/plan/reports/patches/R10.patch`
-- `docs/plan/reports/patches/D4b.patch`
-- `docs/plan/reports/patches/E7.patch`
-- `docs/plan/reports/patches/D5.patch`
-- `docs/plan/reports/patches/B1.patch`
-
-Message:
-
-```text
-Keep the next Baton handoff reproducible
-
-Record accepted package boundaries, exact commit paths and check output so work can resume without guessing. Preserve pending live checks and incomplete CP2 requirements alongside the ordered patches.
-```
-
-### UI1 — window and interaction fixes
-
-Patch: `docs/plan/reports/patches/UI1.patch`, applies after R10 → D4b → E7 → D5 → B1 → CP2-record. Git is protected; no commit or push was attempted.
-
-Exact paths:
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
-- `app/Sources/BatonUI/Screens/Link/LinkDialogView.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/BatonUI/Components/WindowPresentation.swift`
-- `app/Tests/BatonUITests/WindowInteractionTests.swift`
-- `app/Tests/BatonUITests/PopoverTests.swift`
-- `app/Tests/BatonUITests/LinkDialogTests.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI1-2026-10-06.md`
-
-Commit message:
-
-```text
-fix(app): make window navigation and scrolling respond reliably
-
-The fixture window and fixed content size prevented expansion. Padded rows missed clicks, repeated navigation erased selection, and long content could hide actions. Restore native window controls, full-row hits and accessible overlay scrolling without replacing the glass style.
-```
-
-### UI2 — glass title bar
-
-Patch: `docs/plan/reports/patches/UI2.patch`, applies after UI1. Exact paths:
-
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Sources/BatonUI/Components/WindowPresentation.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Tests/BatonUITests/WindowInteractionTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI2-2026-10-06.md`
-
-Commit message:
-
-```text
-fix(app): blend the title bar into the glass window
-
-The separate system title bar broke the approved glass palette. Extend the backdrop behind transparent native chrome while preserving window controls and content safe areas.
-```
-
-### E8 — recoverable undo and restore
-
-Patch: `docs/plan/reports/patches/E8.patch`, applies after UI2. Exact paths:
-
-- `baton/ledger/sqlite_store.py`
-- `baton/ledger/undo.py`
-- `baton/notes/catalogue.py`
-- `baton/ports/store.py`
-- `baton/ports/tool.py`
-- `baton/services/preview.py`
-- `baton/services/observations.py`
-- `baton/services/applier.py`
-- `baton/services/refresh.py`
-- `baton/services/linker.py`
-- `baton/services/undo.py`
-- `baton/services/status.py`
-- `baton/services/merger.py`
-- `baton/adapters/claude/writer.py`
-- `baton/adapters/fake/tool.py`
-- `tests/adapters/suite.py`
-- `tests/adapters/test_claude.py`
-- `tests/scenarios/test_undo.py`
-- `docs/plan/STATUS.md`
-- `docs/plan/ARCHITECTURE.md`
-- `docs/plan/track-e-core.md`
-- `docs/plan/CHECKPOINTS.md`
-- `docs/plan/reports/E8-2026-10-06.md`
-- `docs/plan/reports/CP2-2026-10-05.md`
-
-Commit message:
-
-```text
-feat(core): keep undo recoverable across chat changes
-
-Users need to return to a history point without losing messages or trusting stale previews. Journal cuts and exact restorations, create shorter copies where cutting is unsafe, and atomically pause and move the link after verification.
-```
-
-### UI3 — normal launch and native window controls
-
-Patch: `docs/plan/reports/patches/UI3.patch`, applies after E8. Separate reviewer found no code blocker; native checks and Ibrahim’s visible-control confirmation passed. Ready to commit. Exact paths:
-
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Sources/BatonUI/Components/WindowPresentation.swift`
-- `app/Tests/BatonUITests/WindowInteractionTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI3-2026-10-06.md`
-
-Commit message:
-
-```text
-fix(app): open the main window with native controls
-
-Normal launch only exposed the menu icon, while separate window paths had different full-screen behavior. Reuse one retained window on launch and reopen, keep native controls, and avoid redundant chrome changes during updates.
-```
-
-### UI4 — conversation orientation
-
-Patch: `docs/plan/reports/patches/UI4.patch`, applies after UI3. The final connector correction and shared test-gate report updates are in the succeeding UI5 patch.
-
-Exact paths:
-
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI4-2026-10-06.md`
-
-Message:
-
-```text
-Make conversation ownership and sync boundaries clear
-
-Identify each turn and keep received-history notes next to the messages they describe so people can understand what each agent has. Present linked folders as readable locations and preserve filtering and turn order.
-```
-
-### UI5 — signed identity and useful empty screens
-
-Patch: `docs/plan/reports/patches/UI5.patch`, applies after UI4 on the recorded ordered patch chain. Includes PNG assets. Independent reviewer found no remaining warnings after fixes; root377/79/build pass.
-
-Exact paths:
-
-- `app/Package.swift`
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Components/EmptyStateView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift`
-- `app/Tests/BatonUITests/EmptyStateTests.swift`
-- `baton/notes/catalogue.py`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI5-2026-10-06.md`
-- `app/Brand/README.md`
-- `app/Fixtures/links.d2_decision_needed.json`
-- `app/Fixtures/links.d2_in_sync.json`
-- `app/Fixtures/links.d2_no_links.json`
-- `app/Fixtures/links.d2_one_side_ahead.json`
-- `app/Fixtures/links.d2_paused.json`
-- `app/Fixtures/links.d2_relaunch_needed.json`
-- `app/Fixtures/links.d2_setup_incomplete.json`
-- `app/Fixtures/links.d2_waiting.json`
-- `app/Fixtures/links.d3_empty.json`
-- `app/Fixtures/links.d3_filled.json`
-- `app/Fixtures/links.d3_tool_missing.json`
-- `app/Fixtures/links.d5_already.json`
-- `app/Fixtures/links.d5_claude.json`
-- `app/Fixtures/links.d5_codex.json`
-- `app/Fixtures/links.d5_cursor.json`
-- `app/Fixtures/links.d5_large.json`
-- `app/Fixtures/links.d5_opencode.json`
-- `app/Fixtures/links.d5_unavailable.json`
-- `app/Fixtures/links.empty.json`
-- `app/Fixtures/status.d3_filled.json`
-- `app/Fixtures/status.d3_filled_3.json`
-- `app/Fixtures/status.d3_filled_4.json`
-- `app/Fixtures/status.d3_filled_5.json`
-- `app/Fixtures/status.d4_hooks.json`
-- `app/Fixtures/status.d4_missing.json`
-- `app/Fixtures/status.d4_paused.json`
-- `app/Fixtures/status.d4_s1.json`
-- `app/Fixtures/status.d4_s10.json`
-- `app/Fixtures/status.d4_s11.json`
-- `app/Fixtures/status.d4_s12.json`
-- `app/Fixtures/status.d4_s2.json`
-- `app/Fixtures/status.d4_s3.json`
-- `app/Fixtures/status.d4_s4.json`
-- `app/Fixtures/status.d4_s4b.json`
-- `app/Fixtures/status.d4_s5.json`
-- `app/Fixtures/status.d4_s6.json`
-- `app/Fixtures/status.d4_s7.json`
-- `app/Fixtures/status.d4_s8.json`
-- `app/Fixtures/status.d4_s9.json`
-- `app/Fixtures/status.d4_unknown.json`
-- `app/Fixtures/status.sample.json`
-- `docs/plan/reports/UI4-2026-10-06.md`
-- `app/Brand/baton-icon-burgundy-black-signed.png`
-- `app/Brand/baton-logo-burgundy-black-v4.png`
-- `app/Brand/baton-logo-burgundy-v3.png`
-- `app/Brand/baton-logo-concept-v1.png`
-- `app/Brand/baton-logo-palettes-v2.png`
-- `app/Brand/baton-logo-review-v1.png`
-- `app/Sources/BatonUI/Resources/Brand/baton-icon.png`
-
-Message:
-
-```text
-Give Baton a signed identity and explain empty views
-
-Use the chosen burgundy and black handoff mark with I.A in the compact icon. Explain empty lists, selection and filters with catalogue wording, while keeping loading and failed reads distinct from successful empty results.
-```
-
-### UI6 — transparent logo and dark glass
-
-Patch: `docs/plan/reports/patches/UI6.patch`, applies after UI5, including two new PNG assets. Separate reviewer found no remaining actionable findings after fixes; root377/81/build pass.
-
-Exact paths:
-
-- `app/Brand/README.md`
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Components/WindowPresentation.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Tests/BatonUITests/ComponentTests.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI6-2026-10-06.md`
-- `app/Brand/baton-mark-transparent.png`
-- `app/Sources/BatonUI/Resources/Brand/baton-mark.png`
-
-Message:
-
-```text
-Carry the signed mark across both app appearances
-
-Replace the menu glyph and white tile with the transparent Baton identity. Keep black and I.A readable on gray glass in dark mode, preserve the decision badge, and respect system appearance and reduced transparency.
-```
-
-### UI7 — logo surroundings and appearance selector
-
-Patch: `docs/plan/reports/patches/UI7.patch`, applies after UI6. No binary artwork change. Independent reviewer confirms no remaining findings; root377/83/build pass.
-
-Exact paths:
-
-- `app/Brand/README.md`
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Components/WindowPresentation.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/BatonUI/Theme/ThemePreference.swift`
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `app/Tests/BatonUITests/ThemePreferenceTests.swift`
-- `baton/notes/catalogue.py`
-- `docs/plan/STATUS.md`
-- `docs/plan/track-d-app.md`
-- `docs/plan/reports/UI7-2026-10-06.md`
-- `app/Fixtures/links.d2_decision_needed.json`
-- `app/Fixtures/links.d2_in_sync.json`
-- `app/Fixtures/links.d2_no_links.json`
-- `app/Fixtures/links.d2_one_side_ahead.json`
-- `app/Fixtures/links.d2_paused.json`
-- `app/Fixtures/links.d2_relaunch_needed.json`
-- `app/Fixtures/links.d2_setup_incomplete.json`
-- `app/Fixtures/links.d2_waiting.json`
-- `app/Fixtures/links.d3_empty.json`
-- `app/Fixtures/links.d3_filled.json`
-- `app/Fixtures/links.d3_tool_missing.json`
-- `app/Fixtures/links.d5_already.json`
-- `app/Fixtures/links.d5_claude.json`
-- `app/Fixtures/links.d5_codex.json`
-- `app/Fixtures/links.d5_cursor.json`
-- `app/Fixtures/links.d5_large.json`
-- `app/Fixtures/links.d5_opencode.json`
-- `app/Fixtures/links.d5_unavailable.json`
-- `app/Fixtures/links.empty.json`
-
-Message:
-
-```text
-Keep logo colors fixed and make appearance selectable
-
-Give the Dock a white tile while leaving in-app logos bare in both themes. Expose a remembered Light, Dark or System app preference so people can choose the surfaces without recoloring B or I.A or changing macOS settings.
-```
-
-### UI8 — clear receipts, configuration and confirmed Quit
-
-Patch: `docs/plan/reports/patches/UI8.patch`, applies after UI7; the ordered chain starts at HEAD `4546808`. Report: `docs/plan/reports/UI8-2026-10-06.md`.
-
-Exact paths:
-
-- `app/Fixtures/links.d2_decision_needed.json`
-- `app/Fixtures/links.d2_in_sync.json`
-- `app/Fixtures/links.d2_no_links.json`
-- `app/Fixtures/links.d2_one_side_ahead.json`
-- `app/Fixtures/links.d2_paused.json`
-- `app/Fixtures/links.d2_relaunch_needed.json`
-- `app/Fixtures/links.d2_setup_incomplete.json`
-- `app/Fixtures/links.d2_waiting.json`
-- `app/Fixtures/links.d3_empty.json`
-- `app/Fixtures/links.d3_filled.json`
-- `app/Fixtures/links.d3_tool_missing.json`
-- `app/Fixtures/links.d5_already.json`
-- `app/Fixtures/links.d5_claude.json`
-- `app/Fixtures/links.d5_codex.json`
-- `app/Fixtures/links.d5_cursor.json`
-- `app/Fixtures/links.d5_large.json`
-- `app/Fixtures/links.d5_opencode.json`
-- `app/Fixtures/links.d5_unavailable.json`
-- `app/Fixtures/links.empty.json`
-- `app/Fixtures/links.sample.json`
-- `app/Fixtures/settings-get.sample.json`
-- `app/Fixtures/settings-set.sample.json`
-- `app/Fixtures/status.d3_filled.json`
-- `app/Fixtures/status.d3_filled_3.json`
-- `app/Fixtures/status.d3_filled_4.json`
-- `app/Fixtures/status.d3_filled_5.json`
-- `app/Fixtures/status.d4_hooks.json`
-- `app/Fixtures/status.d4_missing.json`
-- `app/Fixtures/status.d4_paused.json`
-- `app/Fixtures/status.d4_s1.json`
-- `app/Fixtures/status.d4_s10.json`
-- `app/Fixtures/status.d4_s11.json`
-- `app/Fixtures/status.d4_s12.json`
-- `app/Fixtures/status.d4_s2.json`
-- `app/Fixtures/status.d4_s3.json`
-- `app/Fixtures/status.d4_s4.json`
-- `app/Fixtures/status.d4_s4b.json`
-- `app/Fixtures/status.d4_s5.json`
-- `app/Fixtures/status.d4_s6.json`
-- `app/Fixtures/status.d4_s7.json`
-- `app/Fixtures/status.d4_s8.json`
-- `app/Fixtures/status.d4_s9.json`
-- `app/Fixtures/status.d4_unknown.json`
-- `app/Fixtures/status.sample.json`
-- `app/Sources/Baton/BatonApp.swift`
-- `app/Sources/BatonKit/Engine/EngineClient.swift`
-- `app/Sources/BatonKit/Engine/SettingsFixtureEngine.swift`
-- `app/Sources/BatonKit/Models/Results.swift`
-- `app/Sources/BatonKit/Models/SettingsChoice.swift`
-- `app/Sources/BatonUI/Components/BrandMark.swift`
-- `app/Sources/BatonUI/Components/QuitConfirmation.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
-- `app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift`
-- `app/Sources/BatonUI/Screens/Settings/SettingsView.swift`
-- `app/Sources/BatonUI/Screens/Settings/SettingsViewModel.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
-- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
-- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
-- `app/Sources/BatonUI/Theme/Theme.swift`
-- `app/Sources/BatonUI/Theme/ThemePreference.swift`
-- `app/Tests/BatonKitTests/ProcessEngineTests.swift`
-- `app/Tests/BatonUITests/BrandTests.swift`
-- `app/Tests/BatonUITests/EmptyStateTests.swift`
-- `app/Tests/BatonUITests/PopoverTests.swift`
-- `app/Tests/BatonUITests/ReceiptTests.swift`
-- `app/Tests/BatonUITests/SettingsTests.swift`
-- `app/Tests/BatonUITests/WindowInteractionTests.swift`
-- `app/Tests/BatonUITests/WindowTests.swift`
-- `baton/notes/catalogue.py`
-- `docs/plan/CONTRACT.md`
-- `docs/plan/STATUS.md`
-- `docs/plan/reports/UI8-2026-10-06.md`
-- `docs/plan/track-d-app.md`
-- `tests/unit/test_notes.py`
-
-Commit message:
-
-```text
-Make configuration and received history clear in the app
-
-Both agents can reach the same turn, so show one shared receipt instead of
-ambiguous repeated marker lines. Keep brand colours intact while improving
-menu contrast and reducing Dock padding. Expose the contract settings with
-clear defaults in the fixture preview, and require confirmation before Quit.
-Application actions remain available when loading fails; reset stops after
-a failed write. Correct three receipts that previously skipped waiting history.
-```
-
-## Decisions
-
-27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
-
-Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
-
-1. **Unknown format (E2):** never write. An open chat with ready hooks attaches; otherwise hold with `format_unknown`. Test both.
-2. **Visibility (E2/E5):** add `SideCondition.app_started_at: str = ""`. `added` becomes `shown` immediately for AT_ONCE; for AFTER_RELAUNCH only when app start is after delivery; for ON_REOPEN_CHAT on a later app start or explicit user `mark_shown`. A prompt hook is never evidence of reopening. Keep the status instruction until shown.
-3. **Release (E3/E5):** separate `check_release` from `check_write`. Check release, release, wait at most 10 seconds for closed state, recheck write, then add. Release/wait failure falls back to attach and records why; never write before the recheck passes.
-4. **App (D1–D4):** Swift package, new `BatonUI` library at `app/Sources/BatonUI/`, thin `Baton` executable, no third-party dependencies. ImageRenderer tests render every listed fixture state in light/graphite, assert non-empty images, and write PNGs to git-ignored `app/Snapshots/`. View-model tests assert behaviour. CP1 fixtures are hand-made in `app/Fixtures/`; C2 generates them later.
-5. **Scope (E3/E6):** E3 may add journal schema and extend SQLite store and RecordStore additively. Tests follow ARCHITECTURE's table. E6 brief mode raises NotAvailable, tested, until E10. Orchestrator may update docs/plan/ including reports; frozen contract only grows. Workers never commit; reviewer commits exact ready-to-commit entries.
-6. **Notes (E2/E4):** create `baton/notes/catalogue.py` in E2 with all CP1 notes (id, tone, template, buttons, status line) from protected feature wording tables. E4 marker lives there. No user-facing sentence elsewhere; E12 completes/audits later.
-
-7. **Pre-write rollback receipt (E3, reviewer approved on resume):** add ChatWriter.prepare(chat_id | None, kind) -> WriteReceipt. Journal.begin persists it before mutation; commit stores the post-write receipt. Startup recovery takes back all begun/uncommitted entries using the pre-write receipt. Implement in fake and shared adapter suite. Create preparation records that no chat exists yet.
-
-8. **S9/S7 precedence (E5; Orchestrator, approved by reviewer afterwards):** a new completed destination turn creates a conflict with the bypassed waiting turn. Hold for S7 and redeliver after merge; S9 automatic redelivery applies when no competing completed turn exists. E7 supplies the merge implementation.
-
-9. **R9 (Reviewer):** C3 adds full-copy replacement of one existing linked side and explicit retained-side relinking routes; D5 exposes both. Additive command details are recorded in the reviewer notes above.
-10. **R10 (Reviewer):** separate SQLite links, turns, history and journal concerns behind the existing RecordStore; extract applier preview/fingerprints and refresh. Preserve behavior and atomic transactions before CP2.
-11. **D4b test scope (Orchestrator; separate reviewer agent checked, Ibrahim accepted afterwards):** include `app/Tests/BatonUITests/` in D4b's file list, because its existing acceptance conditions explicitly require view-model and snapshot tests.
-
-12. **Fixture review diagnostics (Ibrahim, 2026-10-05):** approved launching the exact `/private/tmp/BatonFixture.app` bundle outside the shell sandbox, then approved a temporary Baton label to locate the menu entry. Orchestrator added `--review-window` to open the existing fixture window; `--review-label` adds the approved diagnostic label only when requested. Neither authorizes real-tool access or settings/permission changes, nor proves the ordinary menu-bar path. The separate reviewer checked these launch changes.
-
-13. **Style exploration (Ibrahim, 2026-10-05):** rejected the present appearance and chose exploration of a different direction. Orchestrator prepares two fixture-only studies, a quiet native inspector and a focused Graphite workspace (these directions are the orchestrator’s proposals, not approved designs). Subsequent decision 14 closes this exploration without adopting a new reference.
-
-14. **Retain existing style (Ibrahim, 2026-10-05):** after seeing both alternative studies, chose to leave the current style. No A/B proposal is applied; the existing glass design and mockup remain the visual reference. This settles the style choice, without claiming unverified runtime behavior.
-
-15. **D4b acceptance (Ibrahim, 2026-10-05):** after choosing to retain the existing style, instructed “commit and let's continue”. Orchestrator records the appearance gate accepted and proceeds with CP2. This does not authorize real-app runs or imply additional runtime verification.
-
-16. **E7 scope/dependency correction (Orchestrator, not yet reviewed):** atomic merge completion extends the store additively and exact approved decisions must survive attachment until a new conflicting turn appears. E7 proves U1–U8 plus recoverable history; E8 runs U9. M12 offer integrates E9/E10. This makes implementation dependencies explicit without relaxing the CP2 scenarios.
-17. **D5 presentation (Orchestrator, not yet reviewed):** setup supplies optional notes and per-tool mode eligibility; Chat may supply its current link id. The UI shows engine choices, never infers tool rules. Catalogue is extended with the existing feature wording and specified dialog labels; C2 will generate it. R9 signatures are recorded additively before their app transport is used.
-
-18. **Relink mode (Ibrahim, 2026-10-05):** approved optional --mode full_copy|attached_history|brief with full_copy default on R9 retained-side relink. D5 sends it; C3 implements it. Existing signatures are preserved.
-
-19. **Rollback suite (Ibrahim, 2026-10-05):** approved reverse-order rollback and refusal when later outside writes changed a chat. Shared adapter suite no longer requires removing an earlier append beneath a later one; the fake retains its extra out-of-order capability test. Real adapter tests must verify stale receipts refuse without mutation.
-
-20. **Native adapter boundaries (Orchestrator; separate reviewer checked):** native rollback publication uses fsynced intent plus atomic file replacement, preserving existing log bytes. Hidden targets participate in format checks; missing project directories do not prevent rollback. Exact process/session ownership is required before release. C4 must provide native stdin-to-stable-ID hook entrypoints; until then default hooks report not ready.
-21. **Review fixes (Orchestrator; separate reviewers checked):** merge history carries per-write visibility evidence; paused split changes metadata only; a broken creation reservation records actual recovery evidence before stopping. Fake portable receipt equality and authentic native tool-call/result IDs are corrected. D5 clears stale chat choices, shows unavailable reasons and exact full-copy preservation notes. No protected spec was edited.
-
-22. **UI interaction fixes (Ibrahim request, 2026-10-06; implementation independently reviewed):** preserve existing glass style while repairing expansion/full-screen controls, row hit areas and scrolling. Native overlay scrollers are used within Baton only; no system preference changed. Wider layouts are supported; minimum width remains 1000 to preserve the current two-card layout.
-
-23. **Merge undo (Ibrahim, 2026-10-06):** U9 means native cut where can_cut supports it, otherwise a shorter copy as A9 requires. Merge-created chats are preserved; the link moves back to the earlier chat. Approved after explicit safety recommendation.
-24. **E8 scope correction (Orchestrator, implementation only):** additive atomic complete_undo store API and ledger mixin, additive writer restore with fresh pre-write recovery receipt, empty cut boundary for fake/Claude adapters, and catalogue wording from existing specs are permitted; tests use temporary fixtures only.
-
-25. **Glass title bar (Ibrahim, 2026-10-06):** requested native top bar in the existing glass palette. Transparent full-size chrome extends only the backdrop through the safe area; controls remain native. No system appearance setting changed.
-
-26. **Undo safe refusals (Orchestrator, separate reviewer checked):** refuse moving back from a shorter or merge-created chat if it gained native messages; refuse an expired restore preview at apply; metadata-only split undo has no A10 restore and refuses it. Older merge records without sufficient observations cannot be guessed. Shared undo warnings include per-side capability needs and catalogue ids.
-
-27. **Transparent signed identity (Ibrahim, 2026-10-06):** requested menu adoption, no white margins around B/I.A in current logo placements, and gray glass in dark mode. UI6 implements this and follows macOS appearance without changing its setting.
-
-28. **Logo surroundings and selector (Ibrahim,2026-10-06):** Dock margins should be white; in-app marks have no surrounding panel. He explicitly clarified that B/I.A colors must not change. Light/Dark/System controls app surfaces only; pixel invariance is checked. Local app preference storage is the orchestrator’s fixture implementation; engine settings must be connected in C2/D12.
-
-### UI8 decisions — 2026-10-06
-
-- **Ibrahim:** requested the menu mark's white edges without recolouring B/I.A, tighter white Dock surroundings, burgundy/black dark decoration, clearer conversation receipts, Settings with defaults, and a smaller menu-bar popover with confirmed Quit.
-- **Orchestrator, separately reviewed:** outline the menu silhouette in both appearances so a dark wallpaper also works with light macOS appearance; retain the exact source PNG. Group only identical engine receipt turn IDs; keep hidden receipts per tool with their turn number. Correct three hand-made fixtures to stop before their first waiting turn, following the existing engine rule.
-- **Orchestrator, separately reviewed:** build the settings portion of D11 early as saved fixture-preview configuration, labelled explicitly. Keep the ten keys/defaults from CONTRACT; configuration set acts immediately without plan flags. Keep appearance/glass local to the app until D12. Bootstrap Open/Quit notes independently of engine load; Cancel is the native confirmation default. No change to real chats or macOS preferences.
+Nothing. Everything through UI13 was committed by the reviewer on 2026-10-09 (see Done). The full ready-to-commit records that stood here are in git history and in `reports/`.
 
 ## Questions
+
+- UI13 exposed a wording conflict in sync-status R10: its example says an agent has everything above a reached line, but a keep-side merge can leave a `skipped` turn above a later reached point. The UI now says only where an agent reached in the combined order. The protected feature spec still needs an approved clarification before future note generation in C2/E12.
 
 - UI7 preference currently lives in the app’s UserDefaults. C2/D12 must reconcile it with the engine theme setting before real app wiring; fixture tests inject memory persistence and never write real preferences.
 
@@ -967,6 +138,10 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-07 — UI13 complete at a green package boundary: 380 engine / 96 app tests and Swift build pass with installed SDK flags. Replaced the near-black received-history box with a light divider and endpoint dot inside its turn; an off-screen receipt now sits apart from visible turns. Catalogue/fixture copy explains agent context and uses reached-position wording so skipped history and later local turns are not misrepresented. Six final Light/Graphite snapshots cover separate, hidden and shared endpoints; the signed temporary fixture was refreshed and Computer Use verified the final text. Independent reviewer found two wording errors and missing separate-endpoint coverage; all were fixed and reviewer found no remaining blocker. UI13 patch/report and exact ready entry recorded. No Git write, push or real chat access.
+
+- 2026-10-06 — UI12 complete at a green boundary: 379 engine / 96 app tests and Swift build pass with installed SDK flags. Ibrahim asked for a smaller application icon and the real signed logo in grayscale glass in the menu bar. The Dock tile now has transparent outer room; the menu renders the cached, cropped logo at 3× with the neutral decision badge. Independent review found a repeated 1254×1254 crop and a self-referential test; both were fixed, re-reviewed and retested. The previous fixture process was closed through its own Quit confirmation, the new temporary bundle signed/verified and relaunched, and Computer Use confirmed the current window. PNGs show both themes and badge states; the actual system menu-bar pixels were not captured. UI12 patch/report and ready entry recorded; no Git write, push or real chat access.
 
 - 2026-10-06 — UI7 complete:377 engine/83 app/build pass with installedSDKflags. Kept exact existing B/I.A artwork after Ibrahim clarified surroundings only; no alternate-color asset adopted. Content is bare, Dock tile white, selector visible at sidebar bottom. Native Light/Dark switches inspected; user later selected System/Activity, so no further automation or relaunch. Review warning fixed with mounted offscreen native theme/retained-state assertions after layout settles; final full suite passes. UI7 ready after UI6; no Git or real-chat writes.
 

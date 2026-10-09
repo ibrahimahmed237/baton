@@ -1,0 +1,2172 @@
+diff --git a/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift b/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
+--- a/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
++++ b/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
+@@ -24,10 +24,15 @@
+                 strip(status)
+                 GlassCard {
+                     VStack(alignment: .leading, spacing: 14) {
+-                        HStack {
+-                            if let note = model.note("screen.conversation") { Text(note.text).font(.caption.weight(.semibold)) }
+-                            Spacer(minLength: 0)
+-                            filters
++                        VStack(alignment: .leading, spacing: 5) {
++                            HStack {
++                                if let note = model.note("screen.conversation") { Text(note.text).font(.caption.weight(.semibold)) }
++                                Spacer(minLength: 0)
++                                filters
++                            }
++                            if !model.turns.isEmpty, let guide = model.note("screen.conversation_guide") {
++                                Text(guide.text).font(.caption).foregroundStyle(theme.secondaryText)
++                            }
+                         }
+                         conversation
+                     }.frame(maxWidth: .infinity, alignment: .leading)
+@@ -190,16 +195,12 @@
+             if model.foldedCount > 0, let folded = model.note("screen.earlier_turns") {
+                 Button(folded.text) { model.unfold() }.buttonStyle(.plain)
+             }
++            if !model.hiddenReachedTools.isEmpty {
++                reachedBoundaryGroup(model.hiddenReachedTools, hidden: true)
++                    .padding(.horizontal, 12)
++            }
+             ForEach(model.displayedTurns, id: \.id) { turn in
+-                VStack(alignment: .leading, spacing: 0) {
+-                    if turn.id == model.displayedTurns.first?.id, !model.hiddenReachedTools.isEmpty {
+-                        reachedBoundaryGroup(model.hiddenReachedTools, hidden: true).padding(.leading, 12)
+-                        Capsule().fill(theme.colour(for: .added).opacity(0.65))
+-                            .frame(width: 2, height: 16).padding(.leading, 12)
+-                            .accessibilityHidden(true)
+-                    }
+-                    turnView(turn)
+-                }.id(turn.id)
++                turnView(turn).id(turn.id)
+             }
+         }
+     }
+@@ -240,28 +241,31 @@
+                 }
+             }
+             let reached = model.reachedTools(at: turn.id)
+-            if !reached.isEmpty { reachedBoundaryGroup(reached).padding(.top, 2) }
++            if !reached.isEmpty { reachedBoundaryGroup(reached).padding(.top, 5) }
+         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+     }
+     private func reachedBoundaryGroup(_ tools: [String], hidden: Bool = false) -> some View {
+-        HStack(alignment: .top, spacing: 10) {
+-            Image(systemName: hidden ? "clock.arrow.circlepath" : "checkmark.circle.fill")
+-                .foregroundStyle(theme.colour(for: .added)).font(.system(size: 17))
+-                .accessibilityHidden(true)
+-            VStack(alignment: .leading, spacing: 7) {
+-                if let heading = model.note(hidden ? "screen.received_hidden" : "screen.received_here") {
+-                    Text(heading.text).font(.caption.weight(.semibold)).foregroundStyle(theme.text)
+-                }
++        VStack(alignment: .leading, spacing: 10) {
++            Rectangle().fill(theme.hairline).frame(height: 1).accessibilityHidden(true)
++            HStack(alignment: .top, spacing: 10) {
++                Circle().fill(theme.colour(for: .added))
++                    .frame(width: 7, height: 7).padding(.top, 5)
++                    .accessibilityHidden(true)
++                VStack(alignment: .leading, spacing: 4) {
++                    if hidden, let heading = model.note("screen.received_hidden") {
++                        Text(heading.text).font(.caption.weight(.semibold)).foregroundStyle(theme.text)
++                    }
++                    ForEach(Array(model.receiptNotes(for: tools, hidden: hidden).enumerated()), id: \.offset) { _, note in
++                        Text(note.text)
++                            .font(hidden ? .caption : .caption.weight(.semibold))
++                            .foregroundStyle(hidden ? theme.secondaryText : theme.text)
++                    }
++                }.frame(maxWidth: .infinity, alignment: .leading)
+                 HStack(spacing: 10) {
+-                    ForEach(tools, id: \.self) { tool in ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption) }
+-                }
+-                ForEach(Array(model.receiptNotes(for: tools, hidden: hidden).enumerated()), id: \.offset) { _, note in
+-                    Text(note.text).font(.caption).foregroundStyle(theme.secondaryText)
+-                }
+-            }.frame(maxWidth: .infinity, alignment: .leading)
+-        }.padding(12)
+-            .background(theme == .graphite ? Color(white: 0.10) : Color.white.opacity(0.85), in: RoundedRectangle(cornerRadius: 9))
+-            .overlay(RoundedRectangle(cornerRadius: 9).stroke(theme.colour(for: .added).opacity(0.35)))
++                    ForEach(tools, id: \.self) { tool in ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption2) }
++                }
++            }
++        }.padding(.horizontal, 4).padding(.vertical, 3)
+             .accessibilityElement(children: .combine)
+     }
+     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
+diff --git a/app/Tests/BatonUITests/ReceiptTests.swift b/app/Tests/BatonUITests/ReceiptTests.swift
+--- a/app/Tests/BatonUITests/ReceiptTests.swift
++++ b/app/Tests/BatonUITests/ReceiptTests.swift
+@@ -14,6 +14,8 @@
+         #expect(model.reachedTools(at: shared.id) == ["claude", "codex"])
+         let notes = model.receiptNotes(for: model.reachedTools(at: shared.id))
+         #expect(notes.map(\.id) == ["screen.received_both"])
++        #expect(notes.first?.text == "Both agents reached this turn.")
++        #expect(model.note("screen.conversation_guide")?.text == "An agent may have a turn even when its chat does not show it.")
+         #expect(model.hiddenReachedTools.isEmpty)
+         for filter in [ConversationFilter.attached, .waiting, .kept] {
+             model.setFilter(filter)
+@@ -29,10 +31,12 @@
+             let reached = try #require(status.sides[tool]?.syncedUpTo)
+             #expect(model.reachedTools(at: reached.id) == [tool])
+             #expect(model.receiptNotes(for: [tool]).first?.id == "screen.received_one")
++            #expect(model.receiptNotes(for: [tool]).first?.text == "\(model.toolLabel(tool)) reached this turn.")
+         }
+         model.setFilter(.pinned)
+         let hidden = model.hiddenReachedTools
+         #expect(!hidden.isEmpty)
++        #expect(model.note("screen.received_hidden")?.text == "Position outside this view")
+         for tool in hidden {
+             let reached = try #require(status.sides[tool]?.syncedUpTo)
+             let note = try #require(model.receiptNotes(for: [tool], hidden: true).first)
+@@ -40,8 +44,17 @@
+             #expect(note.values["seq"] == .number(Double(reached.seq)))
+         }
+         let output = ComponentTests.root.appendingPathComponent("Snapshots")
+-        for link in [3, 5] {
++        for (link, filter, state) in [(3, ConversationFilter.all, "separate"),
++                                      (3, .pinned, "hidden"),
++                                      (5, .all, "shared")] {
+             await model.load(link: link)
++            model.setFilter(filter)
++            if state == "separate" {
++                model.unfold()
++                #expect(model.tools.allSatisfy { tool in
++                    model.displayedTurns.contains { model.reachedTools(at: $0.id).contains(tool) }
++                })
++            }
+             for theme in Theme.allCases {
+                 let renderer = ImageRenderer(content: SyncStatusView(model: model).padding(20).frame(width: 780)
+                     .environment(\.batonSnapshotPresentation, true).background(theme.background).batonTheme(theme))
+@@ -49,7 +62,7 @@
+                 let image = try #require(renderer.nsImage)
+                 let tiff = try #require(image.tiffRepresentation)
+             let pixels = try #require(NSBitmapImageRep(data: tiff))
+-                try #require(pixels.representation(using: .png, properties: [:])).write(to: output.appendingPathComponent("UI8-receipt-\(link)-\(theme.rawValue).png"))
++                try #require(pixels.representation(using: .png, properties: [:])).write(to: output.appendingPathComponent("UI13-receipt-\(state)-\(theme.rawValue).png"))
+             }
+         }
+     }
+diff --git a/app/Fixtures/status.d3_filled.json b/app/Fixtures/status.d3_filled.json
+--- a/app/Fixtures/status.d3_filled.json
++++ b/app/Fixtures/status.d3_filled.json
+@@ -694,6 +694,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -737,7 +745,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -745,7 +753,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -753,7 +761,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -763,7 +771,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -774,7 +782,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -784,7 +792,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -795,7 +803,7 @@
+         "tool": "Codex",
+         "seq": 3
+       },
+-      "text": "Codex has history through turn 3.",
++      "text": "Codex reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d3_filled_3.json b/app/Fixtures/status.d3_filled_3.json
+--- a/app/Fixtures/status.d3_filled_3.json
++++ b/app/Fixtures/status.d3_filled_3.json
+@@ -694,6 +694,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -737,7 +745,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -745,7 +753,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -753,7 +761,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -763,7 +771,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -774,7 +782,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -784,7 +792,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -795,7 +803,7 @@
+         "tool": "Codex",
+         "seq": 3
+       },
+-      "text": "Codex has history through turn 3.",
++      "text": "Codex reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d3_filled_4.json b/app/Fixtures/status.d3_filled_4.json
+--- a/app/Fixtures/status.d3_filled_4.json
++++ b/app/Fixtures/status.d3_filled_4.json
+@@ -649,6 +649,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -692,7 +700,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -700,7 +708,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -708,7 +716,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -718,7 +726,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -729,7 +737,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -739,7 +747,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d3_filled_5.json b/app/Fixtures/status.d3_filled_5.json
+--- a/app/Fixtures/status.d3_filled_5.json
++++ b/app/Fixtures/status.d3_filled_5.json
+@@ -632,6 +632,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -675,7 +683,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -683,7 +691,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -691,7 +699,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -701,7 +709,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -712,7 +720,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -722,7 +730,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_hooks.json b/app/Fixtures/status.d4_hooks.json
+--- a/app/Fixtures/status.d4_hooks.json
++++ b/app/Fixtures/status.d4_hooks.json
+@@ -649,6 +649,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -692,7 +700,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -700,7 +708,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -708,7 +716,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -718,7 +726,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -729,7 +737,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -739,7 +747,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_missing.json b/app/Fixtures/status.d4_missing.json
+--- a/app/Fixtures/status.d4_missing.json
++++ b/app/Fixtures/status.d4_missing.json
+@@ -657,6 +657,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -700,7 +708,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -708,7 +716,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -716,7 +724,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -726,7 +734,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -737,7 +745,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -747,7 +755,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -758,7 +766,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_paused.json b/app/Fixtures/status.d4_paused.json
+--- a/app/Fixtures/status.d4_paused.json
++++ b/app/Fixtures/status.d4_paused.json
+@@ -681,6 +681,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -724,7 +732,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -732,7 +740,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -740,7 +748,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -761,7 +769,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -771,7 +779,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -782,7 +790,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s1.json b/app/Fixtures/status.d4_s1.json
+--- a/app/Fixtures/status.d4_s1.json
++++ b/app/Fixtures/status.d4_s1.json
+@@ -674,6 +674,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -717,7 +725,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -725,7 +733,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -743,7 +751,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -754,7 +762,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -764,7 +772,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -775,7 +783,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s10.json b/app/Fixtures/status.d4_s10.json
+--- a/app/Fixtures/status.d4_s10.json
++++ b/app/Fixtures/status.d4_s10.json
+@@ -649,6 +649,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -692,7 +700,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -700,7 +708,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -708,7 +716,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -718,7 +726,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -729,7 +737,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -739,7 +747,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s11.json b/app/Fixtures/status.d4_s11.json
+--- a/app/Fixtures/status.d4_s11.json
++++ b/app/Fixtures/status.d4_s11.json
+@@ -632,6 +632,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -675,7 +683,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -683,7 +691,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -691,7 +699,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -701,7 +709,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -712,7 +720,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -722,7 +730,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s12.json b/app/Fixtures/status.d4_s12.json
+--- a/app/Fixtures/status.d4_s12.json
++++ b/app/Fixtures/status.d4_s12.json
+@@ -727,6 +727,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -770,7 +778,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -778,7 +786,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -786,7 +794,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -796,7 +804,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -807,7 +815,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -817,7 +825,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -828,7 +836,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s2.json b/app/Fixtures/status.d4_s2.json
+--- a/app/Fixtures/status.d4_s2.json
++++ b/app/Fixtures/status.d4_s2.json
+@@ -643,6 +643,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -686,7 +694,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -694,7 +702,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -702,7 +710,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -712,7 +720,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -723,7 +731,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -744,7 +752,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s3.json b/app/Fixtures/status.d4_s3.json
+--- a/app/Fixtures/status.d4_s3.json
++++ b/app/Fixtures/status.d4_s3.json
+@@ -632,6 +632,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -675,7 +683,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -683,7 +691,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -691,7 +699,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -701,7 +709,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -712,7 +720,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -722,7 +730,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s4.json b/app/Fixtures/status.d4_s4.json
+--- a/app/Fixtures/status.d4_s4.json
++++ b/app/Fixtures/status.d4_s4.json
+@@ -632,6 +632,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -675,7 +683,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -683,7 +691,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -691,7 +699,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -701,7 +709,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -712,7 +720,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -722,7 +730,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s4b.json b/app/Fixtures/status.d4_s4b.json
+--- a/app/Fixtures/status.d4_s4b.json
++++ b/app/Fixtures/status.d4_s4b.json
+@@ -681,6 +681,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -724,7 +732,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -732,7 +740,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -740,7 +748,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -761,7 +769,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -771,7 +779,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -782,7 +790,7 @@
+         "tool": "Codex",
+         "seq": 3
+       },
+-      "text": "Codex has history through turn 3.",
++      "text": "Codex reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s5.json b/app/Fixtures/status.d4_s5.json
+--- a/app/Fixtures/status.d4_s5.json
++++ b/app/Fixtures/status.d4_s5.json
+@@ -812,6 +812,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -855,7 +863,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -863,7 +871,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -871,7 +879,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -881,7 +889,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -892,7 +900,7 @@
+         "tool": "Claude",
+         "seq": 12
+       },
+-      "text": "Claude has history through turn 12.",
++      "text": "Claude reached turn 12 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -902,7 +910,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s6.json b/app/Fixtures/status.d4_s6.json
+--- a/app/Fixtures/status.d4_s6.json
++++ b/app/Fixtures/status.d4_s6.json
+@@ -835,6 +835,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -878,7 +886,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -886,7 +894,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -894,7 +902,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -904,7 +912,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -915,7 +923,7 @@
+         "tool": "Claude",
+         "seq": 12
+       },
+-      "text": "Claude has history through turn 12.",
++      "text": "Claude reached turn 12 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -925,7 +933,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -936,7 +944,7 @@
+         "tool": "Codex",
+         "seq": 12
+       },
+-      "text": "Codex has history through turn 12.",
++      "text": "Codex reached turn 12 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s7.json b/app/Fixtures/status.d4_s7.json
+--- a/app/Fixtures/status.d4_s7.json
++++ b/app/Fixtures/status.d4_s7.json
+@@ -694,6 +694,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -737,7 +745,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -745,7 +753,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -753,7 +761,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -763,7 +771,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -774,7 +782,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -784,7 +792,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -795,7 +803,7 @@
+         "tool": "Codex",
+         "seq": 3
+       },
+-      "text": "Codex has history through turn 3.",
++      "text": "Codex reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s8.json b/app/Fixtures/status.d4_s8.json
+--- a/app/Fixtures/status.d4_s8.json
++++ b/app/Fixtures/status.d4_s8.json
+@@ -649,6 +649,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -692,7 +700,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -700,7 +708,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -708,7 +716,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -718,7 +726,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -729,7 +737,7 @@
+         "tool": "Claude",
+         "seq": 4
+       },
+-      "text": "Claude has history through turn 4.",
++      "text": "Claude reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -739,7 +747,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -750,7 +758,7 @@
+         "tool": "Codex",
+         "seq": 3
+       },
+-      "text": "Codex has history through turn 3.",
++      "text": "Codex reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_s9.json b/app/Fixtures/status.d4_s9.json
+--- a/app/Fixtures/status.d4_s9.json
++++ b/app/Fixtures/status.d4_s9.json
+@@ -674,6 +674,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -717,7 +725,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -725,7 +733,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -743,7 +751,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -754,7 +762,7 @@
+         "tool": "Claude",
+         "seq": 3
+       },
+-      "text": "Claude has history through turn 3.",
++      "text": "Claude reached turn 3 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -764,7 +772,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -775,7 +783,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.d4_unknown.json b/app/Fixtures/status.d4_unknown.json
+--- a/app/Fixtures/status.d4_unknown.json
++++ b/app/Fixtures/status.d4_unknown.json
+@@ -664,6 +664,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -707,7 +715,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -715,7 +723,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -723,7 +731,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -733,7 +741,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -744,7 +752,7 @@
+         "tool": "Claude",
+         "seq": 2
+       },
+-      "text": "Claude has history through turn 2.",
++      "text": "Claude reached turn 2 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -754,7 +762,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -765,7 +773,7 @@
+         "tool": "Codex",
+         "seq": 4
+       },
+-      "text": "Codex has history through turn 4.",
++      "text": "Codex reached turn 4 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/app/Fixtures/status.sample.json b/app/Fixtures/status.sample.json
+--- a/app/Fixtures/status.sample.json
++++ b/app/Fixtures/status.sample.json
+@@ -279,6 +279,14 @@
+       "status_line": null
+     },
+     {
++      "id": "screen.conversation_guide",
++      "tone": "info",
++      "values": {},
++      "text": "An agent may have a turn even when its chat does not show it.",
++      "buttons": [],
++      "status_line": null
++    },
++    {
+       "id": "empty.conversation.title",
+       "tone": "info",
+       "values": {},
+@@ -322,7 +330,7 @@
+       "id": "screen.received_here",
+       "tone": "info",
+       "values": {},
+-      "text": "History received through this turn",
++      "text": "Position in this conversation",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -330,7 +338,7 @@
+       "id": "screen.received_both",
+       "tone": "info",
+       "values": {},
+-      "text": "Both agents have the conversation through this turn.",
++      "text": "Both agents reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -338,7 +346,7 @@
+       "id": "screen.received_hidden",
+       "tone": "info",
+       "values": {},
+-      "text": "Received history outside this view",
++      "text": "Position outside this view",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -348,7 +356,7 @@
+       "values": {
+         "tool": "Claude"
+       },
+-      "text": "Claude has the conversation through this turn.",
++      "text": "Claude reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -359,7 +367,7 @@
+         "tool": "Claude",
+         "seq": 1
+       },
+-      "text": "Claude has history through turn 1.",
++      "text": "Claude reached turn 1 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -369,7 +377,7 @@
+       "values": {
+         "tool": "Codex"
+       },
+-      "text": "Codex has the conversation through this turn.",
++      "text": "Codex reached this turn.",
+       "buttons": [],
+       "status_line": null
+     },
+@@ -380,7 +388,7 @@
+         "tool": "Codex",
+         "seq": 1
+       },
+-      "text": "Codex has history through turn 1.",
++      "text": "Codex reached turn 1 in this conversation.",
+       "buttons": [],
+       "status_line": null
+     }
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+--- a/baton/notes/catalogue.py
++++ b/baton/notes/catalogue.py
+@@ -69,11 +69,11 @@
+     Note('screen.quit', "info", 'Quit Baton…'),
+     Note('quit.title', "info", 'Quit Baton?'),
+     Note('quit.confirm', "info", 'Baton will close. Your saved settings will be kept.'),
+-    Note('screen.received_here', "info", 'History received through this turn'),
+-    Note('screen.received_both', "info", 'Both agents have the conversation through this turn.'),
+-    Note('screen.received_one', "info", '{tool} has the conversation through this turn.'),
+-    Note('screen.received_hidden', "info", 'Received history outside this view'),
+-    Note('screen.received_hidden_tool', "info", '{tool} has history through turn {seq}.'),
++    Note('screen.received_here', "info", 'Position in this conversation'),
++    Note('screen.received_both', "info", 'Both agents reached this turn.'),
++    Note('screen.received_one', "info", "{tool} reached this turn."),
++    Note('screen.received_hidden', "info", 'Position outside this view'),
++    Note('screen.received_hidden_tool', "info", "{tool} reached turn {seq} in this conversation."),
+     Note('settings.preview', "info", 'These choices are saved for this preview. Live chat syncing is not connected yet.'),
+     Note('settings.appearance', "info", 'Appearance'),
+     Note('settings.sync', "info", 'Sync and delivery'),
+@@ -161,6 +161,7 @@
+     Note("screen.sync_status", "info", "Sync status"),
+     Note("screen.turn_by_turn", "info", "Turn by turn"),
+     Note("screen.conversation", "info", "Conversation"),
++    Note("screen.conversation_guide", "info", "An agent may have a turn even when its chat does not show it."),
+     Note("screen.empty", "info", "No linked chats yet"),
+     Note("screen.list_empty", "info", "No items yet"),
+     Note("empty.popover.title", "info", "No linked chats yet"),
+diff --git a/tests/unit/test_notes.py b/tests/unit/test_notes.py
+--- a/tests/unit/test_notes.py
++++ b/tests/unit/test_notes.py
+@@ -48,7 +48,7 @@
+         from pathlib import Path
+         from baton.notes.catalogue import get
+         root = Path(__file__).resolve().parents[2] / "app" / "Fixtures"
+-        prefixes = ("screen.received_", "settings.", "quit.")
++        prefixes = ("screen.received_", "screen.conversation_guide", "settings.", "quit.")
+         checked = 0
+         for path in root.glob("*.json"):
+             data = json.loads(path.read_text())
+@@ -73,3 +73,17 @@
+                 if reached:
+                     self.assertFalse(any(turn["seq"] <= reached["seq"] and turn["states"].get(tool) == "waiting"
+                                          for turn in status.get("turns", [])), (path.name, tool))
++
++    def test_receipts_do_not_claim_every_earlier_turn_after_a_skip(self):
++        """A merge can skip an earlier turn while the latest agent turn advances."""
++        cases = (
++            ("screen.received_both", {}),
++            ("screen.received_one", {"tool": "Claude"}),
++            ("screen.received_hidden_tool", {"tool": "Claude", "seq": 3}),
++        )
++        for note_id, values in cases:
++            with self.subTest(note=note_id):
++                text = get(note_id).render(values).template
++                self.assertNotIn("every earlier turn", text)
++                self.assertNotIn("all history", text)
++                self.assertNotIn("latest turn", text)
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,13 +24,14 @@
+ 
+ ## Now
+ 
++- UI13 is complete and independently reviewed. The conversation uses a quiet receipt endpoint instead of a black inset, explains agent context versus chat visibility, and keeps filtered endpoints separate from visible turns. The final signed fixture is open on the updated view.
+ - UI12 is complete and independently reviewed with no remaining findings. The complete Dock tile is smaller, and the menu uses the signed B/I.A mark as a cached grayscale glass mask instead of UI11's generic link symbol. The final signed fixture launches and Computer Use confirms the current window is visible; menu and Dock renders were inspected as PNGs.
+-- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI12 are ready. No push or real chats.
+-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI12 implementation records remain ready to commit as listed below. UI12 independent review found and closed two issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI12 menu output was inspected through rendered snapshots.
++- Current shared tree: **380 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI13 are ready. No push or real chats.
++- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI13 implementation records remain ready to commit as listed below. UI13 independent review found and closed wording and render-coverage issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI12 menu output was inspected through rendered snapshots.
+ 
+ ## Next
+ 
+-Review/commit the ordered patches through UI12. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
++Review/commit the ordered patches through UI13. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+ 
+ ## Done
+ 
+@@ -66,10 +67,55 @@
+ | UI10 Dock margin and grayscale glass menu mark | 2026-10-06 | Ready to commit — review findings fixed; rendered Dock/menu images inspected | 379 engine / 96 app |
+ | UI11 conventional Dock scale and crisp vector menu symbol | 2026-10-06 | Ready to commit — independent reviewer found no findings; snapshots inspected | 379 engine / 96 app |
+ | UI12 compact Dock tile and signed monochrome menu mark | 2026-10-06 | Ready to commit — independent review findings closed; signed fixture running | 379 engine / 96 app |
++| UI13 clearer conversation receipt and reading order | 2026-10-07 | Ready to commit — independent review findings closed; final fixture inspected | 380 engine / 96 app |
+ 
+ ## Ready to commit
+ 
+ Historical CP1 patches have been committed; do not reapply them.
++
++### UI13 — clearer conversation receipt and reading order
++
++Patch: `docs/plan/reports/patches/UI13.patch`, applies after UI12 on HEAD `4546808`. Report: `docs/plan/reports/UI13-2026-10-07.md`.
++
++Exact paths:
++
++- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
++- `app/Tests/BatonUITests/ReceiptTests.swift`
++- `app/Fixtures/status.d3_filled.json`
++- `app/Fixtures/status.d3_filled_3.json`
++- `app/Fixtures/status.d3_filled_4.json`
++- `app/Fixtures/status.d3_filled_5.json`
++- `app/Fixtures/status.d4_hooks.json`
++- `app/Fixtures/status.d4_missing.json`
++- `app/Fixtures/status.d4_paused.json`
++- `app/Fixtures/status.d4_s1.json`
++- `app/Fixtures/status.d4_s10.json`
++- `app/Fixtures/status.d4_s11.json`
++- `app/Fixtures/status.d4_s12.json`
++- `app/Fixtures/status.d4_s2.json`
++- `app/Fixtures/status.d4_s3.json`
++- `app/Fixtures/status.d4_s4.json`
++- `app/Fixtures/status.d4_s4b.json`
++- `app/Fixtures/status.d4_s5.json`
++- `app/Fixtures/status.d4_s6.json`
++- `app/Fixtures/status.d4_s7.json`
++- `app/Fixtures/status.d4_s8.json`
++- `app/Fixtures/status.d4_s9.json`
++- `app/Fixtures/status.d4_unknown.json`
++- `app/Fixtures/status.sample.json`
++- `baton/notes/catalogue.py`
++- `tests/unit/test_notes.py`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI13-2026-10-07.md`
++
++Commit message:
++
++```text
++Make conversation sync positions easier to read
++
++Replace the heavy history inset with a turn-end marker and explain the difference between agent context and visible chat messages. Keep filtered positions separate and avoid implying that skipped turns were received.
++```
+ 
+ ### UI12 — compact Dock tile and signed monochrome menu mark
+ 
+@@ -975,6 +1021,8 @@
+ 
+ ## Questions
+ 
++- UI13 exposed a wording conflict in sync-status R10: its example says an agent has everything above a reached line, but a keep-side merge can leave a `skipped` turn above a later reached point. The UI now says only where an agent reached in the combined order. The protected feature spec still needs an approved clarification before future note generation in C2/E12.
++
+ - UI7 preference currently lives in the app’s UserDefaults. C2/D12 must reconcile it with the engine theme setting before real app wiring; fixture tests inject memory persistence and never write real preferences.
+ 
+ - UI3 native functions and Ibrahim’s visible-controls check pass. Ctrl-Command-F shortcut is not wired after removal of the SwiftUI Window scene; Escape exits native fullscreen, standard green control works. Track standard command integration in D13/keyboard polish; do not claim it repaired.
+@@ -989,6 +1037,8 @@
+ - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
+ 
+ ## Log
++
++- 2026-10-07 — UI13 complete at a green package boundary: 380 engine / 96 app tests and Swift build pass with installed SDK flags. Replaced the near-black received-history box with a light divider and endpoint dot inside its turn; an off-screen receipt now sits apart from visible turns. Catalogue/fixture copy explains agent context and uses reached-position wording so skipped history and later local turns are not misrepresented. Six final Light/Graphite snapshots cover separate, hidden and shared endpoints; the signed temporary fixture was refreshed and Computer Use verified the final text. Independent reviewer found two wording errors and missing separate-endpoint coverage; all were fixed and reviewer found no remaining blocker. UI13 patch/report and exact ready entry recorded. No Git write, push or real chat access.
+ 
+ - 2026-10-06 — UI12 complete at a green boundary: 379 engine / 96 app tests and Swift build pass with installed SDK flags. Ibrahim asked for a smaller application icon and the real signed logo in grayscale glass in the menu bar. The Dock tile now has transparent outer room; the menu renders the cached, cropped logo at 3× with the neutral decision badge. Independent review found a repeated 1254×1254 crop and a self-referential test; both were fixed, re-reviewed and retested. The previous fixture process was closed through its own Quit confirmation, the new temporary bundle signed/verified and relaunched, and Computer Use confirmed the current window. PNGs show both themes and badge states; the actual system menu-bar pixels were not captured. UI12 patch/report and ready entry recorded; no Git write, push or real chat access.
+ 
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -311,3 +311,19 @@
+ **Done when.** The complete Dock tile is visibly smaller, the signed logo is back in the menu bar with only gray glass values, badge/plain states remain distinct, and the build/tests and visual review pass.
+ 
+ UI12 completion 2026-10-06: 379 engine tests, 96 app tests and Swift build pass with the installed SDK flags. Dock and all four menu PNGs were inspected; the final signed fixture launches and shows the main window. Independent review found a repeated large-image crop and a self-referential menu test; both were fixed and the reviewer found no remaining blocker. Actual system menu-bar pixels were not captured.
++
++## UI13 — clearer conversation receipt and reading order
++
++**Goal.** Make the point each agent has reached easy to understand while reading a turn, without the near-black receipt box overwhelming the messages.
++
++**From.** Ibrahim, 2026-10-07: the black history area in the conversation looks out of place, and it is hard to tell what is going on.
++
++**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Tests/BatonUITests/ReceiptTests.swift`; `app/Fixtures/status*.json`; `baton/notes/catalogue.py`; `tests/unit/test_notes.py`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI13-2026-10-07.md`; `docs/plan/reports/patches/UI13.patch`.
++
++**Steps.** Present the receipt as a small timeline endpoint attached to its exact turn, using the same graphite/light surface as the conversation. Put one plain explanation of agent context versus visible chat messages near the conversation heading. Clarify receipt copy in the note catalogue and fixture projections. Preserve filtered and folded receipt placement and per-side turn states.
++
++**Checks.** Render the shared, separate and hidden receipt states in Light and Graphite; inspect the resulting PNGs and the running fixture. Assert the note copy and model receipt grouping, including an empty filter. Run Swift build/tests and the engine suite, then independent review.
++
++**Done when.** A reader can follow a turn to the endpoint marker and understand what both agents have, while the card has no near-black inset; hidden and filtered states remain truthful, and all checks pass.
++
++UI13 completion 2026-10-07: 380 engine tests, 96 app tests and Swift build pass with installed SDK flags. Shared, separate and hidden receipt renders were inspected in both themes, and the final signed fixture shows the updated conversation. Independent review caught copy that overstated receipt continuity and a missing separate-endpoint render; both were fixed, then review found no remaining blocker. The receipt is a position in the combined order, not a guarantee that every earlier turn was received after a skip.
+diff --git a/docs/plan/reports/UI13-2026-10-07.md b/docs/plan/reports/UI13-2026-10-07.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI13-2026-10-07.md
+@@ -0,0 +1,70 @@
++# UI13 hand-back — 2026-10-07
++
++## Result
++
++The conversation no longer ends a turn with a near-black, green-bordered history box. A thin divider and endpoint dot now sit inside the relevant turn, followed by a direct sentence such as “Both agents reached this turn.” A short catalogue-backed guide under Conversation explains that an agent can have a turn even when its chat does not show it. If a filter hides the reached turn, its position appears separately above the visible turns rather than being connected to the wrong message.
++
++This is a presentation change. Receipt positions still come from each side's `synced_up_to`, and filters still affect presentation only. No real chat or sync rule was changed.
++
++## Files
++
++- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
++- `app/Tests/BatonUITests/ReceiptTests.swift`
++- 22 `app/Fixtures/status*.json` files containing the status notes, individually listed in the UI13 Ready to commit entry in STATUS.md
++- `baton/notes/catalogue.py`; `tests/unit/test_notes.py`
++- `docs/plan/STATUS.md`; `docs/plan/track-d-app.md`; this report
++
++Before UI13: 379 engine / 96 app tests. After UI13: 380 engine / 96 app tests.
++
++## Checks
++
++Engine: `python3 -m unittest discover -s tests -t .`.
++
++```text
++............................................................................................................................................................................................................................................................................................................................................................................................
++----------------------------------------------------------------------
++Ran 380 tests in 3.142s
++
++OK
++```
++
++App build: `cd app && swift build` with writable module caches, `--disable-sandbox`, installed macOS SDK26.5 and TestingMacros flags.
++
++```text
++Building for debugging...
++Build complete! (0.23 secs)
++```
++
++App tests: `cd app && swift test` with the same flags.
++
++```text
++✔ Test run with 78 tests in 11 suites passed after 7.085 seconds.
++✔ Test run with 18 tests in 5 suites passed after 0.434 seconds.
++```
++
++Layer rule: `grep -rnE '^(from|import) .*(adapters|ledger)' baton/domain baton/ports baton/services` produced no output (exit 1). Core tool-name rule: `grep -rniE 'claude|codex|opencode|cursor' baton/ports baton/services tests/adapters/suite.py` produced no output (exit 1). New user-facing copy lives in `baton/notes/catalogue.py`, with hand-made fixture projections; `test_ui8_fixture_wording_is_exactly_from_catalogue` checks they match. `git diff --check` produced no output (exit 0).
++
++The shared tree contains earlier uncommitted packages, so the global `git status --short` does not show only UI13 files. The incremental UI13 patch is limited to the exact paths in STATUS.md and is checked against the saved pre-UI13 tree. No Git metadata write or push was attempted.
++
++Six final PNGs were rendered and inspected: separate visible endpoints, an off-screen filtered endpoint, and a shared endpoint, each in Light and Graphite. All use the conversation surface rather than a black inset. `ReceiptTests` asserts a shared endpoint, distinct positions, an empty filter with no receipt, and that the All view is unfolded for the separate render. The 22 status JSON files parse. The signed `/private/tmp/BatonFixture.app` was refreshed; `codesign --verify --strict --deep --verbose=2` reported:
++
++```text
++/private/tmp/BatonFixture.app: valid on disk
++/private/tmp/BatonFixture.app: satisfies its Designated Requirement
++```
++
++Computer Use confirmed the running fixture's Conversation guide and the final “Both agents reached this turn” text. It did not touch a coding app or real chat.
++
++## Review challenge
++
++Root review found that a filtered receipt could be positioned above an earlier visible turn and look attached to it. The connector was removed and the hidden position was made a separate summary. Root also removed a redundant heading from visible endpoints after inspecting the live view.
++
++The independent reviewer found three related issues. First, “every earlier turn” was false after a merge skipped an earlier turn. Second, “Who has this turn” looked like an exhaustive list even though the marker lists only sides whose receipt ends there; “latest agent turn” was also false when a later local turn follows a waiting turn. All marker copy now describes a reached position in the combined conversation without making those claims, and a note test guards against the overstatement. Third, the first render used a Pinned filter, so it did not show both separate endpoints; the test now unfolds All and renders separate, hidden and shared states in each theme. The reviewer rechecked the focused delta and found no remaining blocker.
++
++## Decision and gap
++
++R10 in the protected sync-status spec describes an agent as having everything above its marker. A keep-side merge can leave a `skipped` turn above a later reached point, so that sentence is not always true. UI13 uses truthful reached-position copy and records the spec clarification as a question in STATUS.md. C2/E12 must generate the new guide and receipt wording rather than restoring older fixture text.
++
++## Commit
++
++Git metadata is read-only in this environment. `docs/plan/reports/patches/UI13.patch` applies after UI12 and reproduces the scoped files. STATUS.md has the exact paths and a subject/body commit message. No commit or push was attempted.

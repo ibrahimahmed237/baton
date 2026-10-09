@@ -116,6 +116,10 @@ Not proven at CP1: anything on a real tool (adapters start at CP2), scrolling an
 
 **Next: close F1 to F6 and R10, then E7 to E10, B1, B2, C1, C2, D4b, D5 to D7, towards CP2.**
 
+### CP2 — in progress, reviewed 2026-10-09
+
+Not passed. Done towards it: R10, D4b, E7, E8, D5, B1 (on built fixtures), plus UI rounds UI1 to UI13 that were not in the plan. Measured by the reviewer: 380 engine tests pass; the app builds and 95 of 96 tests pass (one brand-image test fails on this Mac). Still owed: E9, E10, B2, C1, C2, D6, D7, and the live run of the Claude and Codex adapters on throwaway chats. Details and findings G1 to G6: [STATUS.md](STATUS.md).
+
 *(Later checkpoints are added here as they are passed.)*
 
 

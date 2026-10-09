@@ -1,0 +1,329 @@
+diff --git a/app/Sources/BatonUI/Components/BrandMark.swift b/app/Sources/BatonUI/Components/BrandMark.swift
+--- a/app/Sources/BatonUI/Components/BrandMark.swift
++++ b/app/Sources/BatonUI/Components/BrandMark.swift
+@@ -7,13 +7,20 @@
+ /// Supplies the signed burgundy-and-black identity bundled with BatonUI.
+ public enum BatonBrand {
+     /// Loads the transparent handoff mark and I.A signature without a baked-in tile.
+-    public static func nativeIcon() -> NSImage? {
++    @MainActor public static func nativeIcon() -> NSImage? { sourceIcon }
++
++    @MainActor private static let sourceIcon: NSImage? = {
+         guard let url = Bundle.module.url(forResource: "baton-mark", withExtension: "png", subdirectory: "Brand") else { return nil }
+         return NSImage(contentsOf: url)
+-    }
++    }()
+ 
+-    /// Removes only the transparent canvas around the full signed artwork for the Dock tile.
+-    fileprivate static func dockIcon(from image: NSImage) -> NSImage? {
++    @MainActor fileprivate static let compactIcon: NSImage? = {
++        guard let icon = sourceIcon else { return nil }
++        return croppedIcon(from: icon) ?? icon
++    }()
++
++    /// Removes transparent canvas around the complete signed artwork at compact sizes.
++    fileprivate static func croppedIcon(from image: NSImage) -> NSImage? {
+         var proposed = NSRect(origin: .zero, size: image.size)
+         guard let source = image.cgImage(forProposedRect: &proposed, context: nil, hints: nil) else { return nil }
+         guard let providerData = source.dataProvider?.data,
+@@ -68,18 +75,8 @@
+ 
+     public var body: some View {
+         Group {
+-            if let icon = BatonBrand.nativeIcon() {
+-                let displayedIcon = placement == .dock ? (BatonBrand.dockIcon(from: icon) ?? icon) : icon
++            if let displayedIcon = placement == .content ? BatonBrand.nativeIcon() : BatonBrand.compactIcon {
+                 ZStack {
+-                    if placement == .menu {
+-                        // Outline the silhouette behind the original pixels, not the artwork itself.
+-                        ForEach(0..<8) { step in
+-                            Image(nsImage: displayedIcon).resizable().renderingMode(.template).scaledToFit()
+-                                .foregroundStyle(theme.menuOutline)
+-                                .offset(x: cos(Double(step) * .pi / 4) * 0.72,
+-                                        y: sin(Double(step) * .pi / 4) * 0.72)
+-                        }
+-                    }
+                     if placement == .menu {
+                         Image(nsImage: displayedIcon).resizable().interpolation(.high).renderingMode(.template).scaledToFit()
+                             .foregroundStyle(theme.menuGlass)
+@@ -89,15 +86,17 @@
+                 }
+             }
+         }
+-        // The source is trimmed to its alpha bounds first, so this inset preserves the signature.
+-        .frame(width: placement == .dock ? size * 0.86 : size, height: placement == .dock ? size * 0.86 : size)
+-        .frame(width: size, height: size)
++        // Keep the complete signed mark and its white tile inside a smaller Dock canvas.
++        .frame(width: placement == .dock ? size * 0.88 * 0.86 : size,
++               height: placement == .dock ? size * 0.88 * 0.86 : size)
++        .frame(width: placement == .dock ? size * 0.88 : size,
++               height: placement == .dock ? size * 0.88 : size)
+         .background {
+             if placement == .dock {
+-                RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white)
+-
++                RoundedRectangle(cornerRadius: size * 0.88 * 0.22).fill(Color.white)
+             }
+         }
++        .frame(width: size, height: size)
+         .accessibilityHidden(true)
+     }
+ }
+diff --git a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+--- a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++++ b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+@@ -114,19 +114,17 @@
+     }
+     /// Flattens the icon and its badge into the image accepted by the system menu bar.
+     @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme, reduceTransparency: Bool? = nil) -> NSImage? {
++        guard BatonBrand.nativeIcon() != nil else { return nil }
+         let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision,
+             reduceTransparency: reduceTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
+-            .font(.system(size: 16, weight: .semibold)).foregroundStyle(theme.text)
+             .frame(width: 26, height: 22).batonTheme(theme))
+-        renderer.scale = 2
++        renderer.scale = 3
+         let image = renderer.nsImage
+         image?.isTemplate = false
+         return image
+     }
+     public var body: some View {
+-        Image(systemName: "link")
+-            .symbolRenderingMode(.monochrome)
+-            .foregroundStyle(theme.menuGlass)
++        BrandMark(size: 19, placement: .menu)
+             .frame(width: 26, height: 22, alignment: .leading)
+             .overlay(alignment: .topTrailing) {
+                 if needsDecision {
+diff --git a/app/Tests/BatonUITests/BrandTests.swift b/app/Tests/BatonUITests/BrandTests.swift
+--- a/app/Tests/BatonUITests/BrandTests.swift
++++ b/app/Tests/BatonUITests/BrandTests.swift
+@@ -56,11 +56,13 @@
+             let dock = try #require(BatonBrand.applicationIcon(theme: theme))
+             let dockTiff = try #require(dock.tiffRepresentation)
+             let dockPixels = try #require(NSBitmapImageRep(data: dockTiff))
+-            let border = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+-            #expect(border.alphaComponent > 0.99)
+-            #expect(min(border.redComponent, border.greenComponent, border.blueComponent) > 0.99)
++            let outside = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
++            #expect(outside.alphaComponent < 0.1)
++            let tile = try #require(dockPixels.colorAt(x: 40, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
++            #expect(tile.alphaComponent > 0.99)
++            #expect(min(tile.redComponent, tile.greenComponent, tile.blueComponent) > 0.99)
+             let png = try #require(dockPixels.representation(using: .png, properties: [:]))
+-            try png.write(to: directory.appendingPathComponent("UI11-dock-\(theme.rawValue).png"))
++            try png.write(to: directory.appendingPathComponent("UI12-dock-\(theme.rawValue).png"))
+         }
+         let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
+         let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
+@@ -78,7 +80,7 @@
+         #expect(light.tiffRepresentation != dark.tiffRepresentation)
+         #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
+     }
+-    @MainActor @Test func dockMarkUsesConventionalTileMarginsAndKeepsSignature() throws {
++    @MainActor @Test func dockTileIsCompactAndKeepsSignature() throws {
+         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+         let dockData = try #require(dock.tiffRepresentation)
+         let pixels = try #require(NSBitmapImageRep(data: dockData))
+@@ -91,8 +93,8 @@
+                 }
+             }
+         }
+-        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.76)
+-        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.85)
++        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.66)
++        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.75)
+         var signaturePixels = 0
+         for y in Int(Double(pixels.pixelsHigh) * 0.80)..<pixels.pixelsHigh {
+             for x in Int(Double(pixels.pixelsWide) * 0.76)..<pixels.pixelsWide {
+@@ -106,9 +108,23 @@
+         let tiny = try #require(NSBitmapImageRep(data: data))
+         #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
+     }
+-    @MainActor @Test func menuMarkUsesGrayscaleGlassWhileDockKeepsBrandColors() throws {
++    @MainActor @Test func menuUsesTheSignedGrayscaleMarkWhileDockKeepsBrandColors() throws {
+         let directory = ComponentTests.root.appendingPathComponent("Snapshots")
+         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
++        let menuData = try #require(menu.tiffRepresentation)
++        let silhouette = try #require(NSBitmapImageRep(data: menuData))
++        #expect(silhouette.pixelsWide == 78 && silhouette.pixelsHigh == 66)
++        #expect(try #require(silhouette.colorAt(x: 30, y: 9)).alphaComponent > 0.6)
++        #expect(try #require(silhouette.colorAt(x: 24, y: 24)).alphaComponent < 0.1)
++        #expect(try #require(silhouette.colorAt(x: 24, y: 48)).alphaComponent > 0.6)
++        var signaturePixels = 0
++        for y in 50..<60 {
++            for x in 48..<59 {
++                if try #require(silhouette.colorAt(x: x, y: y)).alphaComponent > 0.35 { signaturePixels += 1 }
++            }
++        }
++        #expect(signaturePixels > 3, "the detached I.A signature must remain in the menu mark")
+         for theme in Theme.allCases {
+             for needsDecision in [false, true] {
+                 let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: needsDecision, theme: theme))
+@@ -126,7 +142,7 @@
+                 }
+                 #expect(shadedPixels > 80)
+                 let png = try #require(pixels.representation(using: .png, properties: [:]))
+-                try png.write(to: directory.appendingPathComponent("UI11-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
++                try png.write(to: directory.appendingPathComponent("UI12-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
+             }
+         }
+         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,13 +24,13 @@
+ 
+ ## Now
+ 
+-- UI11 is complete and independently reviewed with no findings. The Dock mark uses a more conventional safe area; the menu-bar mark is a crisp vector link symbol with a monochrome glass finish. App and Dock artwork colors are preserved. The refreshed fixture initially crashed because `Baton_BatonUI.bundle` was missing, then again because an extra bundle at the app root invalidated its code signature. The extra bundle was moved out, the temporary app was signed and verified, and the latest built executable now launches. Computer Use confirmed the live window and its Settings, appearance control, and signed logo on screen.
+-- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI11 are ready. No push or real chats.
+-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI11 implementation records remain ready to commit as listed below. UI10 and UI11 independent reviews found no remaining issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI10 and UI11 menu output was inspected through rendered snapshots.
++- UI12 is complete and independently reviewed with no remaining findings. The complete Dock tile is smaller, and the menu uses the signed B/I.A mark as a cached grayscale glass mask instead of UI11's generic link symbol. The final signed fixture launches and Computer Use confirms the current window is visible; menu and Dock renders were inspected as PNGs.
++- Current shared tree: **379 engine tests / 96 app tests (78 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI12 are ready. No push or real chats.
++- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI12 implementation records remain ready to commit as listed below. UI12 independent review found and closed two issues. B1 live acceptance is pending. CP2 is incomplete. Early Settings remains fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; UI12 menu output was inspected through rendered snapshots.
+ 
+ ## Next
+ 
+-Review/commit the ordered patches through UI11. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
++Review/commit the ordered patches through UI12. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+ 
+ ## Done
+ 
+@@ -65,10 +65,32 @@
+ | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
+ | UI10 Dock margin and grayscale glass menu mark | 2026-10-06 | Ready to commit — review findings fixed; rendered Dock/menu images inspected | 379 engine / 96 app |
+ | UI11 conventional Dock scale and crisp vector menu symbol | 2026-10-06 | Ready to commit — independent reviewer found no findings; snapshots inspected | 379 engine / 96 app |
++| UI12 compact Dock tile and signed monochrome menu mark | 2026-10-06 | Ready to commit — independent review findings closed; signed fixture running | 379 engine / 96 app |
+ 
+ ## Ready to commit
+ 
+ Historical CP1 patches have been committed; do not reapply them.
++
++### UI12 — compact Dock tile and signed monochrome menu mark
++
++Patch: `docs/plan/reports/patches/UI12.patch`, applies after UI11 on HEAD `4546808`. Report: `docs/plan/reports/UI12-2026-10-06.md`.
++
++Exact paths:
++
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI12-2026-10-06.md`
++
++Commit message:
++
++```text
++Make Baton recognizable at both system icon sizes
++
++Fit the complete signed Dock tile inside a smaller canvas so it sits more quietly beside other apps. Restore the B/I.A silhouette to the menu bar in grayscale glass without colored pixels or repeated image work.
++```
+ 
+ ### UI11 — conventional Dock scale and crisp menu-bar symbol
+ 
+@@ -968,6 +990,8 @@
+ 
+ ## Log
+ 
++- 2026-10-06 — UI12 complete at a green boundary: 379 engine / 96 app tests and Swift build pass with installed SDK flags. Ibrahim asked for a smaller application icon and the real signed logo in grayscale glass in the menu bar. The Dock tile now has transparent outer room; the menu renders the cached, cropped logo at 3× with the neutral decision badge. Independent review found a repeated 1254×1254 crop and a self-referential test; both were fixed, re-reviewed and retested. The previous fixture process was closed through its own Quit confirmation, the new temporary bundle signed/verified and relaunched, and Computer Use confirmed the current window. PNGs show both themes and badge states; the actual system menu-bar pixels were not captured. UI12 patch/report and ready entry recorded; no Git write, push or real chat access.
++
+ - 2026-10-06 — UI7 complete:377 engine/83 app/build pass with installedSDKflags. Kept exact existing B/I.A artwork after Ibrahim clarified surroundings only; no alternate-color asset adopted. Content is bare, Dock tile white, selector visible at sidebar bottom. Native Light/Dark switches inspected; user later selected System/Activity, so no further automation or relaunch. Review warning fixed with mounted offscreen native theme/retained-state assertions after layout settles; final full suite passes. UI7 ready after UI6; no Git or real-chat writes.
+ 
+ - 2026-10-06 — UI6 completed:377 engine /81 app/build pass. Imagegen transparent extraction replaces white runtime tile; brand/menu/theme/reduced-transparency PNGs inspected. Root native fixture confirms graphite signed gray-glass logo after exact-binary refresh. Separate reviewer warning closed by explicit native accessibility injection, opaque pixel assertions and Dock notification refresh; initial hosted view identity corrected. UI6 patch follows UI5; no Git/real-chat writes. SystemUIServer direct menu capture timed out, so no native item photograph claimed.
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -295,3 +295,19 @@
+ **Checks.** Assert the Dock mark occupies a bounded conventional fraction of its tile and the complete signature remains visible. Check the menu image's near-opaque pixels for neutral grayscale, transparent background, clear badge state and distinct Light/Graphite rendering. Snapshot both Dock sizes and all menu states; run the app build/tests and engine suite.
+ 
+ **Done when.** The Dock mark reads at a familiar macOS app-icon scale with the entire signature; the menu image is crisp, monochrome, glass-like, and visible in both themes; all snapshots and tests pass and independent review finds no issue.
++
++## UI12 — compact Dock tile and signed monochrome menu mark
++
++**Goal.** Make the whole Baton Dock icon sit more quietly beside other apps and restore the B/I.A logo to the menu bar without colored pixels.
++
++**From.** Ibrahim, 2026-10-06: the application icon still looks too large, and UI11's chain symbol no longer looks like Baton's own logo. Use the same signed logo in a glassy monochrome menu treatment.
++
++**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI12-2026-10-06.md`; `docs/plan/reports/patches/UI12.patch`.
++
++**Steps.** Fit the white Dock tile and its complete colored artwork inside a smaller transparent app-icon canvas. Render the bundled signed mark, cropped to its alpha bounds, as a high-resolution grayscale gradient in the menu bar; keep the neutral decision badge. Do not change the content logo or its source colors.
++
++**Checks.** Measure transparent space outside the Dock tile, white inside the tile, bounded mark size and surviving I.A pixels. Compare the plain menu image to a render of the signed mark so a generic link cannot replace it unnoticed; check all menu pixels remain neutral in both themes and badge states. Inspect the generated PNGs and the running fixture, then run the app and engine gates and review the diff.
++
++**Done when.** The complete Dock tile is visibly smaller, the signed logo is back in the menu bar with only gray glass values, badge/plain states remain distinct, and the build/tests and visual review pass.
++
++UI12 completion 2026-10-06: 379 engine tests, 96 app tests and Swift build pass with the installed SDK flags. Dock and all four menu PNGs were inspected; the final signed fixture launches and shows the main window. Independent review found a repeated large-image crop and a self-referential menu test; both were fixed and the reviewer found no remaining blocker. Actual system menu-bar pixels were not captured.
+diff --git a/docs/plan/reports/UI12-2026-10-06.md b/docs/plan/reports/UI12-2026-10-06.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI12-2026-10-06.md
+@@ -0,0 +1,66 @@
++# UI12 hand-back — 2026-10-06
++
++## Result
++
++The complete white Dock tile and signed B/I.A artwork now occupy 88% of the app-icon canvas. This leaves transparent space around the tile, so the application icon appears smaller beside other Dock apps without changing the artwork or enlarging its white border.
++
++The menu bar again uses Baton's bundled signed mark. It is cropped to its visible bounds, rendered at 3× menu resolution in a theme-aware gray gradient, and retains the neutral decision dot. The app and Dock keep their original burgundy and black. Light and Graphite PNGs, with and without the decision badge, were inspected.
++
++## Files
++
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI12-2026-10-06.md`
++
++## Checks
++
++Engine command: `python3 -m unittest discover -s tests -t .`.
++
++```text
++...........................................................................................................................................................................................................................................................................................................................................................................................
++----------------------------------------------------------------------
++Ran 379 tests in 2.398s
++
++OK
++```
++
++App build: `cd app && swift build` with `CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache`, `SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache`, installed SDK26.5 and TestingMacros flags, and `--disable-sandbox`.
++
++```text
++Build complete! (4.00 secs)
++```
++
++App tests: `cd app && swift test` with the same cache, SDK, TestingMacros and sandbox flags.
++
++```text
++✔ Test run with 78 tests in 11 suites passed after 7.574 seconds.
++✔ Test run with 18 tests in 5 suites passed after 0.477 seconds.
++```
++
++Layer rule: `grep -rnE '^(from|import) .*(adapters|ledger)' baton/domain baton/ports baton/services` emitted no output (exit 1). Core tool-name rule: `grep -rniE 'claude|codex|opencode|cursor' baton/ports baton/services tests/adapters/suite.py` emitted no output (exit 1). UI12 adds no user-facing sentences. `git diff --check` emitted no output (exit 0). The shared tree contains earlier uncommitted package work; the UI12 delta is restricted to the files listed above.
++
++The first unsandboxed Swift build attempt without writable module caches failed while compiling the manifest. The required cache and installed-SDK flags produced the successful build and tests above.
++
++## Review challenge
++
++Pixel tests bound the Dock artwork and verify its signature, transparent outer canvas, white tile and retained burgundy pixels. The menu test now checks a fixed silhouette pattern and the detached I.A region, which a generic chain symbol cannot satisfy. Every near-opaque menu pixel is checked for grayscale values in both themes and badge states. The previous UI11 snapshots and the new UI12 PNGs were visually compared; the whole tile is smaller and the menu shape now matches the logo.
++
++Independent review initially found two issues: cropping the 1254×1254 source on every menu label refresh, and a test that compared two renders of the same component. The source and cropped images are now cached on the main actor, and the test asserts independent alpha geometry. The reviewer rechecked the diff and found no remaining blocker. The 19-point I.A signature is tiny in the PNG, and actual system menu-bar pixels were not captured. No engine behavior or real chat was changed.
++
++## Native fixture
++
++Only the approved `/private/tmp/BatonFixture.app` was refreshed. The prior fixture was closed through its own Quit confirmation; its executable and both SwiftPM resource bundles were copied from the successful build, then the temporary app was signed and verified:
++
++```text
++/private/tmp/BatonFixture.app: valid on disk
++/private/tmp/BatonFixture.app: satisfies its Designated Requirement
++```
++
++LaunchServices accepted `open -n /private/tmp/BatonFixture.app --args --review-window`. The new process remained running after launch, no new Baton crash report appeared, and Computer Use confirmed the current Baton window is visible. The menu and Dock image pixels were inspected in the generated PNGs; no real coding app or chat was touched.
++
++## Commit
++
++Git metadata is read-only in this environment. `docs/plan/reports/patches/UI12.patch` applies after UI11 and reproduces the scoped files. The exact paths and commit message are in the UI12 Ready to commit entry in STATUS.md. No commit or push was attempted.
