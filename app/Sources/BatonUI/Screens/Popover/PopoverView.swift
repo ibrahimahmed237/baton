@@ -21,7 +21,7 @@ public struct PopoverView: View {
     public var body: some View {
         VStack(spacing: 0) {
         WindowScrollArea(snapshotClips: false) {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             if let note = model.errorNote { NoteView(note: note) }
             if model.loading, model.links.isEmpty { ProgressView().frame(maxWidth: .infinity).padding() }
             if let content = model.emptyContent { EmptyStateView(content: content, compact: true) }
@@ -30,15 +30,15 @@ public struct PopoverView: View {
                     HStack(alignment: .top, spacing: 10) {
                         Circle().fill(theme.colour(for: rowMeaning(link)))
                             .frame(width: 7, height: 7).padding(.top, 5).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 7) {
                             HStack {
                                 ForEach(link.sides.keys.sorted(), id: \.self) { tool in ToolDot(tool: tool, label: link.sides[tool]?.displayLabel) }
-                            }.font(.caption)
+                            }.font(.caption.weight(.medium))
                             ForEach(Array(Set(link.sides.values.map(\.name))).sorted(), id: \.self) { name in
-                                Text(name).font(.headline)
+                                Text(name).font(.headline.weight(.semibold)).lineLimit(1)
                             }
                             Text(link.headline.statusLine ?? link.headline.text)
-                                .font(.callout).foregroundStyle(theme.colour(for: rowMeaning(link)))
+                                .font(.subheadline).foregroundStyle(theme.colour(for: rowMeaning(link)))
                         }
                         Spacer(minLength: 0)
                         if link.decisionNeeded {
@@ -46,9 +46,16 @@ public struct PopoverView: View {
                                 .foregroundStyle(theme.colour(for: .danger))
                                 .accessibilityLabel(link.headline.text)
                         }
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10).contentShape(Rectangle())
-                        .background(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.1 : 0),
-                                    in: RoundedRectangle(cornerRadius: 9))
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(12).contentShape(Rectangle())
+                        .background {
+                            RoundedRectangle(cornerRadius: 13).fill(.regularMaterial)
+                                .overlay(RoundedRectangle(cornerRadius: 13).fill(theme.sidebar.opacity(0.24)))
+                                .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .fill(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.085 : 0)))
+                                .overlay(RoundedRectangle(cornerRadius: 13)
+                                    .stroke(model.selectedLinkID == link.linkID ? theme.colour(for: .action).opacity(0.34) : theme.hairline,
+                                            lineWidth: model.selectedLinkID == link.linkID ? 1 : 0.7))
+                        }
                 }.buttonStyle(.plain)
             }
             if let selected = model.selectedLink {
@@ -70,18 +77,18 @@ public struct PopoverView: View {
                 ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
                 PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
             }
-        }.padding(16)
+        }.padding(13)
         }
         Divider()
         HStack {
             if let note = model.applicationNote("screen.open_window", fallback: applicationNotes) {
-                Button(note.text, action: openWindow).buttonStyle(.plain)
+                Button(note.text, action: openWindow).buttonStyle(PopoverFooterStyle())
             }
             Spacer()
             if let note = model.applicationNote("screen.quit", fallback: applicationNotes) {
-                Button(note.text, action: quit).buttonStyle(.plain)
+                Button(note.text, action: quit).buttonStyle(PopoverFooterStyle(quiet: true))
             }
-        }.font(.caption.weight(.medium)).padding(12)
+        }.font(.caption.weight(.medium)).padding(.horizontal, 13).padding(.vertical, 10)
         }.frame(width: 340, height: snapshot ? nil : 340).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
     }
 
@@ -132,9 +139,25 @@ private struct PopoverActionStyle: ButtonStyle {
     @Environment(\.batonTheme) private var theme
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.callout.weight(.semibold))
-            .padding(.horizontal, 10).padding(.vertical, 8)
+            .padding(.horizontal, 12).padding(.vertical, 9)
             .foregroundStyle(theme.colour(for: .action))
-            .background(theme.colour(for: .action).opacity(configuration.isPressed ? 0.2 : 0.1),
-                        in: RoundedRectangle(cornerRadius: 8))
+            .background(theme.colour(for: .action).opacity(configuration.isPressed ? 0.20 : 0.11),
+                        in: Capsule())
+            .overlay(Capsule().stroke(theme.colour(for: .action).opacity(0.22), lineWidth: 0.7))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+private struct PopoverFooterStyle: ButtonStyle {
+    @Environment(\.batonTheme) private var theme
+    var quiet = false
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.caption.weight(.semibold))
+            .foregroundStyle(quiet ? theme.secondaryText : theme.text)
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .background(theme.sidebar.opacity(configuration.isPressed ? 0.58 : 0.38), in: Capsule())
+            .overlay(Capsule().stroke(theme.hairline, lineWidth: 0.65))
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

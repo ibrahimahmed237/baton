@@ -253,3 +253,17 @@ UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build p
 **Steps.** Preserve burgundy/black B and I.A; outline menu silhouette, never recolor content artwork. Group receipt boundaries by their actual turn, explain hidden boundaries separately and suppress when no displayed messages. Build the settings portion of D11 early, with all ten contract keys, choices, defaults and saved fixture-only configuration. Apply appearance/glass immediately across window/popover. Confirm every user Quit request; keep compact popover footer accessible while long content scrolls.
 **Tests.** Receipt grouping/filtering; Settings choices, defaults, validation, persistence, failed save; native CLI settings arguments; Quit cancel/confirm; brand pixels and light/graphite PNGs.
 **Done when.** Shared tests/build pass; separate review is resolved; rendered views and refreshed fixture are inspected. Full D11 setup boards and D12 real-engine connection are not claimed.
+
+## UI9 — calm graphite and a refined menu popover
+
+**Goal.** Make the compact menu surface feel current and readable, replace the near-black dark backdrop with softer gray and a very restrained burgundy tint, and use a neutral theme-aware outline around the menu mark. Preserve the signed B/I.A artwork.
+
+**From.** Ibrahim's 2026-10-06 request for a black/white/gray-only menu-icon surround, a gray dark theme with distant calm burgundy, and modernization of the small window.
+
+**Files.** `app/Sources/BatonUI/Theme/Theme.swift`; `Components/BrandMark.swift`; `Screens/Popover/PopoverView.swift`; focused `app/Tests/BatonUITests/`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI9-2026-10-06.md`; `docs/plan/reports/patches/UI9.patch`.
+
+**Steps.** Raise dark surface luminance into graphite gray; use layered neutral gray surfaces and a low-intensity burgundy accent set back from content. Choose the menu silhouette edge from neutral grayscale according to appearance, without changing the source image. Tighten popover hierarchy, row surfaces, action pills, and footer spacing within its existing compact footprint; preserve all engine-provided sentences, controls, actions and accessibility behavior.
+
+**Checks.** Assert the neutral outline palette and preserve source-image pixels; render menu mark with/without badge in both themes; snapshot the compact popover in both themes; run app build/tests and engine suite per the package loop. Inspect the refreshed fixture in dark appearance and compare its gray/burgundy balance to the previous version. Independently challenge the scoped diff.
+
+**Done when.** The popover is visually coherent at its compact size, the menu mark has contrast on both light and dark surfaces without a white tile, the dark palette reads as gray with a quiet remote burgundy cast, behavior and copy are unchanged, checks/review pass, and Ibrahim can inspect the running fixture.

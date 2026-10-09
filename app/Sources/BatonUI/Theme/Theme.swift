@@ -4,14 +4,16 @@ import SwiftUI
 public enum Theme: String, CaseIterable, Sendable {
     case light, graphite
 
-    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x242126) }
-    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x302b31) }
+    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x45484e) }
+    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x3c3f45) }
     public var text: Color { self == .light ? colour(0x20242d) : colour(0xffffff) }
-    public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xd5d8e0) }
+    public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xe0e1e4) }
     public var hairline: Color { text.opacity(0.1) }
     /// Decorative brand accents, independent of semantic state and tool colours.
-    public var backdropAccent: Color { self == .graphite ? colour(0x6b1935) : colour(0x9c5268) }
-    public var backdropInk: Color { self == .graphite ? colour(0x100e12) : colour(0x8d8591) }
+    public var backdropAccent: Color { self == .graphite ? colour(0x784552) : colour(0x9c5268) }
+    public var backdropInk: Color { self == .graphite ? colour(0x7c8086) : colour(0x8d8591) }
+    /// Neutral silhouette edge that reads on the menu bar without adding a white tile.
+    public var menuOutline: Color { self == .graphite ? colour(0xe8e9eb) : colour(0x55585e) }
     public var scheme: ColorScheme { self == .light ? .light : .dark }
 
     /// Returns a colour for a meaning, rather than for a particular screen.
@@ -117,7 +119,7 @@ public struct GlassCard<Content: View>: View {
     }
 }
 
-/// Subtle burgundy and ink pools behind the system material surfaces.
+/// Restrained graphite, gray, and distant burgundy behind system material surfaces.
 public struct GlassBackdrop: View {
     @Environment(\.batonTheme) private var theme
     @Environment(\.batonGlass) private var glass
@@ -127,12 +129,12 @@ public struct GlassBackdrop: View {
         GeometryReader { geometry in
             ZStack {
                 theme.background.opacity(reduceTransparency ? 1 : glass / 100)
-                Circle().fill(theme.backdropAccent.opacity(0.28))
-                    .frame(width: 360, height: 360).blur(radius: 90).offset(x: -geometry.size.width * 0.35, y: -180)
-                Circle().fill(theme.backdropInk.opacity(0.25))
-                    .frame(width: 420, height: 420).blur(radius: 110).offset(x: geometry.size.width * 0.3, y: 160)
-                Circle().fill(theme.backdropAccent.opacity(0.08))
-                    .frame(width: 320, height: 320).blur(radius: 90).offset(x: 80, y: -180)
+                Circle().fill(theme.backdropAccent.opacity(theme == .graphite ? 0.18 : 0.18))
+                    .frame(width: 330, height: 330).blur(radius: 110).offset(x: -geometry.size.width * 0.42, y: -210)
+                Circle().fill(theme.backdropInk.opacity(theme == .graphite ? 0.10 : 0.14))
+                    .frame(width: 390, height: 390).blur(radius: 125).offset(x: geometry.size.width * 0.34, y: 180)
+                Circle().fill(theme.backdropAccent.opacity(theme == .graphite ? 0.045 : 0.07))
+                    .frame(width: 280, height: 280).blur(radius: 105).offset(x: 100, y: -220)
             }.frame(width: geometry.size.width, height: geometry.size.height).background(.regularMaterial).clipped()
         }.accessibilityHidden(true)
     }

@@ -24,13 +24,13 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI8 complete and independently reviewed: high-contrast grouped receipts, contiguous fixture boundaries, white menu silhouette edge, tighter white Dock margins, burgundy/ink backdrop, ten Settings choices/defaults with saved preview configuration, compact popover and confirmed Quit. Original burgundy/black B and I.A artwork is unchanged. Settings and Quit/cancel were checked in the running fixture; final refreshed app is open on Settings with Ibrahim's current System appearance preserved.
-- Current shared tree: **379 engine tests / 94 app tests (76 BatonUI + 18 BatonKit)** and Swift build pass with the recorded installed SDK26.5/TestingMacros flags. Git remains read-only; ordered patches through UI8 are the commit route. No push, Git writes, real chats or real coding-app runs.
-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI8 implementation records are ready to commit as listed below. B1 live acceptance is pending. CP2 is incomplete. The early Settings portion of D11 is fixture-only; full setup boards and D12 engine wiring are not claimed.
+- UI9 complete at the checked package boundary: a medium graphite gray base, remote muted-burgundy tint, neutral light/dark menu silhouette edges, and clearer compact popover cards, actions and footer. Engine-provided status copy now wraps fully. The signed B/I.A artwork is unchanged. The refreshed fixture is open on a linked-chat screen in Dark mode; both compact popover themes and badge/no-badge menu images have rendered snapshots.
+- Current shared tree: **379 engine tests / 95 app tests (77 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI9 are the commit route. No push, real chats or real coding-app runs.
+- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI9 implementation records are ready to commit as listed below. B1 live acceptance is pending. CP2 is incomplete. The early Settings portion of D11 is fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; ImageRenderer snapshots and the running main fixture were inspected.
 
 ## Next
 
-Review/commit the ordered patches through UI8. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+Review/commit the ordered patches through UI9. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
 
 ## Done
 
@@ -53,6 +53,7 @@ Review/commit the ordered patches through UI8. Continue E9/E10 and D6/D7, with B
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI9 calmer graphite and compact popover | 2026-10-06 | Ready to commit — independent review findings closed; refreshed dark fixture inspected | 379 engine / 95 app |
 | UI8 receipts, configuration and Quit | 2026-10-06 | Ready to commit — separate review findings fixed; native Settings/receipt/Quit inspected | 379 engine / 94 app |
 | UI7 logo surroundings and appearance selector | 2026-10-06 | Ready to commit — independent review finding fixed; native selector/Light/Dark inspected | 377 engine /83 app |
 | UI6 transparent logo and dark glass | 2026-10-06 | Ready to commit — separate review fixes confirmed; native graphite preview inspected | 377 engine / 81 app |
@@ -66,6 +67,29 @@ Review/commit the ordered patches through UI8. Continue E9/E10 and D6/D7, with B
 ## Ready to commit
 
 Historical CP1 patches have been committed; do not reapply them.
+
+### UI9 — calm graphite and a refined menu popover
+
+Patch: `docs/plan/reports/patches/UI9.patch`, applies after UI8 on HEAD `4546808`. Report: `docs/plan/reports/UI9-2026-10-06.md`.
+
+Exact paths:
+
+- `app/Sources/BatonUI/Theme/Theme.swift`
+- `app/Sources/BatonUI/Components/BrandMark.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
+- `app/Tests/BatonUITests/BrandTests.swift`
+- `app/Tests/BatonUITests/PopoverTests.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI9-2026-10-06.md`
+
+Commit message:
+
+```text
+Make the compact menu surface easier to read
+
+Use a softer graphite foundation with a restrained burgundy haze, neutral theme-aware silhouette edges, and distinct compact row and action treatments. Keep engine copy fully visible and test both compact themes.
+```
 
 ### R10 — storage and delivery responsibilities
 
@@ -1030,3 +1054,5 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - 2026-10-05 — B1 independent review closed hidden-target format bypass and intent recovery before project directory creation. 37 native adapter tests pass; working engine334/app60/build pass. Implementation is ready to commit, with live acceptance pending. Shared suite reversal was approved by Ibrahim; native call/result ID pairing fixed. Hooks/real release/runner/visibility remain explicitly unverified as recorded above.
 
 - 2026-10-06 — UI8 completed at a green boundary: 379 engine / 94 app / Swift build pass. Separate review found and closed dependency of Quit on initial refresh, false receipt boundaries in three fixtures, and reset failure detection tied to optional notes. Regressions cover all three, saved-preview reopen, unchanged fixture files, all ten choices/defaults and preserved artwork. Native Settings save, shared receipt contrast and Cmd-Q/Return cancellation passed; final wrapper refreshed and reopened on Settings, retaining System appearance. Exact ordered patch and report recorded. CP2 and remaining D11/D12 work are still pending.
+
+- 2026-10-06 — UI9 complete: 379 engine / 95 app, build pass. Removed status truncation; snapshots cover compact popover in both themes; existing component snapshots cover badge/no-badge menu marks in both themes. Independent review findings closed, original mark preserved. Final app bundle reopened on the Dark palette; running fixture and rendered PNGs inspected. UI9 patch/report and ready-to-commit entry recorded.

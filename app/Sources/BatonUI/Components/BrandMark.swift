@@ -40,9 +40,9 @@ public struct BrandMark: View {
                         // Outline the silhouette behind the original pixels, not the artwork itself.
                         ForEach(0..<8) { step in
                             Image(nsImage: icon).resizable().renderingMode(.template).scaledToFit()
-                                .foregroundStyle(.white)
-                                .offset(x: cos(Double(step) * .pi / 4) * 0.6,
-                                        y: sin(Double(step) * .pi / 4) * 0.6)
+                                .foregroundStyle(theme.menuOutline)
+                                .offset(x: cos(Double(step) * .pi / 4) * 0.72,
+                                        y: sin(Double(step) * .pi / 4) * 0.72)
                         }
                     }
                     Image(nsImage: icon).resizable().interpolation(.high).scaledToFit()

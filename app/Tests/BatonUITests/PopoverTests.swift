@@ -83,6 +83,29 @@ struct PopoverTests {
     }
 
     @MainActor @Test
+    func compactPopoverSnapshotsItsContentInBothThemes() async throws {
+        let output = ComponentTests.root.appendingPathComponent("Snapshots")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_waiting"))
+        await model.refresh()
+        #expect(model.selectedLink != nil)
+        for theme in Theme.allCases {
+            let renderer = ImageRenderer(content: PopoverView(model: model)
+                .environment(\.batonSnapshotPresentation, true)
+                .batonTheme(theme))
+            renderer.scale = 2
+            let image = try #require(renderer.nsImage)
+            #expect(image.size.width == 340)
+            #expect(image.size.height > 200 && image.size.height < 340)
+            let tiff = try #require(image.tiffRepresentation)
+            let bitmap = try #require(NSBitmapImageRep(data: tiff))
+            let png = try #require(bitmap.representation(using: .png, properties: [:]))
+            #expect(!png.isEmpty)
+            try png.write(to: output.appendingPathComponent("UI9-popover-compact-\(theme.rawValue).png"))
+        }
+    }
+
+    @MainActor @Test
     func continuePreviewRendersInBothThemes() async throws {
         try FileManager.default.createDirectory(at: ComponentTests.root.appendingPathComponent("Snapshots"), withIntermediateDirectories: true)
         let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_waiting"))

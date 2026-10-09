@@ -75,7 +75,29 @@ struct BrandTests {
         let light = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .light))
         let dark = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
         #expect(!light.isTemplate && !dark.isTemplate)
-        #expect(light.tiffRepresentation == dark.tiffRepresentation)
+        #expect(light.tiffRepresentation != dark.tiffRepresentation)
+        #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
+        let lightTIFF = try #require(light.tiffRepresentation)
+        let darkTIFF = try #require(dark.tiffRepresentation)
+        let lightPixels = try #require(NSBitmapImageRep(data: lightTIFF))
+        let darkPixels = try #require(NSBitmapImageRep(data: darkTIFF))
+        var outlinePixels = 0
+        for y in 0..<min(lightPixels.pixelsHigh, darkPixels.pixelsHigh) {
+            for x in 0..<min(lightPixels.pixelsWide, darkPixels.pixelsWide) {
+                guard let lightColor = lightPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      let darkColor = darkPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
+                      lightColor.alphaComponent > 0.2, darkColor.alphaComponent > 0.2 else { continue }
+                let lightSpread = max(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
+                    - min(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
+                let darkSpread = max(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
+                    - min(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
+                let lightBrightness = (lightColor.redComponent + lightColor.greenComponent + lightColor.blueComponent) / 3
+                let darkBrightness = (darkColor.redComponent + darkColor.greenComponent + darkColor.blueComponent) / 3
+                if lightSpread < 0.025, darkSpread < 0.025, lightBrightness < 0.5, darkBrightness > 0.82,
+                   abs(lightBrightness - darkBrightness) > 0.3 { outlinePixels += 1 }
+            }
+        }
+        #expect(outlinePixels > 2)
     }
     @MainActor @Test func dockMarkUsesMoreOfItsTileAndMenuOutlineStaysTransparentOutside() throws {
         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
@@ -94,14 +116,14 @@ struct BrandTests {
         let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
         let data = try #require(menu.tiffRepresentation)
         let tiny = try #require(NSBitmapImageRep(data: data))
-        var whiteEdge = 0
+        var lightNeutralEdge = 0
         for y in 0..<tiny.pixelsHigh {
             for x in 0..<tiny.pixelsWide {
                 let c = try #require(tiny.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
-                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.85 { whiteEdge += 1 }
+                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.82 { lightNeutralEdge += 1 }
             }
         }
-        #expect(whiteEdge > 15)
+        #expect(lightNeutralEdge > 15)
         #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
     }
     private func requireData(_ value: Data?) throws -> Data { try #require(value) }
