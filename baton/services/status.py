@@ -33,6 +33,21 @@ HOLD = "hold"
 _CHARS_PER_TOKEN = 4
 
 
+def link_headline(state: LinkStatus, missing: Sequence[str] = ()) -> tuple[str, dict]:
+    """Choose the shared headline; callers render its catalogue note."""
+    if state.paused:
+        return "status.paused", {}
+    if state.decision_needed:
+        return "merge.decision_needed", {}
+    if missing:
+        return "side.missing", {}
+    if state.in_sync:
+        return "status.in_sync", {}
+    behind = max(state.sides.values(), key=lambda status: status.waiting)
+    ahead = next(side for side in state.sides if side != behind.side)
+    return "status.ahead", {"tool": ahead, "n": behind.waiting}
+
+
 @dataclass(frozen=True)
 class SideStatus:
     """Counts and pending delivery/visibility instructions for one chat."""

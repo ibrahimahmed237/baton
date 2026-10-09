@@ -276,6 +276,7 @@ CATALOGUE = {note.id: note for note in (
     Note("merge.merged_copy", "info", "{tool} gets a merged copy as a new chat. The old chat stays as it is."),
     Note("merge.keep", "warning", "Only {tool}'s turns are sent across. {other_tool}'s unsynced turns stay where they were written and are marked skipped."),
     Note("merge.split", "warning", "The link is removed and the two chats continue separately."),
+    Note("error.unexpected", "danger", "Something unexpected went wrong in Baton. Check your chats before you try again. Baton's log has the details."),
 )}
 
 

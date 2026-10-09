@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-09, during the CP2 batch
+**Last updated:** 2026-10-09, Codex resumed the CP2 review
 
 ---
 
@@ -16,3 +16,9 @@ What changed since you last worked here:
 - STATUS.md "Now" lists which packages were in flight and which files each owns.
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
+
+Current hand-off state: G2 committed `dab931c` through the normal approved Git path after Ibrahim authorized self-commits. G3 committed `7f6e39f`; C1 accepted, commit next; preserve the other unfinished package files. Sandbox-only Git writes remain restricted; request normal approval, never bypass permissions, never push. Current checks: 650 engine / 115 app, build green. Two agents are reviewing the concrete CP2 repair plan; no repair behavior has been approved from that plan yet.
+
+Two independent reviewers found brief privacy/immutable-transcript and completeness issues (E9/E10) and wrong-action/presentation issues (D6/D7); none are waived. D7 false receipts/counts were corrected to restore common checks, but D7 is not accepted. B2 fixture tests pass but separate review/live acceptance is still owed. C2 is not started; CP2 has not passed. Full outputs/findings are in reports/CP2-resume-2026-10-09.md. After commits, resume STATUS Next using at most two agents. Do not run the live adapter check until the remaining package blockers are closed. No app was launched, no real chat read/written, no Git write or push in this resume.
+
+Direct Engine callers must hold engine.command_lock() before first service access through planning/applying. C4 must bound lock acquisition within its two-second hook deadline. Ibrahim's prior live-run go remains, but each app closure still needs a fresh go.

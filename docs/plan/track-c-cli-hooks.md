@@ -9,10 +9,12 @@ Thin layers over the services. No rules live here: a command parses, calls one s
 **Goal.** `baton` runs, builds the adapters once, prints contract JSON.
 **From.** CONTRACT.md rules.
 **Depends on.** E1, B0.
-**Files.** `baton/cli/main.py`, `baton/cli/wiring.py`, `baton/cli/output.py`, `pyproject.toml` (entry point `baton`).
+**Files.** `baton/cli/{__init__,main,wiring,storage,output,tools,plans}.py`, `baton/cli/commands/{__init__,links}.py`, `pyproject.toml` (entry point `baton`). Additive shared changes: `baton/services/status.py` headline selection, catalogue `error.unexpected`. Tests: `tests/unit/test_cli.py`, `tests/contract/{__init__,test_shapes}.py`.
 **Steps.** 1. `wiring.build(root=None) -> Engine` creates the store (`~/Library/Application Support/Baton/baton.sqlite`), the four adapters, the services. `BATON_HOME` overrides the location for tests. 2. `output.py` turns results and errors into the shared objects. 3. Global flags `--json`, `--dry-run`, `--confirm`. 4. Plan ids: a plan is stored for ten minutes with a hash of the chats' state; `--confirm` re-checks it.
 **Tests.** `tests/contract/test_shapes.py`: each shared object has exactly the documented fields.
 **Done when.** `baton links --json` prints `{"links": []}` on an empty home.
+
+**Resume review, 2026-10-09.** CLI dispatch and ledger initialization use one OS-held per-root command lock. Recovery can interpret pending writes as abandoned only while holding that lock. Direct Engine callers must lock before first service access and retain it through planning/applying. Read summaries use ChatRefresh, never construct recovery/writer services. Validate owned storage paths without following symlinks; root is 0700, database/lock files 0600. C4 must bound lock acquisition within its two-second hook deadline rather than inherit an unbounded wait.
 
 ## C2. Read commands
 

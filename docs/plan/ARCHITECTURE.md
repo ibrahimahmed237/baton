@@ -68,6 +68,7 @@ baton/
       reader.py  writer.py  locator.py  state.py  hooks.py  runner.py  app.py  facts.py
   cli/
     main.py  wiring.py  output.py  commands/<one file per command>
+    storage.py        owned/private CLI storage and per-root command exclusion
   hooks/
     prompt.py  turn_end.py                              entry points the tools call
     opencode_plugin.js
@@ -197,6 +198,7 @@ Services never print and never exit. They return results or raise these. `cli/` 
 - Only the record store keeps state. Services are stateless between calls.
 - Time comes from a `Clock` passed in, never from `datetime.now()` inside a service.
 - A write is always: plan, prepare rollback receipt, journal begin, write, verify, record, journal commit. If verify fails, take back, and record that too. Journal.begin persists the pre-write receipt; commit saves the post-write receipt. Startup recovery takes back every begun/uncommitted entry with its pre-write receipt, including create receipts that record that no chat existed. Fake and shared adapter suite test this additive port.
+- CLI commands sharing a store hold one OS file lock through service construction/recovery, planning and applying. Direct Engine callers must acquire `engine.command_lock()` before first service access and retain it until completion; do not nest it. Listing links refreshes through ChatRefresh without invoking recovery. Owned CLI storage is private (root 0700, ledger and lock 0600); symlinked storage and non-regular or multiply-linked ledger/lock files are refused. C4 hook deadlines must include a bounded lock wait.
 
 ## Testing
 
