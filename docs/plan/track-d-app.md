@@ -116,6 +116,10 @@ Rules for this track:
 
 ## D6. What-will-happen and confirmation
 
+**Status.** Repair started 2026-10-09 under the approved [CP2 repair plan](CP2-REPAIR-PLAN.md).
+**Files.** `app/Sources/BatonUI/Screens/PlanReview/`, additive `app/Sources/BatonKit/Models/` and shared `ConfirmationGate`, focused D6/D5 tests and minimal D6 fixtures. C2 owns final fixture generation; root owns shared contract/catalogue.
+**Repair acceptance.** Exact plan/revision display receipt, action provenance and side routing, semantic copy-and-link, preservation of unavailable CP3 requests and action-specific catalogue confirmation/Cancel controls. Unknown or ambiguous buttons never apply. Tests validate full requests and tokens, not unconditional fake success.
+
 **Board.** What will happen, per tool; Relaunch warning. **From.** more-tools notes table, G4a, G4b; A6; T5, T6.
 **Shows.** `PlanSteps` and notes for any plan; the offers close-sync-reopen, sync now and relaunch later, attach instead; the replying warning naming chats, with "when idle".
 **Fixture states.** each row of the notes table that has buttons.

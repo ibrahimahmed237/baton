@@ -1,0 +1,11 @@
+# Historical STATUS log entries
+
+Preserved when the current log was limited to ten entries on 2026-10-09.
+
+- 2026-10-06 — UI6 completed:377 engine /81 app/build pass. Imagegen transparent extraction replaces white runtime tile; brand/menu/theme/reduced-transparency PNGs inspected. Root native fixture confirms graphite signed gray-glass logo after exact-binary refresh. Separate reviewer warning closed by explicit native accessibility injection, opaque pixel assertions and Dock notification refresh; initial hosted view identity corrected. UI6 patch follows UI5; no Git/real-chat writes. SystemUIServer direct menu capture timed out, so no native item photograph claimed.
+
+- 2026-10-06 — UI5 complete, UI4 shared gate closed: 377 engine / 79 app tests and Swift build pass with installed SDK flags. Signed burgundy/black I.A icon bundled and inspected on both themes and native fixture. Fixed independent review’s absent-sidebar guidance in popover, preserved intentionally note-less legacy fixture after a real failing compatibility test, and joined hidden-turn fallback to the first visible card. Separate reviewers confirm fixes. Ordered UI5 patch includes text and binary assets; no Git or real-chat writes.
+
+- 2026-10-06 — UI3 completed at green boundary. Ibrahim answered “Yes, the window and controls are visible” for the running updated fixture. Native launch/fullscreen/Escape/sidebar gates passed; root377/74/build and independent review pass. Ready entry/ordered patch follow E8; no commit or push because Git remains read-only.
+
+- 2026-10-06 — UI3 launch continuation checked by root and separate reviewer, no code blocker. Root377/74/build pass local SDK flags. Updated temporary fixture resources under Contents/Resources, LSUIElement=false, binary replaced; approved normal LaunchServices launch exited0. CUA confirms a main window directly, native full-screen button plus close/minimize, entry/exit via Escape, one-click sidebar after transition. Traffic-light screenshot area has a purple sharing overlay; Ibrahim’s visual confirmation pending. No real chat/tool app or Git write.

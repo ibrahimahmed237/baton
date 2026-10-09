@@ -36,5 +36,3 @@ def _chat(ctx: Context, link: Link, side: str) -> dict[str, Any]:
         return output.chat_from_ref(side, ctx.engine.adapter(side).locator.resolve(chat_id), True, link.id)
     except KeyError:
         return output.chat(side, chat_id, "", "", "", True, link.id)
-
-
