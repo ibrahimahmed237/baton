@@ -84,22 +84,30 @@ public struct PopoverView: View {
 public struct BatonMenuIcon: View {
     @Environment(\.batonTheme) private var theme
     public let needsDecision: Bool
+    private let reduceTransparency: Bool?
     /// Receives the badge state without calculating sync behaviour.
-    public init(needsDecision: Bool) { self.needsDecision = needsDecision }
+    public init(needsDecision: Bool, reduceTransparency: Bool? = nil) {
+        self.needsDecision = needsDecision; self.reduceTransparency = reduceTransparency
+    }
     /// Flattens the icon and its badge into the image accepted by the system menu bar.
-    @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme) -> NSImage? {
-        let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision)
+    @MainActor public static func nativeImage(needsDecision: Bool, theme: Theme, reduceTransparency: Bool? = nil) -> NSImage? {
+        let renderer = ImageRenderer(content: BatonMenuIcon(needsDecision: needsDecision,
+            reduceTransparency: reduceTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency)
             .font(.system(size: 14)).foregroundStyle(theme.text)
-            .frame(width: 22, height: 18).batonTheme(theme))
+            .frame(width: 26, height: 22).batonTheme(theme))
         renderer.scale = 2
         let image = renderer.nsImage
-        image?.isTemplate = !needsDecision
+        image?.isTemplate = false
         return image
     }
     public var body: some View {
-        Image(systemName: "link")
+        BrandMark(size: 22, reduceTransparency: reduceTransparency)
+            .frame(width: 26, height: 22, alignment: .leading)
             .overlay(alignment: .topTrailing) {
-                if needsDecision { Circle().fill(theme.colour(for: .danger)).frame(width: 5, height: 5) }
+                if needsDecision {
+                    Circle().fill(theme.colour(for: .danger)).frame(width: 5, height: 5)
+                        .overlay(Circle().strokeBorder(theme.background, lineWidth: 0.75))
+                }
             }
     }
 }

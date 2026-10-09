@@ -24,6 +24,8 @@ Decisions (Reviewer):
 
 ## Now
 
+- UI6 complete: menu renderer now uses the signed burgundy/black B and I.A; runtime marks have transparent margins in light mode and close-fitting gray glass in graphite. Window/popover/Dock follow system appearance, including native Reduce Transparency injection and Dock update notifications. Independent review findings fixed. Root377 engine / 81 app / Swift build pass; refreshed native fixture visibly shows graphite signed mark. Menu theme/badge renders inspected; direct system-menu capture timed out, so its actual on-screen item was not separately photographed. Ready-to-commit patch follows UI5; Git remains read-only.
+
 - UI5 complete: Ibrahim's chosen burgundy/black compact logo includes I.A; branded empty/selection/filter states use catalogue wording and preserve loading/failure distinctions. Independent review's popover navigation-copy warning is fixed. Current shared tree: 377 engine / 79 app tests and Swift build pass with the installed SDK flags. Running fixture inspected; Show all turns restores messages. Ready-to-commit patch follows UI4, including binary assets; Git remains read-only.
 - UI4 complete: reached notes sit beneath their own turn's messages. The hidden-turn fallback now joins the first visible card through an uninterrupted connector, and empty filters suppress it. Separate reviewer confirms its gap warning is resolved; the connector correction and shared verification are included in UI5. UI4 source patch remains the ordered predecessor to UI5.
 - UI3 complete, independently reviewed and native fixture checked: ordinary launch opens the main window, standard controls work, native fullscreen entry/Escape exit and sidebar response pass. Ibrahim confirms the window and red/yellow/green controls are visible. Root 377 engine / 74 app / Swift build pass with installed SDK26.5 and TestingMacros command flags. Ready-to-commit patch follows E8; no real chats or Git writes.
@@ -34,11 +36,11 @@ Decisions (Reviewer):
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Current working tree: 377 engine tests, 79 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI5 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Current working tree: 377 engine tests, 81 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI6 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
 
-UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI5, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. The menu-bar symbol remains the existing glyph; signed artwork at that tiny size needs separate legibility review.
+UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI6, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. UI6 replaces the menu glyph with the signed mark. I.A is retained but tiny at 22 points; no claim of easy signature reading at menu size.
 
 UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
 
@@ -69,6 +71,7 @@ Continue E9/E10 (including M12), and D6/D7 in parallel; E8/U9 is now fixture-ver
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI6 transparent logo and dark glass | 2026-10-06 | Ready to commit — separate review fixes confirmed; native graphite preview inspected | 377 engine / 81 app |
 | UI5 signed identity and empty states | 2026-10-06 | Ready to commit — independent review warning fixed; native fixture and both themes inspected | 377 engine / 79 app |
 | UI4 conversation orientation | 2026-10-06 | Ready to commit — separate review; final connector correction included in UI5 | Shared UI5 tree: 377 engine / 79 app |
 | UI3 normal launch and native window controls | 2026-10-06 | Ready to commit — independent review, native checks, Ibrahim confirms visible controls | 377 engine / 74 app with installed SDK flags |
@@ -668,6 +671,33 @@ Give Baton a signed identity and explain empty views
 Use the chosen burgundy and black handoff mark with I.A in the compact icon. Explain empty lists, selection and filters with catalogue wording, while keeping loading and failed reads distinct from successful empty results.
 ```
 
+### UI6 — transparent logo and dark glass
+
+Patch: `docs/plan/reports/patches/UI6.patch`, applies after UI5, including two new PNG assets. Separate reviewer found no remaining actionable findings after fixes; root377/81/build pass.
+
+Exact paths:
+
+- `app/Brand/README.md`
+- `app/Sources/BatonUI/Components/BrandMark.swift`
+- `app/Sources/BatonUI/Components/WindowPresentation.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
+- `app/Sources/Baton/BatonApp.swift`
+- `app/Tests/BatonUITests/ComponentTests.swift`
+- `app/Tests/BatonUITests/BrandTests.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI6-2026-10-06.md`
+- `app/Brand/baton-mark-transparent.png`
+- `app/Sources/BatonUI/Resources/Brand/baton-mark.png`
+
+Message:
+
+```text
+Carry the signed mark across both app appearances
+
+Replace the menu glyph and white tile with the transparent Baton identity. Keep black and I.A readable on gray glass in dark mode, preserve the decision badge, and respect system appearance and reduced transparency.
+```
+
 ## Decisions
 
 27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
@@ -716,6 +746,8 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 26. **Undo safe refusals (Orchestrator, separate reviewer checked):** refuse moving back from a shorter or merge-created chat if it gained native messages; refuse an expired restore preview at apply; metadata-only split undo has no A10 restore and refuses it. Older merge records without sufficient observations cannot be guessed. Shared undo warnings include per-side capability needs and catalogue ids.
 
+27. **Transparent signed identity (Ibrahim, 2026-10-06):** requested menu adoption, no white margins around B/I.A in current logo placements, and gray glass in dark mode. UI6 implements this and follows macOS appearance without changing its setting.
+
 ## Questions
 
 - UI3 native functions and Ibrahim’s visible-controls check pass. Ctrl-Command-F shortcut is not wired after removal of the SwiftUI Window scene; Escape exits native fullscreen, standard green control works. Track standard command integration in D13/keyboard polish; do not claim it repaired.
@@ -730,6 +762,8 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-06 — UI6 completed:377 engine /81 app/build pass. Imagegen transparent extraction replaces white runtime tile; brand/menu/theme/reduced-transparency PNGs inspected. Root native fixture confirms graphite signed gray-glass logo after exact-binary refresh. Separate reviewer warning closed by explicit native accessibility injection, opaque pixel assertions and Dock notification refresh; initial hosted view identity corrected. UI6 patch follows UI5; no Git/real-chat writes. SystemUIServer direct menu capture timed out, so no native item photograph claimed.
 
 - 2026-10-06 — UI5 complete, UI4 shared gate closed: 377 engine / 79 app tests and Swift build pass with installed SDK flags. Signed burgundy/black I.A icon bundled and inspected on both themes and native fixture. Fixed independent review’s absent-sidebar guidance in popover, preserved intentionally note-less legacy fixture after a real failing compatibility test, and joined hidden-turn fallback to the first visible card. Separate reviewers confirm fixes. Ordered UI5 patch includes text and binary assets; no Git or real-chat writes.
 

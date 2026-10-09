@@ -21,9 +21,9 @@ struct ComponentTests {
         for theme in Theme.allCases {
             let plain = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: theme))
             let badged = try #require(BatonMenuIcon.nativeImage(needsDecision: true, theme: theme))
-            #expect(plain.isTemplate)
+            #expect(!plain.isTemplate)
             #expect(!badged.isTemplate)
-            #expect(plain.size == NSSize(width: 22, height: 18))
+            #expect(plain.size == NSSize(width: 26, height: 22))
             #expect(badged.size == plain.size)
             let plainData = try #require(plain.tiffRepresentation)
             let badgeData = try #require(badged.tiffRepresentation)

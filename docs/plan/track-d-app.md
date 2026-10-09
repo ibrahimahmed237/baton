@@ -212,3 +212,19 @@ UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; 
 **Done when.** Empty places explain their state and next step, with catalogue sentences only. Burgundy/black and I.A are present in the compact logo and app review; brand remains readable on graphite using its light backing. Build/tests and independent review pass. Menu-bar adoption of tiny signed artwork is not required by this package.
 
 UI4/UI5 completion 2026-10-06: independent review findings fixed. Shared tree passes 377 engine tests, Swift build and 79 app tests with installed SDK26.5/TestingMacros flags. Signed compact asset and light/graphite renders inspected; current native fixture shows signed empty state and Show all turns restores messages. UI5 preserves the intentionally legacy fixture without presentation notes.
+
+## UI6 — transparent logo and dark glass
+
+**Goal.** Carry the signed burgundy/black mark into the menu bar and remove the baked-in white tile from current app logo placements.
+
+**From.** Ibrahim's 2026-10-06 request for the changed menu icon, no white margins around B/I.A, and gray glass around the logo in dark mode.
+
+**Files.** app/Brand asset and README; BatonUI/Resources/Brand asset; Components/BrandMark.swift and WindowPresentation.swift; Screens/Popover/PopoverView.swift; Theme/Theme.swift if needed; Sources/Baton/BatonApp.swift; focused BatonUITests; plan status/track/UI6 report/patch.
+
+**Steps.** Extract transparent signed mark with imagegen, preserve handoff shape and I.A. Use the cutout directly in light mode and a restrained gray glass backing for graphite. Replace the menu's chain glyph with the same identity while retaining the decision badge. Keep icon colors readable on both surfaces; refresh only the already-authorized fixture bundle.
+
+**Checks.** Confirm PNG alpha excludes the old white tile; inspect rendered brand and menu states in both themes, badge/no badge and reduced transparency. Run the repository engine/app gates and independent review.
+
+**Done when.** Menu uses the signed mark, no baked-in white square remains in runtime logo placements, graphite uses gray glass and reduced-transparency fallback, and tests/build/review are green. I.A is retained but its tiny menu rendering is not claimed as comfortably readable.
+
+UI6 completion 2026-10-06:377 engine /81 app tests and installed-SDK Swift build pass. Separate reviewer confirms accessibility injection/opaque pixels and stable initial root identity fixes. Native graphite fixture and light/graphite/menu/badge/reduced-transparency renders inspected. Direct menu-item capture was unavailable; signature remains tiny at menu size. Ready after UI5.

@@ -41,9 +41,14 @@ public enum BatonWindowConfiguration {
         BatonWindowConfiguration.apply(to: window)
         window.title = "Baton"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: WindowView(model: model).task { await model.refresh() })
+        window.contentView = NSHostingView(rootView: AnyView(WindowView(model: model).batonTheme(.light).task { await model.refresh() }))
         window.center()
         super.init(window: window)
+    }
+    /// Applies the system palette without replacing the window or its model.
+    public func setTheme(_ theme: Theme) {
+        guard let hosting = window?.contentView as? NSHostingView<AnyView> else { return }
+        hosting.rootView = AnyView(WindowView(model: model).batonTheme(theme).task { [model] in await model.refresh() })
     }
     public required init?(coder: NSCoder) { nil }
     public override func showWindow(_ sender: Any?) {
