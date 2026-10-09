@@ -31,6 +31,9 @@ public final class WindowViewModel: ObservableObject {
     @Published public private(set) var chats: [String: [Chat]] = [:]
     @Published public private(set) var activity: [ActivityEntry] = []
     @Published public private(set) var errorNote: Note?
+    @Published public private(set) var loading = false
+    @Published public private(set) var hasLoaded = false
+    @Published public private(set) var loadFailed = false
     private var toolLabels: [String: String] = [:]
     private let engine: any EngineClient
     private var refreshNumber = 0
@@ -71,10 +74,38 @@ public final class WindowViewModel: ObservableObject {
         return notes.first { $0.id == id }
     }
 
+    public var emptyListContent: EmptyStateContent? {
+        guard hasLoaded, !loading, !loadFailed, selections.isEmpty else { return nil }
+        let prefix: String
+        switch section {
+        case .linked: prefix = "empty.linked"
+        case .attention: prefix = "empty.attention"
+        case .suggestions: prefix = "empty.suggestions"
+        case .chats: prefix = "empty.chats"
+        case .activity: prefix = "empty.activity"
+        }
+        return EmptyStateContent.find(prefix, in: notes)
+    }
+
+    public var emptyDetailContent: EmptyStateContent? {
+        guard hasLoaded, !loading, !loadFailed, selection == nil else { return nil }
+        if selections.isEmpty { return emptyListContent }
+        let prefix: String
+        switch section {
+        case .linked, .attention: prefix = "empty.select_link"
+        case .suggestions: prefix = "empty.select_suggestion"
+        case .chats: prefix = "empty.select_chat"
+        case .activity: prefix = "empty.select_activity"
+        }
+        return EmptyStateContent.find(prefix, in: notes)
+    }
+
     /// Refreshes all list data and preserves only selections that remain valid.
     public func refresh() async {
         refreshNumber += 1
         let refresh = refreshNumber
+        loading = true
+        defer { if refreshNumber == refresh { loading = false } }
         do {
             let response = try await engine.links()
             let setup = try await engine.setup()
@@ -103,11 +134,11 @@ public final class WindowViewModel: ObservableObject {
             activity = sortedEvents.map { $0.entry }
             if !sections.contains(section) { section = .linked; selection = nil }
             if let selection, !selections.contains(selection) { self.selection = nil }
-            errorNote = nil
+            errorNote = nil; hasLoaded = true; loadFailed = false
         } catch let error as EngineCommandError {
-            guard refreshNumber == refresh else { return }; errorNote = error.note
+            guard refreshNumber == refresh else { return }; errorNote = error.note; loadFailed = true
         } catch {
-            guard refreshNumber == refresh else { return }; errorNote = nil
+            guard refreshNumber == refresh else { return }; errorNote = nil; loadFailed = true
         }
     }
 

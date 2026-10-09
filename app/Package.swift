@@ -11,10 +11,10 @@ let package = Package(
     ],
     targets: [
         .target(name: "BatonKit"),
-        .target(name: "BatonUI", dependencies: ["BatonKit"]),
+        .target(name: "BatonUI", dependencies: ["BatonKit"], resources: [.copy("Resources/Brand")]),
         .executableTarget(
             name: "Baton", dependencies: ["BatonKit", "BatonUI"], path: ".",
-            exclude: ["Tests", "Sources/BatonKit", "Sources/BatonUI", "Snapshots", "README.md"],
+            exclude: ["Tests", "Sources/BatonKit", "Sources/BatonUI", "Snapshots", "Brand", "README.md"],
             sources: ["Sources/Baton"], resources: [.copy("Fixtures")]
         ),
         .testTarget(name: "BatonKitTests", dependencies: ["BatonKit"]),

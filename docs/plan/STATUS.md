@@ -24,7 +24,8 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI4 follow-up in progress: reached notes sit inside their reached turn cards, directly below the messages, with a short inset rail instead of the long divider. If filtering/folding hides that turn, the note uses the same rail treatment above the visible subset; empty filters still suppress it. Rebuilt and reopened `/private/tmp/BatonUIReview.app`; both inline notes are visible in the running fixture. Independent review's fallback-style finding is closed. App tests remain unrun; see reports/UI4-2026-10-06.md.
+- UI5 complete: Ibrahim's chosen burgundy/black compact logo includes I.A; branded empty/selection/filter states use catalogue wording and preserve loading/failure distinctions. Independent review's popover navigation-copy warning is fixed. Current shared tree: 377 engine / 79 app tests and Swift build pass with the installed SDK flags. Running fixture inspected; Show all turns restores messages. Ready-to-commit patch follows UI4, including binary assets; Git remains read-only.
+- UI4 complete: reached notes sit beneath their own turn's messages. The hidden-turn fallback now joins the first visible card through an uninterrupted connector, and empty filters suppress it. Separate reviewer confirms its gap warning is resolved; the connector correction and shared verification are included in UI5. UI4 source patch remains the ordered predecessor to UI5.
 - UI3 complete, independently reviewed and native fixture checked: ordinary launch opens the main window, standard controls work, native fullscreen entry/Escape exit and sidebar response pass. Ibrahim confirms the window and red/yellow/green controls are visible. Root 377 engine / 74 app / Swift build pass with installed SDK26.5 and TestingMacros command flags. Ready-to-commit patch follows E8; no real chats or Git writes.
 
 - UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is complete and independently reviewed in its fixture scope, with approved capability-based undo and additive recovery/store scope.
@@ -33,13 +34,15 @@ Decisions (Reviewer):
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Current working tree: 377 engine tests, 74 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI3 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Current working tree: 377 engine tests, 79 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI5 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
 
+UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI5, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. The menu-bar symbol remains the existing glyph; signed artwork at that tiny size needs separate legibility review.
+
 UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
 
-Run app tests when explicitly requested/permitted, then close UI4. After UI4 closes, continue E9/E10 and D6/D7 in parallel as previously listed.
+The full app suite now passes with the installed SDK flags; UI4 is closed on the shared UI5 tree. Continue E9/E10 and D6/D7 in parallel as previously listed.
 
 UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
 
@@ -66,6 +69,8 @@ Continue E9/E10 (including M12), and D6/D7 in parallel; E8/U9 is now fixture-ver
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| UI5 signed identity and empty states | 2026-10-06 | Ready to commit — independent review warning fixed; native fixture and both themes inspected | 377 engine / 79 app |
+| UI4 conversation orientation | 2026-10-06 | Ready to commit — separate review; final connector correction included in UI5 | Shared UI5 tree: 377 engine / 79 app |
 | UI3 normal launch and native window controls | 2026-10-06 | Ready to commit — independent review, native checks, Ibrahim confirms visible controls | 377 engine / 74 app with installed SDK flags |
 | E8 undo and restore | 2026-10-06 | Ready to commit — independent review blockers fixed; fixtures only | 377 engine / 71 app |
 | UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
@@ -563,6 +568,106 @@ fix(app): open the main window with native controls
 Normal launch only exposed the menu icon, while separate window paths had different full-screen behavior. Reuse one retained window on launch and reopen, keep native controls, and avoid redundant chrome changes during updates.
 ```
 
+### UI4 — conversation orientation
+
+Patch: `docs/plan/reports/patches/UI4.patch`, applies after UI3. The final connector correction and shared test-gate report updates are in the succeeding UI5 patch.
+
+Exact paths:
+
+- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
+- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI4-2026-10-06.md`
+
+Message:
+
+```text
+Make conversation ownership and sync boundaries clear
+
+Identify each turn and keep received-history notes next to the messages they describe so people can understand what each agent has. Present linked folders as readable locations and preserve filtering and turn order.
+```
+
+### UI5 — signed identity and useful empty screens
+
+Patch: `docs/plan/reports/patches/UI5.patch`, applies after UI4 on the recorded ordered patch chain. Includes PNG assets. Independent reviewer found no remaining warnings after fixes; root377/79/build pass.
+
+Exact paths:
+
+- `app/Package.swift`
+- `app/Sources/Baton/BatonApp.swift`
+- `app/Sources/BatonUI/Components/BrandMark.swift`
+- `app/Sources/BatonUI/Components/EmptyStateView.swift`
+- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
+- `app/Sources/BatonUI/Screens/Window/WindowViewModel.swift`
+- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
+- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusViewModel.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
+- `app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift`
+- `app/Tests/BatonUITests/EmptyStateTests.swift`
+- `baton/notes/catalogue.py`
+- `docs/plan/STATUS.md`
+- `docs/plan/track-d-app.md`
+- `docs/plan/reports/UI5-2026-10-06.md`
+- `app/Brand/README.md`
+- `app/Fixtures/links.d2_decision_needed.json`
+- `app/Fixtures/links.d2_in_sync.json`
+- `app/Fixtures/links.d2_no_links.json`
+- `app/Fixtures/links.d2_one_side_ahead.json`
+- `app/Fixtures/links.d2_paused.json`
+- `app/Fixtures/links.d2_relaunch_needed.json`
+- `app/Fixtures/links.d2_setup_incomplete.json`
+- `app/Fixtures/links.d2_waiting.json`
+- `app/Fixtures/links.d3_empty.json`
+- `app/Fixtures/links.d3_filled.json`
+- `app/Fixtures/links.d3_tool_missing.json`
+- `app/Fixtures/links.d5_already.json`
+- `app/Fixtures/links.d5_claude.json`
+- `app/Fixtures/links.d5_codex.json`
+- `app/Fixtures/links.d5_cursor.json`
+- `app/Fixtures/links.d5_large.json`
+- `app/Fixtures/links.d5_opencode.json`
+- `app/Fixtures/links.d5_unavailable.json`
+- `app/Fixtures/links.empty.json`
+- `app/Fixtures/status.d3_filled.json`
+- `app/Fixtures/status.d3_filled_3.json`
+- `app/Fixtures/status.d3_filled_4.json`
+- `app/Fixtures/status.d3_filled_5.json`
+- `app/Fixtures/status.d4_hooks.json`
+- `app/Fixtures/status.d4_missing.json`
+- `app/Fixtures/status.d4_paused.json`
+- `app/Fixtures/status.d4_s1.json`
+- `app/Fixtures/status.d4_s10.json`
+- `app/Fixtures/status.d4_s11.json`
+- `app/Fixtures/status.d4_s12.json`
+- `app/Fixtures/status.d4_s2.json`
+- `app/Fixtures/status.d4_s3.json`
+- `app/Fixtures/status.d4_s4.json`
+- `app/Fixtures/status.d4_s4b.json`
+- `app/Fixtures/status.d4_s5.json`
+- `app/Fixtures/status.d4_s6.json`
+- `app/Fixtures/status.d4_s7.json`
+- `app/Fixtures/status.d4_s8.json`
+- `app/Fixtures/status.d4_s9.json`
+- `app/Fixtures/status.d4_unknown.json`
+- `app/Fixtures/status.sample.json`
+- `docs/plan/reports/UI4-2026-10-06.md`
+- `app/Brand/baton-icon-burgundy-black-signed.png`
+- `app/Brand/baton-logo-burgundy-black-v4.png`
+- `app/Brand/baton-logo-burgundy-v3.png`
+- `app/Brand/baton-logo-concept-v1.png`
+- `app/Brand/baton-logo-palettes-v2.png`
+- `app/Brand/baton-logo-review-v1.png`
+- `app/Sources/BatonUI/Resources/Brand/baton-icon.png`
+
+Message:
+
+```text
+Give Baton a signed identity and explain empty views
+
+Use the chosen burgundy and black handoff mark with I.A in the compact icon. Explain empty lists, selection and filters with catalogue wording, while keeping loading and failed reads distinct from successful empty results.
+```
+
 ## Decisions
 
 27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
@@ -619,12 +724,14 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 - C3 must select the side for history markers with no tool/direction; E8 accepts explicit side and a verified subsequent delivery boundary, and refuses without one. No guessed timestamps/boundaries. Cut/copy restore is supported; restoring metadata-only split undo is refused. Older merge events without saved post-merge observations conservatively refuse created-chat undo.
 
-- UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
+- UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors still lack explanatory wording. UI5 adds loading feedback in its empty-state views; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
 
 - F2 explicitly assigns engine-generated labels to C2, although findings precede CP2. Contract/UI/fixtures are complete; the C2 obligation remains tracked until implemented.
 - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-06 — UI5 complete, UI4 shared gate closed: 377 engine / 79 app tests and Swift build pass with installed SDK flags. Signed burgundy/black I.A icon bundled and inspected on both themes and native fixture. Fixed independent review’s absent-sidebar guidance in popover, preserved intentionally note-less legacy fixture after a real failing compatibility test, and joined hidden-turn fallback to the first visible card. Separate reviewers confirm fixes. Ordered UI5 patch includes text and binary assets; no Git or real-chat writes.
 
 - 2026-10-06 — UI3 completed at green boundary. Ibrahim answered “Yes, the window and controls are visible” for the running updated fixture. Native launch/fullscreen/Escape/sidebar gates passed; root377/74/build and independent review pass. Ready entry/ordered patch follow E8; no commit or push because Git remains read-only.
 

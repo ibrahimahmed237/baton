@@ -132,7 +132,9 @@ public struct WindowView: View {
             if let entry = model.activity.first(where: { $0.link.linkID == link && $0.event.id == id }) {
                 VStack(alignment: .leading, spacing: 12) { linkSummary(entry.link); Text(entry.event.text) }
             }
-        case nil: EmptyView()
+        case nil:
+            if model.loading { ProgressView().frame(maxWidth: .infinity, minHeight: 320) }
+            else if let content = model.emptyDetailContent { EmptyStateView(content: content) }
         }
     }
 
@@ -145,7 +147,8 @@ public struct WindowView: View {
     }
 
     @ViewBuilder private var empty: some View {
-        if let note = model.notes.first(where: { $0.id == "screen.list_empty" }) { NoteView(note: note) }
+        if model.loading { ProgressView().frame(maxWidth: .infinity).padding() }
+        else if let content = model.emptyListContent { EmptyStateView(content: content, compact: true) }
     }
 
     private func row<Content: View>(_ selection: WindowSelection, @ViewBuilder content: () -> Content) -> some View {

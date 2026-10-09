@@ -18,9 +18,8 @@ public struct PopoverView: View {
         WindowScrollArea(snapshotClips: false) {
         VStack(alignment: .leading, spacing: 14) {
             if let note = model.errorNote { NoteView(note: note) }
-            if model.links.isEmpty, let empty = model.notes.first(where: { $0.id == "screen.empty" }) {
-                NoteView(note: empty)
-            }
+            if model.loading, model.links.isEmpty { ProgressView().frame(maxWidth: .infinity).padding() }
+            if let content = model.emptyContent { EmptyStateView(content: content, compact: true) }
             ForEach(model.links, id: \.linkID) { link in
                 Button { model.select(linkID: link.linkID) } label: {
                     HStack(alignment: .top, spacing: 10) {

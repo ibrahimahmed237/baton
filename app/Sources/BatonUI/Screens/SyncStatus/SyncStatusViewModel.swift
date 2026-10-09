@@ -20,6 +20,8 @@ public final class SyncStatusViewModel: ObservableObject {
     @Published public private(set) var plan: Plan?
     @Published public private(set) var isConfirming = false
     @Published public private(set) var removedLinkID: Int?
+    @Published public private(set) var loading = false
+    @Published public private(set) var loadFailed = false
     private let engine: any EngineClient
     private var request = 0
     private var actionRequest = 0
@@ -56,6 +58,12 @@ public final class SyncStatusViewModel: ObservableObject {
         let hidden = Set(earlierTurns.dropLast(earlierTurns.count == turns.count ? 1 : 0).map(\.id))
         return filteredTurns.filter { !hidden.contains($0.id) }
     }
+    public var emptyConversationContent: EmptyStateContent? {
+        guard status != nil, !loading, !loadFailed, displayedTurns.isEmpty else { return nil }
+        return EmptyStateContent.find(turns.isEmpty ? "empty.conversation" : "empty.filtered",
+                                      in: status?.notes ?? [])
+    }
+    public var canShowAllTurns: Bool { emptyConversationContent != nil && !turns.isEmpty && filter != .all }
     public var foldedCount: Int { filteredTurns.count - displayedTurns.count }
     public func note(_ id: String, turn: Int? = nil) -> Note? {
         status?.notes.first { note in note.id == id && (turn == nil || note.values["turn_id"] == .number(Double(turn!))) }
@@ -85,22 +93,24 @@ public final class SyncStatusViewModel: ObservableObject {
     /// Loads full messages and keeps stale async responses out of the selected link.
     public func load(link: Int) async {
         request += 1; let current = request
+        loading = true
+        defer { if current == request { loading = false } }
         actionRequest += 1; plan = nil; pending = nil
         if status?.linkID != link { status = nil; history = nil }
         do {
             let response = try await engine.status(link: link, messages: true)
             guard current == request else { return }
-            guard response.linkID == link else { status = nil; plan = nil; pending = nil; history = nil; return }
+            guard response.linkID == link else { status = nil; plan = nil; pending = nil; history = nil; loadFailed = true; return }
             let changedLink = status?.linkID != response.linkID
-            status = response; errorNote = nil
+            status = response; errorNote = nil; loadFailed = false
             if changedLink {
                 filter = .all; unfolded = false; expandedReplies = []; expandedTools = []
                 history = nil; plan = nil; pending = nil
                 focusedTurn = displayedTurns.first?.id ?? turns.last?.id
             } else if let focusedTurn, !turns.contains(where: { $0.id == focusedTurn }) { self.focusedTurn = nil }
         } catch let error as EngineCommandError {
-            guard current == request else { return }; errorNote = error.note
-        } catch { guard current == request else { return }; errorNote = nil }
+            guard current == request else { return }; errorNote = error.note; loadFailed = true
+        } catch { guard current == request else { return }; errorNote = nil; loadFailed = true }
     }
 
     /// Pause and resume do not write chats and act immediately.

@@ -16,7 +16,7 @@ public struct SyncStatusView: View {
                         if let side = status.sides[tool] { sideCard(side).frame(maxWidth: .infinity) }
                     }
                 }
-                ForEach(Array(status.notes.filter { !$0.id.hasPrefix("screen.") && !$0.id.hasPrefix("filter.") && !$0.id.hasPrefix("turn.") && !$0.id.hasPrefix("message.") && !["status.reached", "status.tool_activity", "status.checked"].contains($0.id) }.enumerated()), id: \.offset) { _, note in
+                ForEach(Array(status.notes.filter { !$0.id.hasPrefix("empty.") && !$0.id.hasPrefix("screen.") && !$0.id.hasPrefix("filter.") && !$0.id.hasPrefix("turn.") && !$0.id.hasPrefix("message.") && !["status.reached", "status.tool_activity", "status.checked"].contains($0.id) }.enumerated()), id: \.offset) { _, note in
                     NoteView(note: note, enabled: { button in model.tools.first.map { model.supportsSideAction(button, tool: $0) } ?? false }) { button in
                         if let tool = model.tools.first { Task { await model.sideAction(button, tool: tool) } }
                     }
@@ -182,24 +182,34 @@ public struct SyncStatusView: View {
     }
     private var conversationContent: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let content = model.emptyConversationContent {
+                EmptyStateView(content: content,
+                               actionLabel: model.canShowAllTurns ? model.note("screen.show_all_turns") : nil,
+                               action: model.canShowAllTurns ? { model.setFilter(.all) } : nil)
+            }
             if model.foldedCount > 0, let folded = model.note("screen.earlier_turns") {
                 Button(folded.text) { model.unfold() }.buttonStyle(.plain)
             }
-            if !model.displayedTurns.isEmpty {
-                let hiddenTurnNotes = model.tools.compactMap { tool -> Note? in
-                    guard let reached = model.status?.sides[tool]?.syncedUpTo,
-                          !model.displayedTurns.contains(where: { $0.id == reached.id }) else { return nil }
-                    return model.status?.notes.first(where: {
-                        $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
-                    })
-                }
-                if !hiddenTurnNotes.isEmpty {
-                    reachedBoundaryGroup(hiddenTurnNotes)
-                }
-            }
             ForEach(model.displayedTurns, id: \.id) { turn in
-                turnView(turn).id(turn.id)
+                VStack(alignment: .leading, spacing: 0) {
+                    if turn.id == model.displayedTurns.first?.id, !hiddenTurnNotes.isEmpty {
+                        reachedBoundaryGroup(hiddenTurnNotes).padding(.leading, 12)
+                        Capsule().fill(theme.colour(for: .added).opacity(0.65))
+                            .frame(width: 2, height: 16).padding(.leading, 12)
+                            .accessibilityHidden(true)
+                    }
+                    turnView(turn)
+                }.id(turn.id)
             }
+        }
+    }
+    private var hiddenTurnNotes: [Note] {
+        model.tools.compactMap { tool in
+            guard let reached = model.status?.sides[tool]?.syncedUpTo,
+                  !model.displayedTurns.contains(where: { $0.id == reached.id }) else { return nil }
+            return model.status?.notes.first(where: {
+                $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
+            })
         }
     }
     private func turnView(_ turn: Turn) -> some View {

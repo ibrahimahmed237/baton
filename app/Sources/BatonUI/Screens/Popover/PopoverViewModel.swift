@@ -12,6 +12,12 @@ public final class PopoverViewModel: ObservableObject {
     @Published public private(set) var plan: ContinueResult?
     @Published public private(set) var errorNote: Note?
     @Published public private(set) var loading = false
+    @Published public private(set) var hasLoaded = false
+    @Published public private(set) var loadFailed = false
+    public var emptyContent: EmptyStateContent? {
+        guard hasLoaded, !loading, !loadFailed, links.isEmpty else { return nil }
+        return EmptyStateContent.find("empty.popover", in: notes)
+    }
     private let engine: any EngineClient
     private var requestNumber = 0
     private var refreshNumber = 0
@@ -45,13 +51,13 @@ public final class PopoverViewModel: ObservableObject {
                 selectedLinkID = links.first?.linkID
                 plan = nil
             }
-            errorNote = nil
+            errorNote = nil; hasLoaded = true; loadFailed = false
         } catch let error as EngineCommandError {
             guard refreshNumber == refresh else { return }
-            errorNote = error.note
+            errorNote = error.note; loadFailed = true
         } catch {
             guard refreshNumber == refresh else { return }
-            errorNote = nil
+            errorNote = nil; loadFailed = true
         }
     }
 

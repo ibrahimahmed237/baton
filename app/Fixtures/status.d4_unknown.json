@@ -662,6 +662,46 @@
       "text": "Conversation",
       "buttons": [],
       "status_line": null
+    },
+    {
+      "id": "empty.conversation.title",
+      "tone": "info",
+      "values": {},
+      "text": "No conversation turns yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.conversation.body",
+      "tone": "info",
+      "values": {},
+      "text": "Turns appear here after a conversation has been recorded.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.filtered.title",
+      "tone": "info",
+      "values": {},
+      "text": "No turns match this filter",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.filtered.body",
+      "tone": "info",
+      "values": {},
+      "text": "The conversation is still here. Show all turns to see it.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "screen.show_all_turns",
+      "tone": "info",
+      "values": {},
+      "text": "Show all turns",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

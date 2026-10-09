@@ -36,6 +36,166 @@
       "text": "Continue in Codex",
       "buttons": [],
       "status_line": null
+    },
+    {
+      "id": "empty.linked.title",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.linked.body",
+      "tone": "info",
+      "values": {},
+      "text": "Choose a chat from the sidebar to link it with another coding agent.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.attention.title",
+      "tone": "info",
+      "values": {},
+      "text": "Nothing needs your attention",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.attention.body",
+      "tone": "info",
+      "values": {},
+      "text": "Chats that need a decision or another step appear here.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.suggestions.title",
+      "tone": "info",
+      "values": {},
+      "text": "No suggested links yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.suggestions.body",
+      "tone": "info",
+      "values": {},
+      "text": "Choose a chat from the sidebar to make a link yourself.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.chats.title",
+      "tone": "info",
+      "values": {},
+      "text": "No chats found",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.chats.body",
+      "tone": "info",
+      "values": {},
+      "text": "Start a chat in this app, then refresh Baton.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.activity.title",
+      "tone": "info",
+      "values": {},
+      "text": "No activity yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.activity.body",
+      "tone": "info",
+      "values": {},
+      "text": "Syncs and changes to your links appear here.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_link.title",
+      "tone": "info",
+      "values": {},
+      "text": "Choose a linked conversation",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_link.body",
+      "tone": "info",
+      "values": {},
+      "text": "Select a pair from the sidebar to see what each agent has received and what is waiting.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_chat.title",
+      "tone": "info",
+      "values": {},
+      "text": "Choose a chat",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_chat.body",
+      "tone": "info",
+      "values": {},
+      "text": "Select a chat to link it with another agent or copy its history.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_suggestion.title",
+      "tone": "info",
+      "values": {},
+      "text": "Choose a suggested link",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_suggestion.body",
+      "tone": "info",
+      "values": {},
+      "text": "Select a pair to see the two conversations.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_activity.title",
+      "tone": "info",
+      "values": {},
+      "text": "Choose an activity",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.select_activity.body",
+      "tone": "info",
+      "values": {},
+      "text": "Select an entry to see its linked conversation and what changed.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.popover.title",
+      "tone": "info",
+      "values": {},
+      "text": "No linked chats yet",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "empty.popover.body",
+      "tone": "info",
+      "values": {},
+      "text": "Choose Link a recent chat to find a conversation to link.",
+      "buttons": [],
+      "status_line": null
     }
   ]
 }

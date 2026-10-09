@@ -42,6 +42,7 @@ private final class BatonAppDelegate: NSObject, NSApplicationDelegate {
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let icon = BatonBrand.nativeIcon() { NSApplication.shared.applicationIconImage = icon }
         NSApplication.shared.setActivationPolicy(.regular)
         showMainWindow()
     }

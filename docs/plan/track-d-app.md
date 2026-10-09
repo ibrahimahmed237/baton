@@ -191,6 +191,24 @@ UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; 
 
 **Steps.** Label each conversation card with its turn sequence, source app and time; group the per-app state with each app identity; place each existing reached note inside its reached turn card, directly below its messages, with an inset connector rail instead of a full-width divider. If filtering or folding hides that reached turn, show its note above the visible subset; suppress it when no turns remain visible. Show chat folders as compact path chips with middle truncation and the full path available on hover and to accessibility tools. Keep engine wording, ordering, filtering, folding, jump behavior, and the existing palette.
 
-**Checks.** Challenge the diff against S1–S12 and R9–R13; run the repository's app build and tests when permitted; inspect the actual fixture rendering before closing visual acceptance. Do not infer the display copy from tool names or create user-facing sentences in the view.
+**Checks.** Challenge the diff against S1–S12 and R9–R13; run the repository's app build and tests; inspect the actual fixture rendering before closing visual acceptance. Do not infer the display copy from tool names or create user-facing sentences in the view.
 
 **Done when.** Each visible card is self-identifying, both sides' state is adjacent to its tool identity, reached notes appear only when there are visible turns and their “above this line” wording matches their position, and folder paths read as intentional location labels. No message or state ordering changes.
+
+## UI5 — signed identity and useful empty screens
+
+**Goal.** Use Ibrahim's chosen burgundy/black handoff logo, including I.A in its compact form, to replace blank window/detail/list/conversation areas with relevant explanations.
+
+**From.** Ibrahim's 2026-10-06 logo and empty-screen requests; he selected burgundy/black and asked for I.A in the compact logo.
+
+**Depends on.** UI4, D3 and D4.
+
+**Files.** `app/Brand/`; `app/Package.swift`; `app/Sources/Baton/BatonApp.swift`; BatonUI `Resources/Brand/`, `Components/BrandMark.swift`, `Components/EmptyStateView.swift`, WindowView/WindowViewModel, SyncStatusView/SyncStatusViewModel, PopoverView/PopoverViewModel; existing fixtures' notes; focused BatonUITests; `baton/notes/catalogue.py`; plan status, this track, UI5 report and package patch.
+
+**Steps.** Generate the chosen signed icon without changing the handoff mark. Bundle the reviewed identity in BatonUI. Use catalogue-provided title/body notes for no item selected, no linked chats, no attention items, no suggestions/chats/activity, no conversation turns, and filters without matches. Use the appropriate existing navigation action where it is useful; never invent a data action. Show no empty-success claim while a model is loading or failed. Keep changes additive and preserve existing palette, sync rules and launch/window behavior.
+
+**Tests.** Check empty-state selection against real fixture model data, loading/error versus empty success, and filtered conversation versus genuinely empty history. Render new components/states in both themes; run engine suite and app build/tests. Inspect the signed compact artwork and current fixture window.
+
+**Done when.** Empty places explain their state and next step, with catalogue sentences only. Burgundy/black and I.A are present in the compact logo and app review; brand remains readable on graphite using its light backing. Build/tests and independent review pass. Menu-bar adoption of tiny signed artwork is not required by this package.
+
+UI4/UI5 completion 2026-10-06: independent review findings fixed. Shared tree passes 377 engine tests, Swift build and 79 app tests with installed SDK26.5/TestingMacros flags. Signed compact asset and light/graphite renders inspected; current native fixture shows signed empty state and Show all turns restores messages. UI5 preserves the intentionally legacy fixture without presentation notes.
