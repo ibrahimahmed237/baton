@@ -1,14 +1,48 @@
-# Baton D0
+# Baton app
 
-Build and test with `swift build` and `swift test` from this directory using
-Swift 6 (the tests use the bundled Swift Testing framework). Run
-`swift run Baton` to launch the fixture-backed menu-bar extra and links window.
-The app uses the bundled `Fixtures` directory; another client can be injected
-into `AppState`. No external packages are used.
+SwiftUI menu-bar app and window for Baton. It shows what the engine returns and
+sends the user's choices back; it holds no sync rules and builds no sentences.
+Swift 6 toolchain, no external packages (the tests use the bundled Swift Testing
+framework).
+
+## Build and test
+
+```
+app/scripts/check.sh                 # swift build, then swift test
+app/scripts/check.sh --filter Name   # extra arguments go to swift test
+```
+
+The script is the one command to run before handing work back. It exits non-zero
+when the build or any test fails.
+
+Why the script picks an SDK: on a Mac whose Command Line Tools were updated, the
+plain `swift build` can pick an SDK whose SwiftUI macros (`@State`, `@Environment`)
+have no matching compiler plugin ("external macro implementation type ... could
+not be found"), and `swift test` cannot find the testing macros. `check.sh` first
+tries the plain toolchain with a quick SwiftUI compile. If it fails, it tries the SDKs under
+`/Library/Developer/CommandLineTools/SDKs`, newest first, uses the first one that
+compiles SwiftUI (`SDKROOT`). It adds the testing plugin directory
+`.../usr/lib/swift/host/plugins/testing` to `swift test` when it exists, including
+when `SDKROOT` was explicitly supplied. The
+newest SDK is not always the one that works; the probe, not the version number,
+decides. Set `SDKROOT` yourself to skip the search.
+
+Module caches default to `.build/check-cache/` so the same command works in a
+managed environment that cannot write the user's global cache. Explicit
+`CLANG_MODULE_CACHE_PATH` and `SWIFT_MODULECACHE_PATH` overrides are respected.
+The build and tests use SwiftPM's `--disable-sandbox` for manifest execution;
+SwiftPM's nested manifest sandbox cannot start inside the managed command
+sandbox on this Mac. This does not change Baton's app permissions.
+
+Run the app with fixtures: `swift run Baton` (same SDK note; for example
+`SDKROOT=<sdk> swift run Baton`). It launches the fixture-backed menu-bar extra
+and links window. The app uses the bundled `Fixtures` directory; another client
+can be injected into `AppState`. Rendered PNGs of every screen state are written
+to `Snapshots/` (git-ignored) by the tests.
 
 `BatonKit` contains contract models and two `EngineClient` implementations.
 `FixtureEngine(directory:state:states:)` chooses a default state (`sample`) and
-optional per-command overrides. Arguments do not select fixture states.
+optional per-command overrides. Arguments never select a state, but they can pick a variant of it: `--link N`, `--to TOOL[:ID]` with `--mode`, and `--replace TOOL` look for `<command>.<state>_<variant>.json` first.
 `ProcessEngine()` runs `/usr/bin/env baton`; for an explicit executable, pass
 its URL and `prefixArguments: []`. Arguments go directly to `Process`, never a
 shell. Mutating commands default to previews; `.confirm(planID)` replaces the
