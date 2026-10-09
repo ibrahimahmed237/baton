@@ -1,0 +1,86 @@
+{
+  "plan_id": "p_d7_limit_no_reset_create",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "brief.written_by",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "Codex wrote the brief.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "brief.summary_receipt",
+      "tone": "info",
+      "values": {},
+      "text": "Summarized through this turn. The original messages are in the saved history.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "brief.pinned_size",
+      "tone": "info",
+      "values": {
+        "tokens": "3,200"
+      },
+      "text": "Pinned turns add about 3,200 tokens in full.",
+      "buttons": [],
+      "status_line": null
+    }
+  ],
+  "stage": "create",
+  "confirmation": {
+    "id": "plan.confirm_brief_creation",
+    "tone": "info",
+    "values": {},
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  },
+  "brief": {
+    "writer": "codex",
+    "tokens": 900,
+    "pinned": [
+      41,
+      43
+    ],
+    "estimated_tokens": 1800,
+    "candidate_estimates": [
+      {
+        "writer": "codex",
+        "tokens": 1800
+      }
+    ],
+    "artifact_id": "artifact-limit_no_reset",
+    "text": "Work continues from the orchard conversation.\nThe harvest checklist is ready.",
+    "summary": "The harvest checklist is ready.",
+    "pinned_tokens": 3200
+  }
+}

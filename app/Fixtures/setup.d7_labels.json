@@ -1,0 +1,617 @@
+{
+  "tools": [
+    {
+      "tool": "claude",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [],
+      "facts": {
+        "write_window": "closed_or_released",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
+        "can_cut": true,
+        "can_place": false,
+        "can_release_chat": true,
+        "opens_at_chat": true,
+        "limit_has_reset_time": true,
+        "context_size_known": true,
+        "hooks_need": "none",
+        "checked_versions": [
+          "sample-1"
+        ]
+      },
+      "tool_label": "Claude",
+      "link_modes": [
+        {
+          "mode": "full_copy",
+          "available": true,
+          "label": {
+            "id": "mode.full_copy",
+            "tone": "info",
+            "values": {},
+            "text": "Copy the full history",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "attached_history",
+          "available": true,
+          "label": {
+            "id": "mode.attached_history",
+            "tone": "info",
+            "values": {},
+            "text": "Start now, history attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.history_attached",
+            "tone": "info",
+            "values": {},
+            "text": "History attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "brief",
+          "available": true,
+          "label": {
+            "id": "mode.brief",
+            "tone": "info",
+            "values": {},
+            "text": "Brief in a new chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        }
+      ]
+    },
+    {
+      "tool": "codex",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [],
+      "facts": {
+        "write_window": "not_held",
+        "new_chat_visible": "at_once",
+        "added_turn_visible": "at_once",
+        "can_cut": false,
+        "can_place": false,
+        "can_release_chat": false,
+        "opens_at_chat": true,
+        "limit_has_reset_time": true,
+        "context_size_known": true,
+        "hooks_need": "trust once",
+        "checked_versions": [
+          "sample-1"
+        ]
+      },
+      "tool_label": "Codex",
+      "link_modes": [
+        {
+          "mode": "full_copy",
+          "available": true,
+          "label": {
+            "id": "mode.full_copy",
+            "tone": "info",
+            "values": {},
+            "text": "Copy the full history",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "attached_history",
+          "available": true,
+          "label": {
+            "id": "mode.attached_history",
+            "tone": "info",
+            "values": {},
+            "text": "Start now, history attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.history_attached",
+            "tone": "info",
+            "values": {},
+            "text": "History attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "brief",
+          "available": true,
+          "label": {
+            "id": "mode.brief",
+            "tone": "info",
+            "values": {},
+            "text": "Brief in a new chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        }
+      ]
+    },
+    {
+      "tool": "opencode",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [],
+      "facts": {
+        "write_window": "any_time",
+        "new_chat_visible": "at_once",
+        "added_turn_visible": "on_reopen_chat",
+        "can_cut": true,
+        "can_place": true,
+        "can_release_chat": false,
+        "opens_at_chat": false,
+        "limit_has_reset_time": false,
+        "context_size_known": false,
+        "hooks_need": "restart once",
+        "checked_versions": [
+          "sample-1"
+        ]
+      },
+      "tool_label": "OpenCode",
+      "link_modes": [
+        {
+          "mode": "full_copy",
+          "available": true,
+          "label": {
+            "id": "mode.full_copy",
+            "tone": "info",
+            "values": {},
+            "text": "Copy the full history",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "attached_history",
+          "available": true,
+          "label": {
+            "id": "mode.attached_history",
+            "tone": "info",
+            "values": {},
+            "text": "Start now, history attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.history_attached",
+            "tone": "info",
+            "values": {},
+            "text": "History attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "brief",
+          "available": true,
+          "label": {
+            "id": "mode.brief",
+            "tone": "info",
+            "values": {},
+            "text": "Brief in a new chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        }
+      ]
+    },
+    {
+      "tool": "cursor",
+      "installed": true,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [],
+      "facts": {
+        "write_window": "app_closed",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
+        "can_cut": false,
+        "can_place": true,
+        "can_release_chat": false,
+        "opens_at_chat": false,
+        "limit_has_reset_time": false,
+        "context_size_known": true,
+        "hooks_need": "none",
+        "checked_versions": [
+          "sample-1"
+        ]
+      },
+      "tool_label": "Cursor",
+      "link_modes": [
+        {
+          "mode": "full_copy",
+          "available": true,
+          "label": {
+            "id": "mode.full_copy",
+            "tone": "info",
+            "values": {},
+            "text": "Copy the full history",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "attached_history",
+          "available": true,
+          "label": {
+            "id": "mode.attached_history",
+            "tone": "info",
+            "values": {},
+            "text": "Start now, history attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.history_attached",
+            "tone": "info",
+            "values": {},
+            "text": "History attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "brief",
+          "available": true,
+          "label": {
+            "id": "mode.brief",
+            "tone": "info",
+            "values": {},
+            "text": "Brief in a new chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        }
+      ]
+    },
+    {
+      "tool": "absent_fixture",
+      "installed": false,
+      "ready": true,
+      "version": "sample-1",
+      "findings": [],
+      "facts": {
+        "write_window": "closed_or_released",
+        "new_chat_visible": "after_relaunch",
+        "added_turn_visible": "after_relaunch",
+        "can_cut": true,
+        "can_place": false,
+        "can_release_chat": true,
+        "opens_at_chat": true,
+        "limit_has_reset_time": true,
+        "context_size_known": true,
+        "hooks_need": "none",
+        "checked_versions": [
+          "sample-1"
+        ]
+      },
+      "tool_label": "Absent fixture",
+      "link_modes": [
+        {
+          "mode": "full_copy",
+          "available": true,
+          "label": {
+            "id": "mode.full_copy",
+            "tone": "info",
+            "values": {},
+            "text": "Copy the full history",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "attached_history",
+          "available": true,
+          "label": {
+            "id": "mode.attached_history",
+            "tone": "info",
+            "values": {},
+            "text": "Start now, history attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.history_attached",
+            "tone": "info",
+            "values": {},
+            "text": "History attached",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        },
+        {
+          "mode": "brief",
+          "available": true,
+          "label": {
+            "id": "mode.brief",
+            "tone": "info",
+            "values": {},
+            "text": "Brief in a new chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "tag": {
+            "id": "tag.new_chat",
+            "tone": "info",
+            "values": {},
+            "text": "New chat",
+            "buttons": [],
+            "status_line": null
+          },
+          "reason": null
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "handoff.title",
+      "tone": "info",
+      "values": {},
+      "text": "Continue the conversation",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.sides",
+      "tone": "info",
+      "values": {},
+      "text": "Both chats",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.mode",
+      "tone": "info",
+      "values": {},
+      "text": "What to send",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.full",
+      "tone": "info",
+      "values": {},
+      "text": "Full history",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.full_help",
+      "tone": "info",
+      "values": {},
+      "text": "Send the original turns that are waiting.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.brief",
+      "tone": "info",
+      "values": {},
+      "text": "Brief in a new chat",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.brief_help",
+      "tone": "info",
+      "values": {},
+      "text": "Start a fresh chat with a summary, important turns and saved history.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.writer",
+      "tone": "info",
+      "values": {},
+      "text": "Who writes the brief",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.writer_choices",
+      "tone": "info",
+      "values": {},
+      "text": "Choose how to write the brief.",
+      "buttons": [
+        {
+          "id": "automatic",
+          "label": "Automatic",
+          "primary": true
+        },
+        {
+          "id": "offline",
+          "label": "Offline",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "handoff.preview",
+      "tone": "info",
+      "values": {},
+      "text": "Review before continuing",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "handoff.actions",
+      "tone": "info",
+      "values": {},
+      "text": "Review your choice.",
+      "buttons": [
+        {
+          "id": "review",
+          "label": "Review",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "dialog.what_will_happen",
+      "tone": "info",
+      "values": {},
+      "text": "What will happen",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "dialog.actions",
+      "tone": "info",
+      "values": {},
+      "text": "Link a chat",
+      "buttons": [
+        {
+          "id": "create",
+          "label": "Create",
+          "primary": true
+        },
+        {
+          "id": "copy_without_linking",
+          "label": "Copy without linking",
+          "primary": false
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        },
+        {
+          "id": "change_link",
+          "label": "Change the link",
+          "primary": false
+        },
+        {
+          "id": "full_copy",
+          "label": "Create a full copy",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "plan.unavailable",
+      "tone": "info",
+      "values": {},
+      "text": "This action is not available yet. Your current choice is kept.",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

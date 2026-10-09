@@ -132,6 +132,8 @@ Rules for this track:
 **Fixture states.** linked and not linked; with and without reset time; with and without context size; brief fallback.
 **Done when.** V1 to V6 fixtures render.
 
+**CP2 repair scope (Ibrahim approved, 2026-10-09).** `Screens/HandOff/`, additive BriefDetails metadata, PlanReviewView rendering the exact engine artifact before Create chat, and shared PlanReviewViewModel stage/policy validation with narrow D6 compatibility regressions. Reload clears prior actions and validates link/destination; stale responses cannot act. Full mode previews Continue without any brief request. Automatic/Offline and target changes invalidate approval; limit offers route by immutable source/destination metadata. Actual catalogue notes and generation/create display gates are required, with adversarial view-model tests and inspected light/Graphite PNGs. Final generated fixtures belong to C2; production window wiring remains D12.
+
 ## D8. Merge
 
 **Board.** Both chats have new turns. **From.** merge.md M1 to M12; U1 to U9.

@@ -560,23 +560,38 @@ public struct RemovedTurn: Codable, Equatable, Sendable {
     }
 }
 
-/// BriefDetails data returned by the engine.
+/// The bounded read-only cost of one eligible brief writer.
+public struct BriefCandidateEstimate: Codable, Equatable, Sendable {
+    public var writer: String
+    public var tokens: Int
+    /// Creates a writer estimate without requiring JSON.
+    public init(writer: String, tokens: Int) { self.writer = writer; self.tokens = tokens }
+}
+
+/// Exact artifact content and disclosed generation cost returned by the engine.
 public struct BriefDetails: Codable, Equatable, Sendable {
     public var writer: String
     public var tokens: Int
     public var pinned: [Int]
+    public var estimatedTokens: Int?
+    public var candidateEstimates: [BriefCandidateEstimate]?
+    public var pinnedTokens: Int?
+    public var artifactID: String?
+    public var text: String?
+    public var summary: String?
 
-    /// Creates a contract value without requiring JSON.
-    public init(writer: String, tokens: Int, pinned: [Int]) {
-        self.writer = writer
-        self.tokens = tokens
-        self.pinned = pinned
+    /// Additive fields remain optional when reading an earlier engine.
+    public init(writer: String, tokens: Int, pinned: [Int], estimatedTokens: Int? = nil,
+                candidateEstimates: [BriefCandidateEstimate]? = nil, pinnedTokens: Int? = nil, artifactID: String? = nil,
+                text: String? = nil, summary: String? = nil) {
+        self.writer = writer; self.tokens = tokens; self.pinned = pinned
+        self.estimatedTokens = estimatedTokens; self.candidateEstimates = candidateEstimates
+        self.artifactID = artifactID; self.text = text; self.summary = summary; self.pinnedTokens = pinnedTokens
     }
-
     private enum CodingKeys: String, CodingKey {
-        case writer
-        case tokens
-        case pinned
+        case writer, tokens, pinned, text, summary
+        case pinnedTokens = "pinned_tokens"
+        case estimatedTokens = "estimated_tokens", candidateEstimates = "candidate_estimates", artifactID = "artifact_id"
     }
 }
 

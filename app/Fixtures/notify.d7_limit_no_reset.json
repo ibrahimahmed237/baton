@@ -1,0 +1,34 @@
+{
+  "synced": [],
+  "queued": [],
+  "offers": [
+    {
+      "id": "limit.offer_linked_no_reset_behind",
+      "tone": "warning",
+      "values": {
+        "tool": "OpenCode",
+        "other_tool": "Codex",
+        "offer_key": "event-notify.d7_limit_no_reset",
+        "link_id": 3,
+        "source_tool_id": "opencode",
+        "source_chat_id": "opencode_orchard",
+        "destination_tool_id": "codex",
+        "destination_chat_id": "codex_orchard"
+      },
+      "text": "OpenCode has reached its usage limit. Continue this chat in Codex?",
+      "buttons": [
+        {
+          "id": "continue",
+          "label": "Continue in Codex",
+          "primary": true
+        },
+        {
+          "id": "not_now",
+          "label": "Not now",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "plan_id": "p_d7_continue",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "add",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "plan.unavailable",
+      "tone": "info",
+      "values": {},
+      "text": "This action is not available yet. Your current choice is kept.",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ],
+  "opened": false,
+  "confirmation": null
+}

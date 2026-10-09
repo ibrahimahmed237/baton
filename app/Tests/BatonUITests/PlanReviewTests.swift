@@ -51,6 +51,9 @@ private actor D6Engine: EngineTransport {
             if confirmationBehavior == .refuse { return try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: object)) }
             if confirmationBehavior == .nextStage {
                 object["plan_id"] = token + "_create"; object["stage"] = "create"
+                var brief = object["brief"] as! [String: Any]
+                brief["artifact_id"] = "d6-exact-artifact"; brief["text"] = "The agreed hand-off."; object["brief"] = brief
+                object["steps"] = [["tool": Self.value("--to", in: plain)!, "action": "create", "turns": [], "reason": "", "needs": [], "notes": []]]
                 var confirmation = object["confirmation"] as! [String: Any]
                 confirmation["id"] = "plan.confirm_brief_creation"; object["confirmation"] = confirmation
                 plans[token + "_create"] = Issued(command: command, arguments: plain, object: object, revision: revision)
@@ -114,6 +117,11 @@ struct PlanReviewTests {
     private func note(_ id: String, buttons: [(String, String)] = []) -> Note {
         Note(id: id, tone: "info", values: [:], text: id, buttons: buttons.map { NoteButton(id: $0.0, label: $0.1) })
     }
+    private func briefCosts() -> [Note] {
+        [Note(id: "brief.cost", tone: "info", values: ["writer_id": .string("codex"), "tokens": .number(12)], text: "12", buttons: []),
+         Note(id: "brief.total_cost", tone: "info", values: ["tokens": .number(12)], text: "12", buttons: [])]
+    }
+    private func createSteps() -> [Step] { [Step(tool: "codex", action: "create", turns: [], reason: "", needs: [], notes: [])] }
     private func data(notes: [Note], confirmation: Note? = nil, steps: [Step] = [], stage: String? = nil) throws -> Data {
         try JSONEncoder().encode(Plan(planID: "unused", applied: false, linkID: 3, steps: steps,
                                     decisionNeeded: false, notes: notes, confirmation: confirmation, stage: stage))
@@ -233,7 +241,11 @@ struct PlanReviewTests {
             for (buttonID, noteID) in offers {
                 var object = try #require(JSONSerialization.jsonObject(with: data(notes: [note(noteID, buttons: [(buttonID, "Relaunch")])])) as? [String: Any])
                 if case .continueIn = original { object["opened"] = false }
-                if case .brief = original { object["brief"] = ["writer": "offline", "tokens": 12, "pinned": []] }
+                if case .brief = original {
+                    object["stage"] = "create"
+                    object["brief"] = ["writer": "offline", "tokens": 12, "pinned": [], "artifact_id": "offline-artifact", "text": "The agreed hand-off."]
+                    object["steps"] = [["tool": "codex", "action": "create", "turns": [], "reason": "", "needs": [], "notes": []]]
+                }
                 let (model, engine) = await customModel(try JSONSerialization.data(withJSONObject: object), request: original); try display(model)
                 await model.choose(try action(buttonID, in: model))
                 #expect(model.request == original && model.originalRequest == original)
@@ -397,9 +409,9 @@ struct PlanReviewTests {
         }
     }
     @MainActor @Test func distinctCreationTokenNeedsItsOwnDisplayedRevision() async throws {
-        var object = try #require(JSONSerialization.jsonObject(with: data(notes: [note("nothing_unusual")], confirmation: note("plan.confirm_brief_generation", buttons: [("confirm", "Generate")]), stage: "generate")) as? [String: Any])
-        object["brief"] = ["writer": "offline", "tokens": 12, "pinned": []]
-        let (model, engine) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: "offline"), behavior: .nextStage)
+        var object = try #require(JSONSerialization.jsonObject(with: data(notes: briefCosts(), confirmation: note("plan.confirm_brief_generation", buttons: [("confirm", "Generate")]), steps: createSteps(), stage: "generate")) as? [String: Any])
+        object["brief"] = ["writer": "codex", "tokens": 0, "pinned": [], "estimated_tokens": 12, "candidate_estimates": [["writer": "codex", "tokens": 12]]]
+        let (model, engine) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: nil), behavior: .nextStage)
         try display(model); let old = try #require(model.displayReceipt); await model.confirm()
         #expect(model.plan?.stage == "create" && model.plan?.planID != old.planID && !model.canConfirm)
         model.didDisplay(old); #expect(!model.canConfirm)
@@ -426,14 +438,33 @@ struct PlanReviewTests {
         let (ordinary, _) = await model(Self.cases[7]); try display(ordinary); #expect(ordinary.canConfirm)
         for stage in ["generate", "create"] {
             let id = "plan.confirm_brief_\(stage == "generate" ? "generation" : "creation")"
-            var object = try #require(JSONSerialization.jsonObject(with: data(notes: [note("nothing_unusual")], confirmation: note(id, buttons: [("confirm", "Continue")]), stage: stage)) as? [String: Any])
-            object["brief"] = ["writer": "offline", "tokens": 12, "pinned": []]
-            let (brief, _) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: "offline")); try display(brief)
+            var object = try #require(JSONSerialization.jsonObject(with: data(notes: stage == "generate" ? briefCosts() : [note("nothing_unusual")], confirmation: note(id, buttons: [("confirm", "Continue")]), steps: createSteps(), stage: stage)) as? [String: Any])
+            object["brief"] = stage == "generate" ? ["writer": "codex", "tokens": 0, "pinned": [], "estimated_tokens": 12, "candidate_estimates": [["writer": "codex", "tokens": 12]]] : ["writer": "offline", "tokens": 12, "pinned": [], "artifact_id": "offline-artifact", "text": "The agreed hand-off."]
+            if stage == "create" { object["steps"] = [["tool": "codex", "action": "create", "turns": [], "reason": "", "needs": [], "notes": []]] }
+            let (brief, _) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: nil)); try display(brief)
             #expect(brief.canConfirm)
         }
         let (cancelled, engine) = await model(Self.cases[2])
         await cancelled.choose(try action("cancel", in: cancelled))
         #expect(cancelled.outcome == .cancelled); #expect(await engine.writes().isEmpty)
+    }
+    @MainActor @Test func namedWriterAllowsOnlyAnExplicitOfflineCreationFallback() async throws {
+        for (writer, declared, allowed) in [("offline", true, true), ("offline", false, false), ("codex", true, false)] {
+            var object = try #require(JSONSerialization.jsonObject(with: data(notes: declared ? [note("brief.used_offline")] : [], confirmation: note("plan.confirm_brief_creation", buttons: [("confirm", "Create")]), steps: createSteps(), stage: "create")) as? [String: Any])
+            object["brief"] = ["writer": writer, "tokens": 12, "pinned": [], "artifact_id": "fallback-artifact", "text": "The agreed hand-off."]
+            let (model, engine) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: "claude"))
+            if allowed { try display(model); #expect(model.canConfirm) }
+            else { #expect(model.plan == nil && !model.canConfirm) }
+            #expect(await engine.writes().isEmpty)
+        }
+    }
+    @MainActor @Test func directOfflineReviewRefusesAPaidGenerationStage() async throws {
+        var object = try #require(JSONSerialization.jsonObject(with: data(notes: briefCosts(), confirmation: note("plan.confirm_brief_generation", buttons: [("confirm", "Generate")]), steps: createSteps(), stage: "generate")) as? [String: Any])
+        object["brief"] = ["writer": "codex", "tokens": 0, "pinned": [], "estimated_tokens": 12, "candidate_estimates": [["writer": "codex", "tokens": 12]]]
+        let (model, engine) = await customModel(try JSONSerialization.data(withJSONObject: object), request: .brief(link: 3, to: "codex", writer: "offline"))
+        #expect(model.plan == nil && !model.canConfirm)
+        #expect(model.originalRequest == .brief(link: 3, to: "codex", writer: "offline"))
+        await model.confirm(); #expect(await engine.writes().isEmpty)
     }
     @MainActor @Test func everyFixtureAndUnavailableSelectionRendersInBothThemes() async throws {
         let directory = ComponentTests.root.appendingPathComponent("Snapshots")

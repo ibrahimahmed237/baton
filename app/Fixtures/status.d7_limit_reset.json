@@ -1,0 +1,299 @@
+{
+  "link_id": 3,
+  "mode": "attached_history",
+  "paused": false,
+  "in_sync": false,
+  "decision_needed": false,
+  "sides": {
+    "claude": {
+      "tool": "claude",
+      "chat": {
+        "tool": "claude",
+        "id": "claude_orchard",
+        "name": "Imaginary orchard",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": true,
+        "tool_label": "Claude"
+      },
+      "condition": {
+        "exists": true,
+        "open": false,
+        "replying": false,
+        "hooks_ready": true
+      },
+      "total": 4,
+      "agent_has": 4,
+      "chat_shows": 4,
+      "added": 0,
+      "attached": 0,
+      "waiting": 0,
+      "kept_elsewhere": 0,
+      "skipped": 0,
+      "synced_up_to": {
+        "id": 44,
+        "seq": 4,
+        "origin": "claude",
+        "first_line": "Check the harvest.",
+        "started_at": "2026-10-05T10:04:00Z",
+        "ended_at": "2026-10-05T10:04:00Z",
+        "tokens": 1600,
+        "pinned": false,
+        "states": {
+          "claude": "written_here",
+          "codex": "waiting"
+        },
+        "messages": [
+          {
+            "kind": "prompt",
+            "text": "Check the harvest."
+          },
+          {
+            "kind": "reply",
+            "text": "Silver pears grow beneath a violet sky."
+          }
+        ]
+      },
+      "waiting_reason": null,
+      "next_message": {
+        "turns": 0,
+        "tokens": 0
+      },
+      "usage": {
+        "tokens": 164000,
+        "size": 200000,
+        "percent": 82,
+        "limit": {
+          "resets_at": "2026-10-09T15:00:00Z"
+        }
+      },
+      "since_you_left": null,
+      "notes": [
+        {
+          "id": "context.in_use",
+          "tone": "info",
+          "values": {
+            "tokens": "164,000",
+            "size": "200,000",
+            "percent": 82
+          },
+          "text": "About 164,000 tokens in use, 82% of 200,000.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "context.nearly_full",
+          "tone": "warning",
+          "values": {
+            "tool": "Claude",
+            "other_tool": "Codex"
+          },
+          "text": "Claude will soon summarise this chat by itself. Continuing in Codex, or handing off with a brief, avoids that.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "limit.available_at",
+          "tone": "info",
+          "values": {
+            "tool": "Claude",
+            "resets_at": "2026-10-09T15:00:00Z",
+            "time": "2026-10-09T15:00:00Z"
+          },
+          "text": "Claude is available again at 2026-10-09T15:00:00Z.",
+          "buttons": [],
+          "status_line": "Claude is available again at 2026-10-09T15:00:00Z"
+        }
+      ],
+      "tool_label": "Claude"
+    },
+    "codex": {
+      "tool": "codex",
+      "chat": {
+        "tool": "codex",
+        "id": "codex_orchard",
+        "name": "Imaginary orchard",
+        "folder": "/tmp/baton-sample",
+        "updated_at": "2026-10-04T14:05:00Z",
+        "linked": true,
+        "tool_label": "Codex"
+      },
+      "condition": {
+        "exists": true,
+        "open": false,
+        "replying": false,
+        "hooks_ready": true
+      },
+      "total": 4,
+      "agent_has": 0,
+      "chat_shows": 0,
+      "added": 0,
+      "attached": 0,
+      "waiting": 4,
+      "kept_elsewhere": 0,
+      "skipped": 0,
+      "synced_up_to": null,
+      "waiting_reason": null,
+      "next_message": {
+        "turns": 4,
+        "tokens": 6400
+      },
+      "usage": {
+        "tokens": 52000,
+        "size": 400000,
+        "percent": 13,
+        "limit": null
+      },
+      "since_you_left": null,
+      "notes": [
+        {
+          "id": "context.in_use",
+          "tone": "info",
+          "values": {
+            "tokens": "52,000",
+            "size": "400,000",
+            "percent": 13
+          },
+          "text": "About 52,000 tokens in use, 13% of 400,000.",
+          "buttons": [],
+          "status_line": null
+        },
+        {
+          "id": "status.if_send",
+          "tone": "info",
+          "values": {
+            "tool": "Codex",
+            "n": 4,
+            "tokens": "6,400"
+          },
+          "text": "If you send a message now, Codex gets 4 turns, about 6,400 tokens.",
+          "buttons": [],
+          "status_line": null
+        }
+      ],
+      "tool_label": "Codex"
+    }
+  },
+  "turns": [
+    {
+      "id": 41,
+      "seq": 1,
+      "origin": "claude",
+      "first_line": "Describe an imaginary orchard.",
+      "started_at": "2026-10-05T10:01:00Z",
+      "ended_at": "2026-10-05T10:01:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Describe an imaginary orchard."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "seq": 2,
+      "origin": "claude",
+      "first_line": "Add silver pear trees.",
+      "started_at": "2026-10-05T10:02:00Z",
+      "ended_at": "2026-10-05T10:02:00Z",
+      "tokens": 1600,
+      "pinned": true,
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Add silver pear trees."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "seq": 3,
+      "origin": "claude",
+      "first_line": "Write the orchard tests.",
+      "started_at": "2026-10-05T10:03:00Z",
+      "ended_at": "2026-10-05T10:03:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Write the orchard tests."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "seq": 4,
+      "origin": "claude",
+      "first_line": "Check the harvest.",
+      "started_at": "2026-10-05T10:04:00Z",
+      "ended_at": "2026-10-05T10:04:00Z",
+      "tokens": 1600,
+      "pinned": false,
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Check the harvest."
+        },
+        {
+          "kind": "reply",
+          "text": "Silver pears grow beneath a violet sky."
+        }
+      ]
+    }
+  ],
+  "notes": [
+    {
+      "id": "brief.large_chat",
+      "tone": "info",
+      "values": {
+        "tokens": "164,000",
+        "tool": "Codex"
+      },
+      "text": "This chat is large, about 164,000 tokens. Sending all of it would fill most of Codex's context. Baton suggests a brief in a new chat instead.",
+      "buttons": [
+        {
+          "id": "write_brief",
+          "label": "Write a brief",
+          "primary": true
+        },
+        {
+          "id": "send_in_full",
+          "label": "Send in full",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

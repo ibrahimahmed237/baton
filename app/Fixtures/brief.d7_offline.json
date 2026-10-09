@@ -1,0 +1,71 @@
+{
+  "plan_id": "p_d7_offline_create",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "brief.used_offline",
+      "tone": "info",
+      "values": {},
+      "text": "Baton used the offline summary instead.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "brief.pinned_size",
+      "tone": "info",
+      "values": {
+        "tokens": "3,200"
+      },
+      "text": "Pinned turns add about 3,200 tokens in full.",
+      "buttons": [],
+      "status_line": null
+    }
+  ],
+  "stage": "create",
+  "confirmation": {
+    "id": "plan.confirm_brief_creation",
+    "tone": "info",
+    "values": {},
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  },
+  "brief": {
+    "writer": "offline",
+    "tokens": 900,
+    "pinned": [
+      41,
+      43
+    ],
+    "estimated_tokens": 0,
+    "candidate_estimates": [],
+    "artifact_id": "explicit-offline-artifact",
+    "text": "Work continues from the orchard conversation.\nThe harvest checklist is ready.",
+    "summary": "The harvest checklist is ready.",
+    "pinned_tokens": 3200
+  }
+}

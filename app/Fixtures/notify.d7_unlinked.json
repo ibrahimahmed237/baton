@@ -1,0 +1,36 @@
+{
+  "synced": [],
+  "queued": [],
+  "offers": [
+    {
+      "id": "limit.offer_unlinked",
+      "tone": "warning",
+      "values": {
+        "tool": "Claude",
+        "other_tool": "Codex",
+        "resets_at": "2026-10-09T15:00:00Z",
+        "time": "2026-10-09T15:00:00Z",
+        "offer_key": "event-notify.d7_unlinked",
+        "link_id": null,
+        "source_tool_id": "claude",
+        "source_chat_id": "claude_orchard",
+        "destination_tool_id": "codex",
+        "destination_chat_id": null
+      },
+      "text": "Claude has reached its usage limit. It resets at 2026-10-09T15:00:00Z. This chat is not linked to a Codex chat yet.",
+      "buttons": [
+        {
+          "id": "link_and_continue",
+          "label": "Link it and continue in Codex",
+          "primary": true
+        },
+        {
+          "id": "not_now",
+          "label": "Not now",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

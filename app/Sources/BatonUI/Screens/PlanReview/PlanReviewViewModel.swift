@@ -46,6 +46,45 @@ public struct ReviewedPlan: Equatable, Sendable {
     public var replying: [Chat]
     public var brief: BriefDetails?
     public var opened: Bool?
+    /// Refuses incomplete artifacts, dishonest cost bounds and paid stages for an Offline choice.
+    func validatesBrief(to destination: String, writer policy: String?) -> Bool {
+        guard let brief, !plan.planID.isEmpty, plan.steps.allSatisfy({ $0.tool == destination }) else { return false }
+        if policy == "offline", brief.writer != "offline" || plan.stage != "create" { return false }
+        if let policy, policy != "offline", brief.writer != policy {
+            guard plan.stage == "create", brief.writer == "offline",
+                  plan.notes.contains(where: { $0.id == "brief.used_offline" }) else { return false }
+        }
+        guard plan.steps.contains(where: { $0.action == "create" && $0.tool == destination }) else { return false }
+        switch plan.stage {
+        case "generate":
+            guard !plan.applied, brief.writer != "offline", let total = brief.estimatedTokens, total > 0,
+                  let candidates = brief.candidateEstimates, candidates.first?.writer == brief.writer else { return false }
+            var sum = 0
+            var writers: Set<String> = []
+            for candidate in candidates {
+                guard !candidate.writer.isEmpty, candidate.writer != "offline", candidate.tokens >= 0,
+                      writers.insert(candidate.writer).inserted else { return false }
+                let addition = sum.addingReportingOverflow(candidate.tokens)
+                guard !addition.overflow else { return false }; sum = addition.partialValue
+                guard plan.notes.contains(where: { note in
+                    note.id == "brief.cost" && note.values["writer_id"] == .string(candidate.writer) &&
+                        !note.text.isEmpty && matchesTokens(note, candidate.tokens)
+                }) else { return false }
+            }
+            return sum == total && plan.notes.contains { $0.id == "brief.total_cost" && !$0.text.isEmpty && matchesTokens($0, total) }
+        case "create":
+            return !(brief.artifactID ?? "").isEmpty && !(brief.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+                plan.steps.contains { $0.action == "create" && $0.tool == destination }
+        default: return false
+        }
+    }
+    private func matchesTokens(_ note: Note, _ expected: Int) -> Bool {
+        switch note.values["tokens"] {
+        case .number(let tokens): return tokens == Double(expected)
+        case .string(let tokens): return Int(tokens.replacingOccurrences(of: ",", with: "")) == expected
+        default: return false
+        }
+    }
     init(_ plan: Plan, replying: [Chat] = [], brief: BriefDetails? = nil, opened: Bool? = nil) {
         self.plan = plan; self.replying = replying; self.brief = brief; self.opened = opened
     }
@@ -200,6 +239,10 @@ public final class PlanReviewViewModel: ObservableObject {
             let result = try await request.run(engine, .preview)
             guard current == generation else { return }
             if let expected = request.linkID, result.plan.linkID != expected { busy = false; return }
+            if case .brief(_, let destination, let policy) = request,
+               !result.validatesBrief(to: destination, writer: policy) {
+                errorNote = label("plan.unavailable"); busy = false; return
+            }
             reviewed = result; busy = false
         } catch {
             guard current == generation else { return }
@@ -244,6 +287,12 @@ public final class PlanReviewViewModel: ObservableObject {
         do {
             let result = try await request.run(engine, .confirm(plan.planID))
             guard current == generation else { return }
+            if case .brief(let link, let destination, let policy) = request {
+                guard result.plan.linkID == link, result.validatesBrief(to: destination, writer: policy),
+                      result.plan.stage == "create", plan.stage != "generate" || !result.plan.applied else {
+                    reviewed = nil; errorNote = label("plan.unavailable"); busy = false; gate = ConfirmationGate(); return
+                }
+            }
             reviewed = result; busy = false; gate = ConfirmationGate()
             if result.plan.applied { outcome = .applied }
         } catch {

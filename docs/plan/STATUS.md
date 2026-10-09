@@ -6,7 +6,7 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-**E10 and D7 are independently approved and preparing separate commits.** Root measured **702 engine /143 app tests and build pass**. Engine privacy/cache/atomic creation and undo fixes were challenged; app cost/artifact/offer/stale gates were reviewed. Five-hour usage reached95%, so stop after these commits at a green package boundary; do not start B2/C2 this batch. No push or real-chat access.
+**E10 committed `ec88983`; D7 independently approved and preparing its separate commit.** Root measured **702 engine /143 app tests and build pass**. Engine privacy/cache/atomic creation and undo fixes were challenged; app cost/artifact/offer/stale gates were reviewed. Five-hour usage reached95%, so stop after these commits at a green package boundary; do not start B2/C2 this batch. No push or real-chat access.
 
 Resume baseline (before E10/D7 edits): **670 engine tests, 129 app tests and build pass**. Previous isolated committed package verification: **555 engine**, **119 app and build**, excluding unfinished E10/B2/D7. Full evidence and each CP2 gate: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md). **CP2 has not passed.**
 
@@ -14,7 +14,7 @@ Resume baseline (before E10/D7 edits): **670 engine tests, 129 app tests and bui
 |---|---|
 | E9 | Committed `650a8d1`; [report](reports/E9-2026-10-09.md). Legacy baselines stay unverified; ordinary refresh readable, digest unavailable until a fresh explicit link establishes verified scope. |
 | D6 | Committed `604e6d8`; [report](reports/D6-2026-10-09.md). Fixture-screen routing/display acceptance; C2 service-backed evidence and CP3 execution still owed. |
-| E10 | Accepted after independent re-review and root checks; commit preparing. Report: [E10](reports/E10-2026-10-09.md). |
+| E10 | Committed `ec88983`;702 working-tree /622 isolated engine tests. [Report](reports/E10-2026-10-09.md). |
 | B2 | Unfinished `adapters/codex/` native implementation and native fixtures/tests/report; only E9 standalone reader classifier committed. Safety repairs and live acceptance owed. |
 | D7 | Accepted for CP2 fixture-screen scope after independent re-review; 143 app/build pass. Commit follows E10 catalogue. C2 generation still owed. |
 | C2 | Not started: read projections/commands, authoritative generation and manifest. |
@@ -62,10 +62,11 @@ G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825
 | C1 | 2026-10-09 | `e15e076` | 650 working-tree engine / 115 app green |
 | E9 | 2026-10-09 | `650a8d1` | 555 isolated / 670 working-tree engine; 129 app, build green |
 | D6 | 2026-10-09 | `604e6d8` | 119 isolated / 129 working-tree app; build green |
+| E10 | 2026-10-09 | `ec88983` | 702 working-tree /622 isolated engine;143 app/build |
 
 ## Ready to commit
 
-E10 and D7 accepted; normal approved Git commits are being prepared separately. Exact paths and messages are in their package reports. B2 remains unfinished; C2 not started.
+E10 committed `ec88983`; D7 accepted and preparing its normal approved Git commit. Exact paths and messages are in their package reports. B2 remains unfinished; C2 not started.
 
 ## Decisions and reviewer findings
 
@@ -87,6 +88,8 @@ E10 and D7 accepted; normal approved Git commits are being prepared separately. 
 - Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.
 
 ## Log
+
+- 2026-10-09 — E10 committed `ec88983`, only30 reviewed engine/test/plan files; no B2/D7 files. Isolated622 engine and full702/143/build pass. D7 commit next.
 
 - 2026-10-09 — E10/D7 independently accepted. Root702 engine/143 app/build; privacy, durable replay and summary-boundary undo mutants detected. Five-hour usage95%: commit both and stop before B2/C2. No live access/push.
 

@@ -1,0 +1,90 @@
+{
+  "plan_id": "p_d7_no_size_generate",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "brief.cost",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "tokens": "1,800",
+        "writer_id": "codex"
+      },
+      "text": "Codex can write this read-only brief using about 1,800 tokens.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "brief.total_cost",
+      "tone": "info",
+      "values": {
+        "tokens": "1,800"
+      },
+      "text": "If fallback is needed, the listed requests total about 1,800 tokens. Each writer is tried at most once.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "brief.pinned_size",
+      "tone": "info",
+      "values": {
+        "tokens": "3,200"
+      },
+      "text": "Pinned turns add about 3,200 tokens in full.",
+      "buttons": [],
+      "status_line": null
+    }
+  ],
+  "stage": "generate",
+  "confirmation": {
+    "id": "plan.confirm_brief_generation",
+    "tone": "info",
+    "values": {},
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "status_line": null
+  },
+  "brief": {
+    "writer": "codex",
+    "tokens": 0,
+    "pinned": [
+      41,
+      43
+    ],
+    "estimated_tokens": 1800,
+    "candidate_estimates": [
+      {
+        "writer": "codex",
+        "tokens": 1800
+      }
+    ],
+    "artifact_id": "",
+    "text": "",
+    "summary": "",
+    "pinned_tokens": 3200
+  }
+}

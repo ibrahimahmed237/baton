@@ -24,6 +24,9 @@ public struct PlanReviewView: View {
                 if let plan = model.plan {
                     if !model.replying.isEmpty { replyingChats }
                     PlanSteps(steps: plan.steps, excludingNotes: model.planNotes)
+                    if plan.stage == "create", let text = model.reviewed?.brief?.text, !text.isEmpty {
+                        GlassCard { Text(text).font(.body).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
+                    }
                     if let note = model.alternativeNote {
                         NoteView(note: Note(id: note.id, tone: note.tone, values: note.values, text: note.text,
                                             buttons: note.buttons.filter { $0.id == "choose_chat" }, statusLine: note.statusLine),
