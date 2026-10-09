@@ -130,13 +130,22 @@ struct BrandTests {
                 let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: needsDecision, theme: theme))
                 let imageData = try #require(menu.tiffRepresentation)
                 let pixels = try #require(NSBitmapImageRep(data: imageData))
+                // Sample the sRGB bytes that the menu bar receives. Reading them back through
+                // NSBitmapImageRep.colorAt(...).usingColorSpace(.deviceRGB) goes through an
+                // untagged "calibrated RGB" conversion on macOS 27 that stretches the mark's
+                // deliberate 12/255 cool tint to 15/255 (see G3 in the report).
+                let rendered = try Self.srgbBytes(of: menu)
                 var shadedPixels = 0
-                for y in 0..<pixels.pixelsHigh {
-                    for x in 0..<pixels.pixelsWide {
-                        guard let color = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), color.alphaComponent > 0.85 else { continue }
-                        let spread = max(color.redComponent, color.greenComponent, color.blueComponent)
-                            - min(color.redComponent, color.greenComponent, color.blueComponent)
-                        #expect(spread < 0.055, "menu mark is not grayscale at (\(x), \(y)); RGB \(color.redComponent), \(color.greenComponent), \(color.blueComponent), theme \(theme.rawValue)")
+                for y in 0..<rendered.height {
+                    for x in 0..<rendered.width {
+                        let offset = (y * rendered.width + x) * 4
+                        let alpha = Double(rendered.bytes[offset + 3]) / 255
+                        // Premultiplied 8-bit bytes lose up to half a step per channel when the alpha is
+                        // divided back out; at 0.95 and above that error stays well below the limit.
+                        guard alpha >= 0.95 else { continue }
+                        let channels = (0..<3).map { min(1, Double(rendered.bytes[offset + $0]) / 255 / alpha) }
+                        let spread = channels.max()! - channels.min()!
+                        #expect(spread <= Self.menuTintLimit, "menu mark is not grayscale at (\(x), \(y)); RGB \(channels), theme \(theme.rawValue)")
                         if spread < 0.05 { shadedPixels += 1 }
                     }
                 }
@@ -158,5 +167,29 @@ struct BrandTests {
         #expect(burgundyPixels > 100)
     }
     private func requireData(_ value: Data?) throws -> Data { try #require(value) }
+
+    /// Largest allowed gap between a menu pixel's brightest and dimmest channel, in 8-bit steps.
+    /// Theme.menuGlass is a cool gray whose stops differ by at most 12 steps (0x777c83 is the
+    /// widest); the rest is rounding when premultiplied bytes are divided by their alpha.
+    private static let menuTintLimit = 15.0 / 255
+
+    /// Draws an image into an 8-bit premultiplied sRGB bitmap and returns its bytes unchanged,
+    /// so tests measure the pixels that are displayed instead of a colour-managed re-reading.
+    private static func srgbBytes(of image: NSImage) throws -> (width: Int, height: Int, bytes: [UInt8]) {
+        var rect = CGRect(origin: .zero, size: image.size)
+        let source = try #require(image.cgImage(forProposedRect: &rect, context: nil, hints: nil))
+        let width = source.width, height = source.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        #expect(drawn)
+        return (width, height, bytes)
+    }
 
 }
