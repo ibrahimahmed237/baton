@@ -139,7 +139,7 @@ class FakeWriter:
 
     def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt:
         """Capture JSON rollback data without mutating any chat."""
-        if kind not in {"create", "add", "place", "cut", "rename"}:
+        if kind not in {"create", "add", "place", "cut", "rename", "restore"}:
             raise ValueError(kind)
         if (chat_id is None) != (kind == "create"):
             raise ValueError(kind)
@@ -206,7 +206,8 @@ class FakeWriter:
         if kind == "create":
             saved = {"turns": [asdict(t) for t in undo[0]], "ref": asdict(undo[1])}
         elif kind == "cut":
-            saved = {"index": undo[0], "removed": [asdict(t) for t in undo[1]]}
+            saved = {"index": undo[0], "removed": [asdict(t) for t in undo[1]],
+                     "kept": [asdict(t) for t in self.adapter.chats[chat_id]]}
         else:
             saved = list(undo)
         receipt = WriteReceipt(self.adapter.name, chat_id, kind,
@@ -258,10 +259,25 @@ class FakeWriter:
     def cut(self, chat_id: str, keep_through_local_id: str) -> WriteResult:
         """Keep a chat through one turn, saving the removed turns for undo."""
         self._check(chat_id, "can_cut")
-        index = self._index(chat_id, keep_through_local_id) + 1
+        index = self._index(chat_id, keep_through_local_id) + 1 if keep_through_local_id else 0
         removed = self.adapter.chats[chat_id][index:]
         del self.adapter.chats[chat_id][index:]
         return self._result(chat_id, "cut", self.adapter.chats[chat_id], (index, removed))
+
+    def restore(self, receipt: WriteReceipt) -> WriteResult:
+        """Restore a saved cut only while its retained prefix remains unchanged."""
+        if receipt.tool != self.adapter.name or receipt.kind != 'cut':
+            raise NotAvailable()
+        self._check(receipt.chat_id)
+        saved = receipt.data.get('undo', {})
+        if ('kept' not in saved or self.adapter.chats[receipt.chat_id] != self._turns(saved['kept'])
+                or receipt.data.get('write_id') in self._consumed):
+            raise ChatChanged()
+        rollback = self.prepare(receipt.chat_id, 'restore')
+        self.adapter.chats[receipt.chat_id].extend(self._turns(saved['removed']))
+        if self.adapter.facts.added_turn_visible == Visibility.AT_ONCE:
+            self.adapter.visible[receipt.chat_id] = deepcopy(self.adapter.chats[receipt.chat_id])
+        return WriteResult(receipt.chat_id, tuple(t.id for t in self.adapter.chats[receipt.chat_id]), rollback)
 
     def rename(self, chat_id: str, name: str) -> WriteResult:
         """Change a chat's name."""

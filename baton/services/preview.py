@@ -13,7 +13,7 @@ from ..ports.store import RecordStore
 from ..ports.tool import ToolAdapter
 from .mapping import for_target
 from .planner import plan_sync
-from .observations import condition, initial_history_sides, local_turn
+from .observations import canonical_sources, condition, initial_history_sides, local_turn
 
 from .delivery_plan import ApplyStep, PreparedPlan
 
@@ -83,13 +83,13 @@ class PreviewBuilder:
                          add_when_idle=add_when_idle, facts=facts,
                          initial_history_sides=self._initial_history_sides(link, observed),
                          history=self.store.history(link_id))
-        source = {s: {t.id: t for t in values} for s, values in observed.items()}
+        source = canonical_sources(self.store, link_id, observed)
         steps = []
         for step in plan.steps.values():
             turns = []
             for recorded in step.turns:
                 try:
-                    original = source[recorded.origin][recorded.origin_id]
+                    original = source[recorded.id]
                 except KeyError:
                     raise ChatChanged() from None
                 if (conditions[recorded.origin].replying and observed[recorded.origin]

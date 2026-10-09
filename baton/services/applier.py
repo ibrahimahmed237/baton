@@ -268,7 +268,9 @@ class Applier:
         """Accept explicit user visibility evidence only for reopen-visible chats."""
         if self.adapters[side].facts.added_turn_visible != Visibility.ON_REOPEN_CHAT:
             raise NotAvailable()
-        self.refresh(link_id)
+        fresh = self.refresh(link_id)
+        if fresh['status'].side(side).removed_still_shown:
+            self.store.record_event(link_id, 'undo_shown', side, self.clock.now())
         return self.store.mark_shown(link_id, side, turn_ids)
 
     def conversation(self, link_id: int) -> list[dict]:

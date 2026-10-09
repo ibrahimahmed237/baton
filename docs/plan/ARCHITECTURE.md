@@ -104,6 +104,7 @@ class ChatWriter(Protocol):
     def place(self, chat_id: str, turns: Sequence[Turn], before_local_id: str) -> WriteResult: ...
     def cut(self, chat_id: str, keep_through_local_id: str) -> WriteResult: ...
     def rename(self, chat_id: str, name: str) -> WriteResult: ...
+    def restore(self, receipt: WriteReceipt) -> WriteResult: ... # exact saved cut under a fresh reversible receipt
     def take_back(self, receipt: WriteReceipt) -> None: ...   # undo one write of this adapter
 
 class HookSupport(Protocol):
@@ -252,3 +253,9 @@ Adapter rollback receipts restore writes in reverse order. A stale receipt must 
 ### B1 native adapter implementation boundary
 
 All tests use an explicit temporary root, injected process/command controls and hand-built native shapes. Native publication uses fsynced temporary files and atomic replacement while preserving the existing log byte prefix; a fsynced intent manifest precedes publication. Rollback handles either native path unpublished and refuses later outside changes. Native format checks include hidden sidebar targets. Release requires verified process/session ownership; real process arguments and desktop visibility remain live-check obligations. Hook installation/check does not claim readiness until C4 entry points can consume native stdin and resolve stable sidebar identities. Tool calls map by their native call ID as well as their record ID.
+
+### E8 undo implementation scope
+
+Ibrahim approved resolving U9 using capability-based undo: native cuts where supported, shorter copies otherwise, and preserving merge-created chats while moving the link back. Undo/restore require additive atomic RecordStore finalization and an additive ChatWriter.restore(receipt) operation with a fresh pre-write recovery receipt. An empty keep-through ID means cut to the empty-chat boundary; adapters must verify this with temporary fixtures. The saved old receipt is never consumed to bypass journaling a restore.
+
+E8 stores verified cuts, copy moves and restores with complete_undo in one transaction, with paused link metadata and fresh journal receipts. Saved pre-undo observations preserve canonical turn payloads after native origins are cut; this does not permit stale active-chat writes. Removed-display evidence accumulates across cuts until a later app start or explicit seen event, and subtracts restored turns. Restore expiry is checked both when previewed and immediately before applying. Created-chat moveback refuses subsequent native writes. Merge history adds post-merge observations for safe moveback validation; missing older evidence conservatively refuses.

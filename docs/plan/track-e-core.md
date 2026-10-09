@@ -109,10 +109,10 @@ Everything here is free of tool-specific code and is tested with the fake adapte
 **Goal.** Back to any history entry, per tool.
 **From.** link-actions A8 to A10; T7 to T11; more-tools notes table (four undo rows).
 **Depends on.** E5.
-**Files.** `baton/services/undo.py`.
+**Files.** `baton/services/undo.py`; shared applier/preview/refresh/observations/status and merger/linker payload-resolution integration; additive `baton/ports/store.py` and `tool.py`; `baton/ledger/undo.py` and facade integration; fake/Claude writers for empty cut and reversible restore; catalogue notes from existing spec wording; adapter, unit and scenario tests. Orchestrator records approved U9 interpretation and implementation scope in ARCHITECTURE.md.
 **Steps.** 1. `plan(link, event)`: the turns that side will no longer have (delivered at and after the event, plus everything written there since), which exist only there, and the turn it will end at. 2. `can_cut` → step `cut` (saved copy first); otherwise step `create_shorter` and `move_link`, old chat marked "earlier copy". 3. After apply: affected turns back to `waiting`, link paused. 4. `restore(event)`: put a cut back if nothing was written since, or move the link back to the earlier chat. 5. Attached turns: undo goes back to before the message they were attached to.
 **Tests.** `tests/scenarios/test_link_actions.py` T7 to T11, each run with a cut-capable and a not-cut-capable fact set.
-**Done when.** T7 to T11 pass for both kinds.
+**Done when.** T7 to T11 pass for both kinds. U9 covers supported merge add/create/attach/split outcomes; native cuts versus shorter copies follow Ibrahim's approved A9 safety clarification. History markers without sufficient side/boundary evidence refuse safely, with C3 side routing tracked separately.
 
 ## E9. Usage, limits, digest
 

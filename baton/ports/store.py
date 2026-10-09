@@ -135,3 +135,8 @@ class RecordStore(Protocol):
                        skips: Sequence[tuple[int, str]], at: str, detail: dict) -> int:
         """Atomically record all sides, journal receipts and one recoverable merge event."""
         ...
+
+    def complete_undo(self, link_id: int, expected: dict, writes: Sequence[dict],
+                      at: str, detail: dict) -> int:
+        """Atomically pause, restore identities/states and finalize undo write receipts."""
+        ...

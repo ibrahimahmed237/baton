@@ -51,6 +51,7 @@ class SideStatus:
     attached_tokens: int  # rough size of what the next message carries
     shown_turn_ids: tuple[int, ...] = ()
     needs: tuple[str, ...] = ()
+    removed_still_shown: tuple[int, ...] = ()
 
     @property
     def in_sync(self) -> bool:
@@ -93,6 +94,10 @@ def merge_decision_applies(link: Link, turns: Sequence[LedgerTurn], history: Seq
     merge = next((event for event in history if event.kind == 'merge'), None)
     if merge is None or merge.detail.get('chats') != link.chats:
         return False
+    undone = next((event for event in history if event.kind == 'undo' and event.detail.get('target') == merge.id), None)
+    if undone and not any(event.kind == 'restore' and event.detail.get('target') == undone.id
+                          for event in history):
+        return False
     approved = merge.detail.get('pending', {})
     pending = {(turn.id, side) for turn in turns for side, state in turn.states.items()
                if state == link_states.WAITING}
@@ -103,7 +108,7 @@ def merge_decision_applies(link: Link, turns: Sequence[LedgerTurn], history: Seq
 def _in_conflict(turns: Sequence[LedgerTurn]) -> set[str]:
     """Sides that each have a turn the other is waiting for: the user has to decide the order."""
     waits = {(turn.origin, side) for turn in turns
-             for side, state in turn.states.items() if state == link_states.WAITING}
+             for side, state in turn.states.items() if side != turn.origin and state == link_states.WAITING}
     return {side for origin, side in waits if (side, origin) in waits}
 
 
@@ -125,11 +130,15 @@ def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
     needs = ()
     if remaining_added:
         needs = ("reopen_chat_to_see",) if facts.added_turn_visible == Visibility.ON_REOPEN_CHAT else ("relaunch_to_see",)
+    removed = removed_visible_turn_ids(link, side, facts, condition, history)
+    if removed:
+        needs = tuple(dict.fromkeys((*needs, 'reopen_chat_to_see' if facts.added_turn_visible == Visibility.ON_REOPEN_CHAT else 'relaunch_to_see')))
+    counted = {t.id for t in turns if t.states.get(side) in link_states.CHAT_SHOWS} | set(visible)
     return SideStatus(
         side=side,
         total=len(turns),
         agent_has=count(*link_states.AGENT_HAS),
-        chat_shows=count(*link_states.CHAT_SHOWS) + len(visible),
+        chat_shows=len(counted | set(removed)),
         added=remaining_added,
         attached=count(link_states.ATTACHED),
         waiting=len(waiting),
@@ -141,6 +150,7 @@ def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
         attached_tokens=sum(turn.size for turn in carried) // _CHARS_PER_TOKEN,
         shown_turn_ids=visible,
         needs=needs,
+        removed_still_shown=removed,
     )
 
 
@@ -186,8 +196,45 @@ def visible_added_turn_ids(turns: Sequence[LedgerTurn], side: str, facts: Capabi
                 if write.get("side") == side and write.get("action") in ("add", "create"):
                     for turn_id in write.get("turn_ids", ()):
                         delivered[turn_id] = event.at
+        if event.kind in ('undo', 'restore'):
+            for write in event.detail.get('writes', ()):
+                if write.get('side') == side and write.get('receipt'):
+                    for ident, state in write['states'].items():
+                        if state == link_states.ADDED:
+                            delivered[int(ident)] = event.at
     return tuple(turn_id for turn_id in added
                  if _later(condition.app_started_at, delivered.get(turn_id, "")))
+
+
+def removed_visible_turn_ids(link: Link, side: str, facts: Capabilities,
+                             condition: SideCondition, history: Sequence[Event]) -> tuple[int, ...]:
+    """Keep a cut's display warning until a later start or explicit seen evidence."""
+    if facts.added_turn_visible == Visibility.AT_ONCE:
+        return ()
+    outstanding = set()
+    for event in sorted(history, key=lambda e: e.id):
+        if event.kind == 'undo_shown' and event.side == side:
+            outstanding.clear()
+            continue
+        if event.kind not in ('undo', 'restore'):
+            continue
+        write = next((w for w in event.detail.get('writes', ()) if w['side'] == side), None)
+        if write is None:
+            continue
+        if write['chat_id'] != link.chat(side):
+            outstanding.clear()
+            continue
+        if _later(condition.app_started_at, event.at):
+            outstanding.clear()
+            continue
+        if event.kind == 'restore':
+            outstanding.difference_update(int(i) for i, state in write['states'].items()
+                                          if state in link_states.AGENT_HAS)
+        elif write['action'] == 'cut':
+            outstanding.update(int(i) for i, state in write['states'].items() if state == link_states.WAITING)
+        else:
+            outstanding.clear()
+    return tuple(sorted(outstanding))
 
 
 def _later(start: str, delivered: str) -> bool:

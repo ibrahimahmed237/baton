@@ -61,6 +61,19 @@ class ClaudeSafety(unittest.TestCase):
         self.adapter = ClaudeAdapter(self.root, process=self.process, hook_entrypoints_available=lambda: True)
         self.process.adapter = self.adapter
         self.chat = build(self.root, turns())
+    def test_restore_native_bytes_and_fresh_receipt_recovery(self):
+        path = self.adapter.locator.session_path(self.chat)
+        original = path.read_bytes()
+        cut = self.adapter.writer.cut(self.chat, '')
+        self.assertEqual(path.read_bytes(), b'')
+        pre = self.adapter.writer.prepare(self.chat, 'restore')
+        restored = self.adapter.writer.restore(cut.receipt)
+        self.assertEqual(path.read_bytes(), original)
+        self.adapter.writer.take_back(pre)
+        self.assertEqual(path.read_bytes(), b'')
+        self.adapter.writer.restore(cut.receipt)
+        self.assertEqual(path.read_bytes(), original)
+
     def test_rename_refuses_running_app_with_idle_closed_chat(self):
         self.process.is_running = True
         with self.assertRaises(AppMustBeClosed): self.adapter.writer.rename(self.chat, 'changed')
@@ -280,3 +293,46 @@ class ClaudeSafety(unittest.TestCase):
         self.assertEqual(other.reader.read(self.chat), turns())
 
 if __name__=='__main__': unittest.main()
+
+class ClaudeUndoIntegration(unittest.TestCase):
+    """Exact native cut/restore through the engine, using only temporary fixtures."""
+    def test_undo_restore_and_restore_failure_keep_exact_bytes(self):
+        from baton.adapters.fake import FakeAdapter
+        from baton.adapters.fake.facts import CODEX_LIKE
+        from baton.ledger.sqlite_store import Ledger
+        from baton.ports.clock import FixedClock
+        from baton.services.linker import Linker
+        from baton.services.applier import Applier
+        from baton.services.undo import Undo
+        temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
+        root = Path(temp.name); process = FixtureProcess(root)
+        target = ClaudeAdapter(root, process=process)
+        process.adapter = target
+        chat = build(root, turns()[:1])
+        source = FakeAdapter(CODEX_LIKE, 'codex')
+        other = source.build_chat(target.reader.read(chat))
+        adapters = {'claude': target, 'codex': source}
+        store = Ledger(':memory:'); self.addCleanup(store.close)
+        clock = FixedClock('2026-10-05T01:00:00Z')
+        linker = Linker(store, adapters, clock)
+        linked = linker.apply(linker.plan_link('codex', other, 'claude', chat))
+        self.assertTrue(linked.applied, linked)
+        source.chats[other] += turns()[1:]
+        applier = Applier(store, adapters, clock)
+        applier.refresh(linked.link_id)
+        self.assertTrue(applier.apply(applier.preview(linked.link_id)).applied)
+        event = next(e.id for e in store.history(linked.link_id) if e.kind == 'add')
+        path = target.locator.session_path(chat)
+        original = path.read_bytes()
+        service = Undo(store, adapters, clock)
+        undone = service.apply(service.plan(linked.link_id, event))
+        self.assertTrue(undone.applied, undone)
+        truncated = path.read_bytes()
+        with patch.object(store, 'complete_undo', side_effect=RuntimeError):
+            failed = service.apply(service.restore(linked.link_id, undone.event_id))
+        self.assertFalse(failed.applied)
+        self.assertFalse(failed.rollback_errors)
+        self.assertEqual(path.read_bytes(), truncated)
+        restored = service.apply(service.restore(linked.link_id, undone.event_id))
+        self.assertTrue(restored.applied, restored)
+        self.assertEqual(path.read_bytes(), original)

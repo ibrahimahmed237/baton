@@ -72,7 +72,7 @@ class ClaudeWriter:
         return {str(self.adapter.locator.inside(p)): encode(p.read_bytes()) if p.exists() else None for p in paths}
     def prepare(self, chat_id, kind):
         """Reserve creation identity or snapshot rollback data before mutation."""
-        if kind not in ("create", "add", "cut", "rename", "place"): raise ValueError(kind)
+        if kind not in ("create", "add", "cut", "rename", "place", "restore"): raise ValueError(kind)
         if (chat_id is None) != (kind == "create"): raise ValueError(kind)
         token = uuid4().hex
         if chat_id is None:
@@ -168,6 +168,9 @@ class ClaudeWriter:
         receipt = self._begin(chat_id, "cut")
         path = self.adapter.locator.session_path(chat_id)
         turns = self.adapter.reader.read(chat_id)
+        if not keep_through_local_id:
+            after = dict(receipt.data["before"]); after[str(path)] = encode(b'')
+            return self._write(receipt, after, ())
         index = next((i for i, t in enumerate(turns) if keep_through_local_id in (t.id, *(m.id for m in t.messages))), None)
         if index is None: raise KeyError(keep_through_local_id)
         last_id = (turns[index].messages[-1].id if turns[index].messages else turns[index].id).split('#')[0]
@@ -176,6 +179,20 @@ class ClaudeWriter:
         if end is None: raise KeyError(last_id)
         after = dict(receipt.data["before"]); after[str(path)] = encode(b''.join(lines[:end + 1]))
         return self._write(receipt, after, turns[:index + 1])
+    def restore(self, receipt):
+        """Restore exact saved bytes under a fresh durable reversible intent."""
+        if receipt.tool != self.adapter.name or receipt.kind != 'cut':
+            raise NotAvailable()
+        self._check(receipt.chat_id)
+        intent = self.adapter.locator.inside(receipt.data['intent'])
+        if not intent.exists(): raise ChatChanged()
+        manifest = json.loads(intent.read_text())
+        if (manifest.get('token') != receipt.data['token'] or
+                self._snapshot([Path(p) for p in manifest['after']]) != manifest['after']):
+            raise ChatChanged()
+        fresh = self._begin(receipt.chat_id, 'restore')
+        return self._write(fresh, manifest['before'])
+
     def place(self, chat_id, turns, before_local_id):
         """Refuse placement because the native tool cannot insert turns safely."""
         self._check(chat_id, "place")

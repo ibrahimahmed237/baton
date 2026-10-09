@@ -17,6 +17,7 @@ from . import planner, status
 from .applier import Applier
 from .delivery_plan import ApplyStep, PreparedPlan
 from .mapping import for_target, for_created_chat, title
+from .observations import canonical_sources
 
 
 @dataclass(frozen=True)
@@ -65,7 +66,8 @@ class Merger:
             if not set(observed).issubset(known):
                 raise ChatChanged()
         try:
-            payload = {t.id: originals[t.origin][t.origin_id] for t in rows}
+            resolved = canonical_sources(self.store, link_id, {s: list(v.values()) for s, v in originals.items()})
+            payload = {t.id: resolved[t.id] for t in rows}
         except KeyError:
             raise ChatChanged() from None
         if self.applier._record(link_id) != record:
@@ -250,7 +252,8 @@ class Merger:
             if self.applier._record(link_id) != plan.delivery.record:
                 raise ChatChanged()
             self.applier._check_snapshots(created)
-            detail = {'before': before, 'writes': writes, 'preset': plan.preset,
+            detail = {'before': before, 'writes': writes,
+                      'after_chats': {s: created.get(s, working[s]) for s in working}, 'preset': plan.preset,
                       'keep': plan.keep, 'split': plan.split, 'automatic': plan.automatic}
             event = self.store.complete_merge(link_id, plan.order, writes, plan.skips,
                                                self.clock.now(), detail)

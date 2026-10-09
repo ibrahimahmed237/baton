@@ -24,19 +24,19 @@ Decisions (Reviewer):
 
 ## Now
 
-- UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is in progress with approved capability-based undo and additive recovery/store scope; its final root checks are pending.
+- UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is complete and independently reviewed in its fixture scope, with approved capability-based undo and additive recovery/store scope.
 
 - UI1 interaction audit complete and independently reviewed: resize/full-screen controls, blank row click targets, repeated navigation/turn jumps, native overlay scrolling and long dialog/popover overflow are repaired. Final checks: 334 engine / 68 app tests and Swift build pass. Native fixture mouse/scroll tests pass; desktop capture failed, so the actual macOS full-screen transition and live appearance need human confirmation. See reports/UI1-2026-10-06.md.
 
 - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
 - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
-- Last complete isolated UI2 boundary: 334 engine tests, 71 app tests, Swift build pass. E8 draft is green at the worker's interim 363-engine-test check; its final root rerun and independent review are pending. Git remains read-only; no commit, escalation or push. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+- Final working tree: 377 engine tests, 71 app tests and Swift build pass, checked by the orchestrator after independent E8 review. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
 
 ## Next
 
 UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
 
-Continue E8 (including merge U9), then E9/E10 (including M12), and D6/D7 in parallel. B2 and C1/C2 remain; C2 must generate labels/notes/fixtures and dispatch remembered automatic merges after refresh. B1 needs a separately authorized live run after listing the exact throwaway writes and release/close/reopen actions. No real-app run is authorized by commit/continue.
+Continue E9/E10 (including M12), and D6/D7 in parallel; E8/U9 is now fixture-verified. B2 and C1/C2 remain; C2 must generate labels/notes/fixtures and dispatch remembered automatic merges after refresh. B1 needs a separately authorized live run after listing the exact throwaway writes and release/close/reopen actions. No real-app run is authorized by commit/continue.
 
 ## Done
 
@@ -59,6 +59,7 @@ Continue E8 (including merge U9), then E9/E10 (including M12), and D6/D7 in para
 | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
 | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
 | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
+| E8 undo and restore | 2026-10-06 | Ready to commit — independent review blockers fixed; fixtures only | 377 engine / 71 app |
 | UI2 glass title bar | 2026-10-06 | Ready to commit — separate reviewer checked; native title bar/full-screen observed | 334 engine at isolated boundary / 71 app |
 | UI1 window/navigation/scroll fixes | 2026-10-06 | Ready to commit — independent reviewer found no remaining blockers; desktop verification limits recorded | 334 engine / 68 app |
 
@@ -498,6 +499,43 @@ fix(app): blend the title bar into the glass window
 The separate system title bar broke the approved glass palette. Extend the backdrop behind transparent native chrome while preserving window controls and content safe areas.
 ```
 
+### E8 — recoverable undo and restore
+
+Patch: `docs/plan/reports/patches/E8.patch`, applies after UI2. Exact paths:
+
+- `baton/ledger/sqlite_store.py`
+- `baton/ledger/undo.py`
+- `baton/notes/catalogue.py`
+- `baton/ports/store.py`
+- `baton/ports/tool.py`
+- `baton/services/preview.py`
+- `baton/services/observations.py`
+- `baton/services/applier.py`
+- `baton/services/refresh.py`
+- `baton/services/linker.py`
+- `baton/services/undo.py`
+- `baton/services/status.py`
+- `baton/services/merger.py`
+- `baton/adapters/claude/writer.py`
+- `baton/adapters/fake/tool.py`
+- `tests/adapters/suite.py`
+- `tests/adapters/test_claude.py`
+- `tests/scenarios/test_undo.py`
+- `docs/plan/STATUS.md`
+- `docs/plan/ARCHITECTURE.md`
+- `docs/plan/track-e-core.md`
+- `docs/plan/CHECKPOINTS.md`
+- `docs/plan/reports/E8-2026-10-06.md`
+- `docs/plan/reports/CP2-2026-10-05.md`
+
+Commit message:
+
+```text
+feat(core): keep undo recoverable across chat changes
+
+Users need to return to a history point without losing messages or trusting stale previews. Journal cuts and exact restorations, create shorter copies where cutting is unsafe, and atomically pause and move the link after verification.
+```
+
 ## Decisions
 
 Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
@@ -542,14 +580,20 @@ Decisions 1–7: Reviewer, 2026-10-05. Decision 8 has its own provenance below.
 
 25. **Glass title bar (Ibrahim, 2026-10-06):** requested native top bar in the existing glass palette. Transparent full-size chrome extends only the backdrop through the safe area; controls remain native. No system appearance setting changed.
 
+26. **Undo safe refusals (Orchestrator, separate reviewer checked):** refuse moving back from a shorter or merge-created chat if it gained native messages; refuse an expired restore preview at apply; metadata-only split undo has no A10 restore and refuses it. Older merge records without sufficient observations cannot be guessed. Shared undo warnings include per-side capability needs and catalogue ids.
+
 ## Questions
+
+- C3 must select the side for history markers with no tool/direction; E8 accepts explicit side and a verified subsequent delivery boundary, and refuses without one. No guessed timestamps/boundaries. Cut/copy restore is supported; restoring metadata-only split undo is refused. Older merge events without saved post-merge observations conservatively refuse created-chat undo.
 
 - UI1/UI2: the earlier ScreenCaptureKit -3811 failure cleared after relaunch. CUA observed native light title-bar continuity and full-screen entry. Native fixture controls/click/overflow tests pass; graphite live appearance and human acceptance of this latest chrome are not claimed. Generic transport/decode errors are currently silent in view models, and loading has no visible feedback; catalogue-backed wording and the remaining D13 polish are tracked in the UI1 report.
 
 - F2 explicitly assigns engine-generated labels to C2, although findings precede CP2. Contract/UI/fixtures are complete; the C2 obligation remains tracked until implemented.
-- C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 and M12 integration checks are tracked for E8 and E9/E10 respectively.
+- C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
 
 ## Log
+
+- 2026-10-06 — E8 completed, root and separate reviewer checked; 377 engine / 71 app tests and Swift build pass. Five independent/root findings closed (expiry, cumulative visibility, moved-chat identity, merge preview notes, split restore), plus bounded release and acknowledged attachment regressions. UI2/E8 ordered patches ready; no real chats and no Git writes.
 
 - 2026-10-06 — UI2 title bar completed, independently reviewed; 71 app tests and isolated 334 engine tests. Hosted minimum-size test passed. Rebuilt fixture launch and native CUA light chrome/full-screen entry observed; no real coding app touched. E8 continues.
 

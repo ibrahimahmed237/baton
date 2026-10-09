@@ -21,6 +21,7 @@ from ..notes.catalogue import get
 from .journal import Guard, Journal
 from .mapping import content_key, for_created_chat, title
 
+from .observations import canonical_sources
 
 @dataclass(frozen=True)
 class LinkPlan:
@@ -198,7 +199,8 @@ class Linker:
         recorded = [t for t in all_recorded if t.states[side] not in (KEPT_BACK,SKIPPED)]
         originals = {s:{t.id:t for t in self._turns(o['turns'])} for s,o in observations.items()}
         try:
-            payload = [originals[t.origin][t.origin_id] for t in recorded]
+            resolved = canonical_sources(self.store, link_id, {s: list(v.values()) for s, v in originals.items()})
+            payload = [resolved[t.id] for t in recorded]
         except KeyError:
             raise ChatChanged() from None
         from .applier import Applier

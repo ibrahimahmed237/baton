@@ -1,6 +1,6 @@
 """The shared contract exercised by every chat adapter."""
 from baton.domain.capabilities import HookNeed, Visibility, WriteWindow
-from baton.domain.errors import AppMustBeClosed, ChatHeld, NotAvailable, UnknownFormat
+from baton.domain.errors import AppMustBeClosed, ChatChanged, ChatHeld, NotAvailable, UnknownFormat
 from baton.domain.model import Message, Turn, PROMPT, REPLY, TOOL_CALL, TOOL_RESULT
 from baton.ports.tool import ToolAdapter
 
@@ -99,6 +99,31 @@ class AdapterSuite:
         self.assertEqual(self.adapter.reader.read(self.chat), self.turns[:1])
         self.adapter.writer.take_back(result.receipt)
         self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
+
+    def test_empty_cut_and_reversible_restore(self):
+        if not self.adapter.facts.can_cut:
+            return
+        pre = self.adapter.writer.prepare(self.chat, 'cut')
+        result = self.adapter.writer.cut(self.chat, '')
+        self.assertEqual(self.adapter.reader.read(self.chat), [])
+        self.adapter.writer.prepare(self.chat, 'restore')
+        restored = self.adapter.writer.restore(result.receipt)
+        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
+        self.assertEqual(restored.receipt.kind, 'restore')
+        self.adapter.writer.take_back(restored.receipt)
+        self.assertEqual(self.adapter.reader.read(self.chat), [])
+        self.adapter.writer.restore(result.receipt)
+        self.assertEqual(self.adapter.reader.read(self.chat), self.turns)
+
+    def test_restore_refuses_intervening_write_without_mutation(self):
+        if not self.adapter.facts.can_cut:
+            return
+        result = self.adapter.writer.cut(self.chat, self.turns[0].id)
+        self.adapter.writer.add(self.chat, self.turns[1:2])
+        current = self.adapter.reader.read(self.chat)
+        with self.assertRaises(ChatChanged):
+            self.adapter.writer.restore(result.receipt)
+        self.assertEqual(self.adapter.reader.read(self.chat), current)
 
     def test_unknown_version_blocks_writes(self):
         for known, version in ((False, self.adapter.facts.checked_versions[0]), (True, "unknown")):

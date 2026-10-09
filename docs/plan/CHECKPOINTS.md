@@ -149,3 +149,19 @@ Evidence: [CP1-findings-2026-10-05.md](reports/CP1-findings-2026-10-05.md). Orig
 ### CP2 — incomplete implementation boundary, 2026-10-05
 
 **FAIL / incomplete.** E7 implementation and D5 independently accepted; B1 fixture implementation reviewed, live acceptance pending. Final tree: 334 engine / 60 app tests and Swift build pass. Isolated sequential patches pass E7 295/49, D5 295/60, B1 334/60. Claude native fixtures pass; Codex B2, actual U9/E8, T7–T11, V1–V8/V13/V14, E9/E10, C1/C2-generated fixtures and D6/D7 remain. No live app run authorized or performed. Every CP2 check and full output is in [CP2-2026-10-05.md](reports/CP2-2026-10-05.md). Next E8/D6/B2, with package order preserved.
+
+### CP2 progress — 2026-10-06, UI2/E8 boundary (not passed)
+
+| Check | Result and evidence |
+|---|---|
+| Merge U1–U9 on fake fact sets | PASS — E7 merge tests plus E8 U9 permutations, created-chat preservation, attachments and split; focused output in E8 report |
+| Undo T7–T11 (including T10b/c), cut and non-cut fact sets | PASS — named E8 scenarios, restore, byte preservation and recovery regressions |
+| Claude and Codex built-fixture adapter suites | FAIL overall — Claude passes; B2 native Codex adapter still unbuilt |
+| Usage/brief scenarios V1–V8, V13, V14 | FAIL — E9/E10 not built; M12 integration pending |
+| Generated C2 fixtures / CLI | FAIL — C1/C2 pending; app fixtures remain hand-made |
+| D5–D7 app packages | FAIL overall — D5 done; D6/D7 pending |
+| Claude/Codex throwaway live acceptance | FAIL — not run, not authorized for this batch |
+| Current regression/build gates | PASS — root 377 engine tests, Swift build and 71 app tests |
+| Fixture UI chrome | PASS scoped — native light glass title bar and full-screen entry seen with CUA; no real chat integration claim |
+
+Evidence: [E8-2026-10-06.md](reports/E8-2026-10-06.md), [UI2-2026-10-06.md](reports/UI2-2026-10-06.md). Ordered patches through UI2/E8; no Git commit/write.

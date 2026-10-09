@@ -7,7 +7,7 @@ from ..ports.clock import Clock
 from ..ports.store import RecordStore
 from ..ports.tool import ToolAdapter
 from .mapping import content_key, for_target
-from .observations import condition, initial_history_sides
+from .observations import canonical_sources, condition, initial_history_sides
 from .status import link_status, visible_added_turn_ids
 
 
@@ -36,6 +36,7 @@ class ChatRefresh:
                 self.store.move_link(link_id, side, ref.id, at=self.clock.now())
             names[side] = ref.name
             observed[side] = adapter.reader.read(ref.id)
+        sources = canonical_sources(self.store, link_id, observed)
         for side, values in observed.items():
             local_ids = self.store.local_ids(link_id, side)
             read = {t.id: t for t in values}
@@ -44,8 +45,7 @@ class ChatRefresh:
                 if recorded.states.get(side) not in (ADDED, SHOWN):
                     continue
                 actual = read.get(local_ids.get(recorded.id))
-                source = next((t for t in observed.get(recorded.origin, ())
-                               if t.id == recorded.origin_id), None)
+                source = sources.get(recorded.id)
                 if actual is None or source is None or content_key(actual) != content_key(source):
                     bypassed.append(recorded.id)
             self.store.reset_delivery(link_id, side, bypassed, self.clock.now())

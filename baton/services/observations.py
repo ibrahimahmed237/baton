@@ -35,3 +35,24 @@ def decode_turns(values) -> list[Turn]:
     """Rebuild turns from the serialized content stored in preview snapshots."""
     from ..domain.model import Message
     return [Turn(Message(**t['prompt']), tuple(Message(**m) for m in t['messages'])) for t in values]
+
+
+def canonical_sources(store: RecordStore, link_id: int,
+                      observed: Mapping[str, Sequence[Turn]]) -> dict[int, Turn]:
+    """Resolve original content from active chats or saved pre-undo observations."""
+    rows = store.turns(link_id)
+    live = {s: {t.id: t for t in values} for s, values in observed.items()}
+    archived = {}
+    for event in store.history(link_id):
+        if event.kind != 'undo':
+            continue
+        before = event.detail.get('before', {})
+        chats = event.detail.get('before_chats', {})
+        saved = {s: {t.id: t for t in decode_turns(value['turns'])}
+                 for s, value in chats.items() if ':' not in s}
+        for row in before.get('turns', ()):
+            source = saved.get(row['origin'], {}).get(row['origin_id'])
+            if source is not None:
+                archived.setdefault(row['id'], source)
+    return {row.id: live.get(row.origin, {}).get(row.origin_id) or archived[row.id]
+            for row in rows if row.origin_id in live.get(row.origin, {}) or row.id in archived}

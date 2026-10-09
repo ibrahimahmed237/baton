@@ -7,11 +7,12 @@ from .history import HistoryRecords
 from .journal import JournalRecords
 from .links import LinksRecords
 from .turns import TurnsRecords
+from .undo import UndoRecords
 from .schema import COPY_SCHEMA, JOURNAL_SCHEMA, LINK_SCHEMA
 from .records import now
 
 
-class Ledger(LinksRecords, TurnsRecords, HistoryRecords, JournalRecords):
+class Ledger(LinksRecords, TurnsRecords, HistoryRecords, JournalRecords, UndoRecords):
     """Combine record concerns without introducing per-concern connections or commits."""
     def __init__(self, path: str):
         self.db = sqlite3.connect(path)
