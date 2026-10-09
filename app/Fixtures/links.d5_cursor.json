@@ -1,0 +1,44 @@
+{
+  "links": [],
+  "notes": [
+    {
+      "id": "dialog.actions",
+      "tone": "info",
+      "values": {},
+      "text": "Link a chat",
+      "buttons": [
+        {
+          "id": "create",
+          "label": "Create",
+          "primary": true
+        },
+        {
+          "id": "copy_without_linking",
+          "label": "Copy without linking",
+          "primary": false
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        },
+        {
+          "id": "change_link",
+          "label": "Change the link",
+          "primary": false
+        },
+        {
+          "id": "full_copy",
+          "label": "Create a full copy",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    }
+  ]
+}

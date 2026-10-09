@@ -20,6 +20,11 @@ public protocol EngineClient: Sendable {
     func copy(from: String, to: String, andLink: Bool, mutation: MutationOptions) async throws -> CopyResult
     /// Runs the relink command.
     func relink(link: Int, to: String, mutation: MutationOptions) async throws -> RelinkResult
+    /// Replaces an existing side with a full-history copy (R9).
+    func fullCopy(link: Int, replace: String, mutation: MutationOptions) async throws -> LinkResult
+    /// Changes the partner while retaining the named side (R9).
+    func relink(link: Int, to: String, keep: String, mutation: MutationOptions) async throws -> RelinkResult
+    func relink(link: Int, to: String, keep: String, mode: String, mutation: MutationOptions) async throws -> RelinkResult
     /// Runs the unlink command.
     func unlink(link: Int, mutation: MutationOptions) async throws -> UnlinkResult
     /// Runs the pause command.
@@ -77,6 +82,17 @@ public protocol EngineTransport: EngineClient {
 }
 
 public extension EngineTransport {
+    func relink(link: Int, to: String, keep: String, mode: String, mutation: MutationOptions = .preview) async throws -> RelinkResult {
+        try await response(command: "relink", arguments: ["--link", String(link), "--to", to, "--keep", keep, "--mode", mode] + mutation.arguments, as: RelinkResult.self)
+    }
+
+    func fullCopy(link: Int, replace: String, mutation: MutationOptions = .preview) async throws -> LinkResult {
+        try await response(command: "link", arguments: ["--link", String(link), "--replace", replace, "--mode", "full_copy"] + mutation.arguments, as: LinkResult.self)
+    }
+    func relink(link: Int, to: String, keep: String, mutation: MutationOptions = .preview) async throws -> RelinkResult {
+        try await response(command: "relink", arguments: ["--link", String(link), "--to", to, "--keep", keep] + mutation.arguments, as: RelinkResult.self)
+    }
+
     /// Runs the setup command.
     func setup() async throws -> SetupResult {
         try await response(command: "setup", arguments: [], as: SetupResult.self)

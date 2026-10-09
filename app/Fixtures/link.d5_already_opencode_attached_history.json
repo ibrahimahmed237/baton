@@ -1,0 +1,52 @@
+{
+  "plan_id": "p_d5_already_opencode_attached_history",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": true,
+  "notes": [
+    {
+      "id": "link.already_linked",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "other_name": "Earlier partner",
+        "tool": "Codex"
+      },
+      "text": "\"Imaginary orchard\" is already linked to \"Earlier partner\" in Codex. A chat can be linked to one chat at a time.",
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "link.attached_history",
+      "tone": "info",
+      "values": {
+        "n": 4
+      },
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "buttons": [],
+      "status_line": "Agent has 4 turns the chat does not show"
+    }
+  ]
+}

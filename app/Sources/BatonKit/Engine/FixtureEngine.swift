@@ -25,6 +25,28 @@ public struct FixtureEngine: EngineTransport {
             let scoped = directory.appendingPathComponent("\(command).\(selectedState)_\(link).json")
             if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
         }
+        // Dialog fixtures may provide an engine response per chosen destination.
+        if let index = arguments.firstIndex(of: "--to"), arguments.indices.contains(index + 1) {
+            let tool = arguments[index + 1].split(separator: ":").first.map(String.init) ?? ""
+            if !tool.isEmpty && tool.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) {
+                let scoped = directory.appendingPathComponent("\(command).\(selectedState)_\(tool).json")
+                if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
+                if let modeIndex = arguments.firstIndex(of: "--mode"), arguments.indices.contains(modeIndex + 1) {
+                    let mode = arguments[modeIndex + 1]
+                    if mode.allSatisfy({ $0.isLetter || $0 == "_" }) {
+                        let modeURL = directory.appendingPathComponent("\(command).\(selectedState)_\(tool)_\(mode).json")
+                        if FileManager.default.fileExists(atPath: modeURL.path) { url = modeURL }
+                    }
+                }
+            }
+        }
+        if let index = arguments.firstIndex(of: "--replace"), arguments.indices.contains(index + 1) {
+            let tool = arguments[index + 1]
+            if tool.allSatisfy({ $0.isLetter || $0 == "_" }) {
+                let scoped = directory.appendingPathComponent("\(command).\(selectedState)_replace_\(tool).json")
+                if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
+            }
+        }
         let data = try Data(contentsOf: url)
         return try decodeResponse(type, from: data)
     }

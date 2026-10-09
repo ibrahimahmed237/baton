@@ -1,0 +1,50 @@
+{
+  "plan_id": "p_d5_cursor_cursor_brief",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.change",
+      "tone": "warning",
+      "values": {
+        "name": "Source",
+        "new_name": "New partner",
+        "other_name": "Earlier partner"
+      },
+      "text": "Link \"Source\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "mode.brief",
+      "tone": "info",
+      "values": {},
+      "text": "Brief in a new chat",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "plan_id": "p_d5_already_opencode",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.copy",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode",
+        "n": 4
+      },
+      "text": "A new chat is created in OpenCode with all 4 turns. The two chats will not be kept in sync.",
+      "buttons": [
+        {
+          "id": "copy",
+          "label": "Copy to OpenCode",
+          "primary": true
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      },
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

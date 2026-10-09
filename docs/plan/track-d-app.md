@@ -89,6 +89,8 @@ Rules for this track:
 
 ## D5. Link and copy dialogs
 
+**Files.** `app/Sources/BatonUI/Screens/Link/`, `app/Sources/BatonUI/Screens/Window/` (dialog integration), `app/Sources/BatonKit/Engine/` (additive dialog transport and fixture routing), `app/Sources/BatonKit/Models/` (additive presentation fields), `app/Fixtures/`, `app/Tests/BatonUITests/`, `app/Tests/BatonKitTests/`; `baton/notes/catalogue.py` and `tests/unit/test_notes.py` for the specified dialog labels; additive `docs/plan/CONTRACT.md` for R9 and engine-supplied presentation. Orchestrator coordinates shared catalogue/contract edits.
+
 **Board.** Link a chat. **From.** DESIGN 4 "Linking"; A0, A3, A4; G2, G4a, G5, G6; X1, X2.
 **Shows.** Tool picker (installed tools; one not set up is shown with what is missing); the three ways with their tags; the "What will happen" block from the plan's notes; Create, Copy without linking, Cancel. Already-linked chat: the change-link note.
 **Fixture states.** one per target tool; already linked; a way greyed out with its reason; large chat suggesting a brief.

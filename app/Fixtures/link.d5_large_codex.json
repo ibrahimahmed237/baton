@@ -1,0 +1,39 @@
+{
+  "plan_id": "p_d5_large_codex",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "link.large_copy",
+      "tone": "info",
+      "values": {
+        "tokens": 160000
+      },
+      "text": "This chat is about 160000 tokens. A brief in a new chat is available instead.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

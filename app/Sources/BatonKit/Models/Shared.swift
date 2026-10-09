@@ -59,9 +59,10 @@ public struct Chat: Codable, Equatable, Sendable {
     public var folder: String
     public var updatedAt: String
     public var linked: Bool
+    public var linkID: Int?
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, id: String, name: String, folder: String, updatedAt: String, linked: Bool, toolLabel: String? = nil) {
+    public init(tool: String, id: String, name: String, folder: String, updatedAt: String, linked: Bool, toolLabel: String? = nil, linkID: Int? = nil) {
         self.tool = tool
         self.toolLabel = toolLabel
         self.id = id
@@ -69,6 +70,7 @@ public struct Chat: Codable, Equatable, Sendable {
         self.folder = folder
         self.updatedAt = updatedAt
         self.linked = linked
+        self.linkID = linkID
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -79,6 +81,7 @@ public struct Chat: Codable, Equatable, Sendable {
         case folder
         case updatedAt = "updated_at"
         case linked
+        case linkID = "link_id"
     }
 }
 
@@ -401,9 +404,10 @@ public struct SetupTool: Codable, Equatable, Sendable {
     public var version: String?
     public var findings: [SetupFinding]
     public var facts: [String: JSONValue]
+    public var linkModes: [LinkModeOption]?
 
     /// Creates a contract value without requiring JSON.
-    public init(tool: String, installed: Bool, ready: Bool, version: String? = nil, findings: [SetupFinding], facts: [String: JSONValue], toolLabel: String? = nil) {
+    public init(tool: String, installed: Bool, ready: Bool, version: String? = nil, findings: [SetupFinding], facts: [String: JSONValue], toolLabel: String? = nil, linkModes: [LinkModeOption]? = nil) {
         self.tool = tool
         self.toolLabel = toolLabel
         self.installed = installed
@@ -411,6 +415,7 @@ public struct SetupTool: Codable, Equatable, Sendable {
         self.version = version
         self.findings = findings
         self.facts = facts
+        self.linkModes = linkModes
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -421,6 +426,7 @@ public struct SetupTool: Codable, Equatable, Sendable {
         case version
         case findings
         case facts
+        case linkModes = "link_modes"
     }
 }
 

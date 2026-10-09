@@ -1,0 +1,29 @@
+{
+  "plan_id": "p_d5_opencode_cursor_attached_history",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.attached_history",
+      "tone": "info",
+      "values": {
+        "n": 4
+      },
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "buttons": [],
+      "status_line": "Agent has 4 turns the chat does not show"
+    }
+  ]
+}

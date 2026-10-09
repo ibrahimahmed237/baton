@@ -6,6 +6,7 @@ public struct WindowView: View {
     @Environment(\.batonTheme) private var theme
     @Environment(\.batonGlass) private var glass
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @State private var linkDialog: LinkDialogViewModel?
     @StateObject private var statusModel: SyncStatusViewModel
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
@@ -47,6 +48,10 @@ public struct WindowView: View {
             }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
         }.frame(width: 1000, height: 600).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
             .task(id: model.selectedLink?.linkID) { if let link = model.selectedLink { await statusModel.load(link: link.linkID) } }
+            .sheet(item: Binding(get: { linkDialog.map(DialogItem.init) }, set: { if $0 == nil { linkDialog = nil } })) { item in
+                LinkDialogView(model: item.model)
+                    .onChange(of: item.model.finished) { _, finished in if finished { linkDialog = nil; Task { await model.refresh() } } }
+            }
             .onChange(of: statusModel.removedLinkID) { _, removed in
                 if removed != nil { Task { await model.refresh() } }
             }
@@ -90,18 +95,51 @@ public struct WindowView: View {
         switch model.selection {
         case .link:
             if let link = model.selectedLink {
-                if statusModel.status?.linkID == link.linkID { SyncStatusView(model: statusModel) }
+                if statusModel.status?.linkID == link.linkID {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SyncStatusView(model: statusModel)
+                        if let note = model.notes.first(where: { $0.id == "dialog.actions" }) {
+                            ForEach(link.sides.keys.sorted(), id: \.self) { tool in
+                                if let chat = link.sides[tool] {
+                                    HStack {
+                                        ToolDot(tool: tool, label: chat.displayLabel)
+                                        ForEach(note.buttons.filter { ["change_link", "full_copy"].contains($0.id) }, id: \.id) { button in
+                                            Button(button.label) { presentDialog(chat, link: link, action: button.id == "full_copy" ? .fullCopy : .change) }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 else { linkSummary(link) }
             }
         case .suggestion:
             if let suggestion = model.selectedSuggestion { suggestionSummary(suggestion) }
         case .chat(let tool, let id):
-            if let chat = model.chats[tool]?.first(where: { $0.id == id }) { chatSummary(chat) }
+            if let chat = model.chats[tool]?.first(where: { $0.id == id }) {
+                VStack(alignment: .leading, spacing: 12) {
+                    chatSummary(chat)
+                    if let note = model.notes.first(where: { $0.id == "dialog.actions" }) {
+                        ForEach(note.buttons.filter { ["create", "copy_without_linking"].contains($0.id) }, id: \.id) { button in
+                            Button(button.label) { presentDialog(chat, action: button.id == "create" ? .link : .copy) }
+                        }
+                    }
+                }
+            }
         case .event(let link, let id):
             if let entry = model.activity.first(where: { $0.link.linkID == link && $0.event.id == id }) {
                 VStack(alignment: .leading, spacing: 12) { linkSummary(entry.link); Text(entry.event.text) }
             }
         case nil: EmptyView()
+        }
+    }
+
+    private func presentDialog(_ chat: Chat, link: LinkSummary? = nil, action: LinkDialogAction) {
+        let dialog = model.makeLinkDialogModel(); linkDialog = dialog
+        Task {
+            await dialog.load(source: chat, link: link, replacing: action == .fullCopy ? chat.tool : nil)
+            if action == .copy || action == .change { await dialog.choose(action) }
         }
     }
 
@@ -174,4 +212,9 @@ private struct IdentifiedSuggestion: Identifiable {
     let selection: WindowSelection
     let suggestion: Suggestion
     var id: WindowSelection { selection }
+}
+
+private struct DialogItem: Identifiable {
+    let model: LinkDialogViewModel
+    var id: ObjectIdentifier { ObjectIdentifier(model) }
 }

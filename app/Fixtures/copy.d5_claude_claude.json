@@ -1,0 +1,72 @@
+{
+  "plan_id": "p_d5_claude_claude",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.copy",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "n": 4
+      },
+      "text": "A new chat is created in Claude with all 4 turns. The two chats will not be kept in sync.",
+      "buttons": [
+        {
+          "id": "copy",
+          "label": "Copy to Claude",
+          "primary": true
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.relaunch",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "Relaunch Claude to see this chat"
+    }
+  ]
+}

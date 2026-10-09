@@ -1,0 +1,52 @@
+{
+  "plan_id": "p_d5_codex_codex",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.change",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "New partner",
+        "other_name": "Earlier partner"
+      },
+      "text": "Link \"Imaginary orchard\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

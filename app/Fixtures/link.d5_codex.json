@@ -1,0 +1,46 @@
+{
+  "plan_id": "p_d5_codex_cursor",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "write.app_must_close",
+      "tone": "warning",
+      "values": {
+        "tool": "Cursor",
+        "n": 4
+      },
+      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "4 turns waiting until Cursor is closed"
+    }
+  ]
+}

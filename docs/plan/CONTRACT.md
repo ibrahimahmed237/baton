@@ -135,3 +135,26 @@ For mapped, non-replayable tool activity, Turn.messages may additionally use `ki
 Chat, Side, Step, and each setup tool object additionally contain `tool_label: string` next to `tool`. The engine supplies the display labels `Claude`, `Codex`, `OpenCode`, and `Cursor`; `tool` remains the stable lower-case identifier used in commands and map keys. The app displays the supplied label, without constructing tool names. Existing clients ignore this additive field; app models accept its absence in older payloads.
 
 For example: `{"tool": "claude", "tool_label": "Claude", ...}`. Note values referring to a coding app, including `{tool}`, use the display label. Tool-call names inside messages and mapping notes retain their existing meaning; a tool call is not a coding app label. C2 generates these fields and renders the note values; hand-made fixtures supply them through D4b.
+
+## R9 — existing-link copy and retained-side relink
+
+Reviewer decision R9 adds these signatures, preserving all earlier signatures:
+
+- `baton link --link L --replace T --mode full_copy`: create a full copy for existing linked side T, move that side of the link to it and leave its earlier chat untouched (A4).
+- `baton relink --link L --to T[:ID] --keep T2`: change the link with side T2 explicitly retained (A0).
+
+Both follow the existing dry-run/confirm plan rules. D5 sends these choices; C3 implements the action commands.
+
+## D5 — engine-supplied link dialog presentation
+
+Additive fields, absent in older payloads:
+
+- `Chat.link_id: integer | null` identifies its current link for an explicit change-link choice.
+- `setup.notes: [Note]` supplies dialog headings and action labels (`dialog.link`, `dialog.target`, `dialog.target_chat`, `dialog.new_chat`, `dialog.retained_side`, `dialog.ways`, `dialog.what_will_happen`, `dialog.actions`).
+- Each setup tool may contain `link_modes: [{"mode": "full_copy" | "attached_history" | "brief", "available": bool, "label": Note, "tag": Note | null, "reason": Note | null}]`. The engine supplies eligibility and the reason; the app never derives them from capabilities. A missing list provides no new eligibility claim. Tags use the existing specified mode language.
+
+The preview for an already-linked source includes the named current partner and change-link note. Every destination/mode/retained-side change invalidates the previous preview and requires its new notes to be displayed before confirmation. C2 generates this presentation; C3 implements action commands.
+
+### Relink mode (Ibrahim approved, 2026-10-05)
+
+The R9 retained-side relink signature additionally accepts `--mode full_copy|attached_history|brief`, defaulting to `full_copy` when absent. The selected mode describes a new counterpart; brief always creates a new chat. Earlier relink callers keep their default behavior. D5 sends the selected mode and retained side, and C3 implements it.

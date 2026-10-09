@@ -1,0 +1,27 @@
+{
+  "plan_id": "p_d5_codex_codex_brief",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "mode.brief",
+      "tone": "info",
+      "values": {},
+      "text": "Brief in a new chat",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

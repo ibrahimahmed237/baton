@@ -1,0 +1,29 @@
+{
+  "plan_id": "p_d5_unavailable_opencode",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      },
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

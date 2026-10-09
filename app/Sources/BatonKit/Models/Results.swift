@@ -3,14 +3,16 @@ import Foundation
 /// Result of the Setup command.
 public struct SetupResult: Codable, Equatable, Sendable {
     public var tools: [SetupTool]
+    public var notes: [Note]?
 
     /// Creates a contract value without requiring JSON.
-    public init(tools: [SetupTool]) {
+    public init(tools: [SetupTool], notes: [Note]? = nil) {
         self.tools = tools
+        self.notes = notes
     }
 
     private enum CodingKeys: String, CodingKey {
-        case tools
+        case tools, notes
     }
 }
 

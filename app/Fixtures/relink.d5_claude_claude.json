@@ -1,0 +1,68 @@
+{
+  "plan_id": "p_d5_claude_claude",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "claude",
+      "tool_label": "Claude",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.change",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "New partner",
+        "other_name": "Earlier partner"
+      },
+      "text": "Link \"Imaginary orchard\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.relaunch",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      },
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "Relaunch Claude to see this chat"
+    }
+  ]
+}

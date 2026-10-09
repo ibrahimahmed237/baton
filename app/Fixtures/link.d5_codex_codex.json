@@ -1,0 +1,29 @@
+{
+  "plan_id": "p_d5_codex_codex",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

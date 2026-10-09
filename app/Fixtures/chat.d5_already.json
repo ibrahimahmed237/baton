@@ -1,0 +1,9 @@
+{
+  "tool": "claude",
+  "id": "source",
+  "name": "Imaginary orchard",
+  "folder": "/tmp/baton-sample",
+  "updated_at": "2026-10-04T14:05:00Z",
+  "linked": true,
+  "tool_label": "Claude"
+}

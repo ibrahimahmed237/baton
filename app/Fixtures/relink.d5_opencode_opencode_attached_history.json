@@ -1,0 +1,52 @@
+{
+  "plan_id": "p_d5_opencode_opencode_attached_history",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.change",
+      "tone": "warning",
+      "values": {
+        "name": "Source",
+        "new_name": "New partner",
+        "other_name": "Earlier partner"
+      },
+      "text": "Link \"Source\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "link.attached_history",
+      "tone": "info",
+      "values": {
+        "n": 4
+      },
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "buttons": [],
+      "status_line": "Agent has 4 turns the chat does not show"
+    }
+  ]
+}

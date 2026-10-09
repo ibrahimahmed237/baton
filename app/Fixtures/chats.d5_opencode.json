@@ -1,0 +1,13 @@
+{
+  "chats": [
+    {
+      "tool": "opencode",
+      "id": "destination",
+      "name": "Existing destination",
+      "folder": "/tmp/baton-sample",
+      "updated_at": "2026-10-04T14:05:00Z",
+      "linked": false,
+      "tool_label": "OpenCode"
+    }
+  ]
+}

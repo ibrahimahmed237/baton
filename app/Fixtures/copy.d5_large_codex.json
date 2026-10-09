@@ -1,0 +1,56 @@
+{
+  "plan_id": "p_d5_large_codex",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "codex",
+      "tool_label": "Codex",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.copy",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "n": 4
+      },
+      "text": "A new chat is created in Codex with all 4 turns. The two chats will not be kept in sync.",
+      "buttons": [
+        {
+          "id": "copy",
+          "label": "Copy to Codex",
+          "primary": true
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      },
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

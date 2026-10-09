@@ -1,0 +1,39 @@
+{
+  "plan_id": "p_d5_unavailable_opencode",
+  "applied": false,
+  "link_id": 3,
+  "steps": [
+    {
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.full_copy",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      },
+      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "buttons": [],
+      "status_line": null
+    },
+    {
+      "id": "new_chat.at_once",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      },
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "buttons": [],
+      "status_line": null
+    }
+  ]
+}

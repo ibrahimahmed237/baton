@@ -38,6 +38,8 @@ public final class WindowViewModel: ObservableObject {
     /// Takes the sole source of data and displayed wording.
     public init(engine: any EngineClient) { self.engine = engine }
 
+    public func makeLinkDialogModel() -> LinkDialogViewModel { LinkDialogViewModel(engine: engine) }
+
     public func makeStatusModel() -> SyncStatusViewModel { SyncStatusViewModel(engine: engine) }
 
     public var sections: [WindowSection] { [.linked, .attention, .suggestions] + installedTools.map(WindowSection.chats) + [.activity] }

@@ -18,7 +18,7 @@ Thin layers over the services. No rules live here: a command parses, calls one s
 
 **Goal.** `setup`, `chats`, `suggestions`, `links`, `status`, `history`, `merge --show`, `settings get`.
 **From.** CONTRACT.md; sync-status R1 to R16.
-**Depends on.** C1, E2, E9, E12.
+**Depends on.** C1, E2, E9, the catalogue through CP2. E12 (CP3) completes/audits the remaining catalogue; it cannot be a prerequisite for CP2 read commands.
 **Files.** `baton/cli/commands/{setup,chats,suggestions,links,status,history,merge,settings}.py`.
 **Tests.** `tests/contract/test_read_commands.py`, which also writes the app's fixture files (`app/Fixtures/*.json`) for every state listed in track D.
 **Done when.** Fixtures exist for every screen state and are generated, not hand-written.

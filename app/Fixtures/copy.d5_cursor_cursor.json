@@ -1,0 +1,73 @@
+{
+  "plan_id": "p_d5_cursor_cursor",
+  "applied": false,
+  "link_id": null,
+  "steps": [
+    {
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "action": "create",
+      "turns": [],
+      "reason": "",
+      "needs": [],
+      "notes": []
+    }
+  ],
+  "decision_needed": false,
+  "notes": [
+    {
+      "id": "link.copy",
+      "tone": "info",
+      "values": {
+        "tool": "Cursor",
+        "n": 4
+      },
+      "text": "A new chat is created in Cursor with all 4 turns. The two chats will not be kept in sync.",
+      "buttons": [
+        {
+          "id": "copy",
+          "label": "Copy to Cursor",
+          "primary": true
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": null
+    },
+    {
+      "id": "write.app_must_close",
+      "tone": "warning",
+      "values": {
+        "tool": "Cursor",
+        "n": 4
+      },
+      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "status_line": "4 turns waiting until Cursor is closed"
+    }
+  ]
+}
