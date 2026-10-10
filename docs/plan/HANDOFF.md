@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-11, C2b in progress
+**Last updated:** 2026-10-11, C2 complete; CP2 live gate still open
 
 ---
 
@@ -16,6 +16,10 @@ What changed since you last worked here:
 - STATUS.md "Now" lists which packages were in flight and which files each owns.
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
+
+Current hand-off state: C2a `914d9d3` and C2b `2bbdbe3` committed; all planned CP2 implementation packages are accepted. Tests787 engine/146 app/build;325 generated fixtures,255 renders. CP2 is not passed because native Claude/Codex throwaway live acceptance is still owed. Prepare exact scope/go and ask for each closure; never bypass guarded native writes. D5 duplicate-note follow-up is separate. No push; historical untracked E9-E10.md preserved.
+
+Historical hand-off records below; STATUS Now/Next and the current paragraph above take precedence.
 
 Current hand-off state: G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076`, E9 `650a8d1`, D6 `604e6d8` are committed separately. Approved repair-plan/interface record `825137e` is committed. Ibrahim authorized self-commits; normal approved Git operations work. Never bypass sandbox-only read restrictions or push.
 
@@ -43,4 +47,6 @@ C2a committed `914d9d3`:35 independently reviewed implementation/test/contract/p
 
 2026-10-11 C2b started. Builder owns tests/contract generator/manifest/tests and app/Fixtures; root owns narrow app fixture-test compatibility and docs, separate reviewer reads only. Baseline761 engine/143 app/build. No code carry-in; five post-commit reference records and historical E9-E10.md preserved. No live run or push.
 
-Latest boundary2026-10-11: C2b accepted, commit prepared; whole C2 complete. Root787 engine/146 app/build,26 own fixture/effect checks,149 native-shaped/82 scenarios,325 tracked fixtures and255 renders. Separate reviewer approved no blocking findings; D5 exact-duplicate note follow-up open. CP2 remains FAIL solely at required native live gate; do not start CP3 or access apps/chats before exact scope/go and fresh go for each closure. No push. Old E9-E10.md untracked draft preserved/excluded. Full current evidence CP2-2026-10-11.md and C2b report.
+Latest boundary2026-10-11: C2b committed `2bbdbe3`; whole C2 complete. Root787 engine/146 app/build,26 own fixture/effect checks,149 native-shaped/82 scenarios,325 tracked fixtures and255 renders. Separate reviewer approved no blocking findings; D5 exact-duplicate note follow-up open. CP2 remains FAIL solely at required native live gate; do not start CP3 or access apps/chats before exact scope/go and fresh go for each closure. No push. Old E9-E10.md untracked draft preserved/excluded. Full current evidence CP2-2026-10-11.md and C2b report.
+
+C2b commit verified:349 exact reviewed paths, index empty; historical E9-E10.md excluded. Commit-reference records updated after the package commit; no unfinished code. No push.

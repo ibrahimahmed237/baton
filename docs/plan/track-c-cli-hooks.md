@@ -27,7 +27,7 @@ Thin layers over the services. No rules live here: a command parses, calls one s
 **Tests.** C2a: `tests/contract/test_read_commands.py`. C2b: `tests/contract/test_fixtures.py` verifies catalogue/state semantics, service effects, deterministic generation into temporary folders and agreement with every tracked fixture. Explicit regeneration via `python3 -m tests.contract.generate_fixtures` writes `app/Fixtures/*.json`; ordinary tests never modify tracked files.
 **Done when.** Fixtures exist for every screen state and are generated, not hand-written.
 
-**Accepted2026-10-11:** C2a914d9d3 + C2b325 deterministic manifest routes;787 engine/146 app/build,26 own state/effect checks and255 renders. Independent review approved; C2b commit prepared. [Report](reports/C2b-2026-10-11.md). Native live and production action execution remain separate.
+**Accepted2026-10-11:** C2a914d9d3 + C2b325 deterministic manifest routes;787 engine/146 app/build,26 own state/effect checks and255 renders. Independent review approved; C2b committed `2bbdbe3`. [Report](reports/C2b-2026-10-11.md). Native live and production action execution remain separate.
 
 ## C3. Action commands
 

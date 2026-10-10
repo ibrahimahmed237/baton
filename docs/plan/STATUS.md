@@ -6,7 +6,7 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-**C2b accepted after root challenge and separate reviewer approval; commit being prepared on chore/project-setup.** Together with C2a `914d9d3`, C2 is complete for its approved read/service/generated-fixture boundary. Root measured **787 engine tests,146 app tests and build pass**,325 deterministic fixtures and255 non-empty renders. Own26 actual-effect/fixture checks,149 native-shaped fixture tests and82 focused CP2 scenarios pass. No live chat/app access or push. [C2b report](reports/C2b-2026-10-11.md), [current CP2 report](reports/CP2-2026-10-11.md).
+**C2b committed `2bbdbe3` after root challenge and separate reviewer approval on chore/project-setup.** Together with C2a `914d9d3`, C2 is complete for its approved read/service/generated-fixture boundary. Root measured **787 engine tests,146 app tests and build pass**,325 deterministic fixtures and255 non-empty renders. Own26 actual-effect/fixture checks,149 native-shaped fixture tests and82 focused CP2 scenarios pass. No live chat/app access or push. [C2b report](reports/C2b-2026-10-11.md), [current CP2 report](reports/CP2-2026-10-11.md).
 
 **CP2 remains FAIL/incomplete solely at its required native live gate.** B1/B2 fixture implementations are accepted; Codex production mutation/automatic closure deliberately refuse until native coordination/trust/schema is verified. C3–C7/D12 production integration stays in its planned packages. D5 duplicate explanatory notes are a recorded nonblocking UI follow-up. Existing post-C2a records are included in this package; historical untracked reports/E9-E10.md stays preserved and excluded.
 
@@ -54,10 +54,11 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 | D7 | 2026-10-09 | `c8720bf` | 143 app and build;702 working-tree engine |
 | B2 fixture implementation/safety | 2026-10-10 | `cbb3e2b` | 730 engine /149 native /143 app and build; live owed |
 | C2a safe read commands | 2026-10-10 | `914d9d3` | 761 engine /150 focused /143 app/build; C2b generation followed |
+| C2b generated fixtures (completes C2) | 2026-10-11 | `2bbdbe3` | 787 engine /26 own /149 native /82 scenarios /146 app/build;325 fixtures,255 renders |
 
 ## Ready to commit
 
-C2b accepted; normal approved Git staging/commit is being prepared. If Git fails, exact paths/message and sequential patch will be recorded here. Historical E9-E10.md is excluded.
+None. C2a `914d9d3` and C2b `2bbdbe3` committed; historical E9-E10.md excluded. Commit-reference documentation is recorded separately; no implementation remains unfinished.
 
 ## Decisions and reviewer findings
 
@@ -89,6 +90,8 @@ C2b accepted; normal approved Git staging/commit is being prepared. If Git fails
 
 ## Log
 
+- 2026-10-11 — C2b committed `2bbdbe3`:349 exact reviewed paths, index empty and tracked tree clean before reference updates. Historical E9-E10.md excluded/preserved. Whole C2 complete;787/146/build green, CP2 native live FAIL. No push.
+
 - 2026-10-11 — C2b independently approved:325 generated fixtures,787 engine/26 own/149 native/82 CP2 scenarios/146 app/build,255 renders. Root privacy mutant and independent fold/state-label mutants detected; all blocking findings closed. D5 duplicate notes deferred explicitly; CP2 native live still FAIL. Commit prepared, no push/live access.
 
 - 2026-10-11 — C2b private325-route batch passes146 app/build and independent11588-note/27-status audit. Root visually checked representative light/graphite screens; scoped label and folded-state defects fixed. Explicit tracked publication next; no native run/push.
@@ -107,32 +110,4 @@ C2b accepted; normal approved Git staging/commit is being prepared. If Git fails
 
 - 2026-10-10 — B2 fixture safety accepted after independent final108 approval and root730/149native/77scenarios/143app/build checks. Scope/CAS/trust/format/continuous-lock mutants exercise real failure assertions. Native protocols/live still fail closed; commit pending, no push.
 
-- 2026-10-10 — Resumed at Ibrahim’s request; B2 safety started with preserved dirty scope, C2 follows. Usage window reset naturally; no credit consumed. No live access/push.
-
-- 2026-10-09 — D7 committed `c8720bf`, only36 reviewed app/fixture/plan files; index empty. E10/D7 complete, common702/143/build and isolated622 engine pass. Usage95% boundary: B2/C2/live remain, no push.
-
-- 2026-10-09 — E10 committed `ec88983`, only30 reviewed engine/test/plan files; no B2/D7 files. Isolated622 engine and full702/143/build pass. D7 commit next.
-
-- 2026-10-09 — E10/D7 independently accepted. Root702 engine/143 app/build; privacy, durable replay and summary-boundary undo mutants detected. Five-hour usage95%: commit both and stop before B2/C2. No live access/push.
-
-- 2026-10-09 — Resumed E10/D7 repairs with preserved dirty scope and at most two agents. Fresh baseline confirmed: 670 engine /129 app, build pass.
-
-- 2026-10-09 — D6 committed604e6d8 after five routing/provenance findings were fixed and independently re-reviewed. Root full670/129/build; isolated555 engine/119 app/build. Usage window100%: stop at this package boundary. CP2 report marks remaining gates fail; no live access/push.
-
-- 2026-10-09 — E9 committed650a8d1 after durable subprocess/evidence checks, mixed-timestamp root fix and independent acceptance. Focused73/full670/isolated555 engine; final app129/build. Three regression mutations detected. No E10/D7 repair started.
-
-- 2026-10-09 — Ibrahim approved both repair-plan questions. Two GPT-6.1 agents reviewed the written plan; lifecycle, fallback costs, coverage, canonical-evidence ordering, read projections and live allowlist refinements incorporated. E9/D6 starting with shared additive contract/catalogue settled.
-
-- 2026-10-09 — C1 committed `e15e076`, with only its catalogue hunk and exact reviewed files. Staging whitespace check exposed an extra EOF blank line but commit was not gated; follow-up removes that whitespace without behavior change. All other package files preserved; reviewed repair plan is next.
-
-- 2026-10-09 — G3 committed `7f6e39f`, only BrandTests and its report. C1 staging isolates its catalogue note from unfinished E9/E10; CP2 plan adds stale UI, brief cost/baseline and Codex rollback concerns.
-
-- 2026-10-09 — Ibrahim authorized self-commits. Normal approved Git path succeeded: G2 `dab931c`, only its four reviewed files. G3/C1 next; two independent GPT-6.1 agents refining the CP2 repair plan. Fresh checks: 650 engine / 115 app, build green.
-
-- 2026-10-09 — C1 accepted after root repairs, regressions and separate re-review. CLI command exclusion, private owned storage, no recovery on read, loader isolation and service-owned headline fixed. 119 focused / 650 full engine, 115 app and build pass. Three ready packages: stop under G1 for commits. CP2 not passed; no live chats or Git writes.
-
-- 2026-10-09 — G3 accepted with independent review. Brand test checks explicit sRGB in both themes/badge states; root inspected both plain PNGs. Product logo unchanged. 115 app / 650 engine green; ready entry recorded.
-
-- 2026-10-09 — G2 accepted with independent review. Bare check script builds and passes 115 app tests; explicit SDKROOT BrandTests check passes 4. Ready entry recorded; no Git writes.
-
-- 2026-10-09 — Codex resumed the CP2 hand-off. Preserved all unfinished files; git read-only. Measured 640 engine tests with a D7 fixture failure; check script probe failed on unwritable module cache. Two independent reviewer agents found E9/E10 and D6/D7 blockers; G3 has no review blocker. C1 review and G2 repair started. Long prior status archived without discarding records.
+Older entries remain in commit `2bbdbe3` and the historical reports.
