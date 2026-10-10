@@ -183,3 +183,7 @@ C2 fixture generation covers built D0–D7/UI states: actual read-command output
 ### Brief review details (additive, CP2)
 
 BriefDetails additionally carries optional `text`, `summary`, and `pinned_tokens` (size of the destination-safe pinned originals). Creation review requires a non-empty exact artifact/text and the destination create step. Generation notes disclose the bounded total of candidate request estimates; Offline requests cannot accept a generation stage. These fields make the already approved generation/result review and W15 pinned-size presentation explicit.
+
+## C2a history bookkeeping — Ibrahim Q8, 2026-10-10
+
+History includes completed actions and internal bookkeeping. `aligned` means existing native turns were recognized; `attach_pending` means attachment is queued, not delivered; `not_confirmed` means an earlier delivery is no longer verified; `undo_shown` records the user's explicit confirmation that removed turns are no longer visible. Each has a distinct catalogue label. Existing event IDs, raw kinds, times, tool/turn identities and eligibility fields keep their meanings; bookkeeping does not acquire Undo or Restore eligibility. Unknown future kinds remain present with a neutral catalogue label and conservative eligibility, without exposing private event details.

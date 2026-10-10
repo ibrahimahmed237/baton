@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-10, B2 fixture safety accepted
+**Last updated:** 2026-10-10, C2a accepted, committing
 
 ---
 
@@ -27,4 +27,14 @@ Direct Engine callers hold engine.command_lock() before first service access thr
 
 2026-10-10 resume: B2 safety started, existing native files preserved. Worker owns Codex adapter/native tests/fixtures; root owns plan records. C2 follows B2 acceptance. No live access or push; no usage reset credit used.
 
-B2 fixture implementation/safety accepted: root730 engine/143 app/build,149 native fixtures,77 CP2 scenarios. Full-row CAS, continuous fixture coordination, explicit scope/private recovery, aliases/index/trust refusals and publicSQL guard reviewed. Commit pending; C2 follows. Production native writes/automatic closure stay unavailable until verified native coordination/trust/schema; no live acceptance. Current evidence CP2-2026-10-10.md.
+B2 fixture implementation/safety accepted: root730 engine/143 app/build,149 native fixtures,77 CP2 scenarios. Full-row CAS, continuous fixture coordination, explicit scope/private recovery, aliases/index/trust refusals and publicSQL guard reviewed. Committed `cbb3e2b`; C2 follows. Production native writes/automatic closure stay unavailable until verified native coordination/trust/schema; no live acceptance. Current evidence CP2-2026-10-10.md.
+
+B2 committed `cbb3e2b`,23 reviewed files; index empty. Historical E9-E10.md preserved untracked. C2 next; no push/live.
+
+C2a started: builder owns recovery-free read projections, commands, shared serializers, extraction and contract tests; root owns ledger names/settings, catalogue and docs. Separate reviewer active. C2b deterministic generation of277 fixtures follows; whole C2 remains incomplete until both independently green boundaries. Historical E9-E10.md draft stays preserved.
+
+Latest C2a source758 engine/147 focused/149 native/77 scenarios/143 app/build pass. No commit/acceptance until pending Ibrahim Q8 history display decision and final separate review are closed; all files preserved. Root/worker/reviewer logs pasted in C2a-2026-10-10.md. C2b277 generated fixtures and exact-scope native live remain next, CP2 not passed.
+
+Final separate code review closed all findings and independently challenged missing-origin destination matching/tamper/deletion. Only required Ibrahim Q8 completed-history display choice and its exact regression remain before C2a acceptance/commit. Source frozen,758/147/143 green. Preserve all C2a dirty paths; do not discard or mark complete while Q8 pending.
+
+Q8 resolved: Ibrahim chose bookkeeping visible with new distinct labels. Root delta and three meaningful regressions finished; independent final review approved no findings. Final761 engine/150 focused/149 native/77 scenarios/143 app/build; C2a commit prepared. Usage100%, stop after commit at green boundary; next C2b277 generation, then exact-scope native live gates. No push, old E9-E10.md preserved. Earlier pending Q8 paragraphs are historical.

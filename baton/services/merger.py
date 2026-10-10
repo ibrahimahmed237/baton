@@ -81,29 +81,9 @@ class Merger:
              brief_threshold_tokens: int = 150000) -> dict:
         """Return complete unsynced messages, valid presets and fact-based outcomes."""
         link, rows, observations, payload = self._observed(link_id)
-        pending = planner.unsynced(rows)
-        order = planner.merge_order(rows)
-        changed = {}
-        for turn in pending:
-            for path in self.adapters[turn.origin].reader.files_changed(payload[turn.id]):
-                changed.setdefault(path, []).append(turn)
-        same_files = [{'file': path, 'turns': [t.id for t in values]}
-                      for path, values in sorted(changed.items())
-                      if len({t.origin for t in values}) > 1]
-        presets = [{'id': 'by_time', 'order': [t.id for t in order]}]
-        presets += [{'id': side + '_first', 'order': [t.id for t in planner.merge_order(rows, side)]}
-                    for side in link.sides if any(t.origin == side for t in pending)]
-        presets += [{'id': 'dont_reorder', 'order': [t.id for t in order]}]
-        tokens = sum(t.size for t in rows if KEPT_BACK not in t.states.values()
-                     and SKIPPED not in t.states.values()) // 4
-        return {'last_shared': planner.last_shared(rows), 'unsynced': pending,
-                'messages': {t.id: payload[t.id] for t in pending},
-                'order': [t.id for t in order], 'presets': presets,
-                'outcome': planner.outcome(order),
-                'overlaps': [[a.id, b.id] for a, b in planner.overlapping(order)],
-                'same_files': same_files, 'tokens': tokens,
-                'offer_brief': tokens >= brief_threshold_tokens,
-                'automatic_allowed': merge_setting == 'by_time' and not same_files}
+        from .read_views import merge_projection
+        return merge_projection(link, rows, payload, self.adapters,
+                                merge_setting=merge_setting, brief_threshold_tokens=brief_threshold_tokens)
 
     @staticmethod
     def _fingerprint(plan: MergePlan) -> str:

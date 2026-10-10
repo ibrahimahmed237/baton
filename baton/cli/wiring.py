@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 from ..domain.errors import NotAvailable
 from ..ledger.sqlite_store import Ledger
@@ -19,9 +19,12 @@ from ..services.brief import BriefService
 from ..services.linker import Linker
 from ..services.merger import Merger
 from ..services.undo import Undo
+from ..services.read_views import ReadViews
+from ..services.setup_read import SetupRead
+from ..services.settings_read import SettingsRead
 from ..services.transcripts import FolderTranscripts
 from .plans import FilePlanStore, PlanBook
-from .tools import TOOLS, ToolEntry, label
+from .tools import TOOLS, ToolEntry, label, installed
 from .storage import command_lock, private_directory, private_file
 
 logger = logging.getLogger(__name__)
@@ -79,6 +82,8 @@ class Engine:
     plans: PlanBook
     tools_home: Path
     unavailable: dict[str, str] = field(default_factory=dict)
+    installation_probe: Callable[[str], bool] = installed
+    tool_ids: tuple[str, ...] = tuple(entry.id for entry in TOOLS)
 
     def command_lock(self):
         """Exclude other CLI commands before interpreting pending writes as abandoned."""
@@ -90,6 +95,29 @@ class Engine:
             return self.adapters[tool]
         except KeyError:
             raise NotAvailable(tool) from None
+
+    @cached_property
+    def settings_read(self):
+        """Validated defaults and stored choices, without recovery."""
+        return SettingsRead(self.store, {
+            'notice_on_attach': True, 'offer_relaunch': True, 'add_to_idle_claude': 'on_button',
+            'offer_switch_at_limit': True, 'merge': 'ask', 'brief_threshold_tokens': 150000,
+            'hide_script_chats': True, 'title_tag': True, 'theme': 'system', 'glass': 62},
+            choices={'add_to_idle_claude': ('on_button', 'automatic'), 'merge': ('ask', 'by_time'),
+                     'theme': ('system', 'light', 'graphite')},
+            bounds={'glass': (40, 95), 'brief_threshold_tokens': (1, None)})
+
+    @cached_property
+    def reads(self):
+        """Recovery-free projections for the read commands."""
+        return ReadViews(self.store, self.adapters, self.clock, self.settings_read, label,
+                         lambda: tuple(s for s, a in self.adapters.items() if a.facts.can_release_chat
+                                       and self.settings_read.get()['add_to_idle_claude'] == 'automatic'))
+
+    @cached_property
+    def setup_read(self):
+        """Independent installation and read-only setup observations."""
+        return SetupRead(self.adapters, self.tool_ids, self.installation_probe)
 
     # Services are built on first use: building one runs the recovery of
     # unfinished writes, which a read command has no business doing.
@@ -157,7 +185,8 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
           adapter_roots: Mapping[str, Path | str] | None = None,
           tools_home: Path | str | None = None,
           environ: Mapping[str, str] | None = None,
-          entries: Sequence[ToolEntry] = TOOLS) -> Engine:
+          entries: Sequence[ToolEntry] = TOOLS,
+          installation_probe: Callable[[str], bool] = installed) -> Engine:
     """Create the store, the adapters and the services.
 
     `root` is Baton's folder; without it BATON_HOME, then the Application Support
@@ -184,4 +213,5 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
         except BaseException:
             store.close()
             raise
-    return Engine(folder, store, clock, loaded, plans, home, unavailable)
+    return Engine(folder, store, clock, loaded, plans, home, unavailable, installation_probe,
+                  tuple(dict.fromkeys([entry.id for entry in entries] + list(loaded))))

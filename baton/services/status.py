@@ -42,6 +42,9 @@ def link_headline(state: LinkStatus, missing: Sequence[str] = ()) -> tuple[str, 
     if missing:
         return "side.missing", {}
     if state.in_sync:
+        hidden = next((side for side in state.sides.values() if side.needs), None)
+        if hidden:
+            return hidden.needs[0], {'tool': hidden.side, 'n': hidden.added}
         return "status.in_sync", {}
     behind = max(state.sides.values(), key=lambda status: status.waiting)
     ahead = next(side for side in state.sides if side != behind.side)

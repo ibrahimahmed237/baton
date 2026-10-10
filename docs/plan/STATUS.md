@@ -6,13 +6,14 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 ## Now
 
-**B2 fixture implementation/safety repairs independently accepted, committing.** Root measured **730 engine tests,149 combined native fixture tests (108 Codex+41 Claude),77 CP2 scenarios,143 app tests and build pass**. All writes/reads remained temporary; no live chat/app access or push. [B2 report](reports/B2-2026-10-10.md), [current CP2 report](reports/CP2-2026-10-10.md). CP2 is **not passed**: C2 and native live evidence remain.
+**B2 fixture implementation/safety repairs committed `cbb3e2b`.** Root measured **730 engine tests,149 combined native fixture tests (108 Codex+41 Claude),77 CP2 scenarios,143 app tests and build pass**. All writes/reads remained temporary; no live chat/app access or push. [B2 report](reports/B2-2026-10-10.md), [current CP2 report](reports/CP2-2026-10-10.md). CP2 is **not passed**: C2 and native live evidence remain.
 
-E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e39f` and C1 `e15e076` are committed. The historical untracked `reports/E9-E10.md` is preserved; current accepted reports supersede it. C2 starts after B2 commit. At most two agents; separate review before acceptance. Normal approved Git writes work; sandbox-only `.git` remains read-only.
+E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e39f` and C1 `e15e076` are committed. **C2a accepted, commit being prepared:** eight recovery-free read commands, private cached names/settings and full history including bookkeeping. Ibrahim Q8 chose new labels; independent final review approved with no findings. Root761 engine/150 focused/149 native/77 scenarios/143 app and build pass. [C2a report](reports/C2a-2026-10-10.md). C2b277 generated fixtures has not started; whole C2/CP2 remains incomplete. Historical untracked reports/E9-E10.md preserved. Normal approved Git writes work; never push. Session usage100%: commit this green package boundary and stop before C2b.
 
 ## Next
 
-1. Commit accepted **B2 fixture safety**, then build/review **C2 safe reads and deterministic generated fixtures**, under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md). Preserve all unfinished native files; at most two agents.
+1. Commit accepted **C2a**, then stop at this green boundary. Next run: build/review **C2b** deterministic generated fixtures under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md); whole C2 stays incomplete until both. At most two agents.
+
 2. C2 must prove service effects and identify future-only providers; D6/D7 transport counters are routing evidence only.
 3. After blockers close, list exact Claude/Codex throwaway live scope and ask for each app closure. CP2 cannot pass without its live evidence.
 
@@ -52,16 +53,64 @@ E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e3
 | D6 | 2026-10-09 | `604e6d8` | 119 isolated / 129 working-tree app; build green |
 | E10 | 2026-10-09 | `ec88983` | 702 working-tree /622 isolated engine;143 app/build |
 | D7 | 2026-10-09 | `c8720bf` | 143 app and build;702 working-tree engine |
+| B2 fixture implementation/safety | 2026-10-10 | `cbb3e2b` | 730 engine /149 native /143 app and build; live owed |
 
 ## Ready to commit
 
-B2 — native-shaped fixture implementation and safe refusal only. Exact paths: `baton/adapters/codex/__init__.py`, `reader.py`, `app.py`, `facts.py`, `hooks.py`, `locator.py`, `records.py`, `runner.py`, `scope.py`, `state.py`, `tool.py`, `writer.py`; `tests/adapters/test_codex.py`; `tests/fixtures/codex/__init__.py`, `build.py`; `docs/plan/ARCHITECTURE.md`, `HANDOFF.md`, `MAP.md`, `STATUS.md`, `track-b-adapters.md`; `docs/plan/reports/B2.md`, `B2-2026-10-10.md`, `CP2-2026-10-10.md`. No E9-E10 historical draft.
+### C2a — accepted after independent review
 
-Subject: `Keep Codex writes scoped and recoverable`
+Exact paths:
 
-Body: `Native chat changes must preserve outside work and private history. Bound every access to approved chat identities, keep exclusion through publication and rollback, and refuse unverified coordination, projection evidence and hook trust.`
+- `baton/cli/commands/chats.py`
+- `baton/cli/commands/history.py`
+- `baton/cli/commands/links.py`
+- `baton/cli/commands/merge.py`
+- `baton/cli/commands/settings.py`
+- `baton/cli/commands/setup.py`
+- `baton/cli/commands/status.py`
+- `baton/cli/commands/suggestions.py`
+- `baton/cli/output.py`
+- `baton/cli/tools.py`
+- `baton/cli/wiring.py`
+- `baton/ledger/read_metadata.py`
+- `baton/ledger/schema.py`
+- `baton/ledger/sqlite_store.py`
+- `baton/notes/catalogue.py`
+- `baton/ports/store.py`
+- `baton/services/linker.py`
+- `baton/services/merger.py`
+- `baton/services/read_views.py`
+- `baton/services/refresh.py`
+- `baton/services/settings_read.py`
+- `baton/services/setup_read.py`
+- `baton/services/status.py`
+- `baton/services/undo.py`
+- `docs/plan/CONTRACT.md`
+- `docs/plan/HANDOFF.md`
+- `docs/plan/MAP.md`
+- `docs/plan/STATUS.md`
+- `docs/plan/reports/B2-2026-10-10.md`
+- `docs/plan/reports/C2a-2026-10-10.md`
+- `docs/plan/reports/CP2-2026-10-10.md`
+- `docs/plan/track-c-cli-hooks.md`
+- `tests/contract/test_read_commands.py`
+- `tests/contract/test_shapes.py`
+- `tests/unit/test_read_metadata.py`
+
+Message:
+
+```text
+Show chat state without recovering unfinished writes
+
+Screens need accurate chat status without undoing a write in progress.
+Shared read projections preserve pending receipts, private content and
+visibility evidence, while history distinguishes completed actions from
+bookkeeping and retains known chat names across disappearance.
+```
 
 ## Decisions and reviewer findings
+
+- **Orchestrator, checked by a separate reviewer agent 2026-10-10:** split C2 execution into C2a safe read commands and C2b generated fixtures, separately reviewed green commits. Whole C2 acceptance and CP2 requirements are unchanged; reduces interruption risk in277-fixture replacement.
 
 - **Ibrahim Q6 (2026-10-10):** approved the exact completed-history labels and merge-preset labels presented in chat. C2 adds them to the catalogue; no wording lives in serializers or app code.
 
@@ -76,6 +125,10 @@ Body: `Native chat changes must preserve outside work and private history. Bound
 
 ## Questions and unresolved work
 
+- **Ibrahim Q8 (2026-10-10):** show bookkeeping too, with new labels. Root implements distinct aligned/queued/not-confirmed/user-visibility labels and a neutral unknown-event fallback, all in the catalogue; every record and eligibility flag stays intact. This is the chosen visible-history behavior, not an omission/filter.
+
+- **Ibrahim Q7 approved, 2026-10-10:** setup label “Baton cannot use {tool} yet.” for a tool with no implemented adapter. Catalogue id `setup.adapter_unavailable`; no fabricated install/sign-in/trust remedy.
+
 
 - E9/E10/B2 fixture safety accepted after independent reviews. C2 safe read serialization/generated fixtures and native live acceptance remain; no issue is waived.
 - D6/D7 accepted for fixture screens; C2 service-backed/generated acceptance and D12 production integration remain. No native execution is inferred from screen transport tests.
@@ -84,6 +137,12 @@ Body: `Native chat changes must preserve outside work and private history. Bound
 - Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.
 
 ## Log
+
+- 2026-10-10 — Ibrahim Q8 chose all bookkeeping visible with distinct labels. Root three actual-service/unknown-entry regressions and semantic mutant, separate final review: C2a accepted761 engine/150 focused/143 app/build;149 native/77 scenarios pass. Commit being prepared; C2b/live remain, no push.
+
+- 2026-10-10 — C2a source green758 engine/147 focused/149 native/77 scenarios/143 app/build. Read-only pending-write safety, copy privacy, real history eligibility, visibility headlines and retained-name evidence reviewed/fixed. Separate final code review approved conditionally only on Q8 required display choice; C2a unaccepted/uncommitted, C2b/native live untouched. [C2a report](reports/C2a-2026-10-10.md).
+
+- 2026-10-10 — B2 committed `cbb3e2b`:23 exact reviewed code/test/plan/report files, index empty; original E9-E10.md draft preserved untracked. No push/live access. C2 next.
 
 - 2026-10-10 — B2 fixture safety accepted after independent final108 approval and root730/149native/77scenarios/143app/build checks. Scope/CAS/trust/format/continuous-lock mutants exercise real failure assertions. Native protocols/live still fail closed; commit pending, no push.
 

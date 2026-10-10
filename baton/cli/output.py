@@ -110,9 +110,9 @@ def turn(value: LedgerTurn, messages: Sequence[Message] | None = None) -> dict[s
 
 def side_usage(value: Usage) -> dict[str, Any]:
     """Side.usage: tokens in use, the size if known, the percent, and the limit if one was hit."""
-    percent = round(value.tokens * 100 / value.size, 1) if value.size else None
-    return {"tokens": value.tokens, "size": value.size, "percent": percent,
-            "limit": {"resets_at": value.limit_resets_at} if value.limit_reached else None}
+    from ..services.usage import SideUsage, context_use, limit_state
+    return SideUsage('', context_use(value), limit_state(value, ''), ()).as_contract()
+
 
 
 def since_you_left(turns: int, files: int, commands: int, since: str) -> dict[str, Any]:
@@ -190,3 +190,134 @@ def internal_error(failure: BaseException) -> dict[str, Any]:
 def usage_error(message_text: str) -> dict[str, Any]:
     """The error object for a command line that could not be understood."""
     return {"error": {"kind": "usage", "message": message_text}}
+
+
+# C2 read projections: domain objects enter here; only catalogue text leaves.
+def read_chat(item):
+    """Serialize a locator reference and its observed link ownership."""
+    link = item['link']
+    return chat_from_ref(item['tool'], item['ref'], bool(link), link.id if link else None)
+
+
+def link_summary(fresh):
+    """Serialize a link headline including outstanding visibility instructions."""
+    link, state = fresh['link'], fresh['status']
+    from ..services.status import link_headline
+    return {'link_id': link.id,
+            'sides': {s: chat_from_ref(s, fresh['refs'][s], True, link.id) for s in link.sides},
+            'mode': link.mode, 'paused': link.paused, 'headline': note(*link_headline(state, fresh['missing'])),
+            'in_sync': state.in_sync and not fresh['missing'], 'decision_needed': state.decision_needed,
+            'needs_attention': bool(fresh['missing'] or state.paused or state.decision_needed or not state.in_sync
+                                    or any(s.needs for s in state.sides.values()))}
+
+
+def read_status(fresh, with_messages=False):
+    """Serialize canonical public status and explicit reached receipts."""
+    link, state = fresh['link'], fresh['status']
+    sides = {}
+    for tool in link.sides:
+        sides[tool] = side(state.side(tool), chat_info=chat_from_ref(tool, fresh['refs'][tool], True, link.id),
+                           condition=fresh['conditions'][tool], usage=fresh['usage'][tool],
+                           since=fresh['digests'][tool], notes=note_list(fresh['side_notes'][tool]))
+        if tool in fresh['coverage']:
+            sides[tool]['summary_coverage'] = fresh['coverage'][tool]
+    turns = [turn(row, fresh['canonical_messages'].get(row.id, ()) if with_messages else None)
+             for row in fresh['turns']]
+    boundaries = {}
+    for tool, value in state.sides.items():
+        if value.synced_up_to:
+            boundaries.setdefault(value.synced_up_to.id, []).append(tool)
+    receipts = []
+    for ident, tools in boundaries.items():
+        row = next(t for t in fresh['turns'] if t.id == ident)
+        if len(tools) == len(link.sides) and all(row.states[t] in ('shown', 'written_here') for t in tools):
+            receipts.append(note('screen.received_both', {'seq': row.seq}))
+        else:
+            receipts.extend(note('screen.received_one' if row.states[t] in ('shown', 'written_here') else
+                                 'screen.received_hidden_tool', {'tool': t, 'seq': row.seq}) for t in tools)
+    return {'link_id': link.id, 'mode': link.mode, 'paused': link.paused,
+            'in_sync': state.in_sync and not fresh['missing'], 'decision_needed': state.decision_needed,
+            'sides': sides, 'turns': turns, 'notes': [link_summary(fresh)['headline'],
+              note('status.checked', {'at': fresh['checked_at']}), *receipts]}
+
+
+def read_setup(items):
+    """Render setup facts, findings and mode labels from the catalogue."""
+    result = []
+    for item in items:
+        row = {**item, 'tool_label': label(item['tool']),
+               'findings': [{**f, 'note': note(*f['note'])} for f in item['findings']]}
+        row['link_modes'] = [{**mode, 'label': note(*mode['label']), 'tag': None,
+                              'reason': note(*mode['reason']) if mode['reason'] else None}
+                             for mode in item['link_modes']]
+        result.append(row)
+    return {'tools': result, 'notes': note_list(('dialog.link', 'dialog.target', 'dialog.target_chat',
+             'dialog.new_chat', 'dialog.retained_side', 'dialog.ways', 'dialog.what_will_happen', 'dialog.actions'))}
+
+
+def read_merge(value):
+    """Serialize merge rows and string preset labels without private messages."""
+    from ..domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT
+    rows = []
+    for row in value['unsynced']:
+        actual = value['messages'][row.id]
+        public = [m for m in (actual.prompt, *actual.messages) if m.kind in (PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT)]
+        rows.append(turn(row, public))
+    presets = []
+    for preset in value['presets']:
+        ident = preset['id']
+        title = note('merge.preset_time' if ident == 'by_time' else 'merge.preset_keep' if ident == 'dont_reorder'
+                     else 'merge.preset_first', {'tool': ident.removesuffix('_first')})
+        presets.append({**preset, 'label': title['text'], 'label_note': title})
+    return {**{k: v for k, v in value.items() if k not in ('last_shared', 'unsynced', 'messages', 'presets')},
+            'last_shared': turn(value['last_shared']) if value['last_shared'] else None,
+            'unsynced': rows, 'presets': presets, 'notes': note_list(('merge.decision_needed',)) if value.get('decision_needed') else []}
+
+
+_HISTORY = {'linked': 'history.linked', 'add': 'history.added', 'added': 'history.added',
+            'delivered': 'history.added', 'synced': 'history.added', 'place': 'history.added',
+            'attached': 'history.attached', 'create': 'history.created', 'created': 'history.created',
+            'twin_created': 'history.created', 'merge': 'history.merged', 'undo': 'history.undone',
+            'restore': 'history.restored', 'paused': 'history.paused', 'resumed': 'history.resumed',
+            'unlinked': 'history.removed', 'removed': 'history.removed', 'link_removed': 'history.removed',
+            'moved': 'history.moved', 'link_moved': 'history.moved',
+            'brief': 'history.brief', 'aligned': 'history.aligned',
+            'attach_pending': 'history.attach_pending', 'not_confirmed': 'history.not_confirmed',
+            'undo_shown': 'history.undo_shown'}
+
+
+def read_history(items):
+    """Label completed actions and bookkeeping without changing their records or eligibility."""
+    events = []
+    for item in items:
+        event = item['event']
+        ident = _HISTORY.get(event.kind, 'history.recorded')
+        if event.kind in ('aligned', 'attach_pending', 'not_confirmed') and len(event.turn_ids) == 1:
+            ident += '_one'
+        rendered = note(ident, {'tool': event.side, 'n': len(event.turn_ids)})
+        events.append({'id': event.id, 'at': event.at, 'kind': event.kind, 'tool': event.side or None,
+                       'turns': list(event.turn_ids), 'text': rendered['text'],
+                       'can_undo': item['can_undo'], 'can_restore': item['can_restore']})
+    return {'events': events}
+
+
+def read_settings(values, defaults):
+    """Serialize current values and labels for the authoritative defaults."""
+    notes = []
+    for key, value in defaults.items():
+        data = {'key': key, 'tool': 'claude'} if key == 'add_to_idle_claude' else {'key': key}
+        notes.append(note('settings.' + key, data))
+        if isinstance(value, bool):
+            default = note('settings.on' if value else 'settings.off')['text']
+        elif key == 'theme':
+            default = note('screen.theme.' + value)['text']
+        elif key in ('merge', 'add_to_idle_claude'):
+            default = note('settings.' + value)['text']
+        else:
+            default = str(value)
+        notes.append(note('settings.default', {'key': key, 'value': default}))
+    notes.extend(note_list(('settings.appearance', 'settings.sync', 'settings.chats', 'settings.reset', 'settings.on',
+              'settings.off', 'settings.on_button', 'settings.automatic', 'settings.ask', 'settings.by_time',
+              'screen.theme.system', 'screen.theme.light', 'screen.theme.graphite', 'settings.glass_help',
+              'settings.apply', 'settings.saved', 'settings.error', 'settings.invalid', 'settings.loading')))
+    return {'settings': values, 'notes': notes}

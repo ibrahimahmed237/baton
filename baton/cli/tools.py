@@ -31,3 +31,23 @@ LABELS: dict[str, str] = {entry.id: entry.label for entry in TOOLS}
 def label(tool: str) -> str:
     """Return the display label of a tool id, or the id itself when it is not known."""
     return LABELS.get(tool, tool)
+
+
+def installed(tool: str) -> bool:
+    """Probe executable presence without running it or treating sign-in as installation."""
+    from shutil import which
+    from pathlib import Path
+    bundles = {
+        'claude': ('Claude Code.app',), 'codex': ('Codex.app',),
+        'cursor': ('Cursor.app',), 'opencode': ('OpenCode.app',)}
+    if tool not in LABELS:
+        return False
+    if which(tool) is not None:
+        return True
+    if tool == 'codex':
+        from ..adapters.codex.runner import BUNDLED_CLI
+        if Path(BUNDLED_CLI).is_file():
+            return True
+    folders = (Path('/Applications'), Path.home() / 'Applications')
+    return any((folder / bundle / 'Contents' / 'Info.plist').is_file()
+               for folder in folders for bundle in bundles[tool])

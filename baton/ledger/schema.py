@@ -1,4 +1,13 @@
 """Additive schema for durable write intents and saved rollback data."""
+READ_METADATA_SCHEMA = """
+create table if not exists chat_metadata(
+ tool text not null, chat text not null, payload text not null,
+ primary key(tool,chat)
+);
+create table if not exists settings(
+ key text primary key, value text not null
+);
+"""
 JOURNAL_SCHEMA = """
 create table if not exists journal(
  id integer primary key,

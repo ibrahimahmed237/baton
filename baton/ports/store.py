@@ -14,6 +14,22 @@ class RecordStore(Protocol):
         """Close the store."""
         ...
 
+    def remember_chat(self, tool: str, chat: str, payload: dict) -> None:
+        """Cache observed identity/name metadata without touching a native chat."""
+        ...
+
+    def known_chat(self, tool: str, chat: str) -> dict | None:
+        """Return the last observed chat reference, including for a missing chat."""
+        ...
+
+    def settings_values(self) -> dict:
+        """Read stored configuration values."""
+        ...
+
+    def save_setting(self, key: str, value: Any) -> None:
+        """Store a configuration value; no native mutation or recovery."""
+        ...
+
     def link(self, chats: Mapping[str, str], mode: str, at: str = "") -> Link:
         """Link two unlinked chats."""
         ...

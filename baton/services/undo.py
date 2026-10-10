@@ -47,15 +47,15 @@ class UndoResult:
     rollback_errors: tuple[dict, ...] = ()
 
 
-class Undo:
-    """Undo only after an unchanged preview, preserving every earlier chat."""
+class UndoPreview:
+    """Recovery-free preparation of existing undo and restore boundaries."""
     def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
         self.store, self.adapters, self.clock = store, adapters, clock
-        self.applier = Applier(store, adapters, clock)
-        self.recovery = self.applier.recovery
+        from .preview import PreviewBuilder
+        self.observation = PreviewBuilder(store, adapters)
 
     def _record(self, link_id):
-        record = self.applier._record(link_id)
+        record = self.observation._record(link_id)
         record['local_ids'] = {s: self.store.local_ids(link_id, s)
                                for s in self.store.get_link(link_id).sides}
         return record
@@ -75,7 +75,7 @@ class Undo:
     def _check_snapshots(self, snapshots):
         for key, snapshot in snapshots.items():
             try:
-                fresh = self.applier._snapshot(snapshot['side'], snapshot['chat_id'])
+                fresh = self.observation._snapshot(snapshot['side'], snapshot['chat_id'])
             except KeyError:
                 raise ChatChanged() from None
             fresh['side'] = snapshot['side']
@@ -83,7 +83,7 @@ class Undo:
                 raise ChatChanged()
 
     def _snapshot(self, side, chat):
-        return dict(self.applier._snapshot(side, chat), side=side)
+        return dict(self.observation._snapshot(side, chat), side=side)
 
     @staticmethod
     def _undo_note(facts, action):
@@ -340,6 +340,13 @@ class Undo:
         detail = {'undo_event': asdict(event)}
         return self._finish(UndoPlan('', link_id, event_id, 'restore', tuple(steps), snapshots,
                                      record, (), {}, detail, ('undo.restore' if any(s.action == 'restore' for s in steps) else 'undo.earlier_chat',)))
+
+class Undo(UndoPreview):
+    """Recover abandoned writes, then execute confirmed undo/restore previews."""
+    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
+        super().__init__(store, adapters, clock)
+        self.applier = Applier(store, adapters, clock)
+        self.recovery = self.applier.recovery
 
     def apply(self, plan: UndoPlan) -> UndoResult:
         """Carry out an exact preview with fresh guards and rollback on any failure."""

@@ -1,13 +1,13 @@
 """Confirmed linking and copying without changing either existing chat."""
 from __future__ import annotations
 
+from difflib import SequenceMatcher
+
 from copy import deepcopy
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime
-from difflib import SequenceMatcher
 from hashlib import sha256
 import json
-from itertools import combinations
 from typing import Mapping
 
 from ..domain.capabilities import Visibility, WriteWindow
@@ -343,6 +343,9 @@ class Linker:
                 target_chat = plan.observations[plan.target]['ref']['id']
                 target_turns = self._turns(plan.observations[plan.target]['turns'])
                 state,receipt = SHOWN,None
+            self.store.remember_chat(plan.source, source_chat, plan.observations[plan.source]['ref'])
+            target_ref = asdict(self.adapters[plan.target].locator.resolve(target_chat))
+            self.store.remember_chat(plan.target, target_chat, target_ref)
             rows = self._rows(plan.source,plan.target,source_turns,target_turns,state)
             if (target_turns and plan.observations.get(plan.target, {}).get('condition', {}).get('replying')):
                 for row in rows:
@@ -393,15 +396,5 @@ class Linker:
 
     def suggestions(self) -> list[dict]:
         """Suggest unlinked pairs by ordered public-content matches, never counts alone."""
-        result = []
-        for (a,first),(b,second) in combinations(self.adapters.items(),2):
-            for left in first.locator.chats():
-                if self.store.link_for(a,left.id): continue
-                one = [content_key(t) for t in first.reader.read(left.id)]
-                for right in second.locator.chats():
-                    if self.store.link_for(b,right.id): continue
-                    two = [content_key(t) for t in second.reader.read(right.id)]
-                    matched = sum(block.size for block in SequenceMatcher(None,one,two,autojunk=False).get_matching_blocks())
-                    if matched:
-                        result.append({'a':(a,left),'b':(b,right),'matched_turns':matched})
-        return result
+        from .read_views import suggestions
+        return suggestions(self.store, self.adapters)

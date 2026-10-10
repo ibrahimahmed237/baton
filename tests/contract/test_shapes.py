@@ -270,7 +270,7 @@ class LinksOnAnEmptyHome(unittest.TestCase):
         status, result = run(self.root, "links", adapters=adapters)
         self.assertEqual(status, 0)
         (summary,) = result["links"]
-        self.assertEqual(set(summary), {"link_id", "sides", "mode", "paused", "headline", "in_sync", "decision_needed"})
+        self.assertEqual(set(summary), {"link_id", "sides", "mode", "paused", "headline", "in_sync", "decision_needed", "needs_attention"})
         self.assertEqual((summary["link_id"], summary["mode"], summary["paused"]), (link.id, "full_copy", False))
         self.assertEqual(set(summary["sides"]), {"claude", "codex"})
         self.assertEqual(set(summary["sides"]["claude"]), CHAT)
@@ -290,7 +290,7 @@ class LinksOnAnEmptyHome(unittest.TestCase):
         with patch.object(adapters["codex"].writer, "take_back", side_effect=AssertionError("read must not write")):
             code, result = run(self.root, "links", adapters=adapters)
         self.assertEqual(code, 0)
-        self.assertEqual(result["links"][0]["link_id"], link.id)
+        self.assertEqual(result["error"]["kind"], "chat_changed")
         self.assertEqual(adapters["codex"].reader.read(target), turns()[:1])
         check = build(self.root, adapters=adapters)
         self.addCleanup(check.close)

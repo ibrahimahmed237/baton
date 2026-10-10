@@ -2,7 +2,7 @@
 
 One page that shows the whole road. [STATUS.md](STATUS.md) says what is happening this hour; this page says how far the whole build is. Updated whenever a package or checkpoint changes state.
 
-**Last updated:** 2026-10-10 · **You are here:** CP2 review/repair; G2/G3/C1 committed; E9/D6 committed; E10/D7 committed; B2 fixture safety accepted, committing; C2 next, CP2 not passed
+**Last updated:** 2026-10-10 · **You are here:** CP2 review/repair; G2/G3/C1 committed; E9/D6 committed; E10/D7 committed; B2 fixture safety committed cbb3e2b; C2a accepted, commit prepared, C2b generation next; CP2 not passed
 
 ```
 CP0 ✅ ── CP1 ✅ ── CP2 ◐ ── CP3 ○ ── CP4 ○ ── CP5 ○ ── works on my Mac ○
@@ -21,12 +21,12 @@ G2 common app check, G3 brand assertion and C1 accepted on 2026-10-09; G2 dab931
 |---|---|---|---|---|---|
 | **CP0** ✅ | E0 ✅ E1 ✅ | B0 fake ✅ | | D0 ✅ | |
 | **CP1** ✅ | E2 ✅ E3 ✅ E4 ✅ E5 ✅ E6 ✅ | | | D1 ✅ D2 ✅ D3 ✅ D4 ✅ | |
-| **CP2** ◐ | R10 ✅ E7 merge ✅ E8 undo ✅ E9 usage ✅ E10 briefs ✅ | B1 Claude ✅ (fixtures) B2 Codex ✅ (fixtures) | C1 skeleton ✅ C2 read commands ○ | D4b ✅ D5 ✅ UI1–UI13 ✅ D6 confirmation ✅ D7 hand-off ✅ | Claude and Codex adapters on two throwaway chats ○ (Ibrahim said go) |
+| **CP2** ◐ | R10 ✅ E7 merge ✅ E8 undo ✅ E9 usage ✅ E10 briefs ✅ | B1 Claude ✅ (fixtures) B2 Codex ✅ (fixtures) | C1 skeleton ✅ C2 read commands ◐ | D4b ✅ D5 ✅ UI1–UI13 ✅ D6 confirmation ✅ D7 hand-off ✅ | Claude and Codex adapters on two throwaway chats ○ (Ibrahim said go) |
 | **CP3** ○ | E11 keep, pin, pause, names ○ E12 notes audit ○ E13 setup check, relaunch ○ | B3 OpenCode ○ B4 Cursor ○ | C3 action commands ○ C4 hooks ○ C5 relaunch ○ C6 background runs ○ | D8 merge ○ D9 history, undo ○ D10 second opinion ○ D11 setup, settings ○ | Catch-up at send and sync at turn end in all four tools; relaunch for Claude and Cursor ○ |
 | **CP4** ○ | | | C7 limit offer, file watching ○ | D12 wire to the real engine ○ | Each screen by hand against throwaway chats ○ |
 | **CP5** ○ | | | | D13 polish ○ | The CP5 checklist in [CHECKPOINTS.md](CHECKPOINTS.md) ○ |
 
-**Count:** 55 packages. 38 done, 0 in review or repair, 17 not started. Plus four live checks, none done yet.
+**Count:** 55 packages. 38 whole packages done, C2a accepted as first C2 boundary, 1 whole package in progress, 16 not started. Plus four live checks, none done yet.
 
 ## What "finished" means
 
@@ -46,3 +46,13 @@ The seven points of "The finish line" in [ORCHESTRATOR.md](ORCHESTRATOR.md): all
 Read [STATUS.md](STATUS.md) (Now and Next), then this page, then the package text in the track file. Nothing else is needed.
 
 2026-10-10 B2 safety fixture boundary:730 engine/143 app/build,149 native fixture tests and77 CP2 scenarios pass; independent review accepted. C2 generation and native live gates remain.
+
+B2 committed `cbb3e2b`,23 reviewed files; index empty. Historical E9-E10.md preserved untracked. C2 next; no push/live.
+
+C2a started: recovery-free reads, additive metadata/settings and approved labels. Builder and separate reviewer active; C2b277 generated fixtures remains next. Whole C2/CP2 acceptance unchanged.
+
+C2a758 engine/147 focused/143 app/build green; Q8 history display and final acceptance remain, no C2a commit yet. C2b277 generation and native live checks still owed; overall CP2 fail/incomplete.
+
+C2a separate code review closed; acceptance conditional only on required Q8 history display approval and final regression. Source frozen, no C2a commit; internal execution split does not change whole C2 acceptance.
+
+Ibrahim Q8 chose bookkeeping with distinct labels; separate final review approves C2a761 engine/150 focused/143 app/build. Commit prepared; whole C2 remains ◐ until C2b277 generated fixtures. Native live acceptance still owed; CP2 fail/incomplete.
