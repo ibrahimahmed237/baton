@@ -1,68 +1,40 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
-      "needs": [],
-      "notes": [
-        {
-          "id": "fixture.links.ready",
-          "tone": "ok",
-          "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
   "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
   "notes": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
       "buttons": [
         {
-          "id": "open",
-          "label": "Open sample chat",
+          "id": "restore",
+          "label": "Restore",
           "primary": true
         },
         {
           "id": "cancel",
-          "label": "Cancel"
+          "label": "Cancel",
+          "primary": false
         }
       ],
-      "status_line": "Sample ready"
+      "id": "undo.restore",
+      "status_line": null,
+      "text": "Restore",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_55382963b16f4ce91282ce9abc9231dd96cba34b78375976614edd2bd33f9fe9",
+  "removes": [],
+  "steps": [
+    {
+      "action": "restore",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
     }
   ]
 }

@@ -1,94 +1,165 @@
 {
+  "automatic_allowed": false,
+  "decision_needed": true,
   "last_shared": null,
-  "unsynced": [
+  "notes": [
     {
-      "id": 41,
-      "seq": 1,
-      "origin": "codex",
-      "first_line": "Describe an imaginary orchard.",
-      "started_at": "2026-10-04T14:00:00Z",
-      "ended_at": "2026-10-04T14:01:00Z",
-      "tokens": 1600,
-      "pinned": false,
-      "states": {
-        "claude": "added",
-        "codex": "written_here"
-      },
-      "messages": [
+      "buttons": [
         {
-          "kind": "prompt",
-          "text": "Describe an imaginary orchard."
-        },
-        {
-          "kind": "reply",
-          "text": "Silver pears grow beneath a violet sky."
-        },
-        {
-          "kind": "tool_call",
-          "text": "List fictional trees.",
-          "tool": "sample-tool"
-        },
-        {
-          "kind": "tool_result",
-          "text": "Silver pear.",
-          "tool": "sample-tool"
+          "id": "merge_show",
+          "label": "Decide",
+          "primary": true
         }
-      ]
+      ],
+      "id": "merge.decision_needed",
+      "status_line": "A decision is needed",
+      "text": "Both sides have turns the other never received. A decision is needed.",
+      "tone": "warning",
+      "values": {}
     }
   ],
+  "offer_brief": false,
   "order": [
-    41
-  ],
-  "presets": [
-    {
-      "id": "by_time",
-      "order": [
-        41
-      ]
-    }
+    41,
+    42
   ],
   "outcome": {
     "claude": "keeps_chat",
     "codex": "merged_copy"
   },
-  "overlaps": [
-    [
-      41,
-      42
-    ]
+  "overlaps": [],
+  "presets": [
+    {
+      "id": "by_time",
+      "label": "By time",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_time",
+        "status_line": null,
+        "text": "By time",
+        "tone": "info",
+        "values": {
+          "tool": "by_time"
+        }
+      },
+      "order": [
+        41,
+        42
+      ]
+    },
+    {
+      "id": "claude_first",
+      "label": "Claude first",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_first",
+        "status_line": null,
+        "text": "Claude first",
+        "tone": "info",
+        "values": {
+          "tool": "Claude"
+        }
+      },
+      "order": [
+        41,
+        42
+      ]
+    },
+    {
+      "id": "codex_first",
+      "label": "Codex first",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_first",
+        "status_line": null,
+        "text": "Codex first",
+        "tone": "info",
+        "values": {
+          "tool": "Codex"
+        }
+      },
+      "order": [
+        42,
+        41
+      ]
+    },
+    {
+      "id": "dont_reorder",
+      "label": "Keep each chat’s order",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_keep",
+        "status_line": null,
+        "text": "Keep each chat’s order",
+        "tone": "info",
+        "values": {
+          "tool": "dont_reorder"
+        }
+      },
+      "order": [
+        41,
+        42
+      ]
+    }
   ],
   "same_files": [
     {
-      "file": "imaginary.txt",
+      "file": "orchard.py",
       "turns": [
         41,
         42
       ]
     }
   ],
-  "notes": [
+  "tokens": 18,
+  "unsynced": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
-      "buttons": [
+      "ended_at": "2026-10-05T12:03:00Z",
+      "first_line": "Orchard task 3",
+      "id": 41,
+      "messages": [
         {
-          "id": "open",
-          "label": "Open sample chat",
-          "primary": true
+          "kind": "prompt",
+          "text": "Orchard task 3"
         },
         {
-          "id": "cancel",
-          "label": "Cancel"
+          "kind": "reply",
+          "text": "Completed orchard work."
         }
       ],
-      "status_line": "Sample ready"
+      "origin": "claude",
+      "pinned": false,
+      "seq": 1,
+      "started_at": "2026-10-05T12:03:00Z",
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:04:00Z",
+      "first_line": "Orchard task 4",
+      "id": 42,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 4"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "codex",
+      "pinned": false,
+      "seq": 2,
+      "started_at": "2026-10-05T12:04:00Z",
+      "states": {
+        "claude": "waiting",
+        "codex": "written_here"
+      },
+      "tokens": 9
     }
   ]
 }

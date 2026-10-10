@@ -4,8 +4,14 @@ import Testing
 import BatonKit
 @testable import BatonUI
 
+private enum DialogReceiptError: Error { case staleOrChangedRequest }
+
+/// Request-bound transport simulator; Python contract tests prove the actual service effects.
 private actor DialogRecordingEngine: EngineTransport {
     var calls: [(String, [String])] = []
+    private var previews: [String: (command: String, arguments: [String])] = [:]
+    private var receiptCount = 0
+    func receipts() -> Int { receiptCount }
     var fullUnavailable = false
     func disableFullCopy() { fullUnavailable = true }
     var delayChats = false
@@ -39,7 +45,16 @@ private actor DialogRecordingEngine: EngineTransport {
         }
         if command == "link" {
             var plan: LinkResult = try await fixture.response(command: command, arguments: arguments, as: LinkResult.self)
-            if arguments.contains("--confirm") { plan.applied = true }
+            if let index = arguments.firstIndex(of: "--confirm") {
+                guard arguments.indices.contains(index + 1),
+                      let preview = previews.removeValue(forKey: arguments[index + 1]),
+                      preview.command == command, preview.arguments == Array(arguments.prefix(index)),
+                      plan.planID == arguments[index + 1] else { throw DialogReceiptError.staleOrChangedRequest }
+                receiptCount += 1
+                plan.applied = true
+            } else {
+                previews[plan.planID] = (command, arguments.filter { $0 != "--dry-run" })
+            }
             data = try JSONEncoder().encode(plan)
         } else if command == "relink" {
             let plan: RelinkResult = try await fixture.response(command: command, arguments: arguments, as: RelinkResult.self)
@@ -57,6 +72,30 @@ struct LinkDialogTests {
         let source: Chat = try await engine.response(command: "chat", arguments: [], as: Chat.self)
         let model = LinkDialogViewModel(engine: engine); await model.load(source: source); return model
     }
+    @Test func receiptSimulatorRefusesUnknownChangedAndConsumedPlans() async throws {
+        let engine = DialogRecordingEngine()
+        let request = ["--from", "opencode:source", "--to", "claude", "--mode", "full_copy"]
+        let preview: LinkResult = try await engine.response(command: "link", arguments: request + ["--dry-run"], as: LinkResult.self)
+        do {
+            let _: LinkResult = try await engine.response(command: "link", arguments: request + ["--confirm", "unknown"], as: LinkResult.self)
+            Issue.record("Unknown confirmation token was accepted")
+        } catch DialogReceiptError.staleOrChangedRequest {}
+        var changed = request; changed[1] = "opencode:other"
+        do {
+            let _: LinkResult = try await engine.response(command: "link", arguments: changed + ["--confirm", preview.planID], as: LinkResult.self)
+            Issue.record("Changed request was accepted")
+        } catch DialogReceiptError.staleOrChangedRequest {}
+        #expect(await engine.receipts() == 0)
+        let fresh: LinkResult = try await engine.response(command: "link", arguments: request + ["--dry-run"], as: LinkResult.self)
+        let receipt: LinkResult = try await engine.response(command: "link", arguments: request + ["--confirm", fresh.planID], as: LinkResult.self)
+        #expect(receipt.applied)
+        do {
+            let _: LinkResult = try await engine.response(command: "link", arguments: request + ["--confirm", fresh.planID], as: LinkResult.self)
+            Issue.record("Consumed token was accepted twice")
+        } catch DialogReceiptError.staleOrChangedRequest {}
+        #expect(await engine.receipts() == 1)
+    }
+
     @MainActor @Test func eachTargetShowsItsOwnEngineNotesAndEligibility() async throws {
         for state in Self.states {
             let model = try await loaded(state)
@@ -65,8 +104,9 @@ struct LinkDialogTests {
             #expect(model.targetTools.allSatisfy { $0.tool != model.source?.tool })
             #expect(model.modes.count == 3)
             #expect(!model.canConfirm)
-            if state == "already" { #expect(model.currentLink?.linkID == 3); #expect(model.plan?.decisionNeeded == true) }
+            if state == "already" { #expect(model.currentLink?.linkID == 3); #expect(model.planNotes.contains { $0.id == "link.already_linked" }); #expect(!model.canConfirm) }
             if state == "unavailable" {
+                await model.selectTarget("opencode")
                 let unavailable = try #require(model.modes.first { !$0.available })
                 #expect(unavailable.reason != nil)
                 let before = model.mode; await model.selectMode(unavailable.mode); #expect(model.mode == before)
@@ -129,8 +169,9 @@ struct LinkDialogTests {
         #expect(model.plan?.planID != oldID)
         #expect(model.planNotes.contains { $0.id == "link.attached_history" })
         #expect(!model.canConfirm)
-        await model.selectChat("destination"); await model.selectMode("brief")
-        #expect(model.targetChat == "destination"); #expect(model.mode == "attached_history")
+        let destination = try #require(model.targetChats.first?.id)
+        await model.selectChat(destination); await model.selectMode("brief")
+        #expect(model.targetChat == destination); #expect(model.mode == "attached_history")
         let fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_opencode")
         let source: Chat = try await fixture.response(command: "chat", arguments: [], as: Chat.self)
         await model.load(source: source); #expect(model.targetChat == nil); #expect(model.mode == "full_copy")
@@ -172,11 +213,15 @@ struct LinkDialogTests {
         #expect(model.planNotes.contains { $0.id == "link.full_copy" })
         #expect(model.planNotes.contains { $0.text.contains("current chat stays exactly as it is") })
     }
-    @MainActor @Test func unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() async throws {
+    @MainActor @Test func unavailableFormatOffersOnlyItsMeasuredReasonAndCopyOffersLink() async throws {
         let model = try await loaded("unavailable")
-        let expected = ["opencode": "setup.restart_once", "codex": "setup.trust_once", "claude": "setup.hooks", "cursor": "setup.hooks"]
         for tool in model.tools {
-            #expect(tool.linkModes?.first { !$0.available }?.reason?.id == expected[tool.tool])
+            if tool.tool == "opencode" {
+                #expect(tool.linkModes?.first { !$0.available }?.reason?.id == "format.unknown_version")
+                #expect(tool.linkModes?.first { $0.mode == "attached_history" }?.available == true)
+            } else {
+                #expect(tool.linkModes?.allSatisfy(\.available) == true)
+            }
         }
         await model.choose(.copy)
         #expect(model.buttons.contains { $0.id == "copy_and_link" && $0.label == "Copy and link" })

@@ -1,69 +1,25 @@
 {
-  "plan_id": "p_d7_limit_no_reset_generate",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "brief.skipped_no_runner",
-      "tone": "warning",
-      "values": {
-        "tool": "OpenCode"
-      },
-      "text": "OpenCode can't run in the background, so it was not asked to write the brief.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.cost",
-      "tone": "info",
-      "values": {
-        "tool": "Codex",
-        "tokens": "1,800",
-        "writer_id": "codex"
-      },
-      "text": "Codex can write this read-only brief using about 1,800 tokens.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.total_cost",
-      "tone": "info",
-      "values": {
-        "tokens": "1,800"
-      },
-      "text": "If fallback is needed, the listed requests total about 1,800 tokens. Each writer is tried at most once.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.pinned_size",
-      "tone": "info",
-      "values": {
-        "tokens": "3,200"
-      },
-      "text": "Pinned turns add about 3,200 tokens in full.",
-      "buttons": [],
-      "status_line": null
-    }
-  ],
-  "stage": "generate",
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "01fa7374b04eff1d69d8b71b55801caad669210903d20008b8b0a2831e82137b",
+        "tokens": 165154,
+        "writer": "codex"
+      }
+    ],
+    "estimated_tokens": 165154,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 18,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "codex"
+  },
   "confirmation": {
-    "id": "plan.confirm_brief_generation",
-    "tone": "info",
-    "values": {},
-    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
     "buttons": [
       {
         "id": "confirm",
@@ -76,25 +32,74 @@
         "primary": false
       }
     ],
-    "status_line": null
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
   },
-  "brief": {
-    "writer": "codex",
-    "tokens": 0,
-    "pinned": [
-      41,
-      43
-    ],
-    "estimated_tokens": 1800,
-    "candidate_estimates": [
-      {
-        "writer": "codex",
-        "tokens": 1800
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.skipped_limit",
+      "status_line": null,
+      "text": "OpenCode couldn't write the brief because it has reached its usage limit.",
+      "tone": "warning",
+      "values": {
+        "tool": "OpenCode"
       }
-    ],
-    "artifact_id": "",
-    "text": "",
-    "summary": "",
-    "pinned_tokens": 3200
-  }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Codex can write this read-only brief using about 165154 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 165154,
+        "tool": "Codex",
+        "writer_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 165154 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 165154
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 18 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 18
+      }
+    }
+  ],
+  "plan_id": "p_b0ab98328e6708f0db59714d7b22f791",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
 }

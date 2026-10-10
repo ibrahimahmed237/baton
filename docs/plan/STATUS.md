@@ -2,20 +2,19 @@
 
 The current hand-off page. Historical decisions, reviews and logs are in [reports/](reports/) and git history. Whole road: [MAP.md](MAP.md).
 
-**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-10
+**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-11
 
 ## Now
 
-**B2 fixture implementation/safety repairs committed `cbb3e2b`.** Root measured **730 engine tests,149 combined native fixture tests (108 Codex+41 Claude),77 CP2 scenarios,143 app tests and build pass**. All writes/reads remained temporary; no live chat/app access or push. [B2 report](reports/B2-2026-10-10.md), [current CP2 report](reports/CP2-2026-10-10.md). CP2 is **not passed**: C2 and native live evidence remain.
+**C2b accepted after root challenge and separate reviewer approval; commit being prepared on chore/project-setup.** Together with C2a `914d9d3`, C2 is complete for its approved read/service/generated-fixture boundary. Root measured **787 engine tests,146 app tests and build pass**,325 deterministic fixtures and255 non-empty renders. Own26 actual-effect/fixture checks,149 native-shaped fixture tests and82 focused CP2 scenarios pass. No live chat/app access or push. [C2b report](reports/C2b-2026-10-11.md), [current CP2 report](reports/CP2-2026-10-11.md).
 
-E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e39f` and C1 `e15e076` are committed. **C2a accepted, commit being prepared:** eight recovery-free read commands, private cached names/settings and full history including bookkeeping. Ibrahim Q8 chose new labels; independent final review approved with no findings. Root761 engine/150 focused/149 native/77 scenarios/143 app and build pass. [C2a report](reports/C2a-2026-10-10.md). C2b277 generated fixtures has not started; whole C2/CP2 remains incomplete. Historical untracked reports/E9-E10.md preserved. Normal approved Git writes work; never push. Session usage100%: commit this green package boundary and stop before C2b.
+**CP2 remains FAIL/incomplete solely at its required native live gate.** B1/B2 fixture implementations are accepted; Codex production mutation/automatic closure deliberately refuse until native coordination/trust/schema is verified. C3–C7/D12 production integration stays in its planned packages. D5 duplicate explanatory notes are a recorded nonblocking UI follow-up. Existing post-C2a records are included in this package; historical untracked reports/E9-E10.md stays preserved and excluded.
 
 ## Next
 
-1. Commit accepted **C2a**, then stop at this green boundary. Next run: build/review **C2b** deterministic generated fixtures under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md); whole C2 stays incomplete until both. At most two agents.
-
-2. C2 must prove service effects and identify future-only providers; D6/D7 transport counters are routing evidence only.
-3. After blockers close, list exact Claude/Codex throwaway live scope and ask for each app closure. CP2 cannot pass without its live evidence.
+1. Prepare the exact Claude/Codex throwaway live scope: named test identities, descendants/templates, files read/written, backup and cleanup. Ask Ibrahim for that run after listing scope, and for every app closure. Never use working chats or bypass production safety refusal.
+2. Establish native coordination/index/schema/marker/trust/visibility evidence; stop on any difference from measured specs. CP2 cannot pass and CP3 cannot start until the required live check succeeds.
+3. Ask for a separate small app follow-up to remove exact duplicate D5 plan/step notes while retaining changed/opposite-side notes and fresh display approval. No product UI policy was changed in C2b.
 
 ## Done
 
@@ -54,59 +53,11 @@ E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e3
 | E10 | 2026-10-09 | `ec88983` | 702 working-tree /622 isolated engine;143 app/build |
 | D7 | 2026-10-09 | `c8720bf` | 143 app and build;702 working-tree engine |
 | B2 fixture implementation/safety | 2026-10-10 | `cbb3e2b` | 730 engine /149 native /143 app and build; live owed |
+| C2a safe read commands | 2026-10-10 | `914d9d3` | 761 engine /150 focused /143 app/build; C2b generation followed |
 
 ## Ready to commit
 
-### C2a — accepted after independent review
-
-Exact paths:
-
-- `baton/cli/commands/chats.py`
-- `baton/cli/commands/history.py`
-- `baton/cli/commands/links.py`
-- `baton/cli/commands/merge.py`
-- `baton/cli/commands/settings.py`
-- `baton/cli/commands/setup.py`
-- `baton/cli/commands/status.py`
-- `baton/cli/commands/suggestions.py`
-- `baton/cli/output.py`
-- `baton/cli/tools.py`
-- `baton/cli/wiring.py`
-- `baton/ledger/read_metadata.py`
-- `baton/ledger/schema.py`
-- `baton/ledger/sqlite_store.py`
-- `baton/notes/catalogue.py`
-- `baton/ports/store.py`
-- `baton/services/linker.py`
-- `baton/services/merger.py`
-- `baton/services/read_views.py`
-- `baton/services/refresh.py`
-- `baton/services/settings_read.py`
-- `baton/services/setup_read.py`
-- `baton/services/status.py`
-- `baton/services/undo.py`
-- `docs/plan/CONTRACT.md`
-- `docs/plan/HANDOFF.md`
-- `docs/plan/MAP.md`
-- `docs/plan/STATUS.md`
-- `docs/plan/reports/B2-2026-10-10.md`
-- `docs/plan/reports/C2a-2026-10-10.md`
-- `docs/plan/reports/CP2-2026-10-10.md`
-- `docs/plan/track-c-cli-hooks.md`
-- `tests/contract/test_read_commands.py`
-- `tests/contract/test_shapes.py`
-- `tests/unit/test_read_metadata.py`
-
-Message:
-
-```text
-Show chat state without recovering unfinished writes
-
-Screens need accurate chat status without undoing a write in progress.
-Shared read projections preserve pending receipts, private content and
-visibility evidence, while history distinguishes completed actions from
-bookkeeping and retains known chat names across disappearance.
-```
+C2b accepted; normal approved Git staging/commit is being prepared. If Git fails, exact paths/message and sequential patch will be recorded here. Historical E9-E10.md is excluded.
 
 ## Decisions and reviewer findings
 
@@ -130,13 +81,23 @@ bookkeeping and retains known chat names across disappearance.
 - **Ibrahim Q7 approved, 2026-10-10:** setup label “Baton cannot use {tool} yet.” for a tool with no implemented adapter. Catalogue id `setup.adapter_unavailable`; no fabricated install/sign-in/trust remedy.
 
 
-- E9/E10/B2 fixture safety accepted after independent reviews. C2 safe read serialization/generated fixtures and native live acceptance remain; no issue is waived.
-- D6/D7 accepted for fixture screens; C2 service-backed/generated acceptance and D12 production integration remain. No native execution is inferred from screen transport tests.
-- C1 is complete as a skeleton; C2/C3 commands and installed entry-point verification remain. Direct Engine callers must hold command_lock before first service access through apply. C4 must bound lock acquisition within its two-second deadline.
+- E9/E10/B2 fixture safety and C2 read/generated acceptance complete after independent reviews. Native live acceptance remains; no issue is waived.
+- D6/D7 service-backed/generated acceptance complete; D12 production integration remains. No native execution is inferred from screen transport tests.
+- C1 skeleton and C2 reads complete; C3 actions and installed entry-point verification remain. Direct Engine callers must hold command_lock before first service access through apply. C4 must bound lock acquisition within its two-second deadline.
 - B2 safe fixture implementation is accepted; native coordination/index/schema/marker/trust/visibility remain unverified and production mutation/automatic closure safely refuse. B1 live acceptance also remains owed.
-- Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.
+- Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2 now generates fixtures from authoritative engine/service responses; D12 must wire production settings/reads.
 
 ## Log
+
+- 2026-10-11 — C2b independently approved:325 generated fixtures,787 engine/26 own/149 native/82 CP2 scenarios/146 app/build,255 renders. Root privacy mutant and independent fold/state-label mutants detected; all blocking findings closed. D5 duplicate notes deferred explicitly; CP2 native live still FAIL. Commit prepared, no push/live access.
+
+- 2026-10-11 — C2b private325-route batch passes146 app/build and independent11588-note/27-status audit. Root visually checked representative light/graphite screens; scoped label and folded-state defects fixed. Explicit tracked publication next; no native run/push.
+
+- 2026-10-11 — C2b private checks exposed catalogue drift, false trust/creation notes, missing receipt wording and single-tool fixture reuse. Root/builder fixes preserve actual service policy;324 routes planned, per-tool routing regression added. Publication held until temporary batch and app pass. No native run/push.
+
+- 2026-10-11 — Resumed C2b generation; initial status contains only five post-commit records and preserved historical E9-E10.md. No unfinished implementation. Baseline reproduced761 engine/143 app/build; builder and independent reviewer active, no live access/push.
+
+- 2026-10-10 — C2a committed `914d9d3`:35 exact reviewed code/test/contract/plan/report files, branch chore/project-setup, index empty; historical E9-E10.md preserved. Root761/150/143 and native149/scenarios77 pass. Q8 closed, C2b/live remain; no push. Commit tool response stalled after success; read-only Git verification established hash/index before stopping its wrapper, no retry.
 
 - 2026-10-10 — Ibrahim Q8 chose all bookkeeping visible with distinct labels. Root three actual-service/unknown-entry regressions and semantic mutant, separate final review: C2a accepted761 engine/150 focused/143 app/build;149 native/77 scenarios pass. Commit being prepared; C2b/live remain, no push.
 

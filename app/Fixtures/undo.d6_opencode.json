@@ -1,0 +1,80 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "undo",
+          "label": "Remove 2 turns from the OpenCode chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.cut_reopen",
+      "status_line": "Open the chat again to see the change",
+      "text": "This removes 2 turns from the OpenCode chat, listed below. If the chat is on screen, open it again to see the change. A copy is kept for 30 days.",
+      "tone": "warning",
+      "values": {
+        "n": 2,
+        "tool": "OpenCode"
+      }
+    }
+  ],
+  "plan_id": "p_a5435197178f625a1bc466b4d8c035c144bab8126a74bb47dd2d7020c75d85b1",
+  "removes": [
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:01:00Z",
+        "first_line": "Orchard task 1",
+        "id": 41,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 1,
+        "started_at": "2026-10-05T12:01:00Z",
+        "states": {
+          "codex": "written_here",
+          "opencode": "added"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "codex": "written_here",
+          "opencode": "added"
+        },
+        "tokens": 9
+      }
+    }
+  ],
+  "steps": [
+    {
+      "action": "cut",
+      "needs": [
+        "reopen_chat_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
+    }
+  ]
+}

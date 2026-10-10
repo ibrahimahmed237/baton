@@ -1,43 +1,25 @@
 {
-  "plan_id": "p_d2_decision_needed",
   "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
   "link_id": 3,
-  "steps": [
-    {
-      "tool": "codex",
-      "action": "hold",
-      "turns": [
-        41,
-        42
-      ],
-      "reason": "decision_needed",
-      "needs": [],
-      "notes": [
-        {
-          "id": "merge.decision_needed",
-          "tone": "warning",
-          "values": {},
-          "text": "Both sides have turns the other never received. A decision is needed.",
-          "buttons": [
-            {
-              "id": "merge_show",
-              "label": "Decide",
-              "primary": true
-            }
-          ],
-          "status_line": "A decision is needed"
-        }
-      ],
-      "tool_label": "Codex"
-    }
-  ],
-  "decision_needed": true,
   "notes": [
     {
-      "id": "merge.decision_needed",
-      "tone": "warning",
-      "values": {},
-      "text": "Both sides have turns the other never received. A decision is needed.",
       "buttons": [
         {
           "id": "merge_show",
@@ -45,8 +27,125 @@
           "primary": true
         }
       ],
-      "status_line": "A decision is needed"
+      "id": "merge.decision_needed",
+      "status_line": "A decision is needed",
+      "text": "Both sides have turns the other never received. A decision is needed.",
+      "tone": "warning",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
     }
   ],
-  "opened": false
+  "opened": false,
+  "plan_id": "p_future_d2_decision_needed",
+  "steps": [
+    {
+      "action": "hold",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 4 of 5 turns. Its chat shows 4; 1 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 4,
+            "tool": "Claude",
+            "total": 5,
+            "waiting": 1
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "show_changes",
+              "label": "Show what changed",
+              "primary": true
+            }
+          ],
+          "id": "digest.since_you_left",
+          "status_line": null,
+          "text": "Since your last message here at 12:04, Codex did 1 turn, changed 0 files and ran 0 commands.",
+          "tone": "info",
+          "values": {
+            "at": "12:04",
+            "commands": "0 commands",
+            "files": "0 files",
+            "tool": "Codex",
+            "turns": "1 turn"
+          }
+        }
+      ],
+      "reason": "decision_needed",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        45
+      ]
+    },
+    {
+      "action": "hold",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Codex's agent has 4 of 5 turns. Its chat shows 4; 1 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 4,
+            "tool": "Codex",
+            "total": 5,
+            "waiting": 1
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        }
+      ],
+      "reason": "decision_needed",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        44
+      ]
+    }
+  ]
 }

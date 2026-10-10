@@ -1,59 +1,25 @@
 {
-  "plan_id": "p_d4_relaunch",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "relaunch",
-      "turns": [
-        43,
-        44
-      ],
-      "reason": "fixture",
-      "needs": [],
-      "notes": [
-        {
-          "id": "write.app_must_close",
-          "tone": "warning",
-          "values": {
-            "tool": "Claude",
-            "n": 2
-          },
-          "text": "Baton closes Claude, writes, and opens Claude again on this folder; your windows come back. Baton never writes while Claude runs, because Claude would write over it.",
-          "buttons": [
-            {
-              "id": "close_sync_reopen",
-              "label": "Close Claude, sync, reopen",
-              "primary": true
-            },
-            {
-              "id": "attach",
-              "label": "Attach instead",
-              "primary": false
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel",
-              "primary": false
-            }
-          ],
-          "status_line": "2 turns waiting until Claude is closed"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
   "notes": [
     {
-      "id": "write.app_must_close",
-      "tone": "warning",
-      "values": {
-        "tool": "Claude",
-        "n": 2
-      },
-      "text": "Baton closes Claude, writes, and opens Claude again on this folder; your windows come back. Baton never writes while Claude runs, because Claude would write over it.",
       "buttons": [
         {
           "id": "close_sync_reopen",
@@ -61,8 +27,8 @@
           "primary": true
         },
         {
-          "id": "attach",
-          "label": "Attach instead",
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
           "primary": false
         },
         {
@@ -71,8 +37,30 @@
           "primary": false
         }
       ],
-      "status_line": "2 turns waiting until Claude is closed"
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Claude to see this chat",
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
     }
   ],
-  "replying": []
+  "plan_id": "p_future_d4_actions",
+  "replying": [],
+  "steps": []
 }

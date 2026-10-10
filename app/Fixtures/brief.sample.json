@@ -1,75 +1,112 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
-      "needs": [],
-      "notes": [
-        {
-          "id": "fixture.links.ready",
-          "tone": "ok",
-          "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "codex"
+      },
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 330304,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 17,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "codex"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Codex can write this read-only brief using about 165152 tokens.",
+      "tone": "info",
       "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
-      "buttons": [
-        {
-          "id": "open",
-          "label": "Open sample chat",
-          "primary": true
-        },
-        {
-          "id": "cancel",
-          "label": "Cancel"
-        }
-      ],
-      "status_line": "Sample ready"
+        "tokens": 165152,
+        "tool": "Codex",
+        "writer_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Claude can write this read-only brief using about 165152 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 165152,
+        "tool": "Claude",
+        "writer_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 330304 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 330304
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 17 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 17
+      }
     }
   ],
-  "brief": {
-    "writer": "offline",
-    "tokens": 120,
-    "pinned": [
-      41
-    ]
-  }
+  "plan_id": "p_194bd6c13285240aa60c53c68f45a4b1",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
 }

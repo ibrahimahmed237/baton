@@ -1,141 +1,80 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
-      "needs": [],
-      "notes": [
-        {
-          "id": "fixture.links.ready",
-          "tone": "ok",
-          "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
   "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
   "notes": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
       "buttons": [
         {
-          "id": "open",
-          "label": "Open sample chat",
+          "id": "undo",
+          "label": "Remove 2 turns from the Claude chat",
           "primary": true
         },
         {
           "id": "cancel",
-          "label": "Cancel"
+          "label": "Cancel",
+          "primary": false
         }
       ],
-      "status_line": "Sample ready"
+      "id": "undo.cut",
+      "status_line": "Relaunch Claude to stop seeing the removed turns",
+      "text": "This removes 2 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+      "tone": "warning",
+      "values": {
+        "n": 2,
+        "tool": "Claude"
+      }
     }
   ],
+  "plan_id": "p_cd6cf70e2805da5db1f40a72f760ab71e96f460e8a59f682fd74501a0d832a0e",
   "removes": [
     {
+      "only_here": false,
       "turn": {
+        "ended_at": "2026-10-05T12:01:00Z",
+        "first_line": "Orchard task 1",
         "id": 41,
-        "seq": 1,
         "origin": "codex",
-        "first_line": "Describe an imaginary orchard.",
-        "started_at": "2026-10-04T14:00:00Z",
-        "ended_at": "2026-10-04T14:01:00Z",
-        "tokens": 1600,
         "pinned": false,
+        "seq": 1,
+        "started_at": "2026-10-05T12:01:00Z",
         "states": {
           "claude": "added",
           "codex": "written_here"
         },
-        "messages": [
-          {
-            "kind": "prompt",
-            "text": "Describe an imaginary orchard."
-          },
-          {
-            "kind": "reply",
-            "text": "Silver pears grow beneath a violet sky."
-          },
-          {
-            "kind": "tool_call",
-            "text": "List fictional trees.",
-            "tool": "sample-tool"
-          },
-          {
-            "kind": "tool_result",
-            "text": "Silver pear.",
-            "tool": "sample-tool"
-          }
-        ]
-      },
-      "only_here": true
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      }
     }
   ],
-  "ends_at": {
-    "id": 41,
-    "seq": 1,
-    "origin": "codex",
-    "first_line": "Describe an imaginary orchard.",
-    "started_at": "2026-10-04T14:00:00Z",
-    "ended_at": "2026-10-04T14:01:00Z",
-    "tokens": 1600,
-    "pinned": false,
-    "states": {
-      "claude": "added",
-      "codex": "written_here"
-    },
-    "messages": [
-      {
-        "kind": "prompt",
-        "text": "Describe an imaginary orchard."
-      },
-      {
-        "kind": "reply",
-        "text": "Silver pears grow beneath a violet sky."
-      },
-      {
-        "kind": "tool_call",
-        "text": "List fictional trees.",
-        "tool": "sample-tool"
-      },
-      {
-        "kind": "tool_result",
-        "text": "Silver pear.",
-        "tool": "sample-tool"
-      }
-    ]
-  }
+  "steps": [
+    {
+      "action": "cut",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
 }

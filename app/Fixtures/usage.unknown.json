@@ -1,8 +1,6 @@
 {
-  "tokens": 10,
-  "size": null,
+  "limit": null,
   "percent": null,
-  "limit": {
-    "resets_at": null
-  }
+  "size": null,
+  "tokens": 164000
 }

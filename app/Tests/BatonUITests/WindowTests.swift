@@ -38,6 +38,7 @@ private actor ChangingWindowEngine: EngineTransport {
         if command == "history" {
             let originals = try #require(object["events"] as? [[String: Any]])
             var first = try #require(originals.first)
+            first["id"] = 1
             first["at"] = "2026-10-05T10:00:00Z"
             var later = first; later["id"] = 2; later["at"] = "2026-10-05T10:00:00.9Z"
             object["events"] = [first, later]
@@ -106,7 +107,9 @@ struct WindowTests {
         model.select(.chat("codex", "d3-unlinked-codex"))
         #expect(model.selection == .chat("codex", "d3-unlinked-codex"))
         model.navigate(to: .activity)
-        #expect(Set(model.activity.map(\.id)).count == 3)
+        #expect(Set(model.activity.map(\.id)).count == model.activity.count)
+        #expect(model.activity.contains { $0.event.kind == "linked" })
+        #expect(model.activity.contains { $0.event.kind == "aligned" })
         model.select(.event(3, 1))
         #expect(model.selection == .event(3, 1))
     }
@@ -126,8 +129,14 @@ struct WindowTests {
 
     @Test
     func legacyAttentionFlagIsOptional() throws {
-        let value = try JSONDecoder().decode(LinksResult.self, from: Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/links.sample.json")))
-        #expect(value.links.first?.needsAttention == nil)
+        let original = try Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/links.sample.json"))
+        var object = try #require(JSONSerialization.jsonObject(with: original) as? [String: Any])
+        var links = try #require(object["links"] as? [[String: Any]])
+        for index in links.indices { links[index].removeValue(forKey: "needs_attention") }
+        object["links"] = links
+        let value = try JSONDecoder().decode(LinksResult.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(!value.links.isEmpty)
+        #expect(value.links.allSatisfy { $0.needsAttention == nil })
     }
 
     @MainActor @Test
@@ -141,7 +150,7 @@ struct WindowTests {
         await engine.reorderSuggestions()
         await model.refresh()
         #expect(model.selection == original)
-        #expect(model.selectedSuggestion?.a.id == "d3-suggestion-claude")
+        #expect(model.selectedSuggestion?.a.id == "d3-unlinked-claude")
         await engine.removeFirstSuggestion()
         await model.refresh()
         #expect(model.selection == nil)

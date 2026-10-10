@@ -6,8 +6,10 @@ import BatonKit
 
 @Suite(.serialized)
 struct ComponentTests {
-    static let root = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    // Validate a private generated batch before publishing the tracked fixtures.
+    static let root = ProcessInfo.processInfo.environment["BATON_TEST_ROOT"].map { URL(fileURLWithPath: $0) }
+        ?? URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
 
     private func fixture<T: Decodable>(_ name: String, as: T.Type) throws -> T {
         try JSONDecoder().decode(T.self, from: Data(contentsOf: Self.root

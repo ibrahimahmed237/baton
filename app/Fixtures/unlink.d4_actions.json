@@ -1,58 +1,28 @@
 {
-  "plan_id": "p_d4_unlink",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "unlink",
-      "turns": [
-        43,
-        44
-      ],
-      "reason": "fixture",
-      "needs": [],
-      "notes": [
-        {
-          "id": "link.remove",
-          "tone": "warning",
-          "values": {
-            "name": "Imaginary orchard",
-            "other_name": "Orchard tests",
-            "n": 2,
-            "tool": "Claude"
-          },
-          "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
-          "buttons": [
-            {
-              "id": "unlink",
-              "label": "Remove link",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Keep link",
-              "primary": false
-            }
-          ],
-          "status_line": null
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Remove link",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_unlink",
+    "status_line": null,
+    "text": "Remove the link described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.remove",
-      "tone": "warning",
-      "values": {
-        "name": "Imaginary orchard",
-        "other_name": "Orchard tests",
-        "n": 2,
-        "tool": "Claude"
-      },
-      "text": "Remove the link between \"Imaginary orchard\" and \"Orchard tests\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
       "buttons": [
         {
           "id": "unlink",
@@ -65,7 +35,18 @@
           "primary": false
         }
       ],
-      "status_line": null
+      "id": "link.remove",
+      "status_line": null,
+      "text": "Remove the link between \"Imaginary orchard\" and \"Imaginary orchard\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
+      "tone": "warning",
+      "values": {
+        "n": 2,
+        "name": "Imaginary orchard",
+        "other_name": "Imaginary orchard",
+        "tool": "Claude"
+      }
     }
-  ]
+  ],
+  "plan_id": "p_16c4e902f625f23ca0172d71a7b5fa5d0ceb30faef2002fd50eb7ec3e4acf4d0",
+  "steps": []
 }

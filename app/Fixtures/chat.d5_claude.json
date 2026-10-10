@@ -1,9 +1,10 @@
 {
-  "tool": "codex",
+  "folder": "/work/baton-fixtures",
   "id": "source",
-  "name": "Imaginary orchard",
-  "folder": "/tmp/baton-sample",
-  "updated_at": "2026-10-04T14:05:00Z",
+  "link_id": null,
   "linked": false,
-  "tool_label": "Codex"
+  "name": "Imaginary orchard",
+  "tool": "codex",
+  "tool_label": "Codex",
+  "updated_at": "2026-10-05T12:04:00Z"
 }

@@ -26,7 +26,7 @@ struct ImmediateCommandTests {
 
 struct LinkFixtureRoutingTests {
     @Test
-    func selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() async throws {
+    func selectedLinksGetDistinctGeneratedStatusesWhileOtherCommandsKeepTheirDefault() async throws {
         let engine = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: "d3_filled")
         let merge = try await engine.status(link: 3)
         let relaunch = try await engine.status(link: 4)

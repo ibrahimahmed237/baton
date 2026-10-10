@@ -1,18 +1,40 @@
 {
-  "plan_id": "p_d2_in_sync",
   "applied": false,
-  "link_id": 3,
-  "steps": [],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
   "notes": [
     {
-      "id": "nothing_unusual",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
       "tone": "info",
-      "values": {},
-      "text": "Nothing unusual.",
-      "buttons": [],
-      "status_line": null
+      "values": {}
     }
   ],
-  "opened": false
+  "opened": false,
+  "plan_id": "p_future_d2_in_sync",
+  "steps": []
 }

@@ -1,29 +1,48 @@
 {
-  "plan_id": "p_d5_already_opencode",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "opencode",
-      "tool_label": "OpenCode",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.change",
-      "tone": "warning",
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
       "values": {
-        "name": "Imaginary orchard",
-        "new_name": "New partner",
-        "other_name": "Earlier partner"
-      },
-      "text": "Link \"Imaginary orchard\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
       "buttons": [
         {
           "id": "relink",
@@ -36,17 +55,71 @@
           "primary": false
         }
       ],
-      "status_line": null
-    },
-    {
-      "id": "new_chat.at_once",
-      "tone": "info",
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"OpenCode\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
       "values": {
-        "tool": "OpenCode"
-      },
-      "text": "The new chat appears in OpenCode right away. No relaunch.",
-      "buttons": [],
-      "status_line": null
+        "name": "Imaginary orchard",
+        "new_name": "OpenCode",
+        "other_name": "Existing Codex"
+      }
+    }
+  ],
+  "plan_id": "p_04610267f26bf398e85c0976a744e0aa7a5c800dbe476e08a11400e7ec664d22",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in OpenCode right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"OpenCode\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "OpenCode",
+            "other_name": "Existing Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
     }
   ]
 }

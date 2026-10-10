@@ -1,55 +1,30 @@
 {
-  "plan_id": "p_d7_context_size_create",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "brief.written_by",
-      "tone": "info",
-      "values": {
-        "tool": "Codex"
+  "brief": {
+    "artifact_id": "a_6af689d531f85edaabffec2fddbed8f933a20d0debdde97c31e77d62e45ba4e9",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "codex"
       },
-      "text": "Codex wrote the brief.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.summary_receipt",
-      "tone": "info",
-      "values": {},
-      "text": "Summarized through this turn. The original messages are in the saved history.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.pinned_size",
-      "tone": "info",
-      "values": {
-        "tokens": "3,200"
-      },
-      "text": "Pinned turns add about 3,200 tokens in full.",
-      "buttons": [],
-      "status_line": null
-    }
-  ],
-  "stage": "create",
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 330304,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 17,
+    "summary": "Preserve the orchard decisions and finish the tests.",
+    "text": "This chat carries on work done in Claude. Below is a brief of it.\n\nPreserve the orchard decisions and finish the tests.\n\nThe full history is saved at /baton-fixtures/transcripts/link-3-c433e829851d119665309db7bb0825a92bc54d40b28a4a6142030eba2278952c.md. Read it for any detail not above.",
+    "tokens": 71,
+    "writer": "codex"
+  },
   "confirmation": {
-    "id": "plan.confirm_brief_creation",
-    "tone": "info",
-    "values": {},
-    "text": "Create a new chat with this brief. The earlier chat is kept.",
     "buttons": [
       {
         "id": "confirm",
@@ -62,25 +37,50 @@
         "primary": false
       }
     ],
-    "status_line": null
+    "id": "plan.confirm_brief_creation",
+    "status_line": null,
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "tone": "info",
+    "values": {}
   },
-  "brief": {
-    "writer": "codex",
-    "tokens": 900,
-    "pinned": [
-      41,
-      43
-    ],
-    "estimated_tokens": 1800,
-    "candidate_estimates": [
-      {
-        "writer": "codex",
-        "tokens": 1800
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 17 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 17
       }
-    ],
-    "artifact_id": "artifact-context_size",
-    "text": "Work continues from the orchard conversation.\nThe harvest checklist is ready.",
-    "summary": "The harvest checklist is ready.",
-    "pinned_tokens": 3200
-  }
+    },
+    {
+      "buttons": [],
+      "id": "brief.summary_receipt",
+      "status_line": null,
+      "text": "Summarized through this turn. The original messages are in the saved history.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_446c02117853f7061852567831556728",
+  "stage": "create",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
 }

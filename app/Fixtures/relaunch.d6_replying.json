@@ -1,139 +1,6 @@
 {
-  "plan_id": "p_d6_relaunch_replying",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "action": "close",
-      "turns": [],
-      "reason": "app must be closed",
-      "needs": [
-        "app_closed"
-      ],
-      "notes": []
-    },
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "action": "add",
-      "turns": [
-        41,
-        42
-      ],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    },
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "action": "reopen",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "relaunch.replying",
-      "tone": "warning",
-      "values": {
-        "tool": "Claude",
-        "title": "Imaginary orchard"
-      },
-      "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
-      "buttons": [
-        {
-          "id": "when_idle",
-          "label": "Wait until it has finished",
-          "primary": true
-        },
-        {
-          "id": "close_anyway",
-          "label": "Close anyway",
-          "primary": false
-        },
-        {
-          "id": "cancel",
-          "label": "Cancel",
-          "primary": false
-        }
-      ],
-      "status_line": "Will sync when Claude is idle"
-    },
-    {
-      "id": "relaunch.replying",
-      "tone": "warning",
-      "values": {
-        "tool": "Claude",
-        "title": "Orchard tests"
-      },
-      "text": "Claude is replying in \"Orchard tests\". Closing now stops that reply.",
-      "buttons": [
-        {
-          "id": "when_idle",
-          "label": "Wait until it has finished",
-          "primary": true
-        },
-        {
-          "id": "close_anyway",
-          "label": "Close anyway",
-          "primary": false
-        },
-        {
-          "id": "cancel",
-          "label": "Cancel",
-          "primary": false
-        }
-      ],
-      "status_line": "Will sync when Claude is idle"
-    },
-    {
-      "id": "plan.unavailable",
-      "tone": "info",
-      "values": {},
-      "text": "This action is not available yet. Your current choice is kept.",
-      "buttons": [
-        {
-          "id": "cancel",
-          "label": "Cancel",
-          "primary": false
-        }
-      ],
-      "status_line": null
-    }
-  ],
-  "replying": [
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "id": "c_replying_1",
-      "name": "Imaginary orchard",
-      "folder": "/Users/example/orchard",
-      "updated_at": "2026-10-09T09:30:00Z",
-      "linked": true,
-      "link_id": 3
-    },
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "id": "c_replying_2",
-      "name": "Orchard tests",
-      "folder": "/Users/example/orchard",
-      "updated_at": "2026-10-09T09:30:00Z",
-      "linked": true,
-      "link_id": 3
-    }
-  ],
   "confirmation": {
-    "id": "plan.unavailable",
-    "tone": "info",
-    "values": {},
-    "text": "This action is not available yet. Your current choice is kept.",
     "buttons": [
       {
         "id": "cancel",
@@ -141,6 +8,71 @@
         "primary": false
       }
     ],
-    "status_line": null
-  }
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "when_idle",
+          "label": "Wait until it has finished",
+          "primary": true
+        },
+        {
+          "id": "close_anyway",
+          "label": "Close anyway",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying",
+      "status_line": "Will sync when Claude is idle",
+      "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "title": "Imaginary orchard",
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d6_replying",
+  "replying": [
+    {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-a",
+      "link_id": null,
+      "linked": false,
+      "name": "Imaginary orchard",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "updated_at": "2026-10-05T12:02:00Z"
+    }
+  ],
+  "steps": []
 }

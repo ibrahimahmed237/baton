@@ -1,27 +1,100 @@
 {
-  "plan_id": "p_d5_opencode_opencode_brief",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "opencode",
-      "tool_label": "OpenCode",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "opencode"
+      },
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 312,
+    "pinned": [],
+    "pinned_tokens": 0,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "opencode"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "mode.brief",
-      "tone": "info",
-      "values": {},
-      "text": "Brief in a new chat",
       "buttons": [],
-      "status_line": null
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "OpenCode can write this read-only brief using about 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "OpenCode",
+        "writer_id": "opencode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Claude can write this read-only brief using about 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "Claude",
+        "writer_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 312 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 312
+      }
+    }
+  ],
+  "plan_id": "p_aea6b17d6906cc46ce44a4ccc1438609",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": [
+        1,
+        2,
+        3,
+        4
+      ]
     }
   ]
 }

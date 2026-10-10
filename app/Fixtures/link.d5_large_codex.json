@@ -1,39 +1,99 @@
 {
-  "plan_id": "p_d5_large_codex",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "new_chat.at_once",
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
       "tone": "info",
       "values": {
         "tool": "Codex"
-      },
-      "text": "The new chat appears in Codex right away. No relaunch.",
-      "buttons": [],
-      "status_line": null
+      }
     },
     {
-      "id": "link.large_copy",
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
       "tone": "info",
       "values": {
-        "tokens": 160000
-      },
-      "text": "This chat is about 160000 tokens. A brief in a new chat is available instead.",
+        "tool": "Codex"
+      }
+    },
+    {
       "buttons": [],
-      "status_line": null
+      "id": "link.large_copy",
+      "status_line": null,
+      "text": "This chat is about 165033 tokens. A brief in a new chat is available instead.",
+      "tone": "info",
+      "values": {
+        "tokens": "165033"
+      }
+    }
+  ],
+  "plan_id": "p_8ffe631ea15c919bdbb9e062651c8316c3239bf6825f3bacf9cd8b23d1003589",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "link.large_copy",
+          "status_line": null,
+          "text": "This chat is about 165033 tokens. A brief in a new chat is available instead.",
+          "tone": "info",
+          "values": {
+            "tokens": "165033"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

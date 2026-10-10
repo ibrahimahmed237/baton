@@ -1,69 +1,134 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
   "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "opened": false,
+  "plan_id": "p_future_sample",
   "steps": [
     {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
+      "action": "attach",
       "needs": [],
       "notes": [
         {
-          "id": "fixture.links.ready",
-          "tone": "ok",
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 2 of 4 turns. Its chat shows 2; 2 are waiting.",
+          "tone": "info",
           "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
+            "agent_has": 2,
+            "chat_shows": 2,
+            "tool": "Claude",
+            "total": 4,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        },
+        {
           "buttons": [
             {
-              "id": "open",
-              "label": "Open sample chat",
+              "id": "show_changes",
+              "label": "Show what changed",
+              "primary": true
+            }
+          ],
+          "id": "digest.since_you_left",
+          "status_line": null,
+          "text": "Since your last message here at 12:02, Codex did 2 turns, changed 0 files and ran 0 commands.",
+          "tone": "info",
+          "values": {
+            "at": "12:02",
+            "commands": "0 commands",
+            "files": "0 files",
+            "tool": "Codex",
+            "turns": "2 turns"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
               "primary": true
             },
             {
-              "id": "cancel",
-              "label": "Cancel"
+              "id": "add_now",
+              "label": "Add them now",
+              "primary": false
             }
           ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
-      "buttons": [
-        {
-          "id": "open",
-          "label": "Open sample chat",
-          "primary": true
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
         },
         {
-          "id": "cancel",
-          "label": "Cancel"
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
         }
       ],
-      "status_line": "Sample ready"
+      "reason": "chat_open",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        43,
+        44
+      ]
     }
-  ],
-  "opened": true
+  ]
 }

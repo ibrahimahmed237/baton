@@ -1,29 +1,79 @@
 {
-  "plan_id": "p_d5_opencode_codex",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "new_chat.at_once",
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
       "tone": "info",
       "values": {
         "tool": "Codex"
-      },
-      "text": "The new chat appears in Codex right away. No relaunch.",
+      }
+    },
+    {
       "buttons": [],
-      "status_line": null
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_527c9f7ba3ecd0dd7dd926e063f8d3268fb9ec9d4b1e1f88d5b64c7da6874036",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

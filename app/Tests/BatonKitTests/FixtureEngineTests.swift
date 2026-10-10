@@ -212,10 +212,38 @@ struct FixtureEngineTests {
         let links = try await engine.links()
         #expect(links.links.isEmpty)
         let chats = try await engine.chats(tool: "claude")
-        #expect(chats.chats.count == 2)
+        #expect(chats.chats.map(\.id) == ["sample-a"])
+        #expect(chats.chats.allSatisfy { $0.tool == "claude" })
         let empty = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: "empty")
         let emptyLinks = try await empty.links()
         #expect(emptyLinks == links)
+    }
+
+    @Test
+    func perToolReadRoutesNeverReturnAnotherToolsChatList() async throws {
+        for state in ["d3_filled", "d5_opencode"] {
+            let engine = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: state)
+            var identities: Set<String> = []
+            for tool in ["claude", "codex", "opencode", "cursor"] {
+                let result = try await engine.chats(tool: tool)
+                #expect(!result.chats.isEmpty)
+                #expect(result.chats.allSatisfy { $0.tool == tool })
+                for chat in result.chats {
+                    #expect(identities.insert(tool + ":" + chat.id).inserted)
+                }
+            }
+        }
+        let missing = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: "d3_tool_missing")
+        do {
+            _ = try await missing.chats(tool: "cursor")
+            Issue.record("Missing coding app returned a success list")
+        } catch let error as EngineCommandError {
+            #expect(error.kind == "not_available")
+            #expect(error.note?.text.isEmpty == false)
+        }
+        let engine = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: "d3_filled")
+        let result: ChatsResult = try await engine.response(command: "chats", arguments: ["--tool", "../cursor"], as: ChatsResult.self)
+        #expect(result.chats.allSatisfy { $0.tool == "claude" })
     }
 
     @Test

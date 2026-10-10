@@ -1,50 +1,102 @@
 {
-  "plan_id": "p_d5_claude_claude_brief",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "claude",
-      "tool_label": "Claude",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "5852fee166fe793ac013b7a305ac157f333a43885b8a64222fd67631c115a500",
+        "tokens": 155,
+        "writer": "claude"
+      },
+      {
+        "input_fingerprint": "5852fee166fe793ac013b7a305ac157f333a43885b8a64222fd67631c115a500",
+        "tokens": 155,
+        "writer": "codex"
+      }
+    ],
+    "estimated_tokens": 310,
+    "pinned": [],
+    "pinned_tokens": 0,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "claude"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "link.change",
-      "tone": "warning",
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Claude can write this read-only brief using about 155 tokens.",
+      "tone": "info",
       "values": {
-        "name": "Source",
-        "new_name": "New partner",
-        "other_name": "Earlier partner"
-      },
-      "text": "Link \"Source\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
-      "buttons": [
-        {
-          "id": "relink",
-          "label": "Change the link",
-          "primary": true
-        },
-        {
-          "id": "cancel",
-          "label": "Keep the current link",
-          "primary": false
-        }
-      ],
-      "status_line": null
+        "tokens": 155,
+        "tool": "Claude",
+        "writer_id": "claude"
+      }
     },
     {
-      "id": "mode.brief",
-      "tone": "info",
-      "values": {},
-      "text": "Brief in a new chat",
       "buttons": [],
-      "status_line": null
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Codex can write this read-only brief using about 155 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 155,
+        "tool": "Codex",
+        "writer_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 310 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 310
+      }
+    }
+  ],
+  "plan_id": "p_0d30e62cffb08df8b643251fe1163a1f",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
     }
   ]
 }

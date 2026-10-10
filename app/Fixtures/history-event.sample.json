@@ -1,12 +1,12 @@
 {
-  "id": 1,
-  "at": "2026-10-04T14:02:00Z",
-  "kind": "sync",
-  "tool": "claude",
+  "at": "2026-10-05T14:00:00Z",
+  "can_restore": false,
+  "can_undo": false,
+  "id": 3,
+  "kind": "aligned",
+  "text": "Recognized an existing turn in Codex",
+  "tool": "codex",
   "turns": [
-    41
-  ],
-  "text": "The sample turn was added.",
-  "can_undo": true,
-  "can_restore": false
+    42
+  ]
 }

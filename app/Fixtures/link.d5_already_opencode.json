@@ -1,29 +1,24 @@
 {
-  "plan_id": "p_d5_already_opencode",
   "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
   "link_id": 3,
-  "steps": [
-    {
-      "tool": "opencode",
-      "tool_label": "OpenCode",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
-  "decision_needed": true,
   "notes": [
     {
-      "id": "link.already_linked",
-      "tone": "warning",
-      "values": {
-        "name": "Imaginary orchard",
-        "other_name": "Earlier partner",
-        "tool": "Codex"
-      },
-      "text": "\"Imaginary orchard\" is already linked to \"Earlier partner\" in Codex. A chat can be linked to one chat at a time.",
       "buttons": [
         {
           "id": "relink",
@@ -36,17 +31,31 @@
           "primary": false
         }
       ],
-      "status_line": null
+      "id": "link.already_linked",
+      "status_line": null,
+      "text": "\"Imaginary orchard\" is already linked to \"Existing Codex\" in Codex. A chat can be linked to one chat at a time.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "other_name": "Existing Codex",
+        "tool": "Codex"
+      }
     },
     {
-      "id": "new_chat.at_once",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
       "tone": "info",
-      "values": {
-        "tool": "OpenCode"
-      },
-      "text": "The new chat appears in OpenCode right away. No relaunch.",
-      "buttons": [],
-      "status_line": null
+      "values": {}
     }
-  ]
+  ],
+  "plan_id": "p_future_d5_already_opencode",
+  "steps": []
 }

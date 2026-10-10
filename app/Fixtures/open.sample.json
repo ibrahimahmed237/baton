@@ -1,26 +1,19 @@
 {
-  "opened": "chat",
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
   "note": {
-    "id": "fixture.links.ready",
-    "tone": "ok",
-    "values": {
-      "turns": 2,
-      "context": {
-        "invented": true
-      }
-    },
-    "text": "The sample chats are in sync.",
     "buttons": [
       {
-        "id": "open",
-        "label": "Open sample chat",
-        "primary": true
-      },
-      {
         "id": "cancel",
-        "label": "Cancel"
+        "label": "Cancel",
+        "primary": false
       }
     ],
-    "status_line": "Sample ready"
-  }
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "opened": "unavailable"
 }

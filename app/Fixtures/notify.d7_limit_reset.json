@@ -1,23 +1,8 @@
 {
-  "synced": [],
-  "queued": [],
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
   "offers": [
     {
-      "id": "limit.offer_linked_behind",
-      "tone": "warning",
-      "values": {
-        "tool": "Claude",
-        "other_tool": "Codex",
-        "resets_at": "2026-10-09T15:00:00Z",
-        "time": "2026-10-09T15:00:00Z",
-        "offer_key": "event-notify.d7_limit_reset",
-        "link_id": 3,
-        "source_tool_id": "claude",
-        "source_chat_id": "claude_orchard",
-        "destination_tool_id": "codex",
-        "destination_chat_id": "codex_orchard"
-      },
-      "text": "Claude has reached its usage limit. It resets at 2026-10-09T15:00:00Z. Continue this chat in Codex?",
       "buttons": [
         {
           "id": "continue",
@@ -30,7 +15,23 @@
           "primary": false
         }
       ],
-      "status_line": null
+      "id": "limit.offer_linked_behind",
+      "status_line": null,
+      "text": "Claude has reached its usage limit. It resets at 2026-10-09 15:00. Continue this chat in Codex?",
+      "tone": "warning",
+      "values": {
+        "destination_chat_id": "sample-b",
+        "destination_tool_id": "codex",
+        "link_id": 3,
+        "offer_key": "[\"claude\",\"sample-a\",\"p4\"]",
+        "other_tool": "Codex",
+        "source_chat_id": "sample-a",
+        "source_tool_id": "claude",
+        "time": "2026-10-09 15:00",
+        "tool": "Claude"
+      }
     }
-  ]
+  ],
+  "queued": [],
+  "synced": []
 }

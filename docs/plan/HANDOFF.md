@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-10, C2a accepted, committing
+**Last updated:** 2026-10-11, C2b in progress
 
 ---
 
@@ -38,3 +38,9 @@ Latest C2a source758 engine/147 focused/149 native/77 scenarios/143 app/build pa
 Final separate code review closed all findings and independently challenged missing-origin destination matching/tamper/deletion. Only required Ibrahim Q8 completed-history display choice and its exact regression remain before C2a acceptance/commit. Source frozen,758/147/143 green. Preserve all C2a dirty paths; do not discard or mark complete while Q8 pending.
 
 Q8 resolved: Ibrahim chose bookkeeping visible with new distinct labels. Root delta and three meaningful regressions finished; independent final review approved no findings. Final761 engine/150 focused/149 native/77 scenarios/143 app/build; C2a commit prepared. Usage100%, stop after commit at green boundary; next C2b277 generation, then exact-scope native live gates. No push, old E9-E10.md preserved. Earlier pending Q8 paragraphs are historical.
+
+C2a committed `914d9d3`:35 independently reviewed implementation/test/contract/plan/report files; index empty, branch chore/project-setup, no push. Source final761 engine/150 focused/149 native/77 scenarios/143 app/build green. C2b277 generated fixtures and native live are next; CP2 incomplete. Post-commit STATUS/MAP/HANDOFF/report hash references remain local for next records/package commit. Historical E9-E10.md draft stays untracked; no unfinished code.
+
+2026-10-11 C2b started. Builder owns tests/contract generator/manifest/tests and app/Fixtures; root owns narrow app fixture-test compatibility and docs, separate reviewer reads only. Baseline761 engine/143 app/build. No code carry-in; five post-commit reference records and historical E9-E10.md preserved. No live run or push.
+
+Latest boundary2026-10-11: C2b accepted, commit prepared; whole C2 complete. Root787 engine/146 app/build,26 own fixture/effect checks,149 native-shaped/82 scenarios,325 tracked fixtures and255 renders. Separate reviewer approved no blocking findings; D5 exact-duplicate note follow-up open. CP2 remains FAIL solely at required native live gate; do not start CP3 or access apps/chats before exact scope/go and fresh go for each closure. No push. Old E9-E10.md untracked draft preserved/excluded. Full current evidence CP2-2026-10-11.md and C2b report.

@@ -1,3 +1,21 @@
 {
-  "output": "Fictional prompt-hook output.\n"
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "output": ""
 }

@@ -1,29 +1,59 @@
 {
-  "plan_id": "p_d5_cursor_cursor_attached_history",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "cursor",
-      "tool_label": "Cursor",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
+      "buttons": [],
       "id": "link.attached_history",
+      "status_line": "Agent has 4 turns the chat does not show",
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
       "tone": "info",
       "values": {
         "n": 4
-      },
-      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
-      "buttons": [],
-      "status_line": "Agent has 4 turns the chat does not show"
+      }
+    }
+  ],
+  "plan_id": "p_e5496995a922d577432e530a1e4cc0590e016da31f066b2baddbc58b8d1ecd77",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.attached_history",
+          "status_line": "Agent has 4 turns the chat does not show",
+          "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+          "tone": "info",
+          "values": {
+            "n": 4
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
     }
   ]
 }

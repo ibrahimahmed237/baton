@@ -1,39 +1,130 @@
 {
-  "plan_id": "p_d5_already_replace_codex",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
+      "buttons": [],
       "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
       "tone": "info",
       "values": {
         "tool": "Codex"
-      },
-      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
-      "buttons": [],
-      "status_line": null
+      }
     },
     {
+      "buttons": [],
       "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
       "tone": "info",
       "values": {
         "tool": "Codex"
-      },
-      "text": "The new chat appears in Codex right away. No relaunch.",
-      "buttons": [],
-      "status_line": null
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"Existing Codex\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "Existing Codex",
+        "other_name": "Existing Codex"
+      }
+    }
+  ],
+  "plan_id": "p_a467ef8ac281840f2b22e4a1bb83adb5879db3efa96d9a8fbfd07695ca9fe5a3",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"Existing Codex\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "Existing Codex",
+            "other_name": "Existing Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
     }
   ]
 }

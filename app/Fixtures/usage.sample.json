@@ -1,6 +1,6 @@
 {
-  "tokens": 1600,
+  "limit": null,
+  "percent": 82,
   "size": 200000,
-  "percent": 0.8,
-  "limit": null
+  "tokens": 164000
 }

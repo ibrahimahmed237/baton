@@ -1,68 +1,79 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_527c9f7ba3ecd0dd7dd926e063f8d3268fb9ec9d4b1e1f88d5b64c7da6874036",
   "steps": [
     {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
+      "action": "create",
       "needs": [],
       "notes": [
         {
-          "id": "fixture.links.ready",
-          "tone": "ok",
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
           "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
-      "buttons": [
-        {
-          "id": "open",
-          "label": "Open sample chat",
-          "primary": true
+            "tool": "Codex"
+          }
         },
         {
-          "id": "cancel",
-          "label": "Cancel"
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
         }
       ],
-      "status_line": "Sample ready"
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

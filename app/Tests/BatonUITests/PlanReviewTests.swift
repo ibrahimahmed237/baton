@@ -347,14 +347,19 @@ struct PlanReviewTests {
         }
     }
     @MainActor @Test func ordinaryWhenIdleNeverBecomesRelaunch() async throws {
-        let (model, engine) = await model(Self.cases[6]); try display(model)
+        // This is a routing-only future offer; the current replying service preview attaches.
+        let waiting = note("write.when_idle", buttons: [("when_idle", "Sync when the reply has finished")])
+        let step = Step(tool: "claude", action: "attach", turns: [43, 44], reason: "replying", needs: [], notes: [waiting])
+        let original = Self.cases[6].request
+        let (model, engine) = await customModel(try data(notes: [], steps: [step]), request: original)
+        try display(model)
         await model.choose(try action("when_idle", in: model))
-        #expect(model.request == Self.cases[6].request && model.alternative == .unavailable)
+        #expect(model.request == original && model.alternative == .unavailable)
         #expect(await engine.previews().count == 1); #expect(await engine.writes().isEmpty)
     }
     @MainActor @Test func relaunchWhenIdleRepreviewsOnlyThatRelaunchAndRemainsUnavailable() async throws {
         let (model, engine) = await model(Self.cases[9]); try display(model)
-        #expect(model.replying.map(\.name) == ["Imaginary orchard", "Orchard tests"])
+        #expect(model.replying.map(\.name) == ["Imaginary orchard"])
         await model.choose(try action("when_idle", in: model))
         #expect(model.request == .relaunch(tool: "claude", whenIdle: true, thenSync: 3))
         #expect(model.originalRequest == Self.cases[9].request && !model.canConfirm)

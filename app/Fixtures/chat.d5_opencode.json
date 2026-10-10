@@ -1,9 +1,10 @@
 {
-  "tool": "claude",
+  "folder": "/work/baton-fixtures",
   "id": "source",
-  "name": "Imaginary orchard",
-  "folder": "/tmp/baton-sample",
-  "updated_at": "2026-10-04T14:05:00Z",
+  "link_id": null,
   "linked": false,
-  "tool_label": "Claude"
+  "name": "Imaginary orchard",
+  "tool": "claude",
+  "tool_label": "Claude",
+  "updated_at": "2026-10-05T12:04:00Z"
 }

@@ -95,13 +95,13 @@ private actor D7Engine: EngineTransport {
 @Suite(.serialized)
 struct HandOffTests {
     static let linkedStates = ["d7_limit_reset", "d7_limit_no_reset", "d7_context_size", "d7_no_size", "d7_brief_fallback"]
-    static let orchard = Chat(tool: "claude", id: "claude_orchard", name: "Imaginary orchard", folder: "/Users/example/orchard",
+    static let orchard = Chat(tool: "claude", id: "sample-a", name: "Imaginary orchard", folder: "/Users/example/orchard",
                               updatedAt: "2026-10-09T09:30:00Z", linked: false, toolLabel: "Claude")
     @MainActor private func loaded(_ state: String, to: String? = nil) async throws -> (HandOffViewModel, D7Engine) {
         let engine = D7Engine(state: state)
         let model = HandOffViewModel(engine: engine)
         let hasOffer = FileManager.default.fileExists(atPath: ComponentTests.root.appendingPathComponent("Fixtures/notify.\(state).json").path)
-        let offers = hasOffer ? try await D7Engine(state: state).notify(tool: "claude", chat: "claude_orchard").offers : []
+        let offers = hasOffer ? try await D7Engine(state: state).notify(tool: "claude", chat: "sample-a").offers : []
         await model.load(link: 3, offers: offers, to: to)
         return (model, engine)
     }
@@ -110,7 +110,8 @@ struct HandOffTests {
         let (model, engine) = try await loaded("d7_limit_reset", to: "claude")
         let offer = try #require(model.offer)
         #expect(offer.text.contains("Claude") && offer.text.contains("Codex"))
-        #expect(offer.values["resets_at"] == .string("2026-10-09T15:00:00Z"))
+        #expect(offer.values["time"] == .string("2026-10-09 15:00"))
+        #expect(model.side("claude")?.usage.limit?.resetsAt == "2026-10-09T15:00:00Z")
         #expect(model.target == "claude")
         model.choose(try #require(offer.buttons.first { $0.id == "continue" }))
         #expect(model.pendingReview == .continueIn(link: 3, tool: "codex"))
@@ -147,7 +148,7 @@ struct HandOffTests {
     @MainActor @Test func v3UnlinkedOfferRetainsNamedDestinationForLinkDialog() async throws {
         let engine = D7Engine(state: "d7_unlinked")
         let model = HandOffViewModel(engine: engine)
-        let offers = try await engine.notify(tool: "claude", chat: "claude_orchard").offers
+        let offers = try await engine.notify(tool: "claude", chat: "sample-a").offers
         await model.load(unlinked: Self.orchard, offers: offers)
         let offer = try #require(model.offer)
         model.choose(NoteButton(id: "continue", label: "Continue in Codex"))
@@ -162,12 +163,17 @@ struct HandOffTests {
         #expect(model.brief == nil)
         model.selectMode(.brief); await model.previewChoice()
         #expect(model.brief?.plan.stage == "generate")
-        #expect(model.brief?.brief?.estimatedTokens == 1800)
+        let details = try #require(model.brief?.brief)
+        let estimate = try #require(details.estimatedTokens)
+        #expect(estimate > 0)
+        #expect(details.candidateEstimates?.reduce(0) { $0 + $1.tokens } == estimate)
         #expect(model.writerNotes.contains { $0.id == "brief.skipped_limit" })
         #expect(model.writerNotes.contains { $0.id == "brief.cost" })
-        #expect(model.writerNotes.contains { $0.id == "brief.total_cost" && $0.values["tokens"] == .string("1,800") })
-        #expect(model.writerNotes.contains { $0.id == "brief.pinned_size" && $0.values["tokens"] == .string("3,200") })
-        #expect(model.brief?.brief?.pinnedTokens == 3200)
+        let totalCost = try #require(model.writerNotes.first { $0.id == "brief.total_cost" })
+        #expect(totalCost.values["tokens"] == .number(Double(estimate)))
+        let pinnedTokens = try #require(details.pinnedTokens)
+        #expect(pinnedTokens > 0)
+        #expect(model.writerNotes.contains { $0.id == "brief.pinned_size" && $0.values["tokens"] == .number(Double(pinnedTokens)) })
         #expect(await engine.counts() == (0, 0))
         model.beginReview()
         let review = PlanReviewViewModel(engine: engine)
@@ -178,7 +184,11 @@ struct HandOffTests {
         review.didDisplay(generationReceipt); await review.confirm()
         #expect(await engine.counts() == (1, 0))
         #expect(review.plan?.stage == "create" && review.outcome == nil)
-        #expect(review.reviewed?.brief?.text == "Work continues from the orchard conversation.\nThe harvest checklist is ready.")
+        let generated: BriefResult = try await FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d7_limit_reset_generated")
+            .response(command: "brief", arguments: [], as: BriefResult.self)
+        #expect(review.reviewed?.brief?.text == generated.brief.text)
+        #expect(review.reviewed?.brief?.artifactID == generated.brief.artifactID)
+        #expect(!(generated.brief.text ?? "").isEmpty)
         #expect(review.planNotes.contains { $0.id == "brief.summary_receipt" })
         review.didDisplay(generationReceipt)
         #expect(!review.canConfirm)
@@ -303,7 +313,7 @@ struct HandOffTests {
     }
     @MainActor @Test func forgedOfferIdentityIsNotActionable() async throws {
         let engine = D7Engine(state: "d7_limit_reset"); let model = HandOffViewModel(engine: engine)
-        var offer = try #require(try await engine.notify(tool: "claude", chat: "claude_orchard").offers.first)
+        var offer = try #require(try await engine.notify(tool: "claude", chat: "sample-a").offers.first)
         offer.values["destination_chat_id"] = .string("unrelated")
         await model.load(link: 3, offers: [offer])
         #expect(model.offer == nil && !model.bannerVisible)
@@ -349,7 +359,7 @@ struct HandOffTests {
         await setupEngine.configure(failSetup: true); await setupFailed.load(link: 3)
         models.append(("d7_setup_failed", setupFailed))
         let engine = D7Engine(state: "d7_unlinked"); let unlinked = HandOffViewModel(engine: engine)
-        await unlinked.load(unlinked: Self.orchard, offers: try await engine.notify(tool: "claude", chat: "claude_orchard").offers)
+        await unlinked.load(unlinked: Self.orchard, offers: try await engine.notify(tool: "claude", chat: "sample-a").offers)
         models.append(("d7_unlinked", unlinked))
         for (name, model) in models { for theme in Theme.allCases {
             let renderer = ImageRenderer(content: HandOffView(model: model).environment(\.batonTheme, theme).environment(\.batonSnapshotPresentation, true))

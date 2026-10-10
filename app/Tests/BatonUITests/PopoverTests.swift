@@ -52,7 +52,7 @@ struct PopoverTests {
         let calls = await engine.calls
         #expect(calls.map(\.0) == ["links", "suggestions", "continue"])
         #expect(calls.last?.1 == ["--link", "3", "--in", "codex", "--dry-run"])
-        #expect(model.plan?.planID == "p_d2_decision_needed")
+        #expect(model.plan?.planID.isEmpty == false)
         #expect(model.plan?.applied == false)
         #expect(model.plan?.notes.first?.id == "merge.decision_needed")
         #expect(model.plan?.steps.first?.action == "hold")
@@ -112,13 +112,13 @@ struct PopoverTests {
         await model.refresh()
         await model.continueIn(tool: "codex")
         #expect(model.plan?.steps.count == 1)
-        #expect(model.plan?.notes.first?.id == "write.chat_open")
+        #expect(model.plan?.notes.contains { $0.id == "plan.unavailable" } == true)
         let plan = try #require(model.plan)
         let step = try #require(plan.steps.first)
-        #expect(PlanSteps(steps: plan.steps, excludingNotes: plan.notes).displayedNotes(for: step).isEmpty)
+        #expect(PlanSteps(steps: plan.steps, excludingNotes: step.notes).displayedNotes(for: step).isEmpty)
         var changedStep = step
         changedStep.notes[0].text += "!"
-        #expect(PlanSteps(steps: plan.steps, excludingNotes: plan.notes).displayedNotes(for: changedStep) == changedStep.notes)
+        #expect(PlanSteps(steps: plan.steps, excludingNotes: step.notes).displayedNotes(for: changedStep) == [changedStep.notes[0]])
         for theme in Theme.allCases {
             let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
             renderer.scale = 2
@@ -145,16 +145,24 @@ struct PopoverTests {
             await model.continueIn(tool: "codex")
             switch state {
             case "no_links": #expect(model.plan == nil)
-            case "in_sync", "one_side_ahead":
+            case "in_sync":
                 #expect(model.plan?.steps.isEmpty == true)
-                #expect(model.plan?.notes.first?.id == "nothing_unusual")
+                #expect(model.plan?.notes.contains { $0.id == "plan.unavailable" } == true)
+            case "one_side_ahead":
+                #expect(model.plan?.steps.first?.action == "add")
+                #expect(model.plan?.steps.first?.turns == [43, 44])
             case "paused", "decision_needed", "setup_incomplete":
                 #expect(model.plan?.steps.first?.action == "hold")
             case "waiting": #expect(model.plan?.steps.first?.action == "attach")
             case "relaunch_needed":
                 #expect(model.plan?.steps.isEmpty == true)
-                #expect(model.plan?.notes.first?.id == "relaunch_to_see")
+                #expect(model.plan?.notes.contains { $0.id == "plan.unavailable" } == true)
+                #expect(model.selectedLink?.headline.id == "relaunch_to_see")
             default: Issue.record("Unregistered fixture state")
+            }
+            if let plan = model.plan {
+                #expect(!plan.applied)
+                #expect(plan.notes.contains { $0.id == "plan.unavailable" })
             }
             if let id = model.selectedLinkID { model.select(linkID: id) }
             for theme in Theme.allCases {

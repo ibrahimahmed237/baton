@@ -1,39 +1,39 @@
 {
-  "plan_id": "p_d5_already_opencode",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "opencode",
-      "tool_label": "OpenCode",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "execution": "unavailable",
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.full_copy",
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
       "tone": "info",
-      "values": {
-        "tool": "OpenCode"
-      },
-      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "new_chat.at_once",
-      "tone": "info",
-      "values": {
-        "tool": "OpenCode"
-      },
-      "text": "The new chat appears in OpenCode right away. No relaunch.",
-      "buttons": [],
-      "status_line": null
+      "values": {}
     }
-  ]
+  ],
+  "plan_id": "p_future_d5_already_replace_opencode",
+  "refusal_kind": "not_available",
+  "steps": []
 }

@@ -4,12 +4,16 @@ import Testing
 import BatonKit
 @testable import BatonUI
 
+private enum StatusReceiptError: Error { case staleOrChangedRequest }
+
+/// Request-bound routing simulator; Python tests prove the actual service effects.
 private actor StatusRecordingEngine: EngineTransport {
     var calls: [(String, [String])] = []
     var paused = false
     var delayed = false
     var fail = false
     var removed = false
+    private var removalPreviews: [String: [String]] = [:]
     func setDelayed() { delayed = true }
     func setFail() { fail = true }
     func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
@@ -28,9 +32,17 @@ private actor StatusRecordingEngine: EngineTransport {
             if removed { result.links.removeAll { $0.linkID == 3 } }
             return try JSONDecoder().decode(type, from: JSONEncoder().encode(result))
         }
-        if command == "unlink", arguments.contains("--confirm") {
+        if command == "unlink" {
             var result: UnlinkResult = try await fixture.response(command: command, arguments: arguments, as: UnlinkResult.self)
-            result.applied = true; removed = true
+            if let index = arguments.firstIndex(of: "--confirm") {
+                guard arguments.indices.contains(index + 1),
+                      let request = removalPreviews.removeValue(forKey: arguments[index + 1]),
+                      request == Array(arguments.prefix(index)),
+                      result.planID == arguments[index + 1] else { throw StatusReceiptError.staleOrChangedRequest }
+                result.applied = true; removed = true
+            } else {
+                removalPreviews[result.planID] = arguments.filter { $0 != "--dry-run" }
+            }
             return try JSONDecoder().decode(type, from: JSONEncoder().encode(result))
         }
         if command == "pause" { paused = true }
@@ -47,28 +59,58 @@ struct SyncStatusTests {
         await model.load(link: 3)
         return model
     }
+    @Test
+    func removalSimulatorRefusesUnknownChangedAndConsumedTokens() async throws {
+        let engine = StatusRecordingEngine()
+        let request = ["--link", "3"]
+        for token in ["unknown"] {
+            do {
+                let _: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--confirm", token], as: UnlinkResult.self)
+                Issue.record("Unknown removal token was accepted")
+            } catch StatusReceiptError.staleOrChangedRequest {}
+        }
+        let preview: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--dry-run"], as: UnlinkResult.self)
+        do {
+            let _: UnlinkResult = try await engine.response(command: "unlink", arguments: ["--link", "4", "--confirm", preview.planID], as: UnlinkResult.self)
+            Issue.record("Changed link was accepted")
+        } catch StatusReceiptError.staleOrChangedRequest {}
+        #expect(await engine.removed == false)
+        let fresh: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--dry-run"], as: UnlinkResult.self)
+        let result: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--confirm", fresh.planID], as: UnlinkResult.self)
+        #expect(result.applied)
+        #expect(await engine.removed)
+        do {
+            let _: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--confirm", fresh.planID], as: UnlinkResult.self)
+            Issue.record("Consumed token was accepted twice")
+        } catch StatusReceiptError.staleOrChangedRequest {}
+    }
     @MainActor @Test
     func eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() async throws {
         let expectations: [(String, String, Int, Int, Int, String?)] = [
             ("s1", "claude", 2, 2, 2, "write.chat_open_release"), ("s2", "claude", 4, 2, 0, "status.attached"),
             ("s3", "claude", 4, 4, 0, nil), ("s4", "codex", 4, 4, 0, nil),
-            ("s4b", "codex", 3, 3, 1, "status.chat_held"), ("s5", "codex", 0, 0, 12, "status.first_message"),
-            ("s6", "codex", 12, 0, 0, "status.attached"), ("s7", "claude", 3, 3, 1, "merge.decision_needed"),
-            ("s8", "codex", 3, 3, 1, "setup.trust_once"), ("s9", "claude", 3, 3, 1, "write.chat_open_release"),
-            ("s10", "claude", 4, 0, 0, "status.new_chat_relaunch"), ("s11", "codex", 4, 4, 0, nil),
-            ("s12", "claude", 4, 4, 0, nil), ("paused", "claude", 2, 2, 2, "link.paused"),
-            ("missing", "claude", 2, 2, 2, "side.missing"), ("hooks", "claude", 2, 2, 2, "setup.trust_once"),
+            ("s4b", "codex", 3, 3, 1, "write.chat_open"), ("s5", "codex", 0, 0, 12, "status.first_message"),
+            ("s6", "codex", 12, 0, 0, "status.attached"), ("s7", "claude", 4, 4, 1, "merge.decision_needed"),
+            ("s8", "codex", 3, 3, 1, "setup.hooks"), ("s9", "claude", 4, 4, 1, "merge.decision_needed"),
+            ("s10", "claude", 4, 0, 0, "relaunch_to_see"), ("s11", "codex", 4, 4, 0, nil),
+            ("s12", "claude", 4, 4, 0, nil), ("paused", "claude", 2, 2, 2, "status.paused"),
+            ("missing", "claude", 2, 2, 2, "side.missing"), ("hooks", "claude", 2, 2, 2, "setup.hooks"),
             ("unknown", "claude", 2, 2, 2, "format.unknown_version")
         ]
         for (scenario, tool, agent, shown, waiting, noteID) in expectations {
             let model = await model(scenario)
             let side = try #require(model.status?.sides[tool])
             #expect(side.agentHas == agent); #expect(side.chatShows == shown); #expect(side.waiting == waiting)
-            if let noteID { #expect(side.notes.contains { $0.id == noteID && !$0.text.isEmpty }) }
+            if let noteID { #expect((side.notes + (model.status?.notes ?? [])).contains { $0.id == noteID && !$0.text.isEmpty }) }
             #expect(side.notes.contains { $0.id == "status.summary" })
-            #expect(side.notes.contains { $0.id == "status.context" })
-            #expect(side.notes.contains { $0.id == "status.since_you_left" } == (side.agentHas < side.total || side.waiting > 0))
+            #expect(side.notes.contains { $0.id == "context.in_use" } == (side.usage.tokens > 0 && side.usage.size != nil))
+            #expect(side.notes.contains { $0.id == "digest.since_you_left" } == (side.sinceYouLeft != nil))
             #expect(model.turns.count == side.total)
+            #expect(model.note("screen.earlier_turns")?.values["n"] == .number(Double(model.foldedCount)))
+            for state in Set(model.turns.flatMap { $0.states.values }) {
+                #expect(model.stateLabel(state)?.isEmpty == false)
+            }
+            #expect(model.status?.notes.contains { $0.id.hasPrefix("quit.") || $0.id.hasPrefix("handoff.") } == false)
         }
         let s2 = await model("s2")
         #expect(s2.status?.sides["claude"]?.attached == 2)
@@ -76,10 +118,12 @@ struct SyncStatusTests {
         let s5 = await model("s5")
         #expect(!s5.status!.sides["codex"]!.notes.contains { $0.id.contains("relaunch") })
         let s9 = await model("s9")
-        #expect(s9.turns.last?.states["claude"] == "waiting")
+        #expect(s9.status?.decisionNeeded == true)
+        #expect(s9.turns.contains { $0.states["claude"] == "waiting" })
+        #expect(s9.turns.contains { $0.states["codex"] == "waiting" })
         let s10 = await model("s10")
         #expect(s10.turns.allSatisfy { $0.states["claude"] == "added" })
-        #expect(s10.status?.sides["claude"]?.notes.first { $0.id == "status.new_chat_relaunch" }?.text == "Relaunch Claude to see this chat.")
+        #expect(s10.status?.sides["claude"]?.notes.first { $0.id == "relaunch_to_see" }?.statusLine == "Relaunch Claude to see 4 new turns")
         #expect(!s10.status!.sides["claude"]!.notes.contains { $0.id == "new_chat.relaunch" })
         let s11 = await model("s11")
         #expect(s11.status?.sides["codex"]?.chat.name == "Renamed orchard tests")
@@ -188,7 +232,7 @@ struct SyncStatusTests {
         await model.togglePause(); #expect(model.status?.paused == true)
         await model.togglePause(); #expect(model.status?.paused == false)
         await model.open(tool: "codex")
-        await model.showHistory(); #expect(model.history?.count == 1)
+        await model.showHistory(); #expect(model.history?.contains { $0.kind == "linked" } == true)
         await model.previewRemoval(); #expect(model.plan?.applied == false)
         model.cancelPlan()
         await model.previewCopy(from: "claude", to: "codex")
@@ -223,12 +267,13 @@ struct SyncStatusTests {
         let engine = StatusRecordingEngine(); let model = SyncStatusViewModel(engine: engine)
         await model.load(link: 3)
         await model.previewRemoval()
-        #expect(model.plan?.planID == "p_d4_unlink")
+        let previewID = try #require(model.plan?.planID)
+        #expect(!previewID.isEmpty)
         #expect(model.confirmationButtons.map(\.id) == ["unlink", "cancel"])
         await model.confirmPlan()
         let calls = await engine.calls
         #expect(calls.last?.0 == "unlink")
-        #expect(calls.last?.1 == ["--link", "3", "--confirm", "p_d4_unlink"])
+        #expect(calls.last?.1 == ["--link", "3", "--confirm", previewID])
         #expect(model.removedLinkID == 3)
         #expect(model.status == nil)
         model.cancelPlan()

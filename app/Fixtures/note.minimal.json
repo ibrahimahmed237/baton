@@ -1,23 +1,8 @@
 {
-  "id": "fixture.links.ready",
-  "tone": "ok",
-  "values": {
-    "turns": 2,
-    "context": {
-      "invented": true
-    }
-  },
-  "text": "The sample chats are in sync.",
-  "buttons": [
-    {
-      "id": "open",
-      "label": "Open sample chat",
-      "primary": true
-    },
-    {
-      "id": "cancel",
-      "label": "Cancel"
-    }
-  ],
-  "status_line": null
+  "buttons": [],
+  "id": "nothing_unusual",
+  "status_line": null,
+  "text": "Nothing unusual.",
+  "tone": "info",
+  "values": {}
 }

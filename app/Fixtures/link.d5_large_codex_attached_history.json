@@ -1,29 +1,59 @@
 {
-  "plan_id": "p_d5_large_codex_attached_history",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
+      "buttons": [],
       "id": "link.attached_history",
+      "status_line": "Agent has 4 turns the chat does not show",
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
       "tone": "info",
       "values": {
         "n": 4
-      },
-      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
-      "buttons": [],
-      "status_line": "Agent has 4 turns the chat does not show"
+      }
+    }
+  ],
+  "plan_id": "p_92b6dd216388e358501275888ba80afe9ae61bd255c1c0e2d84429f94d8436aa",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.attached_history",
+          "status_line": "Agent has 4 turns the chat does not show",
+          "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+          "tone": "info",
+          "values": {
+            "n": 4
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

@@ -1,56 +1,39 @@
 {
-  "plan_id": "p_d5_cursor_cursor",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "cursor",
-      "tool_label": "Cursor",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "execution": "unavailable",
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.full_copy",
-      "tone": "info",
-      "values": {
-        "tool": "Cursor"
-      },
-      "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "write.app_must_close",
-      "tone": "warning",
-      "values": {
-        "tool": "Cursor",
-        "n": 4
-      },
-      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
       "buttons": [
-        {
-          "id": "close_sync_reopen",
-          "label": "Close Cursor, sync, reopen",
-          "primary": true
-        },
-        {
-          "id": "attach",
-          "label": "Attach instead",
-          "primary": false
-        },
         {
           "id": "cancel",
           "label": "Cancel",
           "primary": false
         }
       ],
-      "status_line": "4 turns waiting until Cursor is closed"
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
     }
-  ]
+  ],
+  "plan_id": "p_future_d5_cursor_replace_cursor",
+  "refusal_kind": "not_available",
+  "steps": []
 }

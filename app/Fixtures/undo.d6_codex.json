@@ -1,0 +1,77 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "undo",
+          "label": "Create the shorter Codex chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.shorter",
+      "status_line": "Earlier chat kept",
+      "text": "Codex can't make a chat shorter, so Baton creates a shorter chat and links it. Your current chat stays as it is.",
+      "tone": "warning",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_9c6f31fe0432ff3017809896ae5f8868d786b76f50afe0e39dbc80b82c077363",
+  "removes": [
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:01:00Z",
+        "first_line": "Orchard task 1",
+        "id": 41,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 1,
+        "started_at": "2026-10-05T12:01:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "shown"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "shown"
+        },
+        "tokens": 9
+      }
+    }
+  ],
+  "steps": [
+    {
+      "action": "create_shorter",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    }
+  ]
+}

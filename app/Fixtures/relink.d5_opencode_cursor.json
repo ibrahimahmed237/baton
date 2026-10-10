@@ -1,51 +1,64 @@
 {
-  "plan_id": "p_d5_opencode_cursor",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "cursor",
-      "tool_label": "Cursor",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.change",
-      "tone": "warning",
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
       "values": {
-        "name": "Imaginary orchard",
-        "new_name": "New partner",
-        "other_name": "Earlier partner"
-      },
-      "text": "Link \"Imaginary orchard\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+        "tool": "Cursor"
+      }
+    },
+    {
       "buttons": [
         {
-          "id": "relink",
-          "label": "Change the link",
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
           "primary": true
         },
         {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
           "id": "cancel",
-          "label": "Keep the current link",
+          "label": "Cancel",
           "primary": false
         }
       ],
-      "status_line": null
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Cursor to see this chat",
+      "text": "Baton closes Cursor, creates the chat, and opens Cursor again at it. Cursor lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "tool": "Cursor"
+      }
     },
     {
-      "id": "write.app_must_close",
-      "tone": "warning",
-      "values": {
-        "tool": "Cursor",
-        "n": 4
-      },
-      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
       "buttons": [
         {
           "id": "close_sync_reopen",
@@ -63,7 +76,139 @@
           "primary": false
         }
       ],
-      "status_line": "4 turns waiting until Cursor is closed"
+      "id": "write.app_must_close",
+      "status_line": "4 turns waiting until Cursor is closed",
+      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+      "tone": "warning",
+      "values": {
+        "n": 4,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"Cursor\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "Cursor",
+        "other_name": "Existing Codex"
+      }
+    }
+  ],
+  "plan_id": "p_688c84ad20b0d3acbea101a31628e376b026547bfdc1346fd43dafb1afb8fc4f",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "app_closed",
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again at it. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "4 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "n": 4,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"Cursor\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "Cursor",
+            "other_name": "Existing Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
     }
   ]
 }

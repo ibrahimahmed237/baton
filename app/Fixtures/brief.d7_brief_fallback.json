@@ -1,65 +1,19 @@
 {
-  "plan_id": "p_d7_brief_fallback_create",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
-  "decision_needed": false,
-  "notes": [
-    {
-      "id": "brief.skipped_limit",
-      "tone": "warning",
-      "values": {
-        "tool": "Claude"
-      },
-      "text": "Claude couldn't write the brief because it has reached its usage limit.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.skipped_limit",
-      "tone": "warning",
-      "values": {
-        "tool": "Codex"
-      },
-      "text": "Codex couldn't write the brief because it has reached its usage limit.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.used_offline",
-      "tone": "info",
-      "values": {},
-      "text": "Baton used the offline summary instead.",
-      "buttons": [],
-      "status_line": null
-    },
-    {
-      "id": "brief.pinned_size",
-      "tone": "info",
-      "values": {
-        "tokens": "3,200"
-      },
-      "text": "Pinned turns add about 3,200 tokens in full.",
-      "buttons": [],
-      "status_line": null
-    }
-  ],
-  "stage": "create",
+  "brief": {
+    "artifact_id": "a_f6c629d5e0da4bd46ae9ca4ff33bd5e5e931c842aab4d16ce977025603d5f138",
+    "candidate_estimates": [],
+    "estimated_tokens": 0,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 17,
+    "summary": "The first request was:\nOrchard task 1\n\nRequests so far:\n1. Orchard task 1\n2. Orchard task 2\n3. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard\n4. Orchard task 4",
+    "text": "This chat carries on work done in Claude. Below is a brief of it.\n\nThe first request was:\nOrchard task 1\n\nRequests so far:\n1. Orchard task 1\n2. Orchard task 2\n3. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard\n4. Orchard task 4\n\nThe full history is saved at /baton-fixtures/transcripts/link-3-c433e829851d119665309db7bb0825a92bc54d40b28a4a6142030eba2278952c.md. Read it for any detail not above.",
+    "tokens": 137,
+    "writer": "offline"
+  },
   "confirmation": {
-    "id": "plan.confirm_brief_creation",
-    "tone": "info",
-    "values": {},
-    "text": "Create a new chat with this brief. The earlier chat is kept.",
     "buttons": [
       {
         "id": "confirm",
@@ -72,20 +26,78 @@
         "primary": false
       }
     ],
-    "status_line": null
+    "id": "plan.confirm_brief_creation",
+    "status_line": null,
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "tone": "info",
+    "values": {}
   },
-  "brief": {
-    "writer": "offline",
-    "tokens": 900,
-    "pinned": [
-      41,
-      43
-    ],
-    "estimated_tokens": 0,
-    "candidate_estimates": [],
-    "artifact_id": "offline-artifact",
-    "text": "Work continues from the orchard conversation.\nThe harvest checklist is ready.",
-    "summary": "The harvest checklist is ready.",
-    "pinned_tokens": 3200
-  }
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "setup.runner",
+      "status_line": null,
+      "text": "Codex cannot run a background brief. Check its command and sign in, or use the offline brief.",
+      "tone": "warning",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.skipped_limit",
+      "status_line": null,
+      "text": "Claude couldn't write the brief because it has reached its usage limit.",
+      "tone": "warning",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.used_offline",
+      "status_line": null,
+      "text": "Baton used the offline summary instead.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 17 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 17
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.summary_receipt",
+      "status_line": null,
+      "text": "Summarized through this turn. The original messages are in the saved history.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_18263b69d9e9017e45914388ed11cded",
+  "stage": "create",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
 }

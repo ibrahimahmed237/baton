@@ -1,68 +1,52 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
-      "needs": [],
-      "notes": [
-        {
-          "id": "fixture.links.ready",
-          "tone": "ok",
-          "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Remove link",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_unlink",
+    "status_line": null,
+    "text": "Remove the link described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
       "buttons": [
         {
-          "id": "open",
-          "label": "Open sample chat",
+          "id": "unlink",
+          "label": "Remove link",
           "primary": true
         },
         {
           "id": "cancel",
-          "label": "Cancel"
+          "label": "Keep link",
+          "primary": false
         }
       ],
-      "status_line": "Sample ready"
+      "id": "link.remove",
+      "status_line": null,
+      "text": "Remove the link between \"Imaginary orchard\" and \"Imaginary orchard\"? Both chats stay exactly as they are. Baton stops syncing them. The 2 turns still waiting for Claude will not be delivered.",
+      "tone": "warning",
+      "values": {
+        "n": 2,
+        "name": "Imaginary orchard",
+        "other_name": "Imaginary orchard",
+        "tool": "Claude"
+      }
     }
-  ]
+  ],
+  "plan_id": "p_16c4e902f625f23ca0172d71a7b5fa5d0ceb30faef2002fd50eb7ec3e4acf4d0",
+  "steps": []
 }

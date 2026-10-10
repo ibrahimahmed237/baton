@@ -1,5 +1,5 @@
 {
-  "id": "open",
-  "label": "Open sample chat",
+  "id": "close_sync_reopen",
+  "label": "Close Claude, sync, reopen",
   "primary": true
 }

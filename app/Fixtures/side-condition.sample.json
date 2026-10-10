@@ -1,6 +1,9 @@
 {
+  "app_running": true,
+  "app_started_at": "",
   "exists": true,
-  "open": false,
-  "replying": false,
-  "hooks_ready": true
+  "format_known": true,
+  "hooks_ready": true,
+  "open": true,
+  "replying": false
 }

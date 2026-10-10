@@ -1,6 +1,6 @@
 import Foundation
 
-/// Loads hand-made responses from a caller-selected fixture directory.
+/// Loads generated contract responses from a caller-selected fixture directory.
 public struct FixtureEngine: EngineTransport {
     public let directory: URL
     public let state: String
@@ -19,11 +19,19 @@ public struct FixtureEngine: EngineTransport {
     ) async throws -> Result {
         let selectedState = states[command] ?? state
         var url = directory.appendingPathComponent("\(command).\(selectedState).json")
-        // Hand-made window fixtures can provide a distinct response per selected link.
+        // Generated window fixtures can provide a distinct response per selected link.
         if let index = arguments.firstIndex(of: "--link"), arguments.indices.contains(index + 1),
            let link = Int(arguments[index + 1]) {
             let scoped = directory.appendingPathComponent("\(command).\(selectedState)_\(link).json")
             if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
+        }
+        // Read fixtures provide the actual result for the requested coding tool.
+        if let index = arguments.firstIndex(of: "--tool"), arguments.indices.contains(index + 1) {
+            let tool = arguments[index + 1]
+            if !tool.isEmpty && tool.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" }) {
+                let scoped = directory.appendingPathComponent("\(command).\(selectedState)_\(tool).json")
+                if FileManager.default.fileExists(atPath: scoped.path) { url = scoped }
+            }
         }
         // Dialog fixtures may provide an engine response per chosen destination.
         if let index = arguments.firstIndex(of: "--to"), arguments.indices.contains(index + 1) {

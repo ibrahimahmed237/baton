@@ -1,68 +1,113 @@
 {
-  "plan_id": "p_sample",
   "applied": false,
-  "link_id": 3,
-  "steps": [
-    {
-      "tool": "claude",
-      "action": "add",
-      "turns": [
-        41
-      ],
-      "reason": "sample",
-      "needs": [],
-      "notes": [
-        {
-          "id": "fixture.links.ready",
-          "tone": "ok",
-          "values": {
-            "turns": 2,
-            "context": {
-              "invented": true
-            }
-          },
-          "text": "The sample chats are in sync.",
-          "buttons": [
-            {
-              "id": "open",
-              "label": "Open sample chat",
-              "primary": true
-            },
-            {
-              "id": "cancel",
-              "label": "Cancel"
-            }
-          ],
-          "status_line": "Sample ready"
-        }
-      ],
-      "tool_label": "Claude"
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Copy chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_copy",
+    "status_line": null,
+    "text": "Create the copy described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "fixture.links.ready",
-      "tone": "ok",
-      "values": {
-        "turns": 2,
-        "context": {
-          "invented": true
-        }
-      },
-      "text": "The sample chats are in sync.",
       "buttons": [
         {
-          "id": "open",
-          "label": "Open sample chat",
+          "id": "copy",
+          "label": "Copy to Codex",
           "primary": true
         },
         {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
           "id": "cancel",
-          "label": "Cancel"
+          "label": "Cancel",
+          "primary": false
         }
       ],
-      "status_line": "Sample ready"
+      "id": "link.copy",
+      "status_line": null,
+      "text": "A new chat is created in Codex with all 4 turns. The two chats will not be kept in sync.",
+      "tone": "info",
+      "values": {
+        "n": 4,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_09b616a397f263223345af7e7a518cc0a0b533db2777980529afc2c366ea0009",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "copy",
+              "label": "Copy to Codex",
+              "primary": true
+            },
+            {
+              "id": "copy_and_link",
+              "label": "Copy and link",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "link.copy",
+          "status_line": null,
+          "text": "A new chat is created in Codex with all 4 turns. The two chats will not be kept in sync.",
+          "tone": "info",
+          "values": {
+            "n": 4,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

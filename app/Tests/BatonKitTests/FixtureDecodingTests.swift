@@ -3,8 +3,9 @@ import Testing
 @testable import BatonKit
 
 struct FixtureDecodingTests {
-    static let fixtures = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+    static let fixtures = (ProcessInfo.processInfo.environment["BATON_TEST_ROOT"].map { URL(fileURLWithPath: $0) }
+        ?? URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent())
         .appendingPathComponent("Fixtures", isDirectory: true)
 
     private func decoder<T: Codable & Equatable>(for type: T.Type) -> (Data) throws -> Void {
@@ -87,9 +88,16 @@ struct FixtureDecodingTests {
         for file in files {
             let command = String(file.lastPathComponent.split(separator: ".")[0])
             let decode = try #require(decoders[command], "Unregistered fixture: \(file.lastPathComponent)")
-            do { try decode(Data(contentsOf: file)) }
-            catch { Issue.record("\(file.lastPathComponent): \(error)") }
-            covered.insert(command)
+            do {
+                let data = try Data(contentsOf: file)
+                let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+                if let refusal = object["error"] {
+                    try decoder(for: EngineCommandError.self)(JSONSerialization.data(withJSONObject: refusal))
+                } else {
+                    try decode(data)
+                    covered.insert(command)
+                }
+            } catch { Issue.record("\(file.lastPathComponent): \(error)") }
         }
         #expect(covered == Set(decoders.keys) , "Every model and command needs a fixture")
     }
@@ -98,9 +106,18 @@ struct FixtureDecodingTests {
     func testSnakeCaseEncodingAndOptionalButtonPrimary() throws {
         let data = try Data(contentsOf: Self.fixtures.appendingPathComponent("note.sample.json"))
         let note = try JSONDecoder().decode(Note.self, from: data)
-        #expect(note.buttons[1].primary == nil)
+        var original = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var buttons = try #require(original["buttons"] as? [[String: Any]])
+        #expect(buttons.count >= 2)
+        buttons[1].removeValue(forKey: "primary")
+        original["buttons"] = buttons
+        let legacy = try JSONDecoder().decode(Note.self, from: JSONSerialization.data(withJSONObject: original))
+        #expect(legacy.buttons[1].primary == nil)
+        #expect(legacy.text == note.text && legacy.statusLine == note.statusLine)
         let encoded = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(note)) as? [String: Any])
-        #expect(encoded["status_line"] as? String == "Sample ready")
+        let statusLine = try #require(note.statusLine)
+        #expect(!statusLine.isEmpty)
+        #expect(encoded["status_line"] as? String == statusLine)
         #expect(encoded["statusLine"] == nil)
     }
 }

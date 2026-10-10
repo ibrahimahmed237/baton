@@ -1,29 +1,38 @@
 {
-  "plan_id": "p_d5_codex_codex_attached_history",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "codex",
-      "tool_label": "Codex",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": 3,
   "notes": [
     {
-      "id": "link.change",
-      "tone": "warning",
+      "buttons": [],
+      "id": "link.attached_history",
+      "status_line": "Agent has 4 turns the chat does not show",
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "tone": "info",
       "values": {
-        "name": "Source",
-        "new_name": "New partner",
-        "other_name": "Earlier partner"
-      },
-      "text": "Link \"Source\" to \"New partner\" instead? The link to \"Earlier partner\" is removed first. That chat stays exactly as it is and is no longer synced.",
+        "n": 4
+      }
+    },
+    {
       "buttons": [
         {
           "id": "relink",
@@ -36,17 +45,61 @@
           "primary": false
         }
       ],
-      "status_line": null
-    },
-    {
-      "id": "link.attached_history",
-      "tone": "info",
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"Existing Codex\" instead? The link to \"Existing OpenCode\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
       "values": {
-        "n": 4
-      },
-      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
-      "buttons": [],
-      "status_line": "Agent has 4 turns the chat does not show"
+        "name": "Imaginary orchard",
+        "new_name": "Existing Codex",
+        "other_name": "Existing OpenCode"
+      }
+    }
+  ],
+  "plan_id": "p_99d45b8820061c523063c3953763227e8a75195c58da7420628d976bf7bd8c55",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.attached_history",
+          "status_line": "Agent has 4 turns the chat does not show",
+          "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+          "tone": "info",
+          "values": {
+            "n": 4
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"Existing Codex\" instead? The link to \"Existing OpenCode\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "Existing Codex",
+            "other_name": "Existing OpenCode"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
     }
   ]
 }

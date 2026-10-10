@@ -33,7 +33,11 @@ private actor EmptyStateEngine: EngineTransport {
         }
         if fail { throw EmptyFixtureFailure.unavailable }
         let directory = ComponentTests.root.appendingPathComponent("Fixtures")
-        let target = directory.appendingPathComponent("\(command).\(state).json")
+        var target = directory.appendingPathComponent("\(command).\(state).json")
+        if command == "chats", let index = arguments.firstIndex(of: "--tool"), arguments.indices.contains(index + 1) {
+            let scoped = directory.appendingPathComponent("\(command).\(state)_\(arguments[index + 1]).json")
+            if FileManager.default.fileExists(atPath: scoped.path) { target = scoped }
+        }
         let data = try Data(contentsOf: FileManager.default.fileExists(atPath: target.path)
                             ? target : directory.appendingPathComponent("\(command).sample.json"))
         var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])

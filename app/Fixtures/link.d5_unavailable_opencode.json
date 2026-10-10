@@ -1,29 +1,79 @@
 {
-  "plan_id": "p_d5_unavailable_opencode",
   "applied": false,
-  "link_id": null,
-  "steps": [
-    {
-      "tool": "opencode",
-      "tool_label": "OpenCode",
-      "action": "create",
-      "turns": [],
-      "reason": "",
-      "needs": [],
-      "notes": []
-    }
-  ],
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
   "decision_needed": false,
+  "link_id": null,
   "notes": [
     {
-      "id": "new_chat.at_once",
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
       "tone": "info",
       "values": {
         "tool": "OpenCode"
-      },
-      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      }
+    },
+    {
       "buttons": [],
-      "status_line": null
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    }
+  ],
+  "plan_id": "p_8d465fb9574493ccfcde30e80cb1f1aeb5ce596564818439291dd6a3117d3e89",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in OpenCode right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
     }
   ]
 }

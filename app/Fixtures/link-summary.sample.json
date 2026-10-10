@@ -1,50 +1,41 @@
 {
-  "link_id": 3,
-  "sides": {
-    "claude": {
-      "tool": "claude",
-      "id": "sample-a",
-      "name": "Imaginary orchard",
-      "folder": "/tmp/baton-sample",
-      "updated_at": "2026-10-04T14:05:00Z",
-      "linked": true,
-      "tool_label": "Claude"
-    },
-    "codex": {
-      "tool": "codex",
-      "id": "sample-b",
-      "name": "Imaginary orchard",
-      "folder": "/tmp/baton-sample",
-      "updated_at": "2026-10-04T14:05:00Z",
-      "linked": true,
-      "tool_label": "Codex"
+  "decision_needed": false,
+  "headline": {
+    "buttons": [],
+    "id": "status.ahead",
+    "status_line": null,
+    "text": "Codex is 2 turns ahead",
+    "tone": "info",
+    "values": {
+      "n": 2,
+      "tool": "Codex"
     }
   },
+  "in_sync": false,
+  "link_id": 3,
   "mode": "full_copy",
+  "needs_attention": true,
   "paused": false,
-  "headline": {
-    "id": "fixture.links.ready",
-    "tone": "ok",
-    "values": {
-      "turns": 2,
-      "context": {
-        "invented": true
-      }
+  "sides": {
+    "claude": {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-a",
+      "link_id": 3,
+      "linked": true,
+      "name": "Imaginary orchard",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "updated_at": "2026-10-05T12:02:00Z"
     },
-    "text": "The sample chats are in sync.",
-    "buttons": [
-      {
-        "id": "open",
-        "label": "Open sample chat",
-        "primary": true
-      },
-      {
-        "id": "cancel",
-        "label": "Cancel"
-      }
-    ],
-    "status_line": "Sample ready"
-  },
-  "in_sync": true,
-  "decision_needed": false
+    "codex": {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-b",
+      "link_id": 3,
+      "linked": true,
+      "name": "Imaginary orchard",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "updated_at": "2026-10-05T12:04:00Z"
+    }
+  }
 }

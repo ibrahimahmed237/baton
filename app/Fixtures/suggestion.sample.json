@@ -1,21 +1,23 @@
 {
   "a": {
-    "tool": "claude",
-    "id": "sample-a",
+    "folder": "/work/baton-fixtures",
+    "id": "claude-match",
+    "link_id": null,
+    "linked": false,
     "name": "Imaginary orchard",
-    "folder": "/tmp/baton-sample",
-    "updated_at": "2026-10-04T14:05:00Z",
-    "linked": true,
-    "tool_label": "Claude"
+    "tool": "claude",
+    "tool_label": "Claude",
+    "updated_at": "2026-10-05T12:01:00Z"
   },
   "b": {
-    "tool": "codex",
-    "id": "sample-b",
+    "folder": "/work/baton-fixtures",
+    "id": "codex-match",
+    "link_id": null,
+    "linked": false,
     "name": "Imaginary orchard",
-    "folder": "/tmp/baton-sample",
-    "updated_at": "2026-10-04T14:05:00Z",
-    "linked": true,
-    "tool_label": "Codex"
+    "tool": "codex",
+    "tool_label": "Codex",
+    "updated_at": "2026-10-05T12:01:00Z"
   },
   "matched_turns": 1
 }
