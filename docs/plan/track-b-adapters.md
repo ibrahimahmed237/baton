@@ -53,6 +53,10 @@ All adapter tests run on files and databases built in a temporary folder that th
 
 ## B2. Codex
 
+**Files.** `baton/adapters/codex/`, `tests/adapters/test_codex.py`, `tests/fixtures/codex/`; plan/report records.
+
+**2026-10-10 safety repair boundary.** Content/template/format access is restricted to explicit throwaway IDs and privately recorded created descendants. Native publication and rollback require a verified continuous coordination protocol, full-row transactional comparisons and strict target identity/format. The production default has no verified coordination protocol or measured hook-trust verifier and refuses accordingly; fixture controls do not establish live acceptance. Automatic closure also refuses without verified global idle exclusion. Missing/unverified index evidence never permits shortening an append. Capabilities remain the measured facts; these safety prerequisites must be separately verified before a live run.
+
 **Facts.** write window `NOT_HELD`; new chat `AT_ONCE`; added turn `AT_ONCE`; cannot cut; cannot place; no release; opens at chat; limit with reset time; context size known; hooks need a one-time trust.
 
 | Part | File | Details |

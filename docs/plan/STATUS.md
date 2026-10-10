@@ -2,28 +2,17 @@
 
 The current hand-off page. Historical decisions, reviews and logs are in [reports/](reports/) and git history. Whole road: [MAP.md](MAP.md).
 
-**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-09
+**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-10
 
 ## Now
 
-**Stopped at the E10/D7 green boundary:** E10 committed `ec88983`, D7 committed `c8720bf`. Root measured **702 engine /143 app tests and build pass**. Engine privacy/cache/atomic creation and undo fixes were challenged; app cost/artifact/offer/stale gates were reviewed. Five-hour usage reached95%, so stopped after these commits at a green package boundary; do not start B2/C2 this batch. No push or real-chat access.
+**B2 fixture implementation/safety repairs independently accepted, committing.** Root measured **730 engine tests,149 combined native fixture tests (108 Codex+41 Claude),77 CP2 scenarios,143 app tests and build pass**. All writes/reads remained temporary; no live chat/app access or push. [B2 report](reports/B2-2026-10-10.md), [current CP2 report](reports/CP2-2026-10-10.md). CP2 is **not passed**: C2 and native live evidence remain.
 
-Resume baseline (before E10/D7 edits): **670 engine tests, 129 app tests and build pass**. Previous isolated committed package verification: **555 engine**, **119 app and build**, excluding unfinished E10/B2/D7. Full evidence and each CP2 gate: [CP2-2026-10-09.md](reports/CP2-2026-10-09.md). **CP2 has not passed.**
-
-| Package | State and preserved ownership |
-|---|---|
-| E9 | Committed `650a8d1`; [report](reports/E9-2026-10-09.md). Legacy baselines stay unverified; ordinary refresh readable, digest unavailable until a fresh explicit link establishes verified scope. |
-| D6 | Committed `604e6d8`; [report](reports/D6-2026-10-09.md). Fixture-screen routing/display acceptance; C2 service-backed evidence and CP3 execution still owed. |
-| E10 | Committed `ec88983`;702 working-tree /622 isolated engine tests. [Report](reports/E10-2026-10-09.md). |
-| B2 | Unfinished `adapters/codex/` native implementation and native fixtures/tests/report; only E9 standalone reader classifier committed. Safety repairs and live acceptance owed. |
-| D7 | Committed `c8720bf`, independently approved for CP2 fixture-screen scope;143 app/build. [Report](reports/D7-2026-10-09.md). C2 generation still owed. |
-| C2 | Not started: read projections/commands, authoritative generation and manifest. |
-
-G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825137e` were committed earlier in this batch. Normal approved Git writes work; sandbox-only `.git` remains read-only. Preserve every unfinished file.
+E9 `650a8d1`, D6 `604e6d8`, E10 `ec88983`, D7 `c8720bf`, G2 `dab931c`, G3 `7f6e39f` and C1 `e15e076` are committed. The historical untracked `reports/E9-E10.md` is preserved; current accepted reports supersede it. C2 starts after B2 commit. At most two agents; separate review before acceptance. Normal approved Git writes work; sandbox-only `.git` remains read-only.
 
 ## Next
 
-1. Next batch: repair/review **B2 native safety**, then **C2 safe reads and deterministic generated fixtures**, under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md). Preserve all unfinished native files; at most two agents.
+1. Commit accepted **B2 fixture safety**, then build/review **C2 safe reads and deterministic generated fixtures**, under [CP2-REPAIR-PLAN.md](CP2-REPAIR-PLAN.md). Preserve all unfinished native files; at most two agents.
 2. C2 must prove service effects and identify future-only providers; D6/D7 transport counters are routing evidence only.
 3. After blockers close, list exact Claude/Codex throwaway live scope and ask for each app closure. CP2 cannot pass without its live evidence.
 
@@ -66,9 +55,15 @@ G2 `dab931c`, G3 `7f6e39f`, C1 `e15e076` and approved plan/interface record `825
 
 ## Ready to commit
 
-None. E10 `ec88983` and D7 `c8720bf` committed separately. B2 files remain unfinished and unstaged; C2 not started.
+B2 — native-shaped fixture implementation and safe refusal only. Exact paths: `baton/adapters/codex/__init__.py`, `reader.py`, `app.py`, `facts.py`, `hooks.py`, `locator.py`, `records.py`, `runner.py`, `scope.py`, `state.py`, `tool.py`, `writer.py`; `tests/adapters/test_codex.py`; `tests/fixtures/codex/__init__.py`, `build.py`; `docs/plan/ARCHITECTURE.md`, `HANDOFF.md`, `MAP.md`, `STATUS.md`, `track-b-adapters.md`; `docs/plan/reports/B2.md`, `B2-2026-10-10.md`, `CP2-2026-10-10.md`. No E9-E10 historical draft.
+
+Subject: `Keep Codex writes scoped and recoverable`
+
+Body: `Native chat changes must preserve outside work and private history. Bound every access to approved chat identities, keep exclusion through publication and rollback, and refuse unverified coordination, projection evidence and hook trust.`
 
 ## Decisions and reviewer findings
+
+- **Ibrahim Q6 (2026-10-10):** approved the exact completed-history labels and merge-preset labels presented in chat. C2 adds them to the catalogue; no wording lives in serializers or app code.
 
 - **Ibrahim Q5 (2026-10-09):** approved estimated-cost-before-agent-generation, separate generated-brief review/create, truthful summary receipts, action-specific confirmation/Cancel and Automatic/Offline. Approved unavailable CP3 alternatives preserving the original request, and the planned CP2 fixture/service versus CP3 execution boundary. See CP2-REPAIR-PLAN.md; additive CONTRACT/copy recorded before workers start.
 
@@ -81,13 +76,18 @@ None. E10 `ec88983` and D7 `c8720bf` committed separately. B2 files remain unfin
 
 ## Questions and unresolved work
 
-- E9 and E10 accepted after independent review. B2 safety/live and C2 safe read serialization/generated fixtures remain; no issue is waived.
+
+- E9/E10/B2 fixture safety accepted after independent reviews. C2 safe read serialization/generated fixtures and native live acceptance remain; no issue is waived.
 - D6/D7 accepted for fixture screens; C2 service-backed/generated acceptance and D12 production integration remain. No native execution is inferred from screen transport tests.
 - C1 is complete as a skeleton; C2/C3 commands and installed entry-point verification remain. Direct Engine callers must hold command_lock before first service access through apply. C4 must bound lock acquisition within its two-second deadline.
-- B2 report explicitly lists guessed native schema/index/hook-trust assumptions. Those are not live evidence. B1's fixture acceptance also still needs its live check.
+- B2 safe fixture implementation is accepted; native coordination/index/schema/marker/trust/visibility remain unverified and production mutation/automatic closure safely refuse. B1 live acceptance also remains owed.
 - Ctrl-Command-F integration remains D13 work; native green-button full screen was checked earlier. C2/D12 must replace preview settings and hand-made fixtures with authoritative engine responses.
 
 ## Log
+
+- 2026-10-10 — B2 fixture safety accepted after independent final108 approval and root730/149native/77scenarios/143app/build checks. Scope/CAS/trust/format/continuous-lock mutants exercise real failure assertions. Native protocols/live still fail closed; commit pending, no push.
+
+- 2026-10-10 — Resumed at Ibrahim’s request; B2 safety started with preserved dirty scope, C2 follows. Usage window reset naturally; no credit consumed. No live access/push.
 
 - 2026-10-09 — D7 committed `c8720bf`, only36 reviewed app/fixture/plan files; index empty. E10/D7 complete, common702/143/build and isolated622 engine pass. Usage95% boundary: B2/C2/live remain, no push.
 

@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-09, Codex resumed the CP2 review
+**Last updated:** 2026-10-10, B2 fixture safety accepted
 
 ---
 
@@ -24,3 +24,7 @@ Prior E9/D6 usage stop is historical. E10/D7 are independently accepted and comm
 Ibrahim approved CP2-REPAIR-PLAN.md product/boundary decisions: estimated costs before generation, separate generation/review/create, truthful summary coverage, action-specific controls and Automatic/Offline. Unsupported CP3 choices preserve the request and cannot confirm. Next batch: B2 safety, then C2 generation and scoped live gates, at most two active agents. Preserve unfinished files and update STATUS/MAP/HANDOFF after every package.
 
 Direct Engine callers hold engine.command_lock() before first service access through planning/applying; C4 must include bounded lock acquisition in its deadline. Prior live go is only for explicitly scoped throwaway chats; every app closure requires a fresh go. No real app/chat was accessed or push made this batch.
+
+2026-10-10 resume: B2 safety started, existing native files preserved. Worker owns Codex adapter/native tests/fixtures; root owns plan records. C2 follows B2 acceptance. No live access or push; no usage reset credit used.
+
+B2 fixture implementation/safety accepted: root730 engine/143 app/build,149 native fixtures,77 CP2 scenarios. Full-row CAS, continuous fixture coordination, explicit scope/private recovery, aliases/index/trust refusals and publicSQL guard reviewed. Commit pending; C2 follows. Production native writes/automatic closure stay unavailable until verified native coordination/trust/schema; no live acceptance. Current evidence CP2-2026-10-10.md.

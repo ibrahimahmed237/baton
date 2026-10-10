@@ -1,0 +1,135 @@
+"""Baton's two entries in Codex's hooks.json, and what each prints.
+
+Codex runs a hook only after the user has trusted it once (`/hooks`), per entry.
+Baton reports whether that has happened and never records the trust itself.
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import tempfile
+from pathlib import Path
+from typing import Callable
+
+from ...domain.capabilities import HookNeed
+from ...ports.tool import SetupFinding
+
+_EVENTS = ("UserPromptSubmit", "Stop")
+
+
+class CodexHooks:
+    """Install, remove and check Baton's hook entries; build what the hooks print."""
+
+    COMMANDS = {"UserPromptSubmit": "python3 -m baton.hooks.prompt --tool codex",
+                "Stop": "python3 -m baton.hooks.turn_end --tool codex"}
+
+    def __init__(self, adapter, hook_commands: dict[str, str] | None = None,
+                 entrypoints_available: Callable[[], bool] | None = None):
+        self.adapter = adapter
+        self.commands = hook_commands or self.COMMANDS
+        self.entrypoints_available = entrypoints_available or self._available
+
+    @staticmethod
+    def _available() -> bool:
+        try:
+            return all(importlib.util.find_spec(name) is not None
+                       for name in ("baton.hooks.prompt", "baton.hooks.turn_end"))
+        except (ModuleNotFoundError, ValueError):
+            return False
+
+    @property
+    def path(self) -> Path:
+        """The user-level hooks file, confined to the adapter root."""
+        return self.adapter.locator.inside(self.adapter.locator.home / "hooks.json")
+
+    def _read(self) -> dict:
+        if not self.path.exists():
+            return {}
+        settings = json.loads(self.path.read_text())
+        if not isinstance(settings, dict):
+            raise ValueError("invalid hooks file")
+        return settings
+
+    def _write(self, settings: dict) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary = tempfile.mkstemp(prefix=".baton-", dir=self.path.parent)
+        try:
+            with os.fdopen(descriptor, "w") as fh:
+                json.dump(settings, fh, indent=2)
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+
+    def _installed(self) -> bool:
+        try:
+            hooks = self._read().get("hooks", {})
+            return all(any(h.get("type") == "command" and h.get("command") == command
+                           for entry in hooks.get(event, []) for h in entry.get("hooks", []))
+                       for event, command in self.commands.items())
+        except (OSError, ValueError, TypeError, AttributeError):
+            return False
+
+    def trusted(self) -> bool:
+        """Refuse readiness until native trust schema and identity are measured."""
+        # The native trust schema and command identity digest have not been
+        # measured. A guessed key or arbitrary nonempty hash is not evidence.
+        return False
+
+    def check(self) -> SetupFinding:
+        """Whether the entries are installed and trusted. Never changes anything."""
+        installed = self._installed() and self.entrypoints_available()
+        trusted = installed and self.trusted()
+        if not installed:
+            note = "setup.hooks"
+        elif not trusted:
+            note = "setup.trust_once"
+        else:
+            note = ""
+        values = {"need": HookNeed.TRUST_ONCE.value, "tool": "codex", "installed": installed, "trusted": trusted}
+        return SetupFinding("hooks", installed and trusted, note, values)
+
+    def install(self) -> SetupFinding:
+        """Add Baton's entries without touching any other entry or setting."""
+        if not self.entrypoints_available():
+            return self.check()
+        settings = self._read()
+        hooks = settings.setdefault("hooks", {})
+        for event, command in self.commands.items():
+            entries = hooks.setdefault(event, [])
+            if not any(h.get("command") == command for entry in entries for h in entry.get("hooks", [])):
+                entries.append({"hooks": [{"type": "command", "command": command}]})
+        self._write(settings)
+        return self.check()
+
+    def uninstall(self) -> None:
+        """Remove only Baton's entries."""
+        if not self.path.exists():
+            return
+        settings = self._read()
+        hooks = settings.get("hooks", {})
+        for event, command in self.commands.items():
+            entries = hooks.get(event)
+            if entries is None:
+                continue
+            for entry in entries:
+                entry["hooks"] = [h for h in entry.get("hooks", []) if h.get("command") != command]
+            hooks[event] = [entry for entry in entries if entry.get("hooks")]
+            if not hooks[event]:
+                del hooks[event]
+        self._write(settings)
+
+    def attach_reply(self, text: str, notice: str | None) -> str:
+        """What the prompt hook prints: text for the agent, an optional notice, or `{}` when there is neither."""
+        if not text and notice is None:
+            return "{}"
+        result: dict = {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": text}}
+        if notice is not None:
+            result["systemMessage"] = notice
+        return json.dumps(result)
+
+    def turn_end_reply(self) -> str:
+        """Codex rejects anything but valid JSON from a Stop hook."""
+        return "{}"
