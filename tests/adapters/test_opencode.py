@@ -251,7 +251,7 @@ class OpenCodeTests(unittest.TestCase):
         fx.insert_message(self.root, "ses_native", "native-assistant", "assistant", fx.EARLY + 10,
                           [{"type": "reasoning", "text": "hidden"},
                            {"type": "tool", "tool": "bash", "callID": "call-native", "state": {"status": "completed", "input": {"command": "ls"}, "output": "file", "time": {"end": fx.EARLY + 13}}},
-                           {"type": "text", "text": "answer"}], finish="stop")
+                           {"type": "text", "text": "answer"}], parentID="native-user", finish="stop")
         values = self.adapter.reader.read("ses_native")
         self.assertEqual(values[0].prompt.text, "real")
         self.assertEqual([m.kind for m in values[0].messages], [TOOL_CALL, TOOL_RESULT, REPLY])
@@ -274,16 +274,16 @@ class OpenCodeTests(unittest.TestCase):
         self.assertIsNone(usage.size)
         self.assertIsNone(usage.limit_resets_at)
 
-    def test_running_and_replying_block_writes_and_close(self):
+    def test_running_and_replying_allow_add_but_block_rename_and_close(self):
         self.process.is_running = True
         fx.run_sql(self.root, "UPDATE message SET data=json_remove(data,'$.finish') WHERE id='a3'")
         self.assertTrue(self.adapter.state.condition(self.chat).replying)
         with self.assertRaises(ChatReplying):
             self.adapter.app.close()
-        for operation in (lambda: self.adapter.writer.rename(self.chat, "while running"),
-                          lambda: self.adapter.writer.add(self.chat, [Turn(Message("blocked", PROMPT, "new"))])):
-            with self.assertRaises(ChatReplying):
-                operation()
+        with self.assertRaises(ChatReplying):
+            self.adapter.writer.rename(self.chat, "while running")
+        self.adapter.writer.add(self.chat, [Turn(Message("allowed", PROMPT, "new"))])
+        self.assertEqual(self.adapter.reader.read(self.chat)[-1].id, "allowed")
         self.assertEqual(self.adapter.locator.name(self.chat), "fixture")
         self.assertEqual(self.process.calls, [])
 

@@ -33,17 +33,21 @@ class OpenCodeReviewTests(unittest.TestCase):
         fx.run_sql(self.root, "UPDATE part SET time_updated=? WHERE message_id=?", (at, ident))
         return int(now.timestamp() * 1000)
 
-    def test_busy_observation_blocks_every_existing_chat_write(self):
+    def test_busy_observation_blocks_edits_but_accepts_add_and_create(self):
         self.adapter.chat_status = lambda _: {"status": "busy"}
         before = saved(self.adapter, self.chat)
-        for operation in (lambda: self.adapter.writer.add(self.chat, [Turn(Message("new", PROMPT, "new"))]),
-                          lambda: self.adapter.writer.place(self.chat, [], "p1"),
+        for operation in (lambda: self.adapter.writer.place(self.chat, [], "p1"),
                           lambda: self.adapter.writer.cut(self.chat, "p1"),
                           lambda: self.adapter.writer.rename(self.chat, "new"),
                           lambda: self.adapter.writer.prepare(self.chat, "restore")):
             with self.assertRaises(ChatReplying):
                 operation()
         self.assertEqual(saved(self.adapter, self.chat), before)
+        value = Turn(Message("new", PROMPT, "new"))
+        self.adapter.writer.add(self.chat, [value])
+        self.assertEqual(self.adapter.reader.read(self.chat)[-1], value)
+        created = self.adapter.writer.create([value], "copy", "folder")
+        self.assertEqual(self.adapter.reader.read(created.chat_id), [value])
 
     def test_idle_running_chat_still_accepts_add(self):
         self.process.is_running = True
@@ -257,10 +261,11 @@ class OpenCodeReviewTests(unittest.TestCase):
             self.adapter.app.close()
         self.assertEqual(self.process.calls, [])
 
-    def test_native_busy_status_object_blocks_writes(self):
+    def test_native_busy_status_object_allows_add(self):
         self.adapter.chat_status = lambda _: {"status": {"type": "busy"}}
-        with self.assertRaises(ChatReplying):
-            self.adapter.writer.add(self.chat, [])
+        value = Turn(Message("busy", PROMPT, "new"))
+        self.adapter.writer.add(self.chat, [value])
+        self.assertEqual(self.adapter.reader.read(self.chat)[-1], value)
 
     def test_take_back_busy_gate_runs_inside_writer_transaction(self):
         receipt = self.adapter.writer.add(self.chat, [Turn(Message("new", PROMPT, "new"))]).receipt

@@ -34,13 +34,13 @@ class OpenCodeWriter:
         if chat_id not in self.adapter.allowed_chat_ids | self.created:
             raise NotAvailable()
 
-    def _check(self, chat_id=None):
+    def _check(self, chat_id=None, kind=None):
         if not self.adapter.state.format_version().known:
             raise UnknownFormat()
         if chat_id is not None:
             self._require(chat_id)
             self.adapter.locator.row(chat_id)
-            if self.adapter.state.condition(chat_id).replying:
+            if kind != "add" and self.adapter.state.condition(chat_id).replying:
                 raise ChatReplying()
         elif not self.adapter.allowed_chat_ids:
             raise NotAvailable()
@@ -81,7 +81,7 @@ class OpenCodeWriter:
         """Capture an immutable row snapshot or reserve the ID of a future chat."""
         if kind not in KINDS or (chat_id is None) != (kind == "create"):
             raise ValueError(kind)
-        self._check(chat_id)
+        self._check(chat_id, kind)
         if chat_id is None:
             chat_id = new_id("ses", self._now(), descending=True)
             before = {"session": [], "message": [], "part": []}
@@ -141,7 +141,7 @@ class OpenCodeWriter:
             try:
                 if not self.adapter.state.shape_known(db):
                     raise UnknownFormat()
-                if receipt.kind != "create" and self.adapter.state.condition(receipt.chat_id).replying:
+                if receipt.kind not in ("create", "add") and self.adapter.state.condition(receipt.chat_id).replying:
                     raise ChatReplying()
                 # Compare full session AND child rows after obtaining SQLite's writer lock.
                 if snapshot(db, receipt.chat_id) != before:
@@ -232,7 +232,7 @@ class OpenCodeWriter:
         raise NotAvailable()
 
     def _insert(self, chat_id, turns, kind, target=None):
-        self._check(chat_id)
+        self._check(chat_id, kind)
         receipt = self._begin(chat_id, kind)
         after = unpack(receipt.data["before"])
         existing = self.adapter.reader.read(chat_id)
@@ -276,7 +276,7 @@ class OpenCodeWriter:
         return self._write(receipt, pack(after), turns)
 
     def add(self, chat_id, turns):
-        """Append turns even when the app is running."""
+        """Append after the latest user turn, including during a native reply."""
         return self._insert(chat_id, turns, "add")
 
     def place(self, chat_id, turns, before_local_id):
@@ -296,7 +296,9 @@ class OpenCodeWriter:
             if index is None:
                 raise KeyError(keep_through_local_id)
             end = users[index + 1]["time_created"] if index + 1 < len(users) else float("inf")
-            kept = {r["id"] for r in ordered if r["time_created"] < end}
+            kept_users = {r["id"] for r in users if r["time_created"] < end}
+            kept = {r["id"] for r in ordered if r["id"] in kept_users or
+                    json.loads(r["data"]).get("parentID") in kept_users}
         else:
             kept = set()
         after["message"] = [r for r in after["message"] if r["id"] in kept]
@@ -333,6 +335,69 @@ class OpenCodeWriter:
             raise ChatChanged()
         return self._write(fresh, manifest["before"])
 
+    @staticmethod
+    def _streaming_take_back(manifest, current):
+        """Undo an append while preserving only its pre-existing reply's progress.
+
+        Baton rows must still match the receipt exactly. Only assistants that
+        were unfinished before add, their continuation messages/parts, and
+        session time_updated may have changed; unrelated edits still refuse.
+        """
+        if manifest["kind"] != "add":
+            raise ChatChanged()
+        before, after, live = (unpack(value) for value in
+                               (manifest["before"], manifest["after"], current))
+        streaming = {r["id"] for r in before["message"]
+                     if json.loads(r["data"]).get("role") == "assistant"
+                     and not json.loads(r["data"]).get("finish")
+                     and not json.loads(r["data"]).get("batonWritten")}
+        if not streaming or len(live["session"]) != 1:
+            raise ChatChanged()
+        parents = {json.loads(r["data"]).get("parentID") for r in before["message"] if r["id"] in streaming}
+        old_messages = {r["id"] for r in after["message"]}
+        for row in live["message"]:
+            if row["id"] not in old_messages:
+                native = json.loads(row["data"])
+                if (native.get("role") != "assistant" or native.get("parentID") not in parents
+                        or native.get("parentID") is None or native.get("batonWritten")):
+                    raise ChatChanged()
+                streaming.add(row["id"])
+        session = dict(live["session"][0])
+        session["time_updated"] = after["session"][0]["time_updated"]
+        if session != after["session"][0]:
+            raise ChatChanged()
+        target = {"session": live["session"], "message": [], "part": []}
+        for table in ("message", "part"):
+            old = {r["id"]: r for r in before[table]}
+            written = {r["id"]: r for r in after[table]}
+            present = {r["id"]: r for r in live[table]}
+            if not set(written) <= set(present):
+                raise ChatChanged()
+            for ident, row in present.items():
+                owned = ident if table == "message" else row["message_id"]
+                if ident not in old and ident in written:
+                    if row != written[ident]:
+                        raise ChatChanged()
+                    continue
+                if owned not in streaming and row != written.get(ident):
+                    raise ChatChanged()
+                if table == "message" and owned in streaming:
+                    native = json.loads(row["data"])
+                    prior = json.loads(old[ident]["data"]) if ident in old else native
+                    if native.get("role") != "assistant" or native.get("parentID") != prior.get("parentID"):
+                        raise ChatChanged()
+                if ident in old:
+                    fixed = dict(row)
+                    fixed["data"] = old[ident]["data"]
+                    fixed["time_updated"] = old[ident]["time_updated"]
+                    if fixed != old[ident]:
+                        raise ChatChanged()
+                target[table].append(row)
+        # Revert Baton's timestamp only if native streaming did not replace it.
+        if live["session"][0]["time_updated"] == after["session"][0]["time_updated"]:
+            target["session"][0]["time_updated"] = before["session"][0]["time_updated"]
+        return pack(target)
+
     def take_back(self, receipt):
         """Undo exactly this write or refuse later outside changes."""
         if receipt.tool != self.adapter.name:
@@ -352,8 +417,9 @@ class OpenCodeWriter:
                 if self.adapter.state.condition(receipt.chat_id).replying:
                     raise ChatReplying()
                 current = snapshot(db, receipt.chat_id)
+                target = manifest["before"]
                 if current not in (manifest["before"], manifest["after"]):
-                    raise ChatChanged()
+                    target = self._streaming_take_back(manifest, current)
                 project = manifest["project"]
                 if project:
                     other = db.execute("SELECT 1 FROM session WHERE project_id=? AND id<>?", (project["id"], receipt.chat_id)).fetchone()
@@ -362,7 +428,7 @@ class OpenCodeWriter:
                     if self._project_rows(db, project["id"]) not in (
                             {"project": [], "project_directory": []}, manifest["project_after"]):
                         raise ChatChanged()
-                self._replace(db, current, manifest["before"])
+                self._replace(db, current, target)
                 if project:
                     db.execute("DELETE FROM project_directory WHERE project_id=?", (project["id"],))
                     db.execute("DELETE FROM project WHERE id=?", (project["id"],))

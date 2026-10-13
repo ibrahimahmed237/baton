@@ -22,20 +22,36 @@ class OpenCodeReader:
         return messages, parts
 
     def read(self, chat_id):
-        """Only user messages with non-synthetic text start a turn."""
+        """Group by native parent IDs, ordering turns by user-row creation time.
+
+        An appended Baton turn follows the user turn currently being answered,
+        even when that native reply adds messages or parts after Baton's rows.
+        Public timestamps may preserve source history; native user-row times
+        determine placement in this chat. Orphan assistants start no turn.
+        """
         rows, parts = self.rows(chat_id)
-        turns = []
+        turns = {}
+        content_by_message = {}
+        for part in parts:
+            native = json.loads(part["data"])
+            # SQLite's foreign key owns the part, even if its JSON has no ID.
+            content_by_message.setdefault(part["message_id"], []).append((part, native))
         for row in rows:
             data = json.loads(row["data"])
-            content = [(p, json.loads(p["data"])) for p in parts if p["message_id"] == row["id"]]
+            content = content_by_message.get(row["id"], [])
             content = [(p, d) for p, d in content if not d.get("synthetic") and not d.get("ignored")]
             if data.get("role") == "user":
                 text = "\n".join(d.get("text", "") for _, d in content if d.get("type") == "text")
                 if not text:
                     continue
                 prompt = Message(**data["baton"]) if "baton" in data else Message(row["id"], PROMPT, text, iso(data.get("batonRowTime", row["time_created"])))
-                turns.append(Turn(prompt))
-            elif data.get("role") == "assistant" and turns:
+                turns[row["id"]] = Turn(prompt)
+        for row in rows:
+            data = json.loads(row["data"])
+            parent = data.get("parentID")
+            content = [(p, d) for p, d in content_by_message.get(row["id"], [])
+                       if not d.get("synthetic") and not d.get("ignored")]
+            if data.get("role") == "assistant" and parent in turns:
                 activity = []
                 for part, native in content:
                     kind = native.get("type")
@@ -55,8 +71,8 @@ class OpenCodeReader:
                                                     state.get("output", state.get("error", "")),
                                                     iso(state.get("time", {}).get("end", native.get("batonRowUpdated", part["time_updated"]))),
                                                     call_id=call, is_error=state["status"] == "error"))
-                turns[-1] = Turn(turns[-1].prompt, (*turns[-1].messages, *activity))
-        return turns
+                turns[parent] = Turn(turns[parent].prompt, (*turns[parent].messages, *activity))
+        return list(turns.values())
 
     def usage(self, chat_id):
         """Report the newest native assistant usage, preserving it across Baton writes."""
