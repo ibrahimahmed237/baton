@@ -46,16 +46,21 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 ## Now
 
-**CP2 passed on 2026-10-14.** CP3 batch 1 started the same day. Orchestrator: Claude. Four Codex Sol builders run at the same time on files that do not overlap; each is followed by a separate Haiku reviewer, then committed one package at a time.
+**CP3 batch 1 committed 2026-10-14** after two review rounds (every package was returned once; six items a second time): engine carry-over `97f3629`, B3 OpenCode `e724450`, B4 Cursor `b9fb19a`, app carry-over `639abe9`. Measured: 1041 engine tests, app check passes (160 app tests + fixture gate). Closed: H4 to H13, Q9, Q14, and the five differences from the live run.
+
+**CP3 batch 2a running** (Codex Sol builders, Haiku reviewers, Claude orchestrates):
 
 | Builder | Work | Files | Report |
 |---|---|---|---|
-| A | Engine carry-over: H4, H5, H6, H13, Q14 format by shape, settle-wait after release, rollback notes under Baton's folder, exact rename restore | `baton/cli/{plans,main,output}.py`, `baton/services/brief*.py`, `baton/adapters/{claude,codex}/` | `reports/CP3-carryover-engine-2026-10-14.md` |
-| B | B3 OpenCode adapter | `baton/adapters/opencode/`, `tests/fixtures/opencode/`, `tests/adapters/test_opencode.py` | `reports/B3-2026-10-14.md` |
-| C | B4 Cursor adapter | `baton/adapters/cursor/`, `tests/fixtures/cursor/`, `tests/adapters/test_cursor.py` | `reports/B4-2026-10-14.md` |
-| D | App carry-over: H7 to H12, Q9 | `app/Sources`, `app/Tests`, `app/scripts/check.sh` | `reports/CP3-carryover-app-2026-10-14.md` |
+| E | E11 keep, pin, pause, names; E13 setup check and relaunch as services | `baton/services/` (new modules), `tests/scenarios`, `tests/unit` | `reports/E11-E13-2026-10-14.md` |
+| H | C4 hooks: `catch-up`, `notify` entry points, per-tool hook payloads | `baton/hooks/`, `baton/cli/commands/{catch_up,notify}.py`, tests | `reports/C4-2026-10-14.md` |
+| D | D8 merge screen, D9 history and undo screen | `app/Sources/BatonUI/Screens/{Merge,History}`, tests, generator recipes for their fixtures | `reports/D8-D9-2026-10-14.md` |
 
-If this chat stops: run `git status --short`; uncommitted files belong to these four. Read each report, run the tests, have each reviewed, then commit per package. Batch 2 after that: E11, E12, E13, C3 to C6, D8 to D11.
+Then batch 2b: C3 action commands, C5 relaunch, C6 background runs, E12 notes audit, D10, D11.
+
+**Waiting for Ibrahim:** Q15, OpenCode while replying: built as "write when idle, wait while replying" (reviewer showed turns get mixed into a streaming reply otherwise); the specs still say "any state".
+
+If this chat stops: `git status --short`; uncommitted files belong to the three builders above; read their reports, run tests, review, commit per package.
 
 ## Next
 

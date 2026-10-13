@@ -17,7 +17,9 @@ What changed since you last worked here:
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
 
-**Current state 2026-10-14: CP2 passed** (live run done on two throwaway chats, 879 engine tests). Continue from STATUS.md "Next": Ibrahim's two decisions, the carry-over fixes, then CP3. The two test chats "Baton test (safe to delete)" are kept for the CP3 live check; use `tools/live/cp2_live.py` only on them and only with Ibrahim's go.
+**Current state 2026-10-14, later: CP3 batch 1 committed** (engine carry-over, OpenCode and Cursor adapters, app carry-over; 1041 engine tests). Batch 2a (E11, E13, C4, D8, D9) is being built; STATUS.md "Now" says who owns which files. Q15 waits for Ibrahim.
+
+Earlier the same day: **CP2 passed** (live run done on two throwaway chats, 879 engine tests). Continue from STATUS.md "Next": Ibrahim's two decisions, the carry-over fixes, then CP3. The two test chats "Baton test (safe to delete)" are kept for the CP3 live check; use `tools/live/cp2_live.py` only on them and only with Ibrahim's go.
 
 Earlier: live run state 2026-10-13: step A done, step B tools built (`tools/live/cp2_live.py`, report CP2-live-tools-2026-10-13.md), waiting for Ibrahim's two throwaway chats. See STATUS.md "CP2 live run".
 
