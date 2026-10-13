@@ -40,6 +40,8 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 - **Q11. "Since you left" digest when it cannot be trusted:** keep refusing it, but show a note that says why it is missing. Catalogue note in E12, shown by D4.
 - **Q12. "Brief review details" in CONTRACT.md:** kept.
 
+**CP2 live run, 2026-10-13.** Ibrahim gave go for steps A and B. Step A (read-only) done: one difference found and fixed (history index column names, `006ce07`); hold detection by lock file proven. Report `reports/CP2-live-step-A-2026-10-13.md`. For step B the Codex write lock (`baton/adapters/codex/coordination.py`) and the guarded script `tools/live/cp2_live.py` are built, 858 engine tests; how to run each step is in `reports/CP2-live-tools-2026-10-13.md`. **Waiting for:** Ibrahim's two chats named "Baton test (safe to delete)", one in Claude and one in Codex, in the Baton folder. Then: inspect → refuse-held → add → look in the app → take-back → rename → rename-back, Codex first, Claude after (Claude needs the app closed for writes; Ibrahim closes it when asked).
+
 **Order from here:** ~~H1 to H3~~ (they guard the live run) → live run of Claude and Codex adapters on two throwaway chats → CP2 result → H4 to H13 alongside the first CP3 packages.
 
 ## Now

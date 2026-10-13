@@ -17,6 +17,8 @@ What changed since you last worked here:
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
 
+Live run state 2026-10-13: step A done, step B tools built (`tools/live/cp2_live.py`, report CP2-live-tools-2026-10-13.md), waiting for Ibrahim's two throwaway chats. See STATUS.md "CP2 live run".
+
 Reviewer pass 2026-10-13 (Claude): B2 safety findings H1 to H3 are fixed and committed (806 engine tests); next is the exact-scope live run; H4 to H13 owed for C1, E10, D5 to D7 and the app tests. Full table in STATUS.md, "Reviewer notes — 2026-10-13". Ibrahim is asked to confirm Q4 to Q8 himself. "Pushed" in the list above means up to UI13; the fifteen commits after it are local only.
 
 Current hand-off state: C2a `914d9d3` and C2b `2bbdbe3` committed; all planned CP2 implementation packages are accepted. Tests787 engine/146 app/build;325 generated fixtures,255 renders. CP2 is not passed because native Claude/Codex throwaway live acceptance is still owed. Prepare exact scope/go and ask for each closure; never bypass guarded native writes. D5 duplicate-note follow-up is separate. No push; historical untracked E9-E10.md preserved.
