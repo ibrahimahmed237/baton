@@ -4,6 +4,34 @@ The current hand-off page. Historical decisions, reviews and logs are in [report
 
 **Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-11
 
+## Reviewer notes — 2026-10-13 (Claude, with two separate reviewer agents)
+
+Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestrator. **Measured:** 787 engine tests pass on the tree and on the committed state in a clean copy; `app/scripts/check.sh` passes, 146 app tests; naming and layer rules hold; no spec changed; CONTRACT.md 22 lines added, none removed; no attribution in any commit; 18 commits are not pushed.
+
+**Accepted as committed:** G2, G3, E9, C2a, C2b (C2a/C2b by suite and fixture-gate only, not line by line). **Accepted with fixes owed:** C1, E10, D6, D7. **Returned:** B2 (three safety findings, all before the live run).
+
+**Findings to close (H = this review)**
+
+| # | Package | Finding | Fix |
+|---|---|---|---|
+| H1 | B2 | `codex/state.py` `replying()` is true only when the chat is also held. Hold detection is itself unverified, so an unfinished task in a chat that looks unheld can be written to or the app quit. The plan says: replying = a task started without a completion. | Unfinished task alone counts as replying until the live run proves hold detection. Invert the test that asserts the opposite. |
+| H2 | B2 | `codex/writer.py` `_check`: with a lease set, the replying check is skipped. | Check the unfinished task after the lease check too. |
+| H3 | B2, C1 | A test root does not fence the adapters: `build(root=tmp)` still gives the Codex adapter the real process launcher, the real bundled CLI (`login status`) and no `CODEX_HOME`; the Claude adapter the real `ps`/`open`/`osascript`. `baton setup` on an empty `BATON_HOME` reports from the real machine. | When a root is injected, process and runner must be injected or inert; real ones only in the default home. |
+| H4 | C1 | `plans.py`: `--confirm` from another command destroys that command's plan before the command check. | Load, compare command, then claim. |
+| H5 | C1 | Usage/crash text and argparse help are sentences outside the catalogue. | Catalogue ids; E12 audits. |
+| H6 | E10 | Brief preview calls `runner.available()`, which starts a process; E10 says a preview makes no runner call. | Non-spawning readiness at preview, or state the exemption. |
+| H7 | D5, D4 | The display gate exists in the plan review only. `LinkDialogViewModel.markNotesDisplayed()` is public and called just before confirm; `SyncStatusViewModel.confirmPlan()` has no gate. | Same `didDisplay(receipt)` gate in both; remove the public marker. |
+| H8 | D4 | `SyncStatusViewModel` sends `relaunch` with `.confirm` and no refusal, while the plan review refuses relaunch until C5. | Route through the plan review or refuse. |
+| H9 | D7 | Hand-off with no note shows a mark and a close button and no sentence; close button has no accessibility label; meter drawn when percent is unknown; brief-fallback fixture is only rendered, never asserted. | Catalogue fallback; omit meter; assert `brief.used_offline` on the fallback fixture. |
+| H10 | app tests | `FixtureEngine` silently falls back to the base fixture when a state file is missing; `WindowView` reads the real stored theme in five tests; renders are only checked for "not empty". | Throw on a missing state; inject the preference; say plainly that renders are looked at by a person. |
+| H11 | app | `Text("Turn \(turn.seq)")` in SyncStatusView is a sentence built in the app. | A note from the engine. |
+| H12 | check | The hand-edit gate for fixtures runs only in the engine suite. | Run it from `app/scripts/check.sh` too. |
+| H13 | size | `services/brief.py` 621 lines, `codex/writer.py` 544, `services/undo.py` 471. | Split brief into generate and create before CP3 adds to it. |
+
+**Decisions the Codex chat recorded as Ibrahim's** (Q4 self-commit, Q5 brief cost/generate/create and Automatic/Offline, Q6 labels, Q7 "Baton cannot use {tool} yet.", Q8 bookkeeping visible): this reviewer did not see them being given. Ibrahim to confirm. **User-visible choices not attributed to Ibrahim:** D5 duplicate notes deferred; a dismissed limit offer is forgotten when the app restarts; E9 digest refused until a fresh link; P5 of CP2-REPAIR-PLAN.md; "Brief review details" in CONTRACT.md.
+
+**Order from here:** H1 to H3 (they guard the live run) → live run of Claude and Codex adapters on two throwaway chats → CP2 result → H4 to H13 alongside the first CP3 packages.
+
 ## Now
 
 **C2b committed `2bbdbe3` after root challenge and separate reviewer approval on chore/project-setup.** Together with C2a `914d9d3`, C2 is complete for its approved read/service/generated-fixture boundary. Root measured **787 engine tests,146 app tests and build pass**,325 deterministic fixtures and255 non-empty renders. Own26 actual-effect/fixture checks,149 native-shaped fixture tests and82 focused CP2 scenarios pass. No live chat/app access or push. [C2b report](reports/C2b-2026-10-11.md), [current CP2 report](reports/CP2-2026-10-11.md).
