@@ -8,8 +8,8 @@ from pathlib import Path
 
 from ...domain.conditions import SideCondition
 from ...ports.tool import FormatCheck
-from .facts import SCHEMA_VERSION
-from .records import KNOWN_RECORD_TYPES, TASK_CLOSE, TASK_OPEN, records_from_end, parse_strict
+from .facts import SCHEMA_VERSION, CHECKED_CLI_VERSIONS
+from .records import KNOWN_RECORD_TYPES, TASK_CLOSE, TASK_OPEN, records_from_end, parse_strict, record_shape_known
 
 # Columns of `threads` that the writer reads or sets (spike/m0_create.py). All must exist.
 REQUIRED_COLUMNS = frozenset({
@@ -137,10 +137,12 @@ class CodexState:
         except KeyError:
             return SideCondition(exists=False, app_running=process.running())
         held = self.held(chat_id)
-        return SideCondition(
+        check = self.target_format(chat_id)
+        condition = SideCondition(
             exists=True, open=held, replying=self.replying(chat_id),
             hooks_ready=self.adapter.hooks.check().ok, app_running=process.running(),
-            app_started_at=process.started_at(), format_known=self.target_format(chat_id).known)
+            app_started_at=process.started_at(), format_known=check.known, format_new_version=check.new_version)
+        return condition
 
     def _threads_columns_ok(self) -> bool:
         locator = self.adapter.locator
@@ -161,7 +163,7 @@ class CodexState:
         signature = (stat.st_size, stat.st_mtime_ns)
         cached = self._scanned.get(str(path))
         if cached is None or cached[0] != signature:
-            known = all(record.get("type") in KNOWN_RECORD_TYPES
+            known = all(record.get("type") in KNOWN_RECORD_TYPES and record_shape_known(record)
                         for record in records_from_end(path, budget=_TAIL_BYTES))
             cached = self._scanned[str(path)] = (signature, known)
         return cached[1]
@@ -184,7 +186,11 @@ class CodexState:
                 return FormatCheck(False, 'identity')
             if not self._rollout_ok(path):
                 return FormatCheck(False, 'records')
-        return FormatCheck(True, SCHEMA_VERSION)
+        versions = [r['cli_version'] for r in newest if isinstance(r.get('cli_version'), str) and r['cli_version']]
+        version = versions[0] if versions else SCHEMA_VERSION
+        # checked_versions records database schema evidence, not CLI release pins.
+        new_version = version not in (*self.adapter.facts.checked_versions, *CHECKED_CLI_VERSIONS)
+        return FormatCheck(True, version if new_version else SCHEMA_VERSION, new_version)
 
     def target_format(self, chat_id: str) -> FormatCheck:
         """Validate the entire particular target before any native mutation."""
@@ -201,4 +207,6 @@ class CodexState:
                 return FormatCheck(False, 'identity')
         except (OSError, ValueError, TypeError, KeyError):
             return FormatCheck(False, 'records')
-        return FormatCheck(True, SCHEMA_VERSION)
+        version = meta.get("cli_version") or SCHEMA_VERSION
+        new_version = version not in (*self.adapter.facts.checked_versions, *CHECKED_CLI_VERSIONS)
+        return FormatCheck(True, version if new_version else SCHEMA_VERSION, new_version)

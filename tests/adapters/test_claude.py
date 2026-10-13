@@ -33,7 +33,7 @@ class ClaudeSuite(AdapterSuite, unittest.TestCase):
         records = [json.loads(l) for l in path.read_text().splitlines()]
         # A native hook attachment lives on the parent chain without becoming a prompt.
         path.write_text(path.read_text() + json.dumps({'type': 'attachment', 'uuid': message.id,
-            'parentUuid': records[-1]['uuid'], 'attachment': {'type': 'hook_additional_context', 'content': message.text}}) + '\n')
+            'parentUuid': records[-1]['uuid'], 'sessionId': chat, 'timestamp': records[-1]['timestamp'], 'attachment': {'type': 'hook_additional_context', 'content': message.text}}) + '\n')
     def set_condition(self, chat, **values):
         self.process.is_running = values.get('app_running', self.process.is_running)
         path, entry = self.adapter.locator.entry(chat)
@@ -46,14 +46,17 @@ class ClaudeSuite(AdapterSuite, unittest.TestCase):
     def set_format(self, known, version):
         path = self.adapter.locator.session_path(self.chat)
         records = [json.loads(l) for l in path.read_text().splitlines()]
-        for r in records: r['version'] = version if known else 'unsupported'
+        for r in records:
+            r['version'] = version
+            if not known or version == 'unknown': r['version'] = None
         path.write_text(''.join(json.dumps(r)+'\n' for r in records))
     def configure_usage(self, chat):
         path = self.adapter.locator.session_path(chat)
         records = [json.loads(l) for l in path.read_text().splitlines()]
         path.write_text(path.read_text()+json.dumps({'type':'assistant','uuid':'quota','parentUuid':records[-1]['uuid'],
             'isApiErrorMessage':True,'apiErrorStatus':429,'error':'rate_limit','quotaLimits':{'resetsAt':1767225600},
-            'message':{'content':[]},'version':'2.1.284'})+'\n')
+            'message':{'role':'assistant','content':[]},'version':'2.1.284',
+            'timestamp':'', 'sessionId':'fixture_session', 'isSidechain':False})+'\n')
         return self.adapter.reader.usage(chat)
     def visible_turns(self, chat): return self.process.visible.get(chat)
 
@@ -186,7 +189,7 @@ class ClaudeSafety(unittest.TestCase):
     def test_atomic_append_preserves_all_prior_bytes_including_dead_branches(self):
         path=self.adapter.locator.session_path(self.chat)
         original=path.read_bytes()
-        dead={'uuid':'deadbranch','parentUuid':'a2','isSidechain':True,'type':'assistant','version':'2.1.284','message':{'content':[{'type':'text','text':'dead'}]}}
+        dead={'uuid':'deadbranch','parentUuid':'a2','isSidechain':True,'type':'assistant','version':'2.1.284','sessionId':'fixture_session','timestamp':'','message':{'role':'assistant','content':[{'type':'text','text':'dead'}]}}
         path.write_bytes(original+json.dumps(dead).encode()+b'\n')
         before=path.read_bytes()
         self.adapter.writer.add(self.chat,[Turn(Message('extra',PROMPT,'more'))])
@@ -437,7 +440,7 @@ class ClaudeSafety(unittest.TestCase):
         entry_path.write_text(json.dumps(entry))
         chat_path = self.adapter.locator.session_path(self.chat)
         records = [json.loads(line) for line in chat_path.read_text().splitlines()]
-        for record in records: record['version'] = 'unsupported'
+        for record in records: record['isSidechain'] = 'unknown'
         chat_path.write_text(''.join(json.dumps(record)+'\n' for record in records))
         before = (chat_path.read_bytes(), entry_path.read_bytes())
         self.assertFalse(self.adapter.state.format_version().known)
@@ -545,9 +548,9 @@ class ClaudeBuiltWithOnlyARoot(unittest.TestCase):
     def test_the_machine_form_picks_the_real_process_control_and_launcher_without_calling_them(self):
         from baton.adapters.claude.app import SystemProcess
         from baton.adapters.claude.runner import ClaudeRunner
-        adapter = ClaudeAdapter.on_this_machine(self.root)
+        adapter = ClaudeAdapter.on_this_machine(self.root, rollback_root=self.root / 'store')
         self.assertIsInstance(adapter.process, SystemProcess)
         self.assertIsInstance(adapter.runner, ClaudeRunner)
         self.assertIs(adapter.runner.command, subprocess.run)
-        explicit = ClaudeAdapter.on_this_machine(self.root, process=FixtureProcess(self.root))
+        explicit = ClaudeAdapter.on_this_machine(self.root, rollback_root=self.root / 'store', process=FixtureProcess(self.root))
         self.assertNotIsInstance(explicit.process, SystemProcess)

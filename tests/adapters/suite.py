@@ -141,7 +141,9 @@ class AdapterSuite:
 
     def test_facts_match_behaviour(self):
         facts = self.adapter.facts
-        self.assertIn(self.adapter.state.format_version().version, facts.checked_versions)
+        check = self.adapter.state.format_version()
+        self.assertTrue(check.known)
+        self.assertEqual(check.new_version, check.version not in facts.checked_versions)
         middle = Turn(Message("middle", PROMPT, "between"))
         if facts.can_place:
             result = self.adapter.writer.place(self.chat, [middle], self.turns[1].id)

@@ -5,7 +5,7 @@ import signal
 import subprocess
 import time
 from datetime import datetime, timezone
-from ...domain.errors import ChatReplying, NotAvailable
+from ...domain.errors import ChatChanged, ChatReplying, NotAvailable
 
 def local_start_utc(value, convert=None, *, fold=0, zone=None):
     """Parse a local ps start time and convert it to UTC with an injectable converter."""
@@ -136,7 +136,9 @@ class ClaudeApp:
     def release(self, chat_id):
         """End an idle owned chat process and wait for its registry release."""
         current = list(self.adapter.state.registry(chat_id))
-        if not current: return
+        if not current:
+            self._wait_until_still(chat_id)
+            return
         for entry in current:
             if entry.get('status') == 'busy': raise ChatReplying()
             if not self.adapter.process.owns_session(entry['pid'], entry['sessionId'], entry): raise NotAvailable()
@@ -153,3 +155,23 @@ class ClaudeApp:
         while list(self.adapter.state.registry(chat_id)):
             if time.monotonic() >= deadline: raise NotAvailable()
             time.sleep(.05)
+
+        self._wait_until_still(chat_id)
+
+    def _wait_until_still(self, chat_id):
+        """Wait at most three seconds for both native files to stop changing."""
+        paths = (self.adapter.locator.session_path(chat_id), self.adapter.locator.entry(chat_id)[0])
+        def signature():
+            try:
+                return tuple((p.stat().st_size, p.stat().st_mtime_ns) for p in paths)
+            except OSError as error:
+                raise ChatChanged() from error
+        deadline = self.adapter.monotonic() + 3
+        previous = signature()
+        while self.adapter.monotonic() < deadline:
+            self.adapter.sleep(min(.1, max(0, deadline - self.adapter.monotonic())))
+            current = signature()
+            if current == previous:
+                return
+            previous = current
+        raise ChatChanged()

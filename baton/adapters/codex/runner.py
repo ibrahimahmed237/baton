@@ -15,6 +15,10 @@ _TIMEOUT_SECONDS = 120
 class InertRunner:
     """The runner when no launcher is passed in: never available, never starts a process."""
 
+    def ready(self):
+        """No launcher was supplied; a preview cannot offer this runner."""
+        return SetupFinding("runner", False, "setup.runner", {"tool": "codex"})
+
     def available(self) -> SetupFinding:
         """Never available."""
         return SetupFinding("runner", False, "setup.runner", {"tool": "codex"})
@@ -33,6 +37,11 @@ class CodexRunner:
 
     def _run(self, args: list[str], folder: str | None = None):
         return self.command(args, cwd=folder, capture_output=True, text=True, timeout=_TIMEOUT_SECONDS)
+
+    def ready(self):
+        """Check the command path without launching it; auth is checked at generation."""
+        ok = Path(self.binary).is_file()
+        return SetupFinding("runner", ok, "" if ok else "setup.runner", {"tool": "codex"})
 
     def available(self) -> SetupFinding:
         """Whether the bundled CLI exists and is signed in with the app's login."""

@@ -76,15 +76,15 @@ class WhereBatonLives(Temporary):
         self.assertEqual(folder.stat().st_mode & 0o777, 0o700)
         self.assertEqual(database.stat().st_mode & 0o777, 0o600)
 
-    def test_symlinked_storage_directory_is_refused(self):
+    def test_symlinked_explicit_storage_directory_is_resolved(self):
         target = self.root / "target"
         target.mkdir(mode=0o755)
         link = self.root / "linked"
         link.symlink_to(target, target_is_directory=True)
-        with self.assertRaises(OSError):
-            wiring.build(link, adapters={})
-        self.assertEqual(target.stat().st_mode & 0o777, 0o755)
-        self.assertEqual(list(target.iterdir()), [])
+        engine = wiring.build(link, adapters={})
+        self.addCleanup(engine.close)
+        self.assertEqual(engine.root, target)
+        self.assertEqual(target.stat().st_mode & 0o777, 0o700)
 
     def test_symlinked_or_hardlinked_ledger_is_refused(self):
         outside = self.root / "outside"
@@ -464,8 +464,11 @@ class ThePlanBook(unittest.TestCase):
 
     def test_another_commands_plan_cannot_be_confirmed(self):
         shown = self.book.remember("p_1", "sync", {})
-        with self.assertRaises(ChatChanged):
+        from baton.cli.plans import WrongPlanAction
+        with self.assertRaises(WrongPlanAction):
             self.book.confirm(shown, "unlink", lambda arguments: "p_1")
+        self.assertIsNotNone(self.book.store.load(shown))
+        self.book.confirm(shown, "sync", lambda arguments: "p_1")
 
     def test_an_expired_plan_is_not_even_planned_again(self):
         shown = self.book.remember("p_1", "sync", {})

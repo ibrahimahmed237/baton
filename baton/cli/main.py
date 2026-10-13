@@ -26,7 +26,7 @@ class UsageError(Exception):
 
 class _Parser(argparse.ArgumentParser):
     def error(self, message: str):  # type: ignore[override]
-        raise UsageError(message)
+        raise UsageError("cli.usage")
 
 
 def _flags(command: Command | None, *, base: bool) -> argparse.ArgumentParser:
@@ -102,13 +102,13 @@ def main(argv: Sequence[str] | None = None, *, registry: CommandRegistry | None 
         args = build_parser(registry).parse_args(argv)
         command = registry.get(_command_name(args))
         if command is None:
-            raise UsageError("unknown command: " + (_command_name(args) or "(none)"))
+            raise UsageError("cli.unknown_command", {"command": _command_name(args)})
         if (args.dry_run or args.confirm) and not command.plan:
-            raise UsageError("%s takes neither --dry-run nor --confirm" % command.name)
+            raise UsageError("cli.no_plan_flags", {"command": command.name})
         if args.dry_run and args.confirm:
-            raise UsageError("--dry-run and --confirm cannot be used together")
+            raise UsageError("cli.conflicting_flags")
     except UsageError as problem:
-        _emit(out, output.usage_error(str(problem)))
+        _emit(out, output.usage_error(problem.args[0], problem.args[1] if len(problem.args) > 1 else {}))
         return 2
     except SystemExit as leave:  # --help
         return leave.code if isinstance(leave.code, int) else 0

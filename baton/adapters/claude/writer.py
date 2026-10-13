@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import stat
 import tempfile
 from pathlib import Path
 from uuid import uuid4
@@ -59,6 +60,37 @@ class ClaudeWriter:
     def __init__(self, adapter):
         self.adapter = adapter
         self.prepared = None
+    def _intent_path(self, token):
+        if not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
+            raise ValueError('receipt_token')
+        folder = self.adapter.rollback_root
+        if folder.is_symlink() or folder.resolve() != folder: raise NotAvailable()
+        return folder / (token + '.json')
+    def _receipt_intent(self, receipt, *, legacy=False):
+        intent = self._intent_path(receipt.data['token'])
+        if str(intent) == receipt.data['intent']: return intent
+        old = self.adapter.root / '.baton-rollback' / (receipt.data['token'] + '.json')
+        if not legacy or str(old) != receipt.data['intent']: raise ValueError('receipt_path')
+        # Historical intents are read only; publication always uses the new root.
+        if old.is_symlink() or old.parent.is_symlink() or old.resolve() != old: raise NotAvailable()
+        return self.adapter.locator.inside(old)
+    def _manifest(self, receipt, intent):
+        if intent.exists():
+            info = intent.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_nlink != 1:
+                raise NotAvailable()
+            return json.loads(intent.read_text())
+        return None
+    def verified(self, receipt):
+        """Drop the crash intent only after the exact post receipt is durable."""
+        intent = self._receipt_intent(receipt, legacy=True)
+        if receipt.data.get('prepared') or 'manifest' not in receipt.data: raise ValueError('receipt_unverified')
+        if intent.exists():
+            if self._manifest(receipt, intent) != receipt.data['manifest']: raise ChatChanged()
+            intent.unlink()
+            directory = os.open(intent.parent, os.O_RDONLY)
+            try: os.fsync(directory)
+            finally: os.close(directory)
     def _check(self, chat_id=None, kind=""):
         if not self.adapter.state.format_version().known: raise UnknownFormat()
         if chat_id is not None:
@@ -83,7 +115,7 @@ class ClaudeWriter:
             paths = [self.adapter.locator.session_path(chat_id), self.adapter.locator.entry(chat_id)[0]]
             before = self._snapshot(paths)
         receipt = WriteReceipt("claude", chat_id, kind, {"prepared": True, "token": token,
-            "session_id": sid, "before": before, "intent": str(self.adapter.root / ".baton-rollback" / (token + ".json"))})
+            "session_id": sid, "before": before, "intent": str(self._intent_path(token))})
         self.prepared = receipt
         return receipt
     def _begin(self, chat_id, kind):
@@ -93,11 +125,14 @@ class ClaudeWriter:
         self.prepared = None
         return receipt
     def _write(self, receipt, after, turns=()):
-        intent = self.adapter.locator.inside(receipt.data["intent"])
+        intent = self._receipt_intent(receipt)
         before = receipt.data["before"] or {p: None for p in after}
         manifest = {"token": receipt.data["token"], "before": before, "after": after}
-        intent.parent.mkdir(parents=True, exist_ok=True)
-        with intent.open("x") as fh:
+        intent.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+        if intent.parent.is_symlink(): raise NotAvailable()
+        os.chmod(intent.parent, 0o700)
+        descriptor = os.open(intent, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(descriptor, "w") as fh:
             json.dump(manifest, fh); fh.flush(); os.fsync(fh.fileno())
         directory = os.open(intent.parent, os.O_RDONLY)
         try: os.fsync(directory)
@@ -128,7 +163,7 @@ class ClaudeWriter:
             self.take_back(receipt)
             raise
         post = WriteReceipt("claude", receipt.chat_id, receipt.kind,
-            {**receipt.data, "prepared": False, "before": before, "after": after})
+            {**receipt.data, "prepared": False, "before": before, "after": after, "manifest": manifest})
         return WriteResult(receipt.chat_id, tuple(t.id for t in turns), post)
     def create(self, turns, name, folder):
         """Publish a new native chat and its sidebar entry."""
@@ -136,7 +171,7 @@ class ClaudeWriter:
         receipt = self._begin(None, "create")
         sid = receipt.data["session_id"]
         session, entry_path = self.adapter.locator.creation_paths(receipt.chat_id, sid, folder, self.adapter.account)
-        records = native_records(turns, sid, folder)
+        records = native_records(turns, sid, folder, version=self.adapter.state.format_version().version)
         records.append({"type": "custom-title", "customTitle": name, "sessionId": sid})
         entry = dict(sessionId=receipt.chat_id, cliSessionId=sid, cwd=folder, originCwd=folder,
             lastFocusedAt=0, createdAt=0, lastActivityAt=0, isArchived=False, title=name, titleSource="auto",
@@ -159,6 +194,7 @@ class ClaudeWriter:
         prompt = next((r for r in reversed(chain) if is_prompt(r)), {})
         prompt_index = (prompt.get("turnPosition") or {}).get("promptIndex", 0)
         appended = native_records(turns, entry["cliSessionId"], entry["cwd"], chain[-1]["uuid"] if chain else None,
+            version=self.adapter.state.format_version().version,
             prompt_index=prompt_index, template=prompt)
         after = dict(receipt.data["before"]); after[str(path)] = encode(data + serialize(appended))
         return self._write(receipt, after, turns)
@@ -181,15 +217,16 @@ class ClaudeWriter:
         return self._write(receipt, after, turns[:index + 1])
     def restore(self, receipt):
         """Restore exact saved bytes under a fresh durable reversible intent."""
-        if receipt.tool != self.adapter.name or receipt.kind != 'cut':
+        if receipt.tool != self.adapter.name or receipt.kind not in ('cut', 'rename'):
             raise NotAvailable()
         self._check(receipt.chat_id)
-        intent = self.adapter.locator.inside(receipt.data['intent'])
-        if not intent.exists(): raise ChatChanged()
-        manifest = json.loads(intent.read_text())
+        intent = self._receipt_intent(receipt, legacy=True)
+        manifest = self._manifest(receipt, intent)
+        if manifest is None: raise ChatChanged("receipt consumed")
         if (manifest.get('token') != receipt.data['token'] or
                 self._snapshot([Path(p) for p in manifest['after']]) != manifest['after']):
             raise ChatChanged()
+        self._check(receipt.chat_id, receipt.kind)
         fresh = self._begin(receipt.chat_id, 'restore')
         return self._write(fresh, manifest['before'])
 
@@ -207,11 +244,11 @@ class ClaudeWriter:
     def take_back(self, receipt):
         """Restore an owned write without overwriting later outside changes."""
         if receipt.tool != "claude": raise ValueError("wrong adapter")
-        intent = self.adapter.locator.inside(receipt.data["intent"])
-        if not intent.exists():
+        intent = self._receipt_intent(receipt, legacy=True)
+        manifest = self._manifest(receipt, intent)
+        if manifest is None:
             if receipt.data.get("prepared"): return
-            raise ValueError("receipt consumed")
-        manifest = json.loads(intent.read_text())
+            raise ChatChanged("receipt consumed")
         if manifest.get("token") != receipt.data["token"]: raise ValueError("receipt mismatch")
         # Exact manifest ownership allows recovery even if a newly created
         # sidebar/file pair was only partly published. Never bypass live holders.
@@ -248,7 +285,7 @@ class ClaudeWriter:
             directory = os.open(parent, os.O_RDONLY)
             try: os.fsync(directory)
             finally: os.close(directory)
-        intent.unlink()
+        intent.unlink(missing_ok=True)
         directory = os.open(intent.parent, os.O_RDONLY)
         try: os.fsync(directory)
         finally: os.close(directory)

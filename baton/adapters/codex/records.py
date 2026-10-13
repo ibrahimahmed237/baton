@@ -26,6 +26,12 @@ KNOWN_RECORD_TYPES = frozenset({"session_meta", "response_item", "event_msg", "t
 TASK_OPEN = "task_started"
 TASK_CLOSE = ("task_complete", "turn_aborted")
 
+# These observed subtypes carry usage or display text, never turn boundaries.
+# Unknown subtypes must not inherit this exemption (Q14).
+NON_BOUNDARY_EVENTS = frozenset({"token_count", "user_message", "agent_message", "agent_reasoning"})
+NON_BOUNDARY_ITEMS = frozenset({"reasoning"})
+COMPLETED_ITEM_TYPES = frozenset({"UserMessage", "AgentMessage"})
+
 
 def stamp(moment: datetime) -> str:
     """A record timestamp as Codex writes it: UTC with milliseconds."""
@@ -61,6 +67,8 @@ def parse_strict(raw: bytes) -> list[dict]:
             raise ValueError("unknown record")
         if not isinstance(record.get('payload'), dict):
             raise ValueError('payload')
+        if not record_shape_known(record):
+            raise ValueError("record_shape")
         ordinal = record.get('ordinal')
         if not isinstance(ordinal, int) or isinstance(ordinal, bool) or ordinal < 0:
             raise ValueError('ordinal')
@@ -189,3 +197,43 @@ def session_meta_record(thread_id: str, folder: str, now: datetime, cli_version:
     if base_instructions:
         payload["base_instructions"] = base_instructions
     return {"timestamp": stamp(now), "ordinal": 0, "type": "session_meta", "payload": payload}
+
+
+def record_shape_known(record):
+    """Check envelopes and the payload types Baton writes, allowing extra fields."""
+    if not isinstance(record.get("timestamp"), str) or not isinstance(record.get("payload"), dict):
+        return False
+    p, kind = record["payload"], record.get("type")
+    if kind == "session_meta":
+        return (isinstance(p.get("id", p.get("session_id")), str) and
+                all(isinstance(p.get(k), str) for k in ("cwd", "cli_version")))
+    if kind == "event_msg":
+        if not isinstance(p.get("type"), str):
+            return False
+        if p["type"] in (TASK_OPEN, *TASK_CLOSE):
+            return isinstance(p.get("turn_id"), str)
+        if p["type"] == "item_completed":
+            return (all(isinstance(p.get(k), str) for k in ("thread_id", "turn_id")) and
+                    isinstance(p.get("item"), dict) and p["item"].get("type") in COMPLETED_ITEM_TYPES)
+        return p["type"] in NON_BOUNDARY_EVENTS
+    if kind != "response_item":
+        return kind in KNOWN_RECORD_TYPES
+    item = p.get("type")
+    if not isinstance(item, str):
+        return False
+    if item == "message":
+        content = p.get("content")
+        return (("id" not in p or isinstance(p["id"], str)) and p.get("role") in ("user", "assistant", "developer", "system") and
+                isinstance(content, list) and all(isinstance(b, dict) and isinstance(b.get("type"), str) and
+                (b["type"] not in ("input_text", "output_text", "text") or isinstance(b.get("text"), str)) for b in content))
+    if item == "function_call":
+        return all(isinstance(p.get(k), str) for k in ("id", "name", "arguments", "call_id"))
+    if item in ("custom_tool_call", "tool_search_call"):
+        return (all(isinstance(p.get(k), str) for k in ("id", "name", "call_id")) and
+                isinstance(p.get("input", p.get("arguments")), (str, dict)))
+    if item in ("custom_tool_call_output", "tool_search_output"):
+        return (all(isinstance(p.get(k), str) for k in ("id", "call_id")) and
+                isinstance(p.get("output", p.get("tools")), (str, list, dict)))
+    if item == "function_call_output":
+        return all(isinstance(p.get(k), str) for k in ("id", "call_id", "output"))
+    return item in NON_BOUNDARY_ITEMS

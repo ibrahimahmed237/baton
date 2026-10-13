@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 import logging
 import os
 from dataclasses import dataclass, field
@@ -13,7 +14,7 @@ from ..domain.errors import NotAvailable
 from ..ledger.sqlite_store import Ledger
 from ..ports.clock import Clock, SystemClock
 from ..ports.store import RecordStore
-from ..ports.tool import ToolAdapter
+from ..ports.tool import ToolAdapter, WriteReceipt
 from ..services.applier import Applier
 from ..services.brief import BriefService
 from ..services.linker import Linker
@@ -175,14 +176,27 @@ class Engine:
         """Going back to before an event."""
         return Undo(self.store, self.adapters, self.clock)
 
+    def clear_verified_intents(self) -> None:
+        """Only durable committed receipts can replace private crash intents."""
+        for entry in self.store.journal_entries():
+            adapter = self.adapters.get(entry['tool'])
+            verified = getattr(adapter.writer, 'verified', None) if adapter is not None else None
+            if entry['state'] == 'committed' and entry.get('post_receipt') and verified:
+                try:
+                    verified(WriteReceipt(**entry['post_receipt']))
+                except Exception:
+                    logger.exception('rollback_intent_cleanup_failed')
+
     def close(self) -> None:
         """Close the store."""
+        with self.command_lock():
+            self.clear_verified_intents()
         self.store.close()
 
 
 def load_adapters(entries: Sequence[ToolEntry], tools_home: Path,
                   roots: Mapping[str, Path | str] | None = None, *,
-                  sandboxed: bool = True) -> tuple[dict[str, ToolAdapter], dict[str, str]]:
+                  sandboxed: bool = True, store_root: Path | None = None) -> tuple[dict[str, ToolAdapter], dict[str, str]]:
     """Build the adapter of every listed tool that exists, and say why the others do not.
 
     `sandboxed` (the safe default) builds each adapter with only its root, which leaves it
@@ -193,13 +207,16 @@ def load_adapters(entries: Sequence[ToolEntry], tools_home: Path,
     left out rather than failing every command.
     """
     roots = roots or {}
+    store_root = Path(store_root).resolve() if store_root is not None else None
     adapters: dict[str, ToolAdapter] = {}
     unavailable: dict[str, str] = {}
     for entry in entries:
         root = Path(roots[entry.id]) if entry.id in roots else tools_home / entry.home
         try:
             factory = getattr(importlib.import_module(entry.module), entry.adapter)
-            adapter = (factory if sandboxed else getattr(factory, "on_this_machine", factory))(root)
+            options = ({'rollback_root': store_root / 'rollback' / entry.id}
+                       if store_root is not None and 'rollback_root' in inspect.signature(factory).parameters else {})
+            adapter = (factory if sandboxed else getattr(factory, "on_this_machine", factory))(root, **options)
             if getattr(adapter, "name", None) != entry.id:
                 raise LookupError("%s reports the name %r" % (entry.adapter, getattr(adapter, "name", None)))
         except ModuleNotFoundError as error:
@@ -232,6 +249,7 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
     and an installation probe that looks only inside the roots, unless a probe is passed.
     """
     folder, explicit = resolve_root(root, environ)
+    folder = folder.resolve()
     private_directory(folder)
     clock = clock or SystemClock()
     # A folder passed in code is a deliberate isolation (tests): an inherited
@@ -242,7 +260,7 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
     if installation_probe is None:
         installation_probe = root_probe(entries, home, adapter_roots) if sandboxed else installed
     if adapters is None:
-        loaded, unavailable = load_adapters(entries, home, adapter_roots, sandboxed=sandboxed)
+        loaded, unavailable = load_adapters(entries, home, adapter_roots, sandboxed=sandboxed, store_root=folder)
     else:
         loaded, unavailable = dict(adapters), {}
     with command_lock(folder) as directory:
@@ -254,5 +272,8 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
         except BaseException:
             store.close()
             raise
-    return Engine(folder, store, clock, loaded, plans, home, unavailable, installation_probe,
-                  tuple(dict.fromkeys([entry.id for entry in entries] + list(loaded))), sandboxed)
+    engine = Engine(folder, store, clock, loaded, plans, home, unavailable, installation_probe,
+                    tuple(dict.fromkeys([entry.id for entry in entries] + list(loaded))), sandboxed)
+    with engine.command_lock():
+        engine.clear_verified_intents()
+    return engine

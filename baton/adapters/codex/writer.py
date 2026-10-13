@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 KINDS = ("create", "add", "cut", "rename", "place", "restore")
 # What Codex cannot do to an existing chat.
-_NOT_CODEX = ("cut", "place", "restore")
+_NOT_CODEX = ("cut", "place")
 _TIME_COLUMNS = ("updated_at", "updated_at_ms", "recency_at", "recency_at_ms")
 _FALLBACK_SANDBOX = '{"type":"read-only"}'
 _FALLBACK_APPROVAL = "on-request"
@@ -90,10 +90,21 @@ class CodexWriter:
             raise ChatHeld()
 
     def _intent_path(self, token: str) -> Path:
-        folder = self.adapter.root / '.baton-rollback'
+        if not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
+            raise ValueError('receipt_token')
+        folder = self.adapter.rollback_root
         if folder.is_symlink():
             raise NotAvailable()
-        return self.adapter.scope.checked_path(folder / (self.adapter.scope.key + '-' + token + '.json'))
+        if folder.resolve() != folder: raise NotAvailable()
+        return folder / (self.adapter.scope.key + '-' + token + '.json')
+
+    def _receipt_intent(self, receipt):
+        intent = self._intent_path(receipt.data['token'])
+        if str(intent) == receipt.data['intent']: return intent
+        old = self.adapter.root / '.baton-rollback' / (receipt.data['token'] + '.json')
+        if str(old) != receipt.data['intent']: raise ValueError('receipt_path')
+        # Only recovery reads historical intents; new writes use _intent_path.
+        return self.adapter.scope.checked_path(old)
 
     # -- receipts ---------------------------------------------------------
 
@@ -198,8 +209,20 @@ class CodexWriter:
         raise NotAvailable()
 
     def restore(self, receipt: WriteReceipt) -> WriteResult:
-        """There is no cut to restore."""
-        raise NotAvailable()
+        """Restore the separate exact title/name values saved by a rename."""
+        if receipt.tool != self.adapter.name or receipt.kind != 'rename': raise NotAvailable()
+        self._check(receipt.chat_id)
+        intent = self._receipt_intent(receipt)
+        if not intent.exists(): raise ChatChanged('receipt consumed')
+        manifest = self._read_intent(intent)
+        if (manifest.get('token'), manifest.get('chat_id'), manifest.get('kind')) != (receipt.data['token'], receipt.chat_id, receipt.kind):
+            raise ValueError('receipt mismatch')
+        if not manifest or self._row_state(manifest) != 'after': raise ChatChanged()
+        fresh = self._begin(receipt.chat_id, 'restore')
+        earlier = manifest['row']['before']
+        before = fresh.data['row']['before']
+        row = {'mode': 'update', 'before': before, 'after': {**before, 'title': earlier['title'], 'name': earlier['name']}}
+        return self._publish(fresh, (), None, row)
 
     # -- create helpers ---------------------------------------------------
 
@@ -309,8 +332,22 @@ class CodexWriter:
             except (OSError, ValueError, sqlite3.Error, ChatChanged, ChatHeld, ChatReplying, NotAvailable):
                 logger.exception("could not put back a failed write; the intent %s remains", intent)
             raise
-        post = WriteReceipt(receipt.tool, receipt.chat_id, receipt.kind, {**data, "prepared": False})
+        post = WriteReceipt(receipt.tool, receipt.chat_id, receipt.kind, {**data, "prepared": False, "manifest": manifest})
         return WriteResult(receipt.chat_id, tuple(t.id for t in turns), post)
+
+    def verified(self, receipt):
+        """Clear the crash intent after the complete post receipt is durable."""
+        intent = self._receipt_intent(receipt)
+        if receipt.data.get('prepared') or 'manifest' not in receipt.data: raise ValueError('receipt_unverified')
+        manifest = receipt.data['manifest']
+        if (manifest.get('token'), manifest.get('chat_id'), manifest.get('kind')) != (receipt.data['token'], receipt.chat_id, receipt.kind):
+            raise ValueError('receipt_manifest')
+        if receipt.kind == 'create':
+            self.adapter.scope.recover_created(manifest, intent, durable=True)
+        if intent.exists():
+            if self._read_intent(intent) != receipt.data['manifest']: raise ChatChanged()
+            intent.unlink()
+            _fsync_directory(intent.parent)
 
     @staticmethod
     def _save_intent(intent: Path, manifest: dict[str, Any]) -> None:
@@ -428,18 +465,22 @@ class CodexWriter:
         token = receipt.data['token']
         if not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
             raise ValueError('receipt_token')
-        intent = self._intent_path(token)
-        if str(intent) != receipt.data['intent']:
-            raise ValueError('receipt_path')
+        intent = self._receipt_intent(receipt)
         if not intent.exists():
-            if receipt.data.get("prepared"):
-                return
-            raise ValueError("receipt consumed")
+            if receipt.data.get("prepared"): return
+            raise ChatChanged("receipt consumed")
+        manifest = self._read_intent(intent)
+        self._take_back_manifest(receipt, manifest, intent)
+
+    @staticmethod
+    def _read_intent(intent):
         info = intent.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or
                 info.st_nlink != 1 or stat.S_IMODE(info.st_mode) != 0o600):
             raise NotAvailable()
-        manifest = json.loads(intent.read_text())
+        return json.loads(intent.read_text())
+
+    def _take_back_manifest(self, receipt, manifest, intent):
         if (manifest.get("token"), manifest.get("chat_id"), manifest.get("kind")) != (receipt.data["token"], receipt.chat_id, receipt.kind):
             raise ValueError("receipt mismatch")
         stored_rollout = manifest.get('rollout')
@@ -489,7 +530,7 @@ class CodexWriter:
         with self._exclusive(manifest['chat_id']):
             with self._transaction():
                 self._revert_locked(manifest, intent)
-            intent.unlink()
+            intent.unlink(missing_ok=True)
             _fsync_directory(intent.parent)
 
     def _revert_locked(self, manifest: dict[str, Any], intent: Path) -> None:

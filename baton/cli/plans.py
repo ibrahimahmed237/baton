@@ -24,8 +24,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Protocol
 
-from ..domain.errors import ChatChanged
+from ..domain.errors import BatonError, ChatChanged
 from ..ports.clock import Clock
+
+class WrongPlanAction(BatonError):
+    """The confirmation belongs to a different action."""
+    note_id = "plan.wrong_action"
+
 
 PLAN_LIFETIME = timedelta(minutes=10)
 _PLAN_ID = re.compile(r"^p_[0-9A-Za-z_-]{1,128}$")
@@ -253,6 +258,11 @@ class PlanBook:
         the stored request planned from the chats as they are now, does not give
         the stored fingerprint.
         """
+        shown = self.store.load(plan_id)
+        if shown is None:
+            raise ChatChanged()
+        if shown.command != command:
+            raise WrongPlanAction()
         plan = self.store.claim(plan_id)
         if plan is None or plan.command != command or self._expired(plan):
             raise ChatChanged()

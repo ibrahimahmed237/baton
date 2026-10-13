@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import InitVar
 from typing import Any, Protocol, Sequence, runtime_checkable
 
 from ..domain.capabilities import Capabilities
@@ -32,6 +33,11 @@ class FormatCheck:
     """Whether the observed format is supported."""
     known: bool
     version: str
+    new_version: InitVar[bool] = False
+
+    def __post_init__(self, new_version):
+        # Release evidence is informational; keep prior confirmation snapshots stable.
+        object.__setattr__(self, 'new_version', new_version)
 
 
 @dataclass(frozen=True)

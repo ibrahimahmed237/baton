@@ -142,7 +142,7 @@ class CodexBoundarySafety(unittest.TestCase):
                          lambda: adapter.writer.create(turns(), 'unsafe', '')):
             with self.assertRaises(NotAvailable): mutation()
         self.assertEqual(before, self.snapshot())
-        self.assertFalse((self.root / '.baton-rollback').exists())
+        self.assertFalse(self.adapter.rollback_root.exists())
 
     def test_empty_default_scope_denies_direct_content_and_never_lists_working_chats(self):
         adapter = CodexAdapter(self.root, process=self.process)
@@ -262,7 +262,8 @@ class CodexBoundarySafety(unittest.TestCase):
 
     def test_hostile_rollback_parent_symlink_never_publishes_outside_private_directory(self):
         outside=self.root/'outside';outside.mkdir()
-        (self.root/'.baton-rollback').symlink_to(outside,target_is_directory=True)
+        self.adapter.rollback_root.parent.mkdir(parents=True)
+        self.adapter.rollback_root.symlink_to(outside,target_is_directory=True)
         before=self.snapshot()
         with self.assertRaises(NotAvailable): self.adapter.writer.add(self.chat,[])
         self.assertEqual(list(outside.iterdir()),[])
@@ -471,7 +472,7 @@ class CodexSafety(unittest.TestCase):
             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
         self.assertEqual(self.snapshot(), before)
         self.assertEqual(ChatHeld.note_id, "write.chat_open")
-        self.assertFalse((self.root / ".baton-rollback").exists())
+        self.assertFalse(self.adapter.rollback_root.exists())
 
     def test_add_to_a_chat_that_is_replying_is_refused(self):
         self.process.hold(self.chat)
@@ -502,7 +503,7 @@ class CodexSafety(unittest.TestCase):
             with self.assertRaises(ChatReplying) as refused:
                 write()
         self.assertEqual(self.snapshot(), before)
-        self.assertFalse((self.root / ".baton-rollback").exists())
+        self.assertFalse(self.adapter.rollback_root.exists())
         self.assertIn(refused.exception.note_id, CATALOGUE)
 
     def test_a_reply_is_refused_as_replying_before_it_is_refused_as_held(self):
@@ -657,7 +658,7 @@ class CodexSafety(unittest.TestCase):
             self.adapter.writer.create(turns(), "copy", "/new")
         self.assertEqual(sorted((self.root / ".codex" / "sessions").rglob("*.jsonl")), files)
         self.assertEqual(len(fx.run_sql(self.root, "SELECT id FROM threads")), 1)
-        self.assertEqual(list((self.root / ".baton-rollback").glob("*")), [])
+        self.assertEqual(list(self.adapter.rollback_root.glob("*")), [])
 
     def test_create_whose_rollout_does_not_read_back_is_removed_before_the_row_exists(self):
         files = sorted((self.root / ".codex" / "sessions").rglob("*.jsonl"))
@@ -673,7 +674,7 @@ class CodexSafety(unittest.TestCase):
         with self.assertRaises(sqlite3.Error):
             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
         self.assertEqual(self.snapshot(), before)
-        self.assertEqual(list((self.root / ".baton-rollback").glob("*")), [])
+        self.assertEqual(list(self.adapter.rollback_root.glob("*")), [])
 
     def test_add_that_does_not_read_back_is_cut_back(self):
         before = self.snapshot()
@@ -691,7 +692,7 @@ class CodexSafety(unittest.TestCase):
         with self.assertRaises(ChatChanged):
             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
         self.assertEqual(self.snapshot(), before)
-        self.assertEqual(list((self.root / ".baton-rollback").glob("*")), [])
+        self.assertEqual(list(self.adapter.rollback_root.glob("*")), [])
 
     def test_a_thread_row_changed_after_the_receipt_was_prepared_is_not_written(self):
         self.adapter.writer.prepare(self.chat, "rename")
@@ -722,7 +723,7 @@ class CodexSafety(unittest.TestCase):
         other, _ = new_adapter(self, self.root)
         other.writer.take_back(self.json_receipt(pre))
         self.assertFalse(rollout.exists())
-        self.assertEqual(list((self.root / ".baton-rollback").glob("*")), [])
+        self.assertEqual(list(self.adapter.rollback_root.glob("*")), [])
         self.assertFalse(other.state.condition(pre.chat_id).exists)
 
     def test_half_appended_turn_is_recovered(self):
@@ -788,8 +789,10 @@ class CodexSafety(unittest.TestCase):
     def test_a_consumed_receipt_cannot_be_used_twice(self):
         result = self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
         self.adapter.writer.take_back(result.receipt)
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ChatChanged) as raised:
             self.adapter.writer.take_back(result.receipt)
+
+        self.assertEqual(raised.exception.note_id, 'write.chat_changed')
 
     def test_another_tools_receipt_is_refused(self):
         with self.assertRaises(ValueError):
@@ -1148,11 +1151,11 @@ class CodexBuiltWithOnlyARoot(unittest.TestCase):
     def test_the_machine_form_picks_the_real_process_control_and_launcher_without_calling_them(self):
         from baton.adapters.codex.app import SystemProcess
         from baton.adapters.codex.runner import CodexRunner
-        adapter = CodexAdapter.on_this_machine(new_home(self))
+        adapter = CodexAdapter.on_this_machine(new_home(self), rollback_root=new_home(self) / 'store')
         self.assertIsInstance(adapter.process, SystemProcess)
         self.assertIsInstance(adapter.runner, CodexRunner)
         self.assertIs(adapter.runner.command, subprocess.run)
-        explicit = CodexAdapter.on_this_machine(new_home(self), process=fx.FixtureProcess(new_home(self)))
+        explicit = CodexAdapter.on_this_machine(new_home(self), rollback_root=new_home(self) / 'store', process=fx.FixtureProcess(new_home(self)))
         self.assertNotIsInstance(explicit.process, SystemProcess)
 
 

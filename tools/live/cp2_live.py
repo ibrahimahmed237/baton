@@ -168,13 +168,17 @@ class _OneChatLocator(ClaudeLocator):
                 yield path, entry
 
 
+# Rollback notes of a live run stay in the repository's ignored folder, never in the home folder.
+LIVE_ROLLBACK = Path(__file__).resolve().parents[2] / ".baton-spike" / "rollback"
+
+
 def default_factory(tool: str, home: Path, chat_id: str, injected: bool) -> Any:
     """The real adapter for the real home; for an injected home (tests) an inert one with no process control."""
     if tool == "codex":
         if injected:
             return CodexAdapter(home, allowed_chat_ids=(chat_id,), coordination=NativeCoordination())
-        return CodexAdapter.on_this_machine(home, allowed_chat_ids=(chat_id,))
-    adapter = ClaudeAdapter(home) if injected else ClaudeAdapter.on_this_machine(home)
+        return CodexAdapter.on_this_machine(home, allowed_chat_ids=(chat_id,), rollback_root=LIVE_ROLLBACK / "codex")
+    adapter = ClaudeAdapter(home) if injected else ClaudeAdapter.on_this_machine(home, rollback_root=LIVE_ROLLBACK / "claude")
     adapter.locator = _OneChatLocator(adapter.root, chat_id)
     return adapter
 

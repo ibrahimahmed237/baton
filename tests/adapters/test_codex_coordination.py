@@ -227,7 +227,7 @@ class ProductionWiringTests(unittest.TestCase):
         root = new_home(self)
         chat = fx.build(root, turns())
         with no_processes():
-            adapter = CodexAdapter.on_this_machine(root)
+            adapter = CodexAdapter.on_this_machine(root, rollback_root=root / "store")
             self.assertIsInstance(adapter.coordination, NativeCoordination)
             self.assertEqual(adapter.locator.chats(), [])
             before = rollout_of(root, chat).read_bytes()
@@ -241,7 +241,7 @@ class ProductionWiringTests(unittest.TestCase):
         chat = fx.build(root, turns(), "scoped")
         other = fx.build(root, turns(), "other")
         with no_processes():
-            adapter = CodexAdapter.on_this_machine(root, allowed_chat_ids=(chat,), process=fx.FixtureProcess(root))
+            adapter = CodexAdapter.on_this_machine(root, allowed_chat_ids=(chat,), process=fx.FixtureProcess(root), rollback_root=root / "store")
             adapter.writer.add(chat, [Turn(Message("more", PROMPT, "more"))])
             with self.assertRaises(NotAvailable):
                 adapter.writer.add(other, [Turn(Message("more2", PROMPT, "more"))])

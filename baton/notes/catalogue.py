@@ -106,6 +106,8 @@ CATALOGUE = {note.id: note for note in (
 
     Note("setup.adapter_unavailable", "warning", "Baton cannot use {tool} yet."),
     Note("setup.hooks", "warning", "Baton's hooks are not ready in {tool}. Install Baton's hooks and check again."),
+    Note("hooks.command_failed", "warning", "Baton could not run the hook command. Nothing was attached."),
+    Note("setup.runner_reinstall", "warning", "{tool}’s command-line tool is damaged or missing. Reinstall it, or use the offline brief."),
     Note("setup.runner", "warning", "{tool} cannot run a background brief. Check its command and sign in, or use the offline brief."),
     Note("nothing_unusual", "info", "Nothing unusual."),
     Note("new_chat.at_once", "info", "The new chat appears in {tool} right away. No relaunch."),
@@ -377,6 +379,25 @@ CATALOGUE = {note.id: note for note in (
 )}
 
 
+# CP3 carry-over: usage copy and known-shape versions.
+CATALOGUE.update({note.id: note for note in (
+    Note("cli.usage", "warning", "Baton could not understand this command. Use --help to see its arguments."),
+    Note("cli.unknown_command", "warning", "Baton does not know the command {command}."),
+    Note("cli.no_plan_flags", "warning", "{command} takes neither --dry-run nor --confirm."),
+    Note("cli.conflicting_flags", "warning", "--dry-run and --confirm cannot be used together."),
+    Note("format.new_version", "info", "This version of {tool}, {version}, was not checked yet. Baton reads and writes it because its chat format is the same."),
+)})
+
+
+CATALOGUE.update({"plan.wrong_action": Note("plan.wrong_action", "warning", "This plan belongs to another action. Review a plan for this action before confirming.")})
+
+
 def get(note_id: str) -> Note:
     """Read the wording for a note id."""
     return CATALOGUE[note_id]
+
+
+# Cursor refuses closure until hooks can supply reply evidence.
+CATALOGUE.update({note.id: note for note in (
+    Note("relaunch.replying_unknown", "warning", "Baton cannot tell whether a chat is replying in {tool}, so it cannot close it."),
+)})

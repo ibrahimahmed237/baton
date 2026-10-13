@@ -16,14 +16,14 @@ _ID = re.compile(r'^[A-Za-z0-9_-]+$')
 class ChatScope:
     """Keep native content access bounded to an explicitly supplied set of IDs."""
 
-    def __init__(self, root: Path, allowed_ids=()):
+    def __init__(self, root: Path, allowed_ids=(), rollback_root=None):
         self.root = root
         self.original = frozenset(allowed_ids)
         if any(not isinstance(ident, str) or not _ID.fullmatch(ident) for ident in self.original):
             raise ValueError('chat_scope')
         self.created: set[str] = set()
         self.key = hashlib.sha256(json.dumps(sorted(self.original)).encode()).hexdigest()[:24]
-        folder = root / '.baton-rollback'
+        folder = Path(rollback_root) if rollback_root is not None else root / '.baton' / 'rollback' / 'codex'
         if folder.exists() and not folder.is_symlink():
             directory = folder.lstat()
             if directory.st_uid != os.getuid() or stat.S_IMODE(directory.st_mode) != 0o700:
@@ -73,12 +73,14 @@ class ChatScope:
             raise ValueError('chat_id')
         self.created.add(ident)
 
-    def recover_created(self, manifest: dict, intent: Path) -> None:
+    def recover_created(self, manifest: dict, intent: Path, *, durable: bool = False) -> None:
         """Authorize a descendant only from the private, matching original intent."""
-        info = intent.lstat()
-        if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or
-                stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1 or
-                manifest.get('scope') != sorted(self.original) or manifest.get('kind') != 'create'):
+        if not durable:
+            info = intent.lstat()
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or
+                    stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+                raise NotAvailable()
+        if manifest.get('scope') != sorted(self.original) or manifest.get('kind') != 'create':
             raise NotAvailable()
         ident = manifest['chat_id']
         expected = self.root / '.codex' / 'sessions'

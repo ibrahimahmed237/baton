@@ -86,7 +86,8 @@ def side_condition(value: SideCondition) -> dict[str, Any]:
     """Side.condition, with the additive CP1 fields."""
     return {"exists": value.exists, "open": value.open, "replying": value.replying,
             "hooks_ready": value.hooks_ready, "app_running": value.app_running,
-            "app_started_at": value.app_started_at, "format_known": value.format_known}
+            "app_started_at": value.app_started_at, "format_known": value.format_known,
+            **({"format_new_version": True} if getattr(value, "format_new_version", False) else {})}
 
 
 def message(value: Message) -> dict[str, Any]:
@@ -187,9 +188,10 @@ def internal_error(failure: BaseException) -> dict[str, Any]:
     return {"error": {"kind": "internal", "note": note(UNEXPECTED)}}
 
 
-def usage_error(message_text: str) -> dict[str, Any]:
+def usage_error(note_id: str, values: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """The error object for a command line that could not be understood."""
-    return {"error": {"kind": "usage", "message": message_text}}
+    explained = note(note_id if note_id in CATALOGUE else "cli.usage", values)
+    return {"error": {"kind": "usage", "message": explained["text"], "note": explained}}
 
 
 # C2 read projections: domain objects enter here; only catalogue text leaves.
@@ -247,6 +249,11 @@ def read_setup(items):
     for item in items:
         row = {**item, 'tool_label': label(item['tool']),
                'findings': [{**f, 'note': note(*f['note'])} for f in item['findings']]}
+        if (item.get('version') and item['version'] not in item['facts'].get('checked_versions', ())
+                and any(f['id'] == 'format' and f['ok'] for f in item['findings'])):
+            row['format_new_version'] = True
+            row['findings'].append({'id': 'new_version', 'ok': True,
+                                    'note': note('format.new_version', {'tool': item['tool'], 'version': item['version']})})
         row['link_modes'] = [{**mode, 'label': note(*mode['label']), 'tag': None,
                               'reason': note(*mode['reason']) if mode['reason'] else None}
                              for mode in item['link_modes']]

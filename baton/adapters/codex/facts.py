@@ -3,6 +3,7 @@ from ...domain.capabilities import Capabilities, HookNeed, Visibility, WriteWind
 
 # The schema generation of Codex's state database. Codex names it in the file name.
 SCHEMA_VERSION = "state_5"
+CHECKED_CLI_VERSIONS = ("0.159.2", "0.160", "0.160.0")
 
 FACTS = Capabilities(
     write_window=WriteWindow.NOT_HELD,

@@ -6,6 +6,10 @@ from ...ports.tool import SetupFinding
 
 class InertRunner:
     """The runner when no launcher is passed in: never available, never starts a process."""
+    def ready(self):
+        """No launcher was supplied; a preview cannot offer this runner."""
+        return SetupFinding("runner", False, "setup.runner", {"tool": "claude"})
+
     def available(self):
         """Never available."""
         return SetupFinding('runner', False, 'setup.runner', {'tool': 'claude'})
@@ -18,6 +22,11 @@ class ClaudeRunner:
     def __init__(self, command=None): self.command = command or subprocess.run
     def _run(self, args, folder=None):
         return self.command(args, cwd=folder, capture_output=True, text=True, timeout=120)
+    def ready(self):
+        """Check the command path without launching it; auth is checked at generation."""
+        ok = shutil.which("claude") is not None
+        return SetupFinding("runner", ok, "" if ok else "setup.runner", {"tool": "claude"})
+
     def available(self):
         """Report whether the background command is signed in and usable."""
         try:
