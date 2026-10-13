@@ -34,7 +34,9 @@ class Fenced(unittest.TestCase):
         self.addCleanup(real_probe.stop)
 
     def assert_inert(self, adapters):
-        self.assertEqual(sorted(adapters), ["claude", "codex"])
+        self.assertEqual(sorted(adapters), ["claude", "codex", "cursor", "opencode"])
+        for name in ("cursor", "opencode"):
+            self.assertEqual(type(adapters[name].process).__name__, "InertProcess")
         self.assertIsInstance(adapters["claude"].process, ClaudeInertProcess)
         self.assertIsInstance(adapters["claude"].runner, ClaudeInertRunner)
         self.assertIsInstance(adapters["codex"].process, CodexInertProcess)
@@ -43,7 +45,7 @@ class Fenced(unittest.TestCase):
             self.assertFalse(adapter.app.running())
             self.assertEqual(adapter.process.started_at(), "")
             self.assertFalse(adapter.runner.available().ok)
-            self.assertEqual(adapter.runner.available().note_id, "setup.runner")
+            self.assertIn(adapter.runner.available().note_id, ("setup.runner", "setup.runner_reinstall"))
             with self.assertRaises(NotAvailable):
                 adapter.runner.ask("question", "/folder")
             with self.assertRaises(NotAvailable):
@@ -87,7 +89,7 @@ class TheDecision(Fenced):
     def test_load_adapters_is_inert_unless_it_is_told_it_is_on_the_real_machine(self):
         with no_processes():
             adapters, unavailable = wiring.load_adapters(TOOLS, self.root)
-            self.assertEqual(list(unavailable), ["opencode", "cursor"])
+            self.assertEqual(unavailable, {})
             self.assert_inert(adapters)
 
     def test_an_adapter_class_without_a_real_form_is_built_from_its_root_either_way(self):
@@ -119,6 +121,10 @@ class TheDefaultHome(Fenced):
         self.addCleanup(engine.close)
         self.assertFalse(engine.sandboxed)
         self.assertEqual(engine.root, fake_home / "Library" / "Application Support" / "Baton")
+        self.assertEqual(set(engine.adapters), {'claude', 'codex', 'opencode', 'cursor'})
+        for name, adapter in engine.adapters.items():
+            folder = adapter.rollback_locator.root if name == 'cursor' else adapter.rollback_root
+            self.assertEqual(folder, engine.root / 'rollback' / name)
         claude, codex = engine.adapters["claude"], engine.adapters["codex"]
         self.assertIsInstance(claude.process, ClaudeSystemProcess)
         self.assertIsInstance(claude.runner, ClaudeRunner)
