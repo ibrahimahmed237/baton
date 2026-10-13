@@ -46,7 +46,16 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 ## Now
 
-**CP2 passed on 2026-10-14** (CHECKPOINTS.md). Live run on two throwaway chats done and seen by Ibrahim; reports `reports/CP2-live-step-A-2026-10-13.md` and `reports/CP2-live-step-B-2026-10-13.md`. Engine 879 tests. Orchestrator in this period: Claude; builders: Codex Sol and Claude subagents; reviewers: separate Haiku agents. Nothing is in flight; the tree is clean except the old untracked draft `reports/E9-E10.md`.
+**CP2 passed on 2026-10-14.** CP3 batch 1 started the same day. Orchestrator: Claude. Four Codex Sol builders run at the same time on files that do not overlap; each is followed by a separate Haiku reviewer, then committed one package at a time.
+
+| Builder | Work | Files | Report |
+|---|---|---|---|
+| A | Engine carry-over: H4, H5, H6, H13, Q14 format by shape, settle-wait after release, rollback notes under Baton's folder, exact rename restore | `baton/cli/{plans,main,output}.py`, `baton/services/brief*.py`, `baton/adapters/{claude,codex}/` | `reports/CP3-carryover-engine-2026-10-14.md` |
+| B | B3 OpenCode adapter | `baton/adapters/opencode/`, `tests/fixtures/opencode/`, `tests/adapters/test_opencode.py` | `reports/B3-2026-10-14.md` |
+| C | B4 Cursor adapter | `baton/adapters/cursor/`, `tests/fixtures/cursor/`, `tests/adapters/test_cursor.py` | `reports/B4-2026-10-14.md` |
+| D | App carry-over: H7 to H12, Q9 | `app/Sources`, `app/Tests`, `app/scripts/check.sh` | `reports/CP3-carryover-app-2026-10-14.md` |
+
+If this chat stops: run `git status --short`; uncommitted files belong to these four. Read each report, run the tests, have each reviewed, then commit per package. Batch 2 after that: E11, E12, E13, C3 to C6, D8 to D11.
 
 ## Next
 
