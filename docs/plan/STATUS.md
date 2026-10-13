@@ -58,7 +58,7 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 Then batch 2b: C3 action commands, C5 relaunch, C6 background runs, E12 notes audit, D10, D11.
 
-**Waiting for Ibrahim:** Q15, OpenCode while replying: built as "write when idle, wait while replying" (reviewer showed turns get mixed into a streaming reply otherwise); the specs still say "any state".
+**Q15, decided by Ibrahim 2026-10-14:** OpenCode is written in any state, replying included, as the specs say (he tested it). The refusal a reviewer had asked for is removed; the risk behind it is closed in the reader instead (parts grouped by message, Baton's rows marked finished). Take-back, cut, place, rename and restore still wait while replying. Commit after `e724450`.
 
 If this chat stops: `git status --short`; uncommitted files belong to the three builders above; read their reports, run tests, review, commit per package.
 
