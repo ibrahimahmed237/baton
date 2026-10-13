@@ -50,7 +50,7 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 ## Next
 
-1. **Decisions owed by Ibrahim** (step B report, "Differences"): Codex "close, sync, reopen" as the usual offer; trusting a Claude format by record shape instead of exact version.
+1. **Decided by Ibrahim, 2026-10-14.** **Q13:** for Codex, "close Codex, sync, reopen" is the usual offer when Codex is running (it keeps recent chats loaded); when Codex is closed, Baton syncs without asking. **Q14:** a tool's format is trusted by the shape of the records Baton reads and writes, not by an exact version; a new version with a known shape only adds a note, an unknown shape turns writing off.
 2. **Carry-over fixes first, small:** H4 to H13 (table above), Q9 duplicate notes, settle-wait after a Claude release, rollback notes cleared and kept under Baton's folder, rename restores the exact earlier title.
 3. **CP3 packages** (MAP.md): E11, E12, E13; B3 OpenCode, B4 Cursor; C3 to C6; D8 to D11. Files do not overlap between E, B, C and D tracks, so up to four builders at once, each followed by a separate reviewer.
 4. CP3 live check: hooks in all four tools, relaunch for Claude and Cursor, create and cut through the adapters. Uses the two kept test chats plus one each in OpenCode and Cursor.
