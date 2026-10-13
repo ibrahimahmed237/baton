@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Callable
 
 from .app import CodexApp, InertProcess, SystemProcess
+from .coordination import NativeCoordination
 from .facts import FACTS
 from .hooks import CodexHooks
 from .locator import CodexLocator
@@ -51,5 +52,9 @@ class CodexAdapter:
 
     @classmethod
     def on_this_machine(cls, root, **options) -> "CodexAdapter":
-        """The adapter for the real machine: the one place that picks the real process control and CLI launcher."""
-        return cls(root, **{"process": SystemProcess(), "command": subprocess.run, **options})
+        """The adapter for the real machine: the one place that picks the real process control, CLI launcher and thread lock.
+
+        Writes still need the explicit chat scope (`allowed_chat_ids`); the lock only supplies exclusion.
+        """
+        return cls(root, **{"process": SystemProcess(), "command": subprocess.run,
+                            "coordination": NativeCoordination(), **options})
