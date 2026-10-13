@@ -43,11 +43,14 @@ public struct SyncStatusView: View {
                     }
                 }
                 if let plan = model.plan {
-                    PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
-                    ConfirmBar(notes: plan.notes, buttons: model.confirmationButtons) { button in
-                        if button.id == "cancel" { model.cancelPlan() }
-                        else { Task { await model.confirmPlan() } }
-                    }.disabled(model.isConfirming)
+                    PlanSteps(steps: plan.steps, excludingNotes: model.planNotes)
+                    if let receipt = model.displayReceipt {
+                        ConfirmBar(notes: receipt.notes, buttons: model.confirmationButtons, revision: receipt.identity,
+                                   enabled: { _, button in button.id == "cancel" || model.canConfirmPlan }) { _, button in
+                            if button.id == "cancel" { model.cancelPlan() }
+                            else { Task { await model.confirmPlan() } }
+                        }.id(receipt.identity).onAppear { model.didDisplay(receipt) }.disabled(model.isConfirming)
+                    }
                 }
             }
             if let error = model.errorNote { NoteView(note: error) }
@@ -207,7 +210,7 @@ public struct SyncStatusView: View {
     private func turnView(_ turn: Turn) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 8) {
-                Text("Turn \(turn.seq)")
+                Text(turn.seq, format: .number)
                     .font(.caption.weight(.semibold).monospacedDigit())
                     .padding(.horizontal, 8).padding(.vertical, 4)
                     .background(theme.sidebar, in: Capsule())

@@ -178,4 +178,21 @@ struct PopoverTests {
             }
         }
     }
+    @MainActor @Test
+    func popoverPreviewDisplaysRepeatedStepSentenceOnceWithStrongestTone() throws {
+        var plan = try JSONDecoder().decode(ContinueResult.self, from: Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/continue.sample.json")))
+        let first = Note(id: "fixture.first", tone: "info", values: [:], text: "Fixture repeated sentence", buttons: [])
+        var warning = first; warning.id = "fixture.warning"; warning.tone = "warning"
+        var step = try #require(plan.steps.first)
+        step.notes = [warning]
+        var other = step; other.tool = "other"; other.notes = [warning]
+        plan.notes = [first]; plan.steps = [step, other]; plan.confirmation = nil
+        let notes = PopoverView.presentationNotes(for: plan)
+        #expect(notes.count == 1 && notes.first?.tone == "warning")
+        let steps = PlanSteps(steps: plan.steps, excludingNotes: notes)
+        #expect(steps.displayedNotes(for: step).isEmpty && steps.displayedNotes(for: other).isEmpty)
+        plan.notes = []
+        #expect(PopoverView.presentationNotes(for: plan).count == 1)
+    }
+
 }

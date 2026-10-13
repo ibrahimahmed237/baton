@@ -12,7 +12,7 @@ private struct FixtureWindow: View {
         _model = StateObject(wrappedValue: WindowViewModel(engine: FixtureEngine(directory: directory, state: state)))
     }
     var body: some View {
-        WindowView(model: model).task { await model.refresh(); model.navigate(to: destination) }
+        WindowView(model: model, appearance: ThemePreference()).task { await model.refresh(); model.navigate(to: destination) }
     }
 }
 

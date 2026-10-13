@@ -79,8 +79,11 @@ public struct LinkDialogView: View {
             if let error = model.errorNote { NoteView(note: error) }
             if let plan = model.plan {
                 PlanSteps(steps: plan.steps, excludingNotes: model.planNotes)
-                ConfirmBar(notes: model.planNotes, buttons: confirmationButtons) { _ in
-                    model.markNotesDisplayed(); Task { await model.confirm() }
+                if let receipt = model.displayReceipt {
+                    ConfirmBar(notes: receipt.notes, buttons: confirmationButtons, revision: receipt.identity,
+                               enabled: { _, _ in model.canConfirm }) { _, _ in
+                        Task { await model.confirm() }
+                    }.id(receipt.identity).onAppear { model.didDisplay(receipt) }
                 }
             }
             HStack {

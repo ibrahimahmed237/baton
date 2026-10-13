@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -83,6 +84,34 @@ struct SyncStatusTests {
             let _: UnlinkResult = try await engine.response(command: "unlink", arguments: request + ["--confirm", fresh.planID], as: UnlinkResult.self)
             Issue.record("Consumed token was accepted twice")
         } catch StatusReceiptError.staleOrChangedRequest {}
+    }
+    @MainActor @Test func confirmationRequiresTheExactCurrentDisplayReceipt() async throws {
+        let engine = StatusRecordingEngine(); let model = SyncStatusViewModel(engine: engine)
+        await model.load(link: 3); await model.previewRemoval()
+        let old = try #require(model.displayReceipt)
+        await model.confirmPlan()
+        #expect(!(await engine.calls).contains { $0.1.contains("--confirm") })
+        model.didDisplay(PlanDisplayReceipt(planID: old.planID, revision: old.revision, notes: []))
+        #expect(!model.canConfirmPlan)
+        model.didDisplay(old); #expect(model.canConfirmPlan)
+        await model.previewCopy(from: "claude", to: "codex")
+        let next = try #require(model.displayReceipt)
+        #expect(next.notes != old.notes)
+        model.didDisplay(old); await model.confirmPlan()
+        #expect(!model.canConfirmPlan)
+        #expect(!(await engine.calls).contains { $0.1.contains("--confirm") })
+        model.didDisplay(next); #expect(model.canConfirmPlan)
+    }
+    @MainActor @Test func relaunchCannotBeConfirmedEvenAfterDisplay() async throws {
+        let engine = StatusRecordingEngine(); let model = SyncStatusViewModel(engine: engine)
+        await model.load(link: 3)
+        let side = try #require(model.status?.sides["claude"])
+        let button = try #require(model.sideButtons(side).first { $0.id == "close_sync_reopen" })
+        await model.sideAction(button, tool: "claude")
+        model.didDisplay(try #require(model.displayReceipt))
+        #expect(!model.canConfirmPlan)
+        await model.confirmPlan()
+        #expect(!(await engine.calls).contains { $0.0 == "relaunch" && $0.1.contains("--confirm") })
     }
     @MainActor @Test
     func eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() async throws {
@@ -270,6 +299,7 @@ struct SyncStatusTests {
         let previewID = try #require(model.plan?.planID)
         #expect(!previewID.isEmpty)
         #expect(model.confirmationButtons.map(\.id) == ["unlink", "cancel"])
+        model.didDisplay(try #require(model.displayReceipt))
         await model.confirmPlan()
         let calls = await engine.calls
         #expect(calls.last?.0 == "unlink")
@@ -292,6 +322,7 @@ struct SyncStatusTests {
         await window.refresh(); window.select(.link(3))
         #expect(window.selectedLink?.linkID == 3)
         await model.load(link: 3); await model.previewRemoval()
+        model.didDisplay(try #require(model.displayReceipt))
         let first = Task { await model.confirmPlan() }
         try await Task.sleep(for: .milliseconds(10))
         #expect(model.isConfirming)
@@ -313,7 +344,7 @@ struct SyncStatusTests {
         let status = await model("s7")
         #expect(window.selectedLink?.linkID == status.status?.linkID)
         for theme in Theme.allCases {
-            let renderer = ImageRenderer(content: WindowView(model: window, statusModel: status)
+            let renderer = ImageRenderer(content: WindowView(model: window, statusModel: status, appearance: ThemePreference())
                 .batonTheme(theme).environment(\.batonSnapshotPresentation, true))
             let image = try #require(renderer.nsImage)
             #expect(image.size.width == 1000); #expect(image.size.height == 600)

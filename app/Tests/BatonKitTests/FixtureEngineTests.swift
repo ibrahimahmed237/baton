@@ -246,6 +246,40 @@ struct FixtureEngineTests {
         #expect(result.chats.allSatisfy { $0.tool == "claude" })
     }
 
+    @Test func appCheckStopsAtAFailingFixtureGateFromTheRepoRoot() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let stub = directory.appendingPathComponent("python3")
+        try Data("#!/bin/sh\npwd > \"$BATON_GATE_LOG\"\nprintf '%s\\n' \"$@\" >> \"$BATON_GATE_LOG\"\nexit 37\n".utf8).write(to: stub)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: stub.path)
+        let app = FixtureDecodingTests.fixtures.deletingLastPathComponent()
+        let log = directory.appendingPathComponent("gate.log")
+        let process = Process(); process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [app.appendingPathComponent("scripts/check.sh").path]
+        var environment = ProcessInfo.processInfo.environment
+        environment["PATH"] = directory.path + ":" + (environment["PATH"] ?? "/usr/bin:/bin")
+        environment["BATON_GATE_LOG"] = log.path; process.environment = environment
+        process.standardOutput = FileHandle.nullDevice; process.standardError = FileHandle.nullDevice
+        try process.run(); process.waitUntilExit()
+        #expect(process.terminationStatus == 37)
+        let lines = try String(contentsOf: log, encoding: .utf8).split(separator: "\n").map(String.init)
+        #expect(lines == [app.deletingLastPathComponent().path, "-m", "unittest", "tests.contract.test_fixtures"])
+    }
+
+    @Test func missingSelectedStateDoesNotUseExistingSample() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try Data(contentsOf: FixtureDecodingTests.fixtures.appendingPathComponent("links.sample.json"))
+            .write(to: directory.appendingPathComponent("links.sample.json"))
+        for engine in [FixtureEngine(directory: directory, state: "missing"),
+                       FixtureEngine(directory: directory, states: ["links": "missing"])] {
+            do { _ = try await engine.links(); Issue.record("Missing state fell back to sample") }
+            catch { #expect(error is CocoaError) }
+        }
+    }
+
     @Test
     func testMissingFixtureThrows() async {
         let engine = FixtureEngine(directory: FixtureDecodingTests.fixtures, state: "missing")

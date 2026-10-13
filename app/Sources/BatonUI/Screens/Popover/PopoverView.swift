@@ -74,8 +74,7 @@ public struct PopoverView: View {
                 }.buttonStyle(PopoverActionStyle())
             }
             if let plan = model.plan {
-                ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
-                PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
+                planPreview(plan)
             }
         }.padding(13)
         }
@@ -90,6 +89,18 @@ public struct PopoverView: View {
             }
         }.font(.caption.weight(.medium)).padding(.horizontal, 13).padding(.vertical, 10)
         }.frame(width: 340, height: snapshot ? nil : 340).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+    }
+
+    @ViewBuilder private func planPreview(_ plan: ContinueResult) -> some View {
+        let notes = Self.presentationNotes(for: plan)
+        ForEach(Array(notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
+        PlanSteps(steps: plan.steps, excludingNotes: notes)
+    }
+
+    static func presentationNotes(for result: ContinueResult) -> [Note] {
+        displayedPlanNotes(Plan(planID: result.planID, applied: result.applied, linkID: result.linkID,
+                                steps: result.steps, decisionNeeded: result.decisionNeeded,
+                                notes: result.notes, confirmation: result.confirmation, stage: result.stage))
     }
 
     private func rowMeaning(_ link: LinkSummary) -> StateColour {

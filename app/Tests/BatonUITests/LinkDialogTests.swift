@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -96,6 +97,52 @@ struct LinkDialogTests {
         #expect(await engine.receipts() == 1)
     }
 
+    @MainActor @Test func staleOrIncompleteDisplayCannotApproveChangedNotes() async throws {
+        let engine = DialogRecordingEngine(); let model = LinkDialogViewModel(engine: engine)
+        let fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_opencode")
+        let source: Chat = try await fixture.response(command: "chat", arguments: [], as: Chat.self)
+        await model.load(source: source)
+        let old = try #require(model.displayReceipt)
+        model.didDisplay(PlanDisplayReceipt(planID: old.planID, revision: old.revision, notes: []))
+        await model.confirm()
+        #expect(!(await engine.recorded()).contains { $0.1.contains("--confirm") })
+        model.didDisplay(old); #expect(model.canConfirm)
+        await model.selectTarget("cursor")
+        let next = try #require(model.displayReceipt)
+        #expect(next.notes != old.notes)
+        model.didDisplay(old); await model.confirm()
+        #expect(!model.canConfirm)
+        #expect(!(await engine.recorded()).contains { $0.1.contains("--confirm") })
+        model.didDisplay(next); #expect(model.canConfirm)
+    }
+    @MainActor @Test func d5DuplicateSentencesAppearOnceInBothReviews() async throws {
+        for state in Self.states {
+            let model = try await loaded(state)
+            let plan = try #require(model.plan)
+            let review = PlanReviewViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_" + state))
+            await review.preview(.link(from: model.source!.tool + ":" + model.source!.id, to: model.target!, mode: model.mode!))
+            #expect(model.planNotes == displayedPlanNotes(plan))
+            for notes in [model.planNotes, review.planNotes] {
+                for (index, note) in notes.enumerated() {
+                    #expect(!notes.prefix(index).contains { sameSentence($0, note) })
+                }
+            }
+        }
+        var plan = try #require(try await loaded("opencode").plan)
+        let note = try #require(plan.notes.first)
+        var metadata = note; metadata.buttons = []
+        plan.steps[0].notes.append(metadata)
+        #expect(displayedPlanNotes(plan).filter { sameSentence($0, note) }.count == 1)
+        var changed = metadata; changed.values["different"] = .string("value")
+        plan.steps[0].notes.append(changed)
+        #expect(!sameSentence(changed, note))
+        #expect(displayedPlanNotes(plan).filter { filledSentence($0) == filledSentence(note) }.count == 1)
+        // The first occurrence owns provenance; repeating it on two sides adds no prose.
+        let neutral = Note(id: "fixture.side", tone: "info", values: [:], text: "Side fixture", buttons: [])
+        var other = plan.steps[0]; other.tool = "other"; other.notes = [neutral]
+        plan.notes = [neutral]; plan.steps[0].notes = [neutral]; plan.steps.append(other)
+        #expect(displayedPlanNotes(plan).filter { $0.id == neutral.id }.count == 1)
+    }
     @MainActor @Test func eachTargetShowsItsOwnEngineNotesAndEligibility() async throws {
         for state in Self.states {
             let model = try await loaded(state)
@@ -117,7 +164,7 @@ struct LinkDialogTests {
     @MainActor @Test func switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() async throws {
         let engine = DialogRecordingEngine(); let model = LinkDialogViewModel(engine: engine)
         let source: Chat = try await FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_opencode").response(command: "chat", arguments: [], as: Chat.self)
-        await model.load(source: source); model.markNotesDisplayed(); #expect(model.canConfirm)
+        await model.load(source: source); model.didDisplay(try #require(model.displayReceipt)); #expect(model.canConfirm)
         await engine.setDelay()
         let old = Task { await model.selectTarget("codex") }
         try await Task.sleep(for: .milliseconds(10))
@@ -131,7 +178,7 @@ struct LinkDialogTests {
         let source: Chat = try await FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_opencode").response(command: "chat", arguments: [], as: Chat.self)
         await model.load(source: source); await model.confirm()
         var calls = await engine.recorded(); #expect(!calls.contains { $0.1.contains("--confirm") })
-        let id = try #require(model.plan?.planID); model.markNotesDisplayed(); await model.confirm()
+        let id = try #require(model.plan?.planID); model.didDisplay(try #require(model.displayReceipt)); await model.confirm()
         calls = await engine.recorded(); #expect(calls.contains { $0.0 == "link" && $0.1.suffix(2) == ["--confirm", id] })
         #expect(model.finished)
         await model.load(source: source); await model.choose(.copy)
@@ -154,7 +201,7 @@ struct LinkDialogTests {
         let engine = DialogRecordingEngine(); let model = LinkDialogViewModel(engine: engine)
         let fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d5_opencode")
         let source: Chat = try await fixture.response(command: "chat", arguments: [], as: Chat.self)
-        await model.load(source: source); model.markNotesDisplayed(); await engine.setConfirmDelay()
+        await model.load(source: source); model.didDisplay(try #require(model.displayReceipt)); await engine.setConfirmDelay()
         let applying = Task { await model.confirm() }; try await Task.sleep(for: .milliseconds(10))
         #expect(model.isApplying); let target = model.target
         await model.selectTarget("cursor"); await model.choose(.copy); model.cancel()

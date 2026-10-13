@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -169,8 +170,8 @@ struct EmptyStateTests {
                 case .activity: name = "activity"
                 case .settings: continue
                 }
-                try render(WindowView(model: empty), name: "empty_" + name, theme: theme, output: output)
-                try render(WindowView(model: filled), name: "select_" + name, theme: theme, output: output)
+                try render(WindowView(model: empty, appearance: ThemePreference()), name: "empty_" + name, theme: theme, output: output)
+                try render(WindowView(model: filled, appearance: ThemePreference()), name: "select_" + name, theme: theme, output: output)
             }
             try render(PopoverView(model: popover), name: "popover", theme: theme, output: output)
             try render(SyncStatusView(model: conversation).frame(width: 1000), name: "conversation", theme: theme, output: output)

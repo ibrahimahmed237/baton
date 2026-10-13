@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -198,6 +199,12 @@ struct HandOffTests {
         #expect(await engine.counts() == (1, 1))
         await review.confirm(); #expect(await engine.counts() == (1, 1))
     }
+    @MainActor @Test func briefFallbackDisclosesOfflineUse() async throws {
+        let (model, _) = try await loaded("d7_brief_fallback")
+        model.selectMode(.brief); await model.previewChoice()
+        #expect(model.brief?.brief?.writer == "offline")
+        #expect(model.brief?.plan.notes.contains { $0.id == "brief.used_offline" && !$0.text.isEmpty } == true)
+    }
     @MainActor @Test func v5BothSidesShowKnownFullnessAndRealSummaryRecommendation() async throws {
         let (model, _) = try await loaded("d7_context_size")
         #expect(model.percent(for: "claude") == 82 && model.percent(for: "codex") == 13)
@@ -272,11 +279,18 @@ struct HandOffTests {
         await engine.configure(); await model.load(link: 3, to: "unknown")
         #expect(model.failed && model.status == nil && model.request == nil)
     }
-    @MainActor @Test func setupFailureHasABrandedErrorAffordanceAndNoOldActions() async throws {
+    @MainActor @Test func setupFailureWithoutANoteHasNoPresentationOrActions() async throws {
         let (model, engine) = try await loaded("d7_limit_reset")
         await engine.configure(failSetup: true); await model.load(link: 3)
         #expect(model.hasUnwordedError && model.failed && !model.canAct)
         #expect(model.status == nil && model.offer == nil && model.request == nil)
+        #expect(model.errorNote == nil && model.label("handoff.actions") == nil)
+        #expect(model.chat == nil && model.target == nil && model.brief == nil && model.pendingReview == nil)
+        model.beginReview()
+        #expect(model.pendingReview == nil)
+        #expect(await engine.counts() == (0, 0))
+        let image = ImageRenderer(content: HandOffView(model: model)).nsImage
+        #expect(image == nil || image?.size == .zero)
     }
     @MainActor @Test func previewCannotExposeAnotherDestinationAsTheChosenBrief() async throws {
         let (model, engine) = try await loaded("d7_context_size")
@@ -357,12 +371,14 @@ struct HandOffTests {
         models.append(("d7_failed_reload", failed))
         let (setupFailed, setupEngine) = try await loaded("d7_context_size")
         await setupEngine.configure(failSetup: true); await setupFailed.load(link: 3)
+        #expect(setupFailed.hasUnwordedError)
         models.append(("d7_setup_failed", setupFailed))
+
         let engine = D7Engine(state: "d7_unlinked"); let unlinked = HandOffViewModel(engine: engine)
         await unlinked.load(unlinked: Self.orchard, offers: try await engine.notify(tool: "claude", chat: "sample-a").offers)
         models.append(("d7_unlinked", unlinked))
         for (name, model) in models { for theme in Theme.allCases {
-            let renderer = ImageRenderer(content: HandOffView(model: model).environment(\.batonTheme, theme).environment(\.batonSnapshotPresentation, true))
+            let renderer = ImageRenderer(content: HandOffView(model: model).frame(minWidth: 720, minHeight: 1).environment(\.batonTheme, theme).environment(\.batonSnapshotPresentation, true))
             let image = try #require(renderer.nsImage)
             let tiff = try #require(image.tiffRepresentation)
             let bitmap = try #require(NSBitmapImageRep(data: tiff))
@@ -400,4 +416,21 @@ struct HandOffTests {
             #expect(!png.isEmpty); try png.write(to: directory.appendingPathComponent("D7-generated-create-\(theme.rawValue).png"))
         }
     }
+    @MainActor @Test
+    func handOffPreviewDisplaysRepeatedStepSentenceOnceWithStrongestTone() throws {
+        var plan = try JSONDecoder().decode(Plan.self, from: Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/sync.sample.json")))
+        let first = Note(id: "fixture.first", tone: "info", values: [:], text: "Fixture repeated sentence", buttons: [])
+        var warning = first; warning.id = "fixture.warning"; warning.tone = "warning"
+        var step = try #require(plan.steps.first)
+        step.notes = [warning]
+        var other = step; other.tool = "other"; other.notes = [warning]
+        plan.notes = [first]; plan.steps = [step, other]; plan.confirmation = nil
+        let notes = HandOffView.presentationNotes(for: plan)
+        #expect(notes.count == 1 && notes.first?.tone == "warning")
+        let steps = PlanSteps(steps: plan.steps, excludingNotes: notes)
+        #expect(steps.displayedNotes(for: step).isEmpty && steps.displayedNotes(for: other).isEmpty)
+        plan.notes = []
+        #expect(HandOffView.presentationNotes(for: plan).count == 1)
+    }
+
 }

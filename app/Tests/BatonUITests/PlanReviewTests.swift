@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -13,6 +14,8 @@ private actor D6Engine: EngineTransport {
     private var plans: [String: Issued] = [:]
     private var revision = 0
     private var serial = 0
+    private var changedWording = false
+    func changeWording() { changedWording = true }
     private var confirmationStarted = false
     private(set) var created: [(source: String, target: String, linked: Bool)] = []
     private(set) var deliveries: [String] = []
@@ -66,6 +69,10 @@ private actor D6Engine: EngineTransport {
             if command == "sync", let target = Self.value("--to", in: plain) { deliveries.append(target) }
         } else {
             object = try payload(command: command, arguments: plain)
+            if changedWording, var notes = object["notes"] as? [[String: Any]], !notes.isEmpty {
+                notes[0]["text"] = (notes[0]["text"] as? String ?? "") + " Changed fixture wording."
+                object["notes"] = notes
+            }
             serial += 1
             let token = "p_d6_\(serial)"
             object["plan_id"] = token
@@ -130,6 +137,21 @@ struct PlanReviewTests {
         let engine = D6Engine(state: "custom", custom: data, confirmationDelay: delay, confirmationBehavior: behavior)
         let model = PlanReviewViewModel(engine: engine); await model.load(request)
         return (model, engine)
+    }
+
+    @MainActor @Test func changedWordingRequiresItsOwnDisplayBeforeConfirmation() async throws {
+        let (model, engine) = await model(Self.cases[2])
+        let old = try #require(model.displayReceipt)
+        await model.confirm(); #expect(await engine.writes().isEmpty)
+        model.didDisplay(old); #expect(model.canConfirm)
+        await engine.changeWording(); await model.preview(Self.cases[2].request)
+        let next = try #require(model.displayReceipt)
+        #expect(next.notes != old.notes)
+        model.didDisplay(old); await model.confirm()
+        #expect(!model.canConfirm); #expect(await engine.writes().isEmpty)
+        model.didDisplay(next); #expect(model.canConfirm)
+        let sameRevision = PlanDisplayReceipt(planID: old.planID, revision: old.revision, notes: next.notes)
+        #expect(sameRevision.identity != old.identity)
     }
 
     @MainActor @Test func everyStateRequiresItsExactDisplayBeforeAnyMutation() async throws {

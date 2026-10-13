@@ -103,7 +103,11 @@ public struct PlanDisplayReceipt: Equatable, Sendable {
     public let planID: String
     public let revision: Int
     public let notes: [Note]
-    public var identity: String { "\(revision):\(planID)" }
+    public var identity: String {
+        let encoder = JSONEncoder(); encoder.outputFormatting = .sortedKeys
+        let wording = (try? encoder.encode(notes))?.base64EncodedString() ?? ""
+        return "\(revision):\(planID):\(wording)"
+    }
 }
 
 /// A button retains its origin even when another side offers an identical button.
@@ -155,10 +159,7 @@ public final class PlanReviewViewModel: ObservableObject {
     /// All required explanation and confirmation wording; deduplication affects prose only.
     public var planNotes: [Note] {
         guard let plan else { return [] }
-        var seen: [Note] = []
-        for note in plan.notes + plan.steps.flatMap(\.notes) + [plan.confirmation].compactMap({ $0 })
-            where !seen.contains(note) { seen.append(note) }
-        return seen
+        return displayedPlanNotes(plan)
     }
     public var displayReceipt: PlanDisplayReceipt? {
         plan.map { PlanDisplayReceipt(planID: $0.planID, revision: generation, notes: planNotes) }

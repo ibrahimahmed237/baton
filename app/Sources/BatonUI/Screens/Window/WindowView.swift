@@ -12,8 +12,8 @@ public struct WindowView: View {
     @ObservedObject private var appearance: ThemePreference
     @ObservedObject private var model: WindowViewModel
     /// Shows the engine-backed window model.
-    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil, appearance: ThemePreference? = nil) {
-        let preference = appearance ?? .shared
+    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil, appearance: ThemePreference) {
+        let preference = appearance
         self.appearance = preference
         _settingsModel = StateObject(wrappedValue: model.makeSettingsModel(appearance: preference))
         self.model = model

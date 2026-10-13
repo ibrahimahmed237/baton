@@ -34,8 +34,8 @@ public enum BatonWindowConfiguration {
 @MainActor public final class BatonMainWindowController: NSWindowController {
     public let model: WindowViewModel
     private let appearance: ThemePreference
-    public init(model: WindowViewModel, appearance: ThemePreference? = nil) {
-        let preference = appearance ?? .shared
+    public init(model: WindowViewModel, appearance: ThemePreference) {
+        let preference = appearance
         self.appearance = preference
         self.model = model
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),

@@ -25,6 +25,7 @@ public final class SyncStatusViewModel: ObservableObject {
     private let engine: any EngineClient
     private var request = 0
     private var actionRequest = 0
+    private var gate = ConfirmationGate()
     private var pending: PendingAction?
     private enum PendingAction { case unlink, copy(String, String), sync(String), relaunch(String) }
 
@@ -216,8 +217,24 @@ public final class SyncStatusViewModel: ObservableObject {
         var seen: Set<String> = []
         return plan.notes.flatMap(\.buttons).filter { permitted.contains($0.id) && seen.insert($0.id).inserted }
     }
+    public var planNotes: [Note] { plan.map(displayedPlanNotes) ?? [] }
+    public var displayReceipt: PlanDisplayReceipt? {
+        plan.map { PlanDisplayReceipt(planID: $0.planID, revision: actionRequest, notes: planNotes) }
+    }
+    public func didDisplay(_ receipt: PlanDisplayReceipt) {
+        guard receipt == displayReceipt else { return }
+        objectWillChange.send()
+        gate.markDisplayed(receipt.notes, identity: receipt.identity)
+    }
+    public var canConfirmPlan: Bool {
+        if case .relaunch = pending { return false } // Execution belongs to C5, as in plan review.
+        guard !loading, !isConfirming, pending != nil, let plan, !plan.applied, !plan.decisionNeeded,
+              let receipt = displayReceipt, confirmationButtons.contains(where: { $0.id != "cancel" }) else { return false }
+        return gate.permits(receipt.notes, identity: receipt.identity)
+    }
     public func confirmPlan() async {
-        guard !isConfirming, let plan, let pending else { return }
+        guard canConfirmPlan, let plan, let pending else { return }
+        gate = ConfirmationGate()
         isConfirming = true
         defer { isConfirming = false }
         await execute(pending, mutation: .confirm(plan.planID))
@@ -243,7 +260,7 @@ public final class SyncStatusViewModel: ObservableObject {
                 returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes)
             }
             guard generation == actionRequest, self.status?.linkID == status.linkID else { return }
-            plan = returned
+            gate = ConfirmationGate(); plan = returned
             if plan?.applied == true {
                 cancelPlan()
                 if case .unlink = action { self.status = nil; removedLinkID = status.linkID }

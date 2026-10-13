@@ -33,11 +33,22 @@ public final class LinkDialogViewModel: ObservableObject {
     public var targetTools: [SetupTool] { tools.filter { action == .fullCopy || $0.tool != (action == .change ? retainedTool : source?.tool) } }
     public var selectedTool: SetupTool? { tools.first { $0.tool == target } }
     public var modes: [LinkModeOption] { selectedTool?.linkModes ?? [] }
-    public var canConfirm: Bool { !busy && !finished && plan?.applied == false && plan?.decisionNeeded == false && gate.permits(planNotes) }
-    public var planNotes: [Note] { (plan?.notes ?? []) + (plan?.steps.flatMap(\.notes) ?? []) }
+    public var canConfirm: Bool {
+        guard !busy, !finished, let plan, !plan.applied, !plan.decisionNeeded, let receipt = displayReceipt else { return false }
+        return gate.permits(receipt.notes, identity: receipt.identity)
+    }
+    public var planNotes: [Note] { plan.map(displayedPlanNotes) ?? [] }
+    public var displayReceipt: PlanDisplayReceipt? {
+        plan.map { PlanDisplayReceipt(planID: $0.planID, revision: generation, notes: planNotes) }
+    }
     public var buttons: [NoteButton] { label("dialog.actions")?.buttons ?? [] }
+    public func didDisplay(_ receipt: PlanDisplayReceipt) {
+        guard receipt == displayReceipt else { return }
+        objectWillChange.send()
+        gate.markDisplayed(receipt.notes, identity: receipt.identity)
+    }
+
     /// Updates the engine-backed dialog presentation.
-    public func markNotesDisplayed() { gate.markDisplayed(planNotes) }
 
     /// Updates the engine-backed dialog presentation.
     public func load(source: Chat, link: LinkSummary? = nil, replacing: String? = nil) async {
@@ -137,18 +148,18 @@ public final class LinkDialogViewModel: ObservableObject {
         switch action {
         case .link:
             let r = try await engine.link(from: source.tool + ":" + source.id, to: destination, mode: mode, mutation: mutation)
-            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes)
+            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes, confirmation: r.confirmation, stage: r.stage)
         case .copy:
             let r = try await engine.copy(from: source.tool + ":" + source.id, to: target, andLink: false, mutation: mutation)
-            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes)
+            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes, confirmation: r.confirmation, stage: r.stage)
         case .change:
             guard let link = currentLink, let retainedTool else { throw CancellationError() }
             let r = try await engine.relink(link: link.linkID, to: destination, keep: retainedTool, mode: mode, mutation: mutation)
-            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes)
+            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes, confirmation: r.confirmation, stage: r.stage)
         case .fullCopy:
             guard let link = currentLink else { throw CancellationError() }
             let r = try await engine.fullCopy(link: link.linkID, replace: target, mutation: mutation)
-            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes)
+            return Plan(planID: r.planID, applied: r.applied, linkID: r.linkID, steps: r.steps, decisionNeeded: r.decisionNeeded, notes: r.notes, confirmation: r.confirmation, stage: r.stage)
         }
     }
     private func finishError(_ error: Error, request: Int) {

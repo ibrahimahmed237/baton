@@ -6,6 +6,19 @@ import BatonKit
 
 @Suite(.serialized)
 struct ThemePreferenceTests {
+    /// Every access to shared runs the same guard before initializing UserDefaults.
+    @MainActor private func assertSharedPreferenceIsForbidden() {
+        #expect(!ThemePreference.sharedAccessPermitted(executable: CommandLine.arguments[0]), "Runner: \(CommandLine.arguments[0])")
+    }
+
+    @MainActor @Test func testProcessCannotReachStoredAppearance() {
+        assertSharedPreferenceIsForbidden()
+        #expect(!ThemePreference.sharedAccessPermitted(executable: "/tmp/BatonPackageTests.xctest/Contents/MacOS/BatonPackageTests"))
+        #expect(!ThemePreference.sharedAccessPermitted(executable: "/tmp/xctest"))
+        #expect(!ThemePreference.sharedAccessPermitted(executable: "/tmp/swiftpm-testing-helper"))
+        #expect(ThemePreference.sharedAccessPermitted(executable: "/tmp/Baton"))
+    }
+
     @MainActor @Test
     func savesExplicitAppearanceAndOnlySystemFollowsMacOS() {
         var saved: String?

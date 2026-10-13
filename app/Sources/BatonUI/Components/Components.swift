@@ -113,7 +113,7 @@ public struct PlanSteps: View {
     }
     /// Omits exact notes already displayed at the plan level while retaining changed notes.
     public func displayedNotes(for step: Step) -> [Note] {
-        step.notes.filter { !excludingNotes.contains($0) }
+        step.notes.filter { note in !excludingNotes.contains { filledSentence($0) == filledSentence(note) } }
     }
     public var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -129,6 +129,33 @@ public struct PlanSteps: View {
             }
         }
     }
+}
+
+/// Exact note identity includes semantic presentation, independently of offered controls.
+func filledSentence(_ note: Note) -> String {
+    DisplayTime.noteText(note.text, values: note.values)
+}
+
+func sameSentence(_ lhs: Note, _ rhs: Note) -> Bool {
+    lhs.id == rhs.id && filledSentence(lhs) == filledSentence(rhs) && lhs.values == rhs.values
+        && lhs.tone == rhs.tone && lhs.statusLine == rhs.statusLine
+}
+
+func displayedPlanNotes(_ plan: Plan) -> [Note] {
+    var result: [Note] = []
+    func strength(_ tone: String) -> Int {
+        switch tone { case "danger": return 3; case "warning": return 2; default: return 1 }
+    }
+    func append(_ note: Note) {
+        if let index = result.firstIndex(where: { sameSentence($0, note) || filledSentence($0) == filledSentence(note) }) {
+            // Keep the first occurrence's identity/values as provenance, but never hide a stronger warning.
+            if strength(note.tone) > strength(result[index].tone) { result[index].tone = note.tone }
+        } else { result.append(note) }
+    }
+    for note in plan.notes { append(note) }
+    for step in plan.steps { for note in step.notes { append(note) } }
+    if let note = plan.confirmation { append(note) }
+    return result
 }
 
 /// Tracks whether the exact current notes have appeared before an action is enabled.
@@ -205,7 +232,7 @@ struct BatonButtonStyle: ButtonStyle {
     }
 }
 
-/// A context meter with supplied accessibility text; unknown capacity stays indeterminate.
+/// A context meter with supplied accessibility text; unknown capacity shows only the supplied sentence.
 public struct MeterBar: View {
     @Environment(\.batonTheme) private var theme
     public let percent: Double?
@@ -224,9 +251,6 @@ public struct MeterBar: View {
                         }
                 }.frame(height: 7)
                 .accessibilityValue(Text(percent / 100, format: .percent.precision(.fractionLength(0))))
-            } else {
-                Capsule().stroke(theme.secondaryText, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    .frame(height: 7)
             }
         }.accessibilityElement(children: .combine).accessibilityLabel(label)
     }

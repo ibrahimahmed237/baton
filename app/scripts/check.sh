@@ -8,6 +8,8 @@ set -euo pipefail
 app_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 sdk_dir="/Library/Developer/CommandLineTools/SDKs"
 plugin_dir="/Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing"
+echo "check.sh: fixture hand-edit gate"
+(cd "$app_dir/.." && python3 -m unittest tests.contract.test_fixtures)
 cd "$app_dir"
 
 # The managed command environment cannot write the user's default module cache.

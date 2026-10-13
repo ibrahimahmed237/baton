@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -56,7 +57,7 @@ struct WindowInteractionTests {
     @MainActor @Test func mainWindowRetainsStandardControlsAndReopensTheSameContent() async throws {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
         await model.refresh()
-        let controller = BatonMainWindowController(model: model)
+        let controller = BatonMainWindowController(model: model, appearance: ThemePreference())
         let window = try #require(controller.window)
         // Native behavior is exercised off screen; no other application's windows are touched.
         window.setFrameOrigin(NSPoint(x: -10000, y: -10000))
@@ -118,7 +119,7 @@ struct WindowInteractionTests {
     @MainActor @Test func glassWindowMinimumSizeFitsHostedContent() async {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
         await model.refresh()
-        let host = NSHostingView(rootView: WindowView(model: model))
+        let host = NSHostingView(rootView: WindowView(model: model, appearance: ThemePreference()))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
@@ -157,7 +158,7 @@ struct WindowInteractionTests {
         let status = model.makeStatusModel(); await status.load(link: 3)
         for theme in Theme.allCases {
             for size in [CGSize(width: 1000, height: 600), CGSize(width: 1400, height: 900)] {
-                let renderer = ImageRenderer(content: WindowView(model: model, statusModel: status).batonTheme(theme)
+                let renderer = ImageRenderer(content: WindowView(model: model, statusModel: status, appearance: ThemePreference()).batonTheme(theme)
                     .environment(\.batonSnapshotPresentation, true))
                 renderer.proposedSize = ProposedViewSize(size)
                 let image = try #require(renderer.nsImage)
@@ -173,7 +174,7 @@ struct WindowInteractionTests {
     @MainActor @Test func sidebarBlankAreaRespondsToOneClick() async throws {
         let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
         await model.refresh()
-        let host = NSHostingView(rootView: WindowView(model: model))
+        let host = NSHostingView(rootView: WindowView(model: model, appearance: ThemePreference()))
         let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 1000, height: 600),
                               styleMask: [.titled, .resizable], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -65,7 +66,7 @@ struct WindowTests {
             let after = try errorSurfacePixels(model)
             #expect(before != after)
             for theme in Theme.allCases {
-                let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(theme)
+                let renderer = ImageRenderer(content: WindowView(model: model, appearance: ThemePreference()).batonTheme(theme)
                     .environment(\.batonSnapshotPresentation, true))
                 let image = try #require(renderer.nsImage)
                 let tiff = try #require(image.tiffRepresentation)
@@ -77,7 +78,7 @@ struct WindowTests {
         }
     }
     @MainActor private func errorSurfacePixels(_ model: WindowViewModel) throws -> Data {
-        let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(.light)
+        let renderer = ImageRenderer(content: WindowView(model: model, appearance: ThemePreference()).batonTheme(.light)
             .environment(\.batonSnapshotPresentation, true))
         let image = try #require(renderer.cgImage)
         let region = try #require(image.cropping(to: CGRect(x: 225, y: 20, width: 400, height: 100)))
@@ -186,7 +187,7 @@ struct WindowTests {
                 case .activity: name = "activity"; if fixture == "filled" { model.select(.event(3, 1)) }
                 }
                 for theme in Theme.allCases {
-                    let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
+                    let renderer = ImageRenderer(content: WindowView(model: model, appearance: ThemePreference()).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
                     renderer.scale = 1
                     let image = try #require(renderer.nsImage)
                     #expect(image.size.width > 0 && image.size.height > 0)

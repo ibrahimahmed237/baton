@@ -50,7 +50,7 @@ private final class BatonAppDelegate: NSObject, NSApplicationDelegate {
         let engine = SettingsFixtureEngine(base: FixtureEngine(directory: fixtures, state: "d3_filled",
             states: ["settings-get": "sample", "settings-set": "sample"]), savedSettings: saved,
             save: { value in UserDefaults.standard.set(try JSONEncoder().encode(value), forKey: "baton.fixture.settings") })
-        return BatonMainWindowController(model: WindowViewModel(engine: engine))
+        return BatonMainWindowController(model: WindowViewModel(engine: engine), appearance: ThemePreference.shared)
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {

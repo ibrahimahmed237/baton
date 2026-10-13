@@ -15,7 +15,17 @@ public enum AppearanceMode: String, CaseIterable, Sendable {
 
 /// Shares the local app preference across the window and popover without changing macOS.
 @MainActor public final class ThemePreference: ObservableObject {
-    public static let shared: ThemePreference = {
+    public static var shared: ThemePreference {
+        precondition(sharedAccessPermitted(executable: CommandLine.arguments.first ?? ""),
+                     "Tests must inject an in-memory ThemePreference")
+        return storedShared
+    }
+    static func sharedAccessPermitted(executable: String) -> Bool {
+        !executable.contains(".xctest") && !executable.contains("swift-testing")
+            && URL(fileURLWithPath: executable).lastPathComponent != "xctest"
+            && URL(fileURLWithPath: executable).lastPathComponent != "swiftpm-testing-helper"
+    }
+    private static let storedShared: ThemePreference = {
         let preference = ThemePreference(storedValue: UserDefaults.standard.string(forKey: "baton.ui.theme"),
             systemTheme: NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light,
             save: { UserDefaults.standard.set($0, forKey: "baton.ui.theme") },

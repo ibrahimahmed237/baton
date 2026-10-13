@@ -11,6 +11,10 @@ public struct HandOffView: View {
     public init(model: HandOffViewModel, cancel: @escaping () -> Void = {}) { self.model = model; self.cancel = cancel }
 
     public var body: some View {
+        if !model.hasUnwordedError { content }
+    }
+
+    private var content: some View {
         WindowScrollArea(snapshotClips: false) {
             VStack(alignment: .leading, spacing: 16) {
                 if let title = model.label("handoff.title") { Text(title.text).font(.title2.weight(.semibold)) }
@@ -20,16 +24,6 @@ public struct HandOffView: View {
                     Circle().trim(from: 0, to: 0.7)
                         .stroke(theme.secondaryText, style: StrokeStyle(lineWidth: 2, lineCap: .round))
                         .frame(width: 24, height: 24).frame(maxWidth: .infinity).padding(12)
-                }
-                if model.hasUnwordedError {
-                    GlassCard {
-                        HStack(spacing: 16) {
-                            BrandMark(size: 58)
-                            Image(systemName: "exclamationmark.triangle").font(.title2).foregroundStyle(theme.secondaryText)
-                            Spacer()
-                            Button(action: cancel) { Image(systemName: "xmark.circle.fill").font(.title2) }.buttonStyle(.plain)
-                        }.padding(16)
-                    }
                 }
                 if let offer = model.offer, model.bannerVisible {
                     NoteView(note: offer, enabled: { _ in model.canAct }, action: { button in model.choose(button) })
@@ -51,7 +45,7 @@ public struct HandOffView: View {
                     heading("handoff.mode")
                     HStack(alignment: .top, spacing: 12) {
                         modeCard(.full, title: "handoff.full", help: "handoff.full_help", notes: model.target.flatMap { model.notes(for: $0).filter { $0.id == "status.if_send" } } ?? [])
-                        modeCard(.brief, title: "handoff.brief", help: "handoff.brief_help", notes: model.briefPreviewNotes)
+                        modeCard(.brief, title: "handoff.brief", help: "handoff.brief_help", notes: previewNotes)
                     }
                     if model.mode == .brief { writerBlock; if model.brief != nil { previewBlock } }
                     actions
@@ -121,15 +115,26 @@ public struct HandOffView: View {
                 }
             }
             if let writer = model.briefWriter, let side = model.side(writer) { ToolDot(tool: writer, label: side.displayLabel).font(.callout.weight(.semibold)) }
-            ForEach(Array(model.writerNotes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
+            ForEach(Array(writerNotes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
         }
+    }
+
+    static func presentationNotes(for plan: Plan) -> [Note] { displayedPlanNotes(plan) }
+
+    private var writerNotes: [Note] {
+        guard let plan = model.brief?.plan else { return [] }
+        return Self.presentationNotes(for: plan).filter { note in model.writerNotes.contains { $0.id == note.id } }
+    }
+    private var previewNotes: [Note] {
+        guard let plan = model.brief?.plan else { return [] }
+        return Self.presentationNotes(for: plan).filter { note in !writerNotes.contains { filledSentence($0) == filledSentence(note) } }
     }
 
     private var previewBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
             heading("handoff.preview")
             if let plan = model.brief?.plan {
-                PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
+                PlanSteps(steps: plan.steps, excludingNotes: Self.presentationNotes(for: plan))
                 if plan.stage == "create", let text = model.brief?.brief?.text, !text.isEmpty {
                     GlassCard { Text(text).font(.body).textSelection(.enabled).fixedSize(horizontal: false, vertical: true) }
                 }

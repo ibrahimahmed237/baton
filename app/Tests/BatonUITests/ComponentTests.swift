@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+// Renders are checked by a person, not by the test; these checks only prove image production.
 import Testing
 import BatonKit
 @testable import BatonUI
@@ -10,6 +11,48 @@ struct ComponentTests {
     static let root = ProcessInfo.processInfo.environment["BATON_TEST_ROOT"].map { URL(fileURLWithPath: $0) }
         ?? URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+
+    @MainActor @Test func noteIdentityIncludesFilledTextToneAndStatusLine() {
+        let first = Note(id: "fixture.same", tone: "info", values: [:], text: "Fixture sentence", buttons: [])
+        var stronger = first; stronger.tone = "warning"
+        var status = first; status.statusLine = "Fixture status"
+        #expect(!sameSentence(first, stronger))
+        #expect(!sameSentence(first, status))
+        var controls = first; controls.buttons = [NoteButton(id: "fixture", label: "Fixture")]
+        #expect(sameSentence(first, controls))
+        var values = first; values.values["tool"] = .string("Fixture")
+        var identity = first; identity.id = "fixture.other"
+        #expect(!sameSentence(first, values) && !sameSentence(first, identity))
+        var changed = first; changed.text += "!"
+        #expect(!sameSentence(first, changed))
+    }
+
+    @MainActor @Test func screenKeepsFirstSentenceAndStrongestToneAcrossBothSteps() throws {
+        var plan: Plan = try fixture("sync.sample.json", as: Plan.self)
+        let first = Note(id: "fixture.first", tone: "info", values: [:], text: "Fixture sentence", buttons: [])
+        var warning = first; warning.id = "fixture.warning"; warning.tone = "warning"
+        var danger = first; danger.id = "fixture.danger"; danger.tone = "danger"
+        var step = try #require(plan.steps.first)
+        step.notes = [warning]; var other = step; other.tool = "other"; other.notes = [danger]
+        plan.notes = [first]; plan.steps = [step, other]; plan.confirmation = first
+        let notes = displayedPlanNotes(plan)
+        #expect(notes.count == 1)
+        #expect(notes.first?.id == first.id && notes.first?.values == first.values)
+        #expect(notes.first?.tone == "danger")
+        let steps = PlanSteps(steps: plan.steps, excludingNotes: notes)
+        #expect(steps.displayedNotes(for: step).isEmpty && steps.displayedNotes(for: other).isEmpty)
+        plan.notes = [danger]; plan.steps[0].notes = [first]
+        #expect(displayedPlanNotes(plan).first?.tone == "danger")
+    }
+
+    @MainActor @Test func unknownPercentRendersOnlyTheSuppliedSentence() throws {
+        let note: Note = try JSONDecoder().decode(Note.self, from: Data(contentsOf: Self.root.appendingPathComponent("Fixtures/note.sample.json")))
+        let unknown = try #require(ImageRenderer(content: MeterBar(percent: nil, label: note.text).frame(width: 300)).nsImage)
+        let sentence = try #require(ImageRenderer(content: Text(note.text).font(.caption).frame(width: 300, alignment: .leading)).nsImage)
+        let known = try #require(ImageRenderer(content: MeterBar(percent: 82, label: note.text).frame(width: 300)).nsImage)
+        #expect(unknown.size.height == sentence.size.height)
+        #expect(known.size.height > unknown.size.height)
+    }
 
     private func fixture<T: Decodable>(_ name: String, as: T.Type) throws -> T {
         try JSONDecoder().decode(T.self, from: Data(contentsOf: Self.root
