@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-13, reviewed; H1–H3 fixed; CP2 live gate still open
+**Last updated:** 2026-10-14, CP2 passed; CP3 next
 
 ---
 
@@ -17,7 +17,9 @@ What changed since you last worked here:
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
 
-Live run state 2026-10-13: step A done, step B tools built (`tools/live/cp2_live.py`, report CP2-live-tools-2026-10-13.md), waiting for Ibrahim's two throwaway chats. See STATUS.md "CP2 live run".
+**Current state 2026-10-14: CP2 passed** (live run done on two throwaway chats, 879 engine tests). Continue from STATUS.md "Next": Ibrahim's two decisions, the carry-over fixes, then CP3. The two test chats "Baton test (safe to delete)" are kept for the CP3 live check; use `tools/live/cp2_live.py` only on them and only with Ibrahim's go.
+
+Earlier: live run state 2026-10-13: step A done, step B tools built (`tools/live/cp2_live.py`, report CP2-live-tools-2026-10-13.md), waiting for Ibrahim's two throwaway chats. See STATUS.md "CP2 live run".
 
 Reviewer pass 2026-10-13 (Claude): B2 safety findings H1 to H3 are fixed and committed (806 engine tests); next is the exact-scope live run; H4 to H13 owed for C1, E10, D5 to D7 and the app tests. Full table in STATUS.md, "Reviewer notes — 2026-10-13". Ibrahim is asked to confirm Q4 to Q8 himself. "Pushed" in the list above means up to UI13; the fifteen commits after it are local only.
 

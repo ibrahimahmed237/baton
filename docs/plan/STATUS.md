@@ -2,7 +2,7 @@
 
 The current hand-off page. Historical decisions, reviews and logs are in [reports/](reports/) and git history. Whole road: [MAP.md](MAP.md).
 
-**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP1, 2026-10-05 · **Working towards:** CP2 (not passed) · **Last checked:** 2026-10-11
+**Branch:** `chore/project-setup` · **Last checkpoint passed:** CP2, 2026-10-14 · **Working towards:** CP3 · **Last checked:** 2026-10-11
 
 ## Reviewer notes — 2026-10-13 (Claude, with two separate reviewer agents)
 
@@ -46,15 +46,14 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 ## Now
 
-**C2b committed `2bbdbe3` after root challenge and separate reviewer approval on chore/project-setup.** Together with C2a `914d9d3`, C2 is complete for its approved read/service/generated-fixture boundary. Root measured **787 engine tests,146 app tests and build pass**,325 deterministic fixtures and255 non-empty renders. Own26 actual-effect/fixture checks,149 native-shaped fixture tests and82 focused CP2 scenarios pass. No live chat/app access or push. [C2b report](reports/C2b-2026-10-11.md), [current CP2 report](reports/CP2-2026-10-11.md).
-
-**CP2 remains FAIL/incomplete solely at its required native live gate.** B1/B2 fixture implementations are accepted; Codex production mutation/automatic closure deliberately refuse until native coordination/trust/schema is verified. C3–C7/D12 production integration stays in its planned packages. D5 duplicate explanatory notes are a recorded nonblocking UI follow-up. Existing post-C2a records are included in this package; historical untracked reports/E9-E10.md stays preserved and excluded.
+**CP2 passed on 2026-10-14** (CHECKPOINTS.md). Live run on two throwaway chats done and seen by Ibrahim; reports `reports/CP2-live-step-A-2026-10-13.md` and `reports/CP2-live-step-B-2026-10-13.md`. Engine 879 tests. Orchestrator in this period: Claude; builders: Codex Sol and Claude subagents; reviewers: separate Haiku agents. Nothing is in flight; the tree is clean except the old untracked draft `reports/E9-E10.md`.
 
 ## Next
 
-1. Prepare the exact Claude/Codex throwaway live scope: named test identities, descendants/templates, files read/written, backup and cleanup. Ask Ibrahim for that run after listing scope, and for every app closure. Never use working chats or bypass production safety refusal.
-2. Establish native coordination/index/schema/marker/trust/visibility evidence; stop on any difference from measured specs. CP2 cannot pass and CP3 cannot start until the required live check succeeds.
-3. Ask for a separate small app follow-up to remove exact duplicate D5 plan/step notes while retaining changed/opposite-side notes and fresh display approval. No product UI policy was changed in C2b.
+1. **Decisions owed by Ibrahim** (step B report, "Differences"): Codex "close, sync, reopen" as the usual offer; trusting a Claude format by record shape instead of exact version.
+2. **Carry-over fixes first, small:** H4 to H13 (table above), Q9 duplicate notes, settle-wait after a Claude release, rollback notes cleared and kept under Baton's folder, rename restores the exact earlier title.
+3. **CP3 packages** (MAP.md): E11, E12, E13; B3 OpenCode, B4 Cursor; C3 to C6; D8 to D11. Files do not overlap between E, B, C and D tracks, so up to four builders at once, each followed by a separate reviewer.
+4. CP3 live check: hooks in all four tools, relaunch for Claude and Cursor, create and cut through the adapters. Uses the two kept test chats plus one each in OpenCode and Cursor.
 
 ## Done
 
