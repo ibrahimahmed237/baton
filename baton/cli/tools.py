@@ -6,6 +6,7 @@ know tool ids; services and ports may not.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -16,13 +17,14 @@ class ToolEntry:
     module: str     # dotted path of the module holding the adapter
     adapter: str    # name of the adapter class in that module
     home: str = ""  # sub-folder of the tools home given to the adapter as its root
+    marker: str = ""  # folder inside that root whose presence means the tool is installed there
 
 
 TOOLS: tuple[ToolEntry, ...] = (
-    ToolEntry("claude", "Claude", "baton.adapters.claude.tool", "ClaudeAdapter"),
-    ToolEntry("codex", "Codex", "baton.adapters.codex.tool", "CodexAdapter"),
-    ToolEntry("opencode", "OpenCode", "baton.adapters.opencode.tool", "OpenCodeAdapter"),
-    ToolEntry("cursor", "Cursor", "baton.adapters.cursor.tool", "CursorAdapter"),
+    ToolEntry("claude", "Claude", "baton.adapters.claude.tool", "ClaudeAdapter", marker=".claude"),
+    ToolEntry("codex", "Codex", "baton.adapters.codex.tool", "CodexAdapter", marker=".codex"),
+    ToolEntry("opencode", "OpenCode", "baton.adapters.opencode.tool", "OpenCodeAdapter", marker=".local/share/opencode"),
+    ToolEntry("cursor", "Cursor", "baton.adapters.cursor.tool", "CursorAdapter", marker=".cursor"),
 )
 
 LABELS: dict[str, str] = {entry.id: entry.label for entry in TOOLS}
@@ -36,7 +38,6 @@ def label(tool: str) -> str:
 def installed(tool: str) -> bool:
     """Probe executable presence without running it or treating sign-in as installation."""
     from shutil import which
-    from pathlib import Path
     bundles = {
         'claude': ('Claude Code.app',), 'codex': ('Codex.app',),
         'cursor': ('Cursor.app',), 'opencode': ('OpenCode.app',)}
@@ -51,3 +52,11 @@ def installed(tool: str) -> bool:
     folders = (Path('/Applications'), Path.home() / 'Applications')
     return any((folder / bundle / 'Contents' / 'Info.plist').is_file()
                for folder in folders for bundle in bundles[tool])
+
+
+def installed_in(entry: ToolEntry, root: Path) -> bool:
+    """Whether the tool's own folder exists inside `root`: what "installed" means for an injected root.
+
+    It looks only below `root`; it never asks the machine (no PATH, no /Applications).
+    """
+    return bool(entry.marker) and (Path(root) / entry.marker).is_dir()

@@ -1,5 +1,7 @@
 """Claude native filesystem/registry tests; no live apps or real chat paths."""
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from dataclasses import asdict
@@ -7,11 +9,12 @@ from pathlib import Path
 from unittest.mock import patch
 from types import SimpleNamespace
 from baton.adapters.claude import ClaudeAdapter
-from baton.domain.errors import AppMustBeClosed, ChatChanged, ChatReplying, UnknownFormat
+from baton.domain.errors import AppMustBeClosed, ChatChanged, ChatReplying, NotAvailable, UnknownFormat
 from baton.domain.model import Message, Turn, PROMPT, TOOL_TEXT, REPLY
 from baton.ports.tool import WriteReceipt
 from tests.adapters.suite import AdapterSuite, turns
 from tests.fixtures.claude.build import build, FixtureProcess
+from tests.fixtures.no_processes import no_processes
 
 class ClaudeSuite(AdapterSuite, unittest.TestCase):
     def make_adapter(self):
@@ -336,3 +339,49 @@ class ClaudeUndoIntegration(unittest.TestCase):
         restored = service.apply(service.restore(linked.link_id, undone.event_id))
         self.assertTrue(restored.applied, restored)
         self.assertEqual(path.read_bytes(), original)
+
+class ClaudeBuiltWithOnlyARoot(unittest.TestCase):
+    """H3: the constructor wiring uses for an injected root never reaches the real machine."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+
+    def test_a_bare_adapter_starts_no_process_signals_none_and_opens_and_quits_nothing(self):
+        from baton.adapters.claude.app import InertProcess
+        from baton.adapters.claude.runner import InertRunner
+        chat = build(self.root, turns())
+        registry = self.root / '.claude/sessions'; registry.mkdir(parents=True)
+        # A live process id (this test's own) must not be taken for the chat's holder.
+        (registry / 'live.json').write_text(json.dumps({'pid': os.getpid(), 'sessionId': 'fixture_session', 'status': 'busy'}))
+        with no_processes():
+            adapter = ClaudeAdapter(self.root)
+            self.assertIsInstance(adapter.process, InertProcess)
+            self.assertIsInstance(adapter.runner, InertRunner)
+            condition = adapter.state.condition(chat)
+            self.assertEqual((condition.exists, condition.open, condition.replying, condition.app_running,
+                              condition.app_started_at), (True, False, False, False, ''))
+            self.assertFalse(adapter.runner.available().ok)
+            self.assertEqual(adapter.runner.available().note_id, 'setup.runner')
+            adapter.hooks.check(); adapter.state.format_version()
+            for refused in (lambda: adapter.runner.ask('q', '/f'), lambda: adapter.app.open(None, None),
+                            lambda: adapter.app.open(chat, None), adapter.app.close,
+                            lambda: adapter.process.terminate(os.getpid())):
+                with self.assertRaises(NotAvailable): refused()
+            self.assertFalse(adapter.process.owns_session(os.getpid(), 'fixture_session'))
+
+    def test_a_bare_adapter_on_an_empty_root_sees_no_chats_and_no_app(self):
+        with no_processes():
+            adapter = ClaudeAdapter(self.root)
+            self.assertEqual(adapter.locator.chats(), [])
+            self.assertFalse(adapter.app.running())
+            self.assertFalse(adapter.runner.available().ok)
+
+    def test_the_machine_form_picks_the_real_process_control_and_launcher_without_calling_them(self):
+        from baton.adapters.claude.app import SystemProcess
+        from baton.adapters.claude.runner import ClaudeRunner
+        adapter = ClaudeAdapter.on_this_machine(self.root)
+        self.assertIsInstance(adapter.process, SystemProcess)
+        self.assertIsInstance(adapter.runner, ClaudeRunner)
+        self.assertIs(adapter.runner.command, subprocess.run)
+        explicit = ClaudeAdapter.on_this_machine(self.root, process=FixtureProcess(self.root))
+        self.assertNotIsInstance(explicit.process, SystemProcess)

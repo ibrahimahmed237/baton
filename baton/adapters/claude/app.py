@@ -54,6 +54,37 @@ class SystemProcess:
         """Ask the system to launch the desktop app."""
         subprocess.run(['open', '-a', 'Claude'], check=True)
 
+class InertProcess:
+    """The process port when none is passed in: sees no app or session, signals and opens nothing.
+
+    It is the default of the adapter, so a test root or a trial folder can never reach
+    the real machine; only `ClaudeAdapter.on_this_machine` swaps in SystemProcess.
+    """
+    def alive(self, pid):
+        """No process is observed."""
+        return False
+    def running(self):
+        """No app is observed."""
+        return False
+    def started_at(self):
+        """No app is observed, so there is no launch time."""
+        return ''
+    def owns_session(self, pid, sid):
+        """No process is observed, so none belongs to a session."""
+        return False
+    def terminate(self, pid):
+        """Nothing is signalled."""
+        raise NotAvailable()
+    def open_url(self, url):
+        """Nothing is opened."""
+        raise NotAvailable()
+    def quit(self):
+        """Nothing is quit."""
+        raise NotAvailable()
+    def open_app(self):
+        """Nothing is launched."""
+        raise NotAvailable()
+
 class ClaudeApp:
     """Open, close or release only chats whose state allows it."""
     def __init__(self, adapter): self.adapter = adapter

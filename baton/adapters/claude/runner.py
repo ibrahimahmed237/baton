@@ -4,6 +4,15 @@ import subprocess
 from ...domain.errors import NotAvailable
 from ...ports.tool import SetupFinding
 
+class InertRunner:
+    """The runner when no launcher is passed in: never available, never starts a process."""
+    def available(self):
+        """Never available."""
+        return SetupFinding('runner', False, 'setup.runner', {'tool': 'claude'})
+    def ask(self, prompt, folder, read_only=True):
+        """Nothing can be asked."""
+        raise NotAvailable()
+
 class ClaudeRunner:
     """Run a separate ephemeral process restricted to reading."""
     def __init__(self, command=None): self.command = command or subprocess.run

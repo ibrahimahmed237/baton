@@ -15,10 +15,12 @@ from unittest.mock import patch
 
 from baton.adapters.codex import CodexAdapter
 from baton.domain.errors import ChatChanged, ChatHeld, ChatReplying, NotAvailable, UnknownFormat
+from baton.notes.catalogue import CATALOGUE
 from baton.domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Message, Turn
 from baton.ports.tool import WriteReceipt
 from tests.adapters.suite import AdapterSuite, turns
 from tests.fixtures.codex import build as fx
+from tests.fixtures.no_processes import no_processes
 
 RESET = datetime(2026, 1, 3, tzinfo=timezone.utc)
 
@@ -486,10 +488,51 @@ class CodexSafety(unittest.TestCase):
         self.assertEqual([t.id for t in self.adapter.reader.read(self.chat)][-1], "p4")
         self.assertEqual(result.local_ids, ("p4",))
 
-    def test_unfinished_task_in_a_chat_nobody_holds_is_not_a_reply(self):
+    def test_unfinished_task_in_a_chat_nobody_holds_still_counts_as_replying_and_is_not_written_to(self):
+        # H1: hold detection is unverified on the real app, so a task started without a completion is
+        # a reply whether or not the chat looks held. A crashed task in a closed chat is refused too
+        # (accepted for now; to be decided after the live run).
         fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "crashed"})
+        condition = self.adapter.state.condition(self.chat)
+        self.assertEqual((condition.open, condition.replying), (False, True))
+        self.assertEqual(self.adapter.state.replying_chats(), [self.chat])
+        before = self.snapshot()
+        for write in (lambda: self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))]),
+                      lambda: self.adapter.writer.rename(self.chat, "renamed")):
+            with self.assertRaises(ChatReplying) as refused:
+                write()
+        self.assertEqual(self.snapshot(), before)
+        self.assertFalse((self.root / ".baton-rollback").exists())
+        self.assertIn(refused.exception.note_id, CATALOGUE)
+
+    def test_a_reply_is_refused_as_replying_before_it_is_refused_as_held(self):
+        self.process.hold(self.chat)
+        fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "live"})
+        with self.assertRaises(ChatReplying):
+            self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
+        fx.append_event(self.root, self.chat, {"type": "task_complete", "turn_id": "live", "last_agent_message": None})
+        with self.assertRaises(ChatHeld):
+            self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
+
+    def test_a_finished_task_in_a_chat_nobody_holds_is_idle(self):
+        fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "done"})
+        fx.append_event(self.root, self.chat, {"type": "turn_aborted", "turn_id": "done"})
         self.assertFalse(self.adapter.state.condition(self.chat).replying)
+        self.assertEqual(self.adapter.state.replying_chats(), [])
         self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
+
+    def test_an_unfinished_task_is_refused_under_the_exclusive_lease_too(self):
+        # H2: with the lease set, _check used to return right after lease.check().
+        writer = self.adapter.writer
+        with self.adapter.coordination.exclusive(self.adapter.locator, self.chat) as lease:
+            writer.lease = lease
+            try:
+                writer._check(self.chat)  # idle: the lease's own lock is not a reason to refuse
+                fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "live"})
+                with self.assertRaises(ChatReplying):
+                    writer._check(self.chat)
+            finally:
+                writer.lease = None
 
     def test_cut_and_place_and_restore_are_not_available(self):
         before = self.snapshot()
@@ -641,7 +684,9 @@ class CodexSafety(unittest.TestCase):
 
     def test_a_chat_that_changed_after_the_receipt_was_prepared_is_not_written(self):
         self.adapter.writer.prepare(self.chat, "add")
+        # A finished task: the chat changed but is idle (an unfinished one is refused as a reply instead).
         fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "codex-own"})
+        fx.append_event(self.root, self.chat, {"type": "task_complete", "turn_id": "codex-own", "last_agent_message": None})
         before = self.snapshot()
         with self.assertRaises(ChatChanged):
             self.adapter.writer.add(self.chat, [Turn(Message("p4", PROMPT, "more"))])
@@ -1022,6 +1067,17 @@ class CodexSafety(unittest.TestCase):
         self.adapter.app.close()
         self.assertEqual((self.adapter.app.running(), self.adapter.state.held_chats()), (False, []))
 
+    def test_app_refuses_to_close_while_a_chat_nobody_holds_has_an_unfinished_task(self):
+        # H1: hold detection is unverified, so closing is refused for an unheld unfinished task as well.
+        fx.append_event(self.root, self.chat, {"type": "task_started", "turn_id": "crashed"})
+        self.process.is_running = True
+        self.assertEqual(self.adapter.state.held_chats(), [])
+        with self.assertRaises(ChatReplying) as refused:
+            self.adapter.app.close()
+        self.assertEqual(self.process.calls, [])
+        self.assertTrue(self.process.is_running)
+        self.assertIn(refused.exception.note_id, CATALOGUE)
+
     def test_app_refuses_without_verified_global_idle_and_never_asks_to_quit(self):
         self.adapter.coordination = None
         self.process.is_running = True
@@ -1055,6 +1111,49 @@ class CodexSafety(unittest.TestCase):
             self.assertTrue(path.is_relative_to(self.root))
         written = [p for p in self.root.rglob("*") if p.is_file()]
         self.assertTrue(all(p.is_relative_to(self.root) for p in written))
+
+
+class CodexBuiltWithOnlyARoot(unittest.TestCase):
+    """H3: the constructor wiring uses for an injected root never reaches the real machine."""
+
+    def test_a_bare_adapter_starts_no_process_and_opens_and_quits_nothing(self):
+        from baton.adapters.codex.app import InertProcess
+        from baton.adapters.codex.runner import InertRunner
+        root = new_home(self)
+        chat = fx.build(root, turns())
+        with no_processes():
+            adapter = CodexAdapter(root, allowed_chat_ids=(chat,))
+            self.assertIsInstance(adapter.process, InertProcess)
+            self.assertIsInstance(adapter.runner, InertRunner)
+            self.assertFalse(adapter.app.running())
+            condition = adapter.state.condition(chat)
+            self.assertEqual((condition.exists, condition.app_running, condition.app_started_at), (True, False, ""))
+            self.assertFalse(adapter.runner.available().ok)
+            self.assertEqual(adapter.runner.available().note_id, "setup.runner")
+            adapter.hooks.check()
+            adapter.state.format_version()
+            for refused in (lambda: adapter.runner.ask("q", "/f"), lambda: adapter.app.open(None, None),
+                            lambda: adapter.app.open(chat, None), adapter.app.close):
+                with self.assertRaises(NotAvailable):
+                    refused()
+
+    def test_a_bare_adapter_reports_nothing_installed_from_an_empty_root(self):
+        root = new_home(self)
+        with no_processes():
+            adapter = CodexAdapter(root)
+            self.assertEqual(adapter.locator.chats(), [])
+            self.assertFalse(adapter.app.running())
+            self.assertFalse(adapter.runner.available().ok)
+
+    def test_the_machine_form_picks_the_real_process_control_and_launcher_without_calling_them(self):
+        from baton.adapters.codex.app import SystemProcess
+        from baton.adapters.codex.runner import CodexRunner
+        adapter = CodexAdapter.on_this_machine(new_home(self))
+        self.assertIsInstance(adapter.process, SystemProcess)
+        self.assertIsInstance(adapter.runner, CodexRunner)
+        self.assertIs(adapter.runner.command, subprocess.run)
+        explicit = CodexAdapter.on_this_machine(new_home(self), process=fx.FixtureProcess(new_home(self)))
+        self.assertNotIsInstance(explicit.process, SystemProcess)
 
 
 class CodexThroughTheEngine(unittest.TestCase):

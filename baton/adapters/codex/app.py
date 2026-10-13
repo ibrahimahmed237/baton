@@ -45,6 +45,34 @@ class SystemProcess:
         subprocess.run(["open", "-a", "ChatGPT"], check=True)
 
 
+class InertProcess:
+    """The process port when none is passed in: sees no app, starts nothing, opens and quits nothing.
+
+    It is the default of the adapter, so a test root or a trial folder can never reach
+    the real machine; only `CodexAdapter.on_this_machine` swaps in SystemProcess.
+    """
+
+    def running(self) -> bool:
+        """No app is observed."""
+        return False
+
+    def started_at(self) -> str:
+        """No app is observed, so there is no launch time."""
+        return ""
+
+    def open_url(self, url: str) -> None:
+        """Nothing is opened."""
+        raise NotAvailable()
+
+    def quit(self) -> None:
+        """Nothing is quit."""
+        raise NotAvailable()
+
+    def open_app(self) -> None:
+        """Nothing is launched."""
+        raise NotAvailable()
+
+
 class CodexApp:
     """Open the app at a chat, or close it when no chat is replying. Codex has nothing to release one chat."""
 
@@ -55,22 +83,22 @@ class CodexApp:
         """Whether the app is running."""
         return self.adapter.process.running()
 
+    def _require_nothing_replying(self) -> None:
+        """Refuse while a chat Baton cannot vouch for is held, or any chat has an unfinished task (held or not)."""
+        state = self.adapter.state
+        if any(not self.adapter.scope.contains(ident) for ident in state.held_chats()):
+            raise NotAvailable()
+        if state.replying_chats():
+            raise ChatReplying()
+
     def close(self) -> None:
         """Refuse automatic closure until global idle exclusion is verified."""
-        held = self.adapter.state.held_chats()
-        if any(not self.adapter.scope.contains(ident) for ident in held):
-            raise NotAvailable()
-        if any(self.adapter.state.replying(chat_id) for chat_id in held):
-            raise ChatReplying()
+        self._require_nothing_replying()
         coordinator = self.adapter.coordination
         if coordinator is None or not hasattr(coordinator, 'global_idle'):
             raise NotAvailable()
         with coordinator.global_idle(self.adapter):
-            held = self.adapter.state.held_chats()
-            if any(not self.adapter.scope.contains(ident) for ident in held):
-                raise NotAvailable()
-            if any(self.adapter.state.replying(ident) for ident in held):
-                raise ChatReplying()
+            self._require_nothing_replying()
             self.adapter.process.quit()
             deadline = time.monotonic() + 10
             while self.running():

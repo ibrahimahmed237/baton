@@ -82,10 +82,11 @@ class CodexWriter:
             raise UnknownFormat()
         if self.lease is not None:
             self.lease.check()
-            return
+        # An unfinished task refuses with or without the lease; what the lease proves is that
+        # nobody else holds the chat, so the held check is left to the lock itself.
         if state.replying(chat_id):
             raise ChatReplying()
-        if state.held(chat_id):
+        if self.lease is None and state.held(chat_id):
             raise ChatHeld()
 
     def _intent_path(self, token: str) -> Path:

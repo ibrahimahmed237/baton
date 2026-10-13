@@ -12,6 +12,18 @@ BUNDLED_CLI = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.a
 _TIMEOUT_SECONDS = 120
 
 
+class InertRunner:
+    """The runner when no launcher is passed in: never available, never starts a process."""
+
+    def available(self) -> SetupFinding:
+        """Never available."""
+        return SetupFinding("runner", False, "setup.runner", {"tool": "codex"})
+
+    def ask(self, prompt: str, folder: str, read_only: bool = True) -> str:
+        """Nothing can be asked."""
+        raise NotAvailable()
+
+
 class CodexRunner:
     """Build the command line and hand it to an injected launcher; never resumes a linked thread."""
 

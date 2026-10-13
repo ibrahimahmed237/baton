@@ -96,12 +96,23 @@ class CodexState:
     # -- replying ---------------------------------------------------------
 
     def replying(self, chat_id: str) -> bool:
-        """True when Codex holds the chat and a task has started without a completion after it."""
+        """True when a task has started without a completion after it, whether or not the chat looks held.
+
+        Hold detection is not yet verified on the real app, so it cannot be what
+        decides that nothing is being answered. A task that crashed and never
+        finished in a closed chat therefore also counts, and Baton refuses to
+        write to it (decision owed after the live run).
+        """
         try:
             path = self.adapter.locator.rollout_path(chat_id)
         except KeyError:
             return False
-        return self.held(chat_id) and self.unfinished_task(path)
+        return self.unfinished_task(path)
+
+    def replying_chats(self) -> list[str]:
+        """Ids of every chat in this adapter's scope with an unfinished task, held or not."""
+        scope = self.adapter.scope
+        return [ident for ident in sorted(scope.original | scope.created) if self.replying(ident)]
 
     @staticmethod
     def unfinished_task(path: Path) -> bool:
