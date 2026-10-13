@@ -2,7 +2,7 @@
 
 Paste this into the Codex chat (`codex://threads/01a1115f-070d-7982-b130-91876028685f`) when work moves there. Kept current by whoever is orchestrating; the date below says how fresh it is.
 
-**Last updated:** 2026-10-13, reviewed; B2 returned (H1–H3); CP2 live gate still open
+**Last updated:** 2026-10-13, reviewed; H1–H3 fixed; CP2 live gate still open
 
 ---
 
@@ -17,7 +17,7 @@ What changed since you last worked here:
 
 Then continue with STATUS.md "Next". Update STATUS.md, MAP.md and this file after every package.
 
-Reviewer pass 2026-10-13 (Claude): B2 returned with safety findings H1 to H3, to be fixed **before** any live run; H4 to H13 owed for C1, E10, D5 to D7 and the app tests. Full table in STATUS.md, "Reviewer notes — 2026-10-13". Ibrahim is asked to confirm Q4 to Q8 himself. "Pushed" in the list above means up to UI13; the fifteen commits after it are local only.
+Reviewer pass 2026-10-13 (Claude): B2 safety findings H1 to H3 are fixed and committed (806 engine tests); next is the exact-scope live run; H4 to H13 owed for C1, E10, D5 to D7 and the app tests. Full table in STATUS.md, "Reviewer notes — 2026-10-13". Ibrahim is asked to confirm Q4 to Q8 himself. "Pushed" in the list above means up to UI13; the fifteen commits after it are local only.
 
 Current hand-off state: C2a `914d9d3` and C2b `2bbdbe3` committed; all planned CP2 implementation packages are accepted. Tests787 engine/146 app/build;325 generated fixtures,255 renders. CP2 is not passed because native Claude/Codex throwaway live acceptance is still owed. Prepare exact scope/go and ask for each closure; never bypass guarded native writes. D5 duplicate-note follow-up is separate. No push; historical untracked E9-E10.md preserved.
 

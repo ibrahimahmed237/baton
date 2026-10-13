@@ -30,7 +30,11 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **Decisions the Codex chat recorded as Ibrahim's** (Q4 self-commit, Q5 brief cost/generate/create and Automatic/Offline, Q6 labels, Q7 "Baton cannot use {tool} yet.", Q8 bookkeeping visible): this reviewer did not see them being given. Ibrahim to confirm. **User-visible choices not attributed to Ibrahim:** D5 duplicate notes deferred; a dismissed limit offer is forgotten when the app restarts; E9 digest refused until a fresh link; P5 of CP2-REPAIR-PLAN.md; "Brief review details" in CONTRACT.md.
 
-**Order from here:** H1 to H3 (they guard the live run) → live run of Claude and Codex adapters on two throwaway chats → CP2 result → H4 to H13 alongside the first CP3 packages.
+**H1 to H3 fixed 2026-10-13** (806 engine tests; each fix reverted to prove its test fails; report `reports/H1-H3-2026-10-13.md`). B2 is accepted on fixtures. Left open by the fix: a crashed, never-finished Codex task in a closed chat now refuses writes (decide after the live run); the refusal reuses the note about closing, a write-specific note goes to E12; `setup` prints a version for a tool that is not installed.
+
+**Ibrahim, 2026-10-13:** confirmed Q4 to Q8 as his, and the four choices listed below as his. Pushed on his word.
+
+**Order from here:** ~~H1 to H3~~ (they guard the live run) → live run of Claude and Codex adapters on two throwaway chats → CP2 result → H4 to H13 alongside the first CP3 packages.
 
 ## Now
 
