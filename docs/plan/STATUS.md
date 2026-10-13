@@ -34,6 +34,12 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **Ibrahim, 2026-10-13:** confirmed Q4 to Q8 as his, and the four choices listed below as his. Pushed on his word.
 
+**Decisions by Ibrahim, 2026-10-13** (on the reviewer's recommendations)
+- **Q9. Duplicate notes in the link dialog:** fix soon, together with H7. The same sentence is never shown twice on one screen.
+- **Q10. Dismissed limit offer:** "Not now" holds until that limit resets or a new limit is reached, across app restarts. Built in C7 with the durable offer memory.
+- **Q11. "Since you left" digest when it cannot be trusted:** keep refusing it, but show a note that says why it is missing. Catalogue note in E12, shown by D4.
+- **Q12. "Brief review details" in CONTRACT.md:** kept.
+
 **Order from here:** ~~H1 to H3~~ (they guard the live run) → live run of Claude and Codex adapters on two throwaway chats → CP2 result → H4 to H13 alongside the first CP3 packages.
 
 ## Now
