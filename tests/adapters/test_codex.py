@@ -442,7 +442,7 @@ class CodexBoundarySafety(unittest.TestCase):
 
     def test_unverified_history_offset_column_never_licenses_truncation(self):
         result=self.adapter.writer.add(self.chat,[Turn(Message('more',PROMPT,'more'))])
-        fx.run_sql(self.root,'ALTER TABLE thread_history_projection_state RENAME COLUMN next_byte_offset TO guessed_offset',database='thread_history_1.sqlite')
+        fx.run_sql(self.root,'ALTER TABLE thread_history_projection_state RENAME COLUMN next_rollout_byte_offset TO guessed_offset',database='thread_history_1.sqlite')
         before=self.snapshot()
         with self.assertRaises(NotAvailable):self.adapter.writer.take_back(result.receipt)
         self.assertEqual(self.snapshot(),before)

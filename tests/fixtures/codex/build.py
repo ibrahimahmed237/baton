@@ -54,7 +54,7 @@ CREATE TABLE threads (
 HISTORY_SCHEMA = """
 CREATE TABLE thread_turns (thread_id TEXT, ordinal INTEGER, turn_id TEXT);
 CREATE TABLE thread_items (thread_id TEXT, ordinal INTEGER, turn_id TEXT, item TEXT);
-CREATE TABLE thread_history_projection_state (thread_id TEXT PRIMARY KEY, next_byte_offset INTEGER, next_ordinal INTEGER);
+CREATE TABLE thread_history_projection_state (thread_id TEXT PRIMARY KEY, next_rollout_byte_offset INTEGER, next_rollout_ordinal INTEGER);
 """
 
 SANDBOX = '{"type":"workspace-write"}'

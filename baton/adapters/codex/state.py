@@ -39,10 +39,10 @@ class HistoryIndex:
         try:
             with closing(sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)) as connection:
                 columns = [row[1] for row in connection.execute("PRAGMA table_info(%s)" % self.TABLE)]
-                id_column, offset_column = "thread_id", "next_byte_offset"
-                if set(columns) != {"thread_id", "next_byte_offset", "next_ordinal"}:
+                id_column, offset_column = "thread_id", "next_rollout_byte_offset"
+                if set(columns) != {"thread_id", "next_rollout_byte_offset", "next_rollout_ordinal"}:
                     return None
-                row = connection.execute("SELECT %s,next_ordinal FROM %s WHERE %s = ?" % (offset_column, self.TABLE, id_column),
+                row = connection.execute("SELECT %s,next_rollout_ordinal FROM %s WHERE %s = ?" % (offset_column, self.TABLE, id_column),
                                          (thread_id,)).fetchone()
         except sqlite3.Error:
             return None
