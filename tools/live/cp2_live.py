@@ -53,7 +53,7 @@ from baton.ports.tool import WriteReceipt  # noqa: E402
 
 TITLE = "Baton test (safe to delete)"
 RENAMED = "Baton test renamed (safe to delete)"
-STEPS = ("inspect", "refuse-held", "add", "take-back", "rename", "rename-back", "restore")
+STEPS = ("inspect", "refuse-held", "release", "add", "take-back", "rename", "rename-back", "restore")
 BACKUP_BASE = Path(".baton-spike") / "backup"
 _SAFE_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 _SAFE_TYPE = re.compile(r"^[A-Za-z0-9_./-]{1,60}$")
@@ -593,12 +593,26 @@ def apply_backup(target: Target, snapshot: Snapshot, recheck: Callable[[], None]
     return changed
 
 
+def step_release(ctx: Context, target: Target) -> dict[str, Any]:
+    """End the idle throwaway chat's own process through the adapter, so it can be written to without closing the app."""
+    adapter, chat = target.adapter, target.chat_id
+    before = adapter.state.condition(chat)
+    if not ctx.writing:
+        return {"ok": True, "dry_run": True, "held": before.open, "replying": before.replying}
+    if before.open:
+        adapter.app.release(chat)
+    after = adapter.state.condition(chat)
+    return {"ok": not after.open, "held_before": before.open, "held_after": after.open}
+
+
 def run_step(ctx: Context, target: Target) -> dict[str, Any]:
     step = ctx.step
     if step == "inspect":
         return step_inspect(ctx, target)
     if step == "refuse-held":
         return step_refuse_held(ctx, target)
+    if step == "release":
+        return step_release(ctx, target)
     if step == "add":
         return step_add(ctx, target)
     if step == "take-back":

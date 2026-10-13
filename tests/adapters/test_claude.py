@@ -244,7 +244,7 @@ class ClaudeSafety(unittest.TestCase):
         registry=self.root/'.claude/sessions';registry.mkdir(parents=True)
         self.process.pids.add(1234)
         (registry/'1234.json').write_text(json.dumps({'pid':1234,'sessionId':'fixture_session','status':'idle'}))
-        self.process.owns_session=lambda pid,sid:False
+        self.process.owns_session=lambda pid,sid,entry=None:False
         from baton.domain.errors import NotAvailable
         with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
         self.assertEqual(self.process.calls,[])
@@ -253,6 +253,172 @@ class ClaudeSafety(unittest.TestCase):
         for output,expected in (('/path/claude --resume fixture_session',True),('/path/claude --resume unrelated',False),('/bin/other --resume fixture_session',False),('/path/claude --resume',False)):
             with self.subTest(output=output),patch('baton.adapters.claude.app.subprocess.run',return_value=SimpleNamespace(returncode=0,stdout=output)):
                 self.assertEqual(SystemProcess().owns_session(1234,'fixture_session'),expected)
+
+    def new_holder(self, **values):
+        registry=self.root/'.claude/sessions';registry.mkdir(parents=True,exist_ok=True)
+        entry=dict(pid=1234,sessionId='fixture_session',procStart='Tue Oct 13 19:36:10 2026',
+            status='idle',kind='interactive',entrypoint='claude-desktop',version='2.1.295')
+        entry.update(values);self.process.pids.add(1234)
+        path=registry/'1234.json';path.write_text(json.dumps(entry))
+        return path
+    def test_new_registry_proof_releases_with_matching_start_and_spaced_path(self):
+        self.new_holder()
+        self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[('terminate',1234)])
+        self.assertFalse(self.adapter.state.condition(self.chat).open)
+    def test_new_registry_proof_refuses_start_off_by_one_second(self):
+        self.new_holder(procStart='Tue Oct 13 19:36:11 2026')
+        with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_registry_filename_pid_mismatch_is_not_holder_evidence(self):
+        path=self.new_holder();path.rename(path.with_name('9999.json'))
+        self.assertEqual(list(self.adapter.state.registry(self.chat)),[])
+        self.assertFalse(self.adapter.state.condition(self.chat).open)
+        self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_new_registry_proof_refuses_other_executable(self):
+        self.new_holder();self.process.executables[1234]='/fixture/Application Support/other'
+        with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_new_registry_busy_holder_does_not_signal(self):
+        self.new_holder(status='busy')
+        with self.assertRaises(ChatReplying):self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_old_command_line_proof_still_releases(self):
+        path=self.new_holder();entry=json.loads(path.read_text());del entry['procStart']
+        path.write_text(json.dumps(entry))
+        for option in ('--resume','--session-id'):
+            with self.subTest(option=option):
+                self.process.pids.add(1234);self.process.calls.clear()
+                self.process.commands[1234]='/fixture/claude '+option+' fixture_session'
+                self.adapter.app.release(self.chat)
+                self.assertEqual(self.process.calls,[('terminate',1234)])
+    def test_new_registry_proof_refuses_missing_or_malformed_fields(self):
+        self.process.commands[1234]='claude'
+        for field,value in (('pid',None),('pid',True),('sessionId',None),('procStart',None),
+                            ('procStart','bad time'),('status',None),('status','unknown')):
+            for missing in (False,True):
+                with self.subTest(field=field,value=value,missing=missing):
+                    path=self.new_holder();entry=json.loads(path.read_text())
+                    if missing:del entry[field]
+                    else:entry[field]=value
+                    path.write_text(json.dumps(entry))
+                    if list(self.adapter.state.registry(self.chat)):
+                        with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+                    else:self.adapter.app.release(self.chat)
+                    self.assertEqual(self.process.calls,[])
+    def test_release_dead_holder_is_noop(self):
+        self.new_holder();self.process.pids.clear()
+        self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_local_process_start_conversion_uses_injected_timezone(self):
+        from datetime import datetime, timedelta, timezone
+        from baton.adapters.claude.app import local_start_utc
+        zone=timezone(timedelta(hours=5,minutes=30))
+        convert=lambda stamp:stamp.replace(tzinfo=zone).astimezone(timezone.utc)
+        self.assertEqual(local_start_utc('Tue Oct 13 01:15:10 2026',convert),
+            datetime(2026,10,12,19,45,10,tzinfo=timezone.utc))
+    def test_new_registry_observation_uses_comm_and_c_locale(self):
+        from datetime import timedelta, timezone
+        from baton.adapters.claude.app import SystemProcess
+        entry=dict(pid=1234,sessionId='fixture_session',status='idle',_registry_pid='1234',
+            procStart='Tue Oct 13 19:36:10 2026')
+        command=unittest.mock.Mock(return_value=SimpleNamespace(returncode=0,
+            stdout='Tue Oct 13 22:36:10 2026 /fixture/Application Support/claude.app/Contents/MacOS/claude\n'))
+        convert=lambda stamp:stamp.replace(tzinfo=timezone(timedelta(hours=3))).astimezone(timezone.utc)
+        self.assertTrue(SystemProcess(command,convert).owns_session(1234,'fixture_session',entry))
+        self.assertEqual(command.call_args.args[0],['ps','-p','1234','-o','lstart=,comm='])
+        self.assertEqual(command.call_args.kwargs['env']['LC_ALL'],'C')
+
+    def test_proc_start_failure_never_falls_back_to_legacy_argv(self):
+        for value in ('Tue Oct 13 19:36:11 2026', None, 'bad time', ''):
+            with self.subTest(procStart=value):
+                self.new_holder(procStart=value)
+                with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+                self.assertEqual(self.process.calls,[])
+    def test_new_proof_requires_desktop_bundle_executable(self):
+        for executable in ('claude', '/usr/local/bin/claude', '/fixture/other/claude'):
+            with self.subTest(executable=executable):
+                self.new_holder();self.process.executables[1234]=executable
+                with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+                self.assertEqual(self.process.calls,[])
+    def test_owns_session_checks_registry_filename_pid_itself(self):
+        from baton.adapters.claude.app import SystemProcess
+        entry=json.loads(self.new_holder().read_text());entry['_registry_pid']='9999'
+        del entry['procStart']
+        command=unittest.mock.Mock(return_value=SimpleNamespace(returncode=0,
+            stdout='/fixture/claude --resume fixture_session'))
+        self.assertFalse(SystemProcess(command).owns_session(1234,'fixture_session',entry))
+        command.assert_not_called()
+    def test_terminate_rejects_non_integer_and_reserved_pids(self):
+        from baton.adapters.claude.app import SystemProcess
+        with patch('baton.adapters.claude.app.os.kill') as kill:
+            for pid in (True, False, None, '1234', 1234.0, -1, 0, 1):
+                with self.subTest(pid=pid),self.assertRaises(ValueError):SystemProcess().terminate(pid)
+            kill.assert_not_called()
+    def test_release_treats_vanished_process_as_released(self):
+        from baton.adapters.claude.app import SystemProcess
+        self.new_holder()
+        def vanished(pid, sig):
+            self.process.pids.discard(pid)
+            raise ProcessLookupError()
+        self.process.terminate=SystemProcess().terminate
+        with patch('baton.adapters.claude.app.os.kill',side_effect=vanished):
+            self.adapter.app.release(self.chat)
+        self.assertFalse(self.adapter.state.condition(self.chat).open)
+    def test_release_maps_signal_permission_error_to_not_available(self):
+        from baton.adapters.claude.app import SystemProcess
+        self.new_holder();self.process.terminate=SystemProcess().terminate
+        with patch('baton.adapters.claude.app.os.kill',side_effect=PermissionError()):
+            with self.assertRaises(NotAvailable):self.adapter.app.release(self.chat)
+    def test_release_checks_all_holders_before_any_signal(self):
+        first=dict(pid=1234,sessionId='fixture_session',status='idle')
+        second=dict(pid=5678,sessionId='fixture_session',status='idle')
+        for busy in (False,True):
+            with self.subTest(busy=busy):
+                other=dict(second,status='busy' if busy else 'idle')
+                with patch.object(self.adapter.state,'registry',return_value=iter(())) as registry:
+                    registry.side_effect=lambda chat: iter((first,other))
+                    with patch.object(self.process,'owns_session',side_effect=lambda pid,sid,entry:pid==1234):
+                        with self.assertRaises(ChatReplying if busy else NotAvailable):self.adapter.app.release(self.chat)
+                self.assertEqual(self.process.calls,[])
+    def test_release_first_pass_checks_busy_state_alongside_ownership(self):
+        first=dict(pid=1234,sessionId='fixture_session',status='idle')
+        second=dict(pid=5678,sessionId='fixture_session',status='idle')
+        def owns(pid,sid,entry):
+            if pid==1234:second['status']='busy'
+            return True
+        with patch.object(self.adapter.state,'registry',side_effect=lambda chat: iter((first,second))), \
+                patch.object(self.process,'owns_session',side_effect=owns):
+            with self.assertRaises(ChatReplying):self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_release_rechecks_busy_state_after_ownership_checks(self):
+        first=dict(pid=1234,sessionId='fixture_session',status='idle')
+        second=dict(pid=5678,sessionId='fixture_session',status='idle')
+        def owns(pid,sid,entry):
+            if pid==5678:first['status']='busy'
+            return True
+        with patch.object(self.adapter.state,'registry',side_effect=lambda chat: iter((first,second))), \
+                patch.object(self.process,'owns_session',side_effect=owns):
+            with self.assertRaises(ChatReplying):self.adapter.app.release(self.chat)
+        self.assertEqual(self.process.calls,[])
+    def test_release_already_released_chat_is_noop(self):
+        self.adapter.app.release(self.chat)
+        self.assertFalse(self.adapter.state.condition(self.chat).open)
+        self.assertEqual(self.process.calls,[])
+    def test_default_start_conversion_accepts_both_dst_folds(self):
+        from zoneinfo import ZoneInfo
+        from baton.adapters.claude.app import SystemProcess
+        command=unittest.mock.Mock(return_value=SimpleNamespace(returncode=0,
+            stdout='Sun Nov  1 01:30:00 2026 /fixture/claude.app/Contents/MacOS/claude'))
+        entry=dict(pid=1234,sessionId='fixture_session',status='idle',_registry_pid='1234')
+        process=SystemProcess(command,local_zone=ZoneInfo('America/New_York'))
+        for hour in ('05','06'):
+            with self.subTest(hour=hour):
+                entry['procStart']='Sun Nov 01 '+hour+':30:00 2026'
+                self.assertTrue(process.owns_session(1234,'fixture_session',entry))
+        entry['procStart']='Sun Nov 01 07:30:00 2026'
+        self.assertFalse(process.owns_session(1234,'fixture_session',entry))
 
     def test_native_append_parent_and_prompt_positions_continue(self):
         created=self.adapter.writer.create(turns()[:2],'copy','/project')

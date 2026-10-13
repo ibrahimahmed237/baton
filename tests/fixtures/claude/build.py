@@ -1,6 +1,9 @@
 """Hand-built native envelopes copied from M0; no production writer reuse."""
 import json
+from datetime import timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
+from baton.adapters.claude.app import SystemProcess
 from baton.domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT
 
 def build(root, turns, chat='local_fixture', session='fixture_session', folder='/fixture/project'):
@@ -39,14 +42,21 @@ class FixtureProcess:
     def __init__(self, root):
         self.root = Path(root); self.is_running = False; self.pids = set(); self.calls = []
         self.visible = {}; self.adapter = None
+        self.commands = {}; self.executables = {}; self.starts = {}
     def alive(self, pid): return pid in self.pids
     def running(self): return self.is_running
     def started_at(self): return '2026-01-02T00:00:00Z' if self.is_running else ''
-    def owns_session(self, pid, sid):
-        for path in (self.root / '.claude/sessions').glob('*.json'):
-            entry = json.loads(path.read_text())
-            if entry.get('pid') == pid and entry.get('sessionId') == sid: return pid in self.pids
-        return False
+    def owns_session(self, pid, sid, entry=None):
+        def command(args, **kwargs):
+            if not self.alive(pid): return SimpleNamespace(returncode=1, stdout='')
+            if args[-1] == 'lstart=,comm=':
+                output = self.starts.get(pid, 'Tue Oct 13 22:36:10 2026') + ' ' + self.executables.get(pid, '/fixture/Application Support/Claude/claude-code/version/hash/claude.app/Contents/MacOS/claude')
+            else:
+                old = '/fixture/claude --resume ' + sid
+                output = self.commands.get(pid, old)
+            return SimpleNamespace(returncode=0, stdout=output)
+        convert = lambda stamp: stamp.replace(tzinfo=timezone(timedelta(hours=3))).astimezone(timezone.utc)
+        return SystemProcess(command, convert).owns_session(pid, sid, entry)
     def terminate(self, pid): self.calls.append(('terminate', pid)); self.pids.discard(pid)
     def quit(self): self.is_running = False; self.pids.clear()
     def open_app(self):

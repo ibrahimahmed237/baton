@@ -7,8 +7,16 @@ import time
 from datetime import datetime, timezone
 from ...domain.errors import ChatReplying, NotAvailable
 
+def local_start_utc(value, convert=None, *, fold=0, zone=None):
+    """Parse a local ps start time and convert it to UTC with an injectable converter."""
+    stamp = datetime.strptime(value, '%a %b %d %H:%M:%S %Y').replace(fold=fold)
+    if zone is not None: stamp = stamp.replace(tzinfo=zone)
+    return (convert(stamp) if convert else stamp.astimezone(timezone.utc)).astimezone(timezone.utc)
+
 class SystemProcess:
     """Isolate operating-system observations and app control calls."""
+    def __init__(self, command=None, local_to_utc=None, *, local_zone=None):
+        self.command = command; self.local_to_utc = local_to_utc; self.local_zone = local_zone
     def alive(self, pid):
         """Check whether a positive process identity is still alive."""
         if not isinstance(pid, int) or pid <= 0: return False
@@ -29,11 +37,29 @@ class SystemProcess:
                 stamp = datetime.strptime(line[:24], '%a %b %d %H:%M:%S %Y')
                 return stamp.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
         return ''
-    def owns_session(self, pid, sid):
+    def owns_session(self, pid, sid, entry=None):
         """Verify that a process belongs to the requested native session."""
-        if not isinstance(pid, int) or pid <= 0: return False
-        result = subprocess.run(['ps', '-p', str(pid), '-o', 'command='], capture_output=True,
-            text=True, check=False)
+        if type(pid) is not int or pid <= 0 or not isinstance(sid, str) or not sid: return False
+        command = self.command or subprocess.run
+        if entry is not None:
+            if not isinstance(entry, dict) or entry.get('_registry_pid') != str(pid): return False
+            if entry.get('pid') != pid or entry.get('sessionId') != sid: return False
+            if entry.get('status') not in ('idle', 'busy'): return False
+            if 'procStart' in entry:
+                try:
+                    result = command(['ps', '-p', str(pid), '-o', 'lstart=,comm='], capture_output=True,
+                        text=True, check=False, env={**os.environ, 'LC_ALL': 'C'})
+                    if result.returncode: return False
+                    line = result.stdout.strip()
+                    if not line[24:].strip().endswith('/claude.app/Contents/MacOS/claude'): return False
+                    registered = datetime.strptime(entry['procStart'], '%a %b %d %H:%M:%S %Y').replace(tzinfo=timezone.utc)
+                    return any(registered == local_start_utc(line[:24], self.local_to_utc,
+                        fold=fold, zone=self.local_zone) for fold in (0, 1))
+                except (OSError, TypeError, ValueError, OverflowError): return False
+        try:
+            result = command(['ps', '-p', str(pid), '-o', 'command='], capture_output=True,
+                text=True, check=False)
+        except OSError: return False
         if result.returncode: return False
         try: args = shlex.split(result.stdout.strip())
         except ValueError: return False
@@ -42,8 +68,10 @@ class SystemProcess:
             for i in range(len(args) - 1))
     def terminate(self, pid):
         """Send a normal termination signal to an already verified process."""
-        if pid <= 0: raise ValueError('invalid process id')
-        os.kill(pid, signal.SIGTERM)
+        if type(pid) is not int or pid <= 1: raise ValueError('invalid process id')
+        try: os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError: pass
+        except PermissionError as error: raise NotAvailable() from error
     def open_url(self, url):
         """Ask the system to open the supplied native chat link."""
         subprocess.run(['open', url], check=True)
@@ -69,7 +97,7 @@ class InertProcess:
     def started_at(self):
         """No app is observed, so there is no launch time."""
         return ''
-    def owns_session(self, pid, sid):
+    def owns_session(self, pid, sid, entry=None):
         """No process is observed, so none belongs to a session."""
         return False
     def terminate(self, pid):
@@ -107,20 +135,19 @@ class ClaudeApp:
             self.adapter.process.open_url('claude://claude.ai/epitaxy/' + chat_id)
     def release(self, chat_id):
         """End an idle owned chat process and wait for its registry release."""
-        entries = list(self.adapter.state.registry(chat_id))
-        if any(e.get('status') == 'busy' for e in entries): raise ChatReplying()
-        # Refresh before signalling: a reply may have started after the preview.
         current = list(self.adapter.state.registry(chat_id))
-        if any(e.get('status') == 'busy' for e in current): raise ChatReplying()
+        if not current: return
         for entry in current:
-            if not self.adapter.process.owns_session(entry['pid'], entry['sessionId']): raise NotAvailable()
+            if entry.get('status') == 'busy': raise ChatReplying()
+            if not self.adapter.process.owns_session(entry['pid'], entry['sessionId'], entry): raise NotAvailable()
         for entry in current:
             # Revalidate immediately before each signal, including registry busy state.
             latest = list(self.adapter.state.registry(chat_id))
             match = next((e for e in latest if e.get('pid') == entry['pid']), None)
             if match is None: continue
             if match.get('status') == 'busy': raise ChatReplying()
-            if not self.adapter.process.owns_session(entry['pid'], entry['sessionId']): raise NotAvailable()
+            if not self.adapter.process.owns_session(match['pid'], match['sessionId'], match): raise NotAvailable()
+            # Process identity or busy state can still change between this check and signal.
             self.adapter.process.terminate(entry['pid'])
         deadline = time.monotonic() + 10
         while list(self.adapter.state.registry(chat_id)):

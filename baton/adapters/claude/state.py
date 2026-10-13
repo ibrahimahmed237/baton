@@ -13,9 +13,10 @@ class ClaudeState:
         for path in (self.adapter.root / ".claude/sessions").glob("*.json"):
             try: entry = json.loads(self.adapter.locator.inside(path).read_text())
             except (OSError, ValueError): continue
+            if not isinstance(entry, dict): continue
             pid = entry.get("pid")
-            if isinstance(pid, int) and pid > 0 and self.adapter.process.alive(pid):
-                if sid is None or entry.get("sessionId") == sid: yield entry
+            if type(pid) is int and pid > 0 and path.stem == str(pid) and self.adapter.process.alive(pid):
+                if sid is None or entry.get("sessionId") == sid: yield dict(entry, _registry_pid=path.stem)
     def condition(self, chat_id):
         """Combine existence, holder, hook and launch evidence for a chat."""
         try: self.adapter.locator.resolve(chat_id)
