@@ -16,7 +16,11 @@ from ...domain.model import REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Turn
 
 # Top-level record types Codex is known to write. A rollout holding another one
 # was written by a version nobody has checked.
-KNOWN_RECORD_TYPES = frozenset({"session_meta", "response_item", "event_msg", "turn_context", "compacted"})
+# `world_state` (a snapshot of the session's settings) and `token_usage_record`
+# (usage per response) were seen in a rollout written by Codex 0.160 on
+# 2026-10-13; neither carries a message, so the reader passes over them.
+KNOWN_RECORD_TYPES = frozenset({"session_meta", "response_item", "event_msg", "turn_context", "compacted",
+                                "world_state", "token_usage_record"})
 
 # Task events that open and close a turn in Codex's own chat view.
 TASK_OPEN = "task_started"
