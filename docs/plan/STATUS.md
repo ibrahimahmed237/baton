@@ -48,15 +48,15 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **CP3 batch 1 committed 2026-10-14** after two review rounds (every package was returned once; six items a second time): engine carry-over `97f3629`, B3 OpenCode `e724450`, B4 Cursor `b9fb19a`, app carry-over `639abe9`. Measured: 1041 engine tests, app check passes (160 app tests + fixture gate). Closed: H4 to H13, Q9, Q14, and the five differences from the live run.
 
-**CP3 batch 2a running** (Codex Sol builders, Haiku reviewers, Claude orchestrates):
+**CP3 batch 2a returned by review, being fixed (2026-10-14).** Haiku reviewers stopped at the Claude usage limit; Codex Sol reviewed instead (read-only, high effort). All five packages returned: E11, E13, C4, D8, D9. Main reasons: a paused link could still create a brief chat; relaunch could leave an app closed after a failure; hooks took an unbounded lock before their deadline and never recorded Cursor's reply state; the merge screen's fixtures carried sentences the engine does not produce (the generator added them), because the merge, undo and restore routes of C3 did not exist yet.
 
-| Builder | Work | Files | Report |
-|---|---|---|---|
-| E | E11 keep, pin, pause, names; E13 setup check and relaunch as services | `baton/services/` (new modules), `tests/scenarios`, `tests/unit` | `reports/E11-E13-2026-10-14.md` |
-| H | C4 hooks: `catch-up`, `notify` entry points, per-tool hook payloads | `baton/hooks/`, `baton/cli/commands/{catch_up,notify}.py`, tests | `reports/C4-2026-10-14.md` |
-| D | D8 merge screen, D9 history and undo screen | `app/Sources/BatonUI/Screens/{Merge,History}`, tests, generator recipes for their fixtures | `reports/D8-D9-2026-10-14.md` |
+| Builder (Codex Sol) | Fix | Files |
+|---|---|---|
+| E | E11/E13 findings | `baton/services/{marks,names,setup_check,relaunch,brief_*}.py`, their tests |
+| H | C4 findings | `baton/hooks/`, `baton/cli/main.py`, `commands/{catch_up,notify}.py`, `cli/{tools,wiring}.py`, timeouts in `ledger/sqlite_store.py` and `adapters/cursor/locator.py`, `adapters/cursor/state.py`, `adapters/opencode/hooks.py` |
+| M | C3 part 1 (merge presets and reorder, undo, restore, history labels) then D8/D9 repair; generator no longer adds notes | `baton/cli/commands/{merge,undo,restore,history}.py`, `cli/output.py`, `services/{merger,undo}.py`, generator, `app/Screens/{Merge,History}` |
 
-Then batch 2b: C3 action commands, C5 relaunch, C6 background runs, E12 notes audit, D10, D11.
+Nothing of batch 2a is committed yet. Lesson recorded: an app screen package must not start before the engine route it shows exists.
 
 **Q15, decided by Ibrahim 2026-10-14:** OpenCode is written in any state, replying included, as the specs say (he tested it). The refusal a reviewer had asked for is removed; the risk behind it is closed in the reader instead (parts grouped by message, Baton's rows marked finished). Take-back, cut, place, rename and restore still wait while replying. Commit after `e724450`.
 
