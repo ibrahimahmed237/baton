@@ -19,6 +19,7 @@ class BriefRecords:
     def save_brief_plan(self, ident: str, stage: str, payload: dict) -> None:
         """Persist one exact stage approval before returning its token."""
         with self.db:
+            self._own_background_record('plan', ident)
             self.db.execute('insert into brief_plans(id,stage,payload) values(?,?,?)',
                             (ident, stage, json.dumps(payload, sort_keys=True)))
 
@@ -42,6 +43,11 @@ class BriefRecords:
         """Persist immutable generated content, refusing changed identity reuse."""
         encoded = json.dumps(payload, sort_keys=True)
         with self.db:
+            self._own_background_record('artifact', ident)
+            if getattr(self, '_background_owner', None) and payload.get('transcript_path'):
+                self.db.execute('insert or ignore into background_resources values(?,?,?)',
+                    (self._background_owner, 'transcript', json.dumps({
+                        'path': payload['transcript_path'], 'digest': payload['transcript_digest']}, sort_keys=True)))
             self.db.execute('insert or ignore into brief_artifacts(id,payload) values(?,?)', (ident, encoded))
             if self.db.execute('select payload from brief_artifacts where id=?', (ident,)).fetchone()[0] != encoded:
                 raise ChatChanged()
@@ -61,6 +67,7 @@ class BriefRecords:
     def brief_cache_put(self, key: str, payload: dict) -> None:
         """Replace only the cache for one privacy-bound writer input."""
         with self.db:
+            self._own_background_record('cache', key)
             self.db.execute('insert into brief_cache(key,payload) values(?,?) on conflict(key) do update set payload=excluded.payload',
                             (key, json.dumps(payload, sort_keys=True)))
 
