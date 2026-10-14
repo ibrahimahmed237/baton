@@ -1,0 +1,61 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "link.already_linked",
+      "status_line": null,
+      "text": "\"Imaginary orchard\" is already linked to \"Existing Codex\" in Codex. A chat can be linked to one chat at a time.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "other_name": "Existing Codex",
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d5_already_opencode",
+  "steps": []
+}

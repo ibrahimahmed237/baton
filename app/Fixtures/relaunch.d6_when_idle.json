@@ -1,0 +1,78 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "when_idle",
+          "label": "Wait until it has finished",
+          "primary": true
+        },
+        {
+          "id": "close_anyway",
+          "label": "Close anyway",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying",
+      "status_line": "Will sync when Claude is idle",
+      "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "title": "Imaginary orchard",
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d6_when_idle",
+  "replying": [
+    {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-a",
+      "link_id": null,
+      "linked": false,
+      "name": "Imaginary orchard",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "updated_at": "2026-10-05T12:02:00Z"
+    }
+  ],
+  "steps": []
+}

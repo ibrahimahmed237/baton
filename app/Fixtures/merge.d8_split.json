@@ -1,0 +1,54 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Split into two chats",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_split",
+    "status_line": null,
+    "text": "Split into two chats",
+    "tone": "warning",
+    "values": {
+      "tool": ""
+    }
+  },
+  "decision_needed": false,
+  "keep": "",
+  "link_id": 3,
+  "mismatch_note": {
+    "buttons": [],
+    "id": "write.chat_changed",
+    "status_line": null,
+    "text": "The chat changed before Baton could write. Check it again.",
+    "tone": "warning",
+    "values": {}
+  },
+  "notes": [
+    {
+      "buttons": [],
+      "id": "merge.split",
+      "status_line": null,
+      "text": "The link is removed and the two chats continue separately.",
+      "tone": "warning",
+      "values": {}
+    }
+  ],
+  "order": [
+    42,
+    44,
+    43
+  ],
+  "plan_id": "p_9d7eabcf8b46a572ca9506d5b74c3cbbd3b089a235ca15522d8441c5c2318102",
+  "preset": "",
+  "split": true,
+  "steps": []
+}

@@ -1,0 +1,86 @@
+{
+  "applied": false,
+  "brief": {
+    "artifact_id": "a_2dd3b1b42b045ece2646aebb4bfc08a969df03778415ab6688d760d3c321edd7",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "codex"
+      },
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 330304,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 17,
+    "summary": "Preserve the orchard decisions and finish the tests.",
+    "text": "This chat carries on work done in Claude. Below is a brief of it.\n\nPreserve the orchard decisions and finish the tests.\n\nThe full history is saved at /baton-fixtures/transcripts/link-3-c433e829851d119665309db7bb0825a92bc54d40b28a4a6142030eba2278952c.md. Read it for any detail not above.",
+    "tokens": 71,
+    "writer": "codex"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_creation",
+    "status_line": null,
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 17 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 17
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.summary_receipt",
+      "status_line": null,
+      "text": "Summarized through this turn. The original messages are in the saved history.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_65ce1bf7e2535b3c082567dc9fe0447a",
+  "stage": "create",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "added": 0,
+  "agent_has": 0,
+  "attached": 0,
+  "chat": {
+    "folder": "/work/baton-fixtures",
+    "id": "sample-a",
+    "link_id": 3,
+    "linked": true,
+    "name": "Imaginary orchard",
+    "tool": "claude",
+    "tool_label": "Claude",
+    "updated_at": "2026-10-05T12:02:00Z"
+  },
+  "chat_shows": 0,
+  "condition": {
+    "app_running": true,
+    "app_started_at": "",
+    "exists": true,
+    "format_known": true,
+    "hooks_ready": true,
+    "open": true,
+    "replying": false
+  },
+  "kept_elsewhere": 0,
+  "next_message": {
+    "tokens": 0,
+    "turns": 0
+  },
+  "notes": [],
+  "since_you_left": null,
+  "skipped": 0,
+  "synced_up_to": null,
+  "tool": "claude",
+  "tool_label": "Claude",
+  "total": 0,
+  "usage": {
+    "limit": null,
+    "percent": null,
+    "size": null,
+    "tokens": 0
+  },
+  "waiting": 0,
+  "waiting_reason": null
+}

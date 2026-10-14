@@ -1,0 +1,41 @@
+{
+  "decision_needed": false,
+  "headline": {
+    "buttons": [],
+    "id": "status.ahead",
+    "status_line": null,
+    "text": "Codex is 2 turns ahead",
+    "tone": "info",
+    "values": {
+      "n": 2,
+      "tool": "Codex"
+    }
+  },
+  "in_sync": false,
+  "link_id": 3,
+  "mode": "full_copy",
+  "needs_attention": true,
+  "paused": false,
+  "sides": {
+    "claude": {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-a",
+      "link_id": 3,
+      "linked": true,
+      "name": "Imaginary orchard",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "updated_at": "2026-10-05T12:02:00Z"
+    },
+    "codex": {
+      "folder": "/work/baton-fixtures",
+      "id": "sample-b",
+      "link_id": 3,
+      "linked": true,
+      "name": "Imaginary orchard",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "updated_at": "2026-10-05T12:04:00Z"
+    }
+  }
+}

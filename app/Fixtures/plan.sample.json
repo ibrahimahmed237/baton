@@ -1,0 +1,102 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [],
+  "plan_id": "p_14ad3489b5c48b791e36b5c9a408f071e1b249e798af3c2c085d082d48f5df2c",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 2 of 4 turns. Its chat shows 2; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 2,
+            "chat_shows": 2,
+            "tool": "Claude",
+            "total": 4,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "show_changes",
+              "label": "Show what changed",
+              "primary": true
+            }
+          ],
+          "id": "digest.since_you_left",
+          "status_line": null,
+          "text": "Since your last message here at 12:02, Codex did 2 turns, changed 0 files and ran 0 commands.",
+          "tone": "info",
+          "values": {
+            "at": "12:02",
+            "commands": "0 commands",
+            "files": "0 files",
+            "tool": "Codex",
+            "turns": "2 turns"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "add_now",
+              "label": "Add them now",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "chat_open",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        43,
+        44
+      ]
+    }
+  ]
+}

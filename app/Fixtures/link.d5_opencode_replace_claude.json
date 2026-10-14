@@ -1,0 +1,164 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Claude to see this chat",
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Existing Codex\" to \"Imaginary orchard\" instead? The link to \"Imaginary orchard\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Existing Codex",
+        "new_name": "Imaginary orchard",
+        "other_name": "Imaginary orchard"
+      }
+    }
+  ],
+  "plan_id": "p_e9042c3aa23581b8c787de9d050202b3772322253045e7e50731f5c5c2e18bc5",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Existing Codex\" to \"Imaginary orchard\" instead? The link to \"Imaginary orchard\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Existing Codex",
+            "new_name": "Imaginary orchard",
+            "other_name": "Imaginary orchard"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
+}

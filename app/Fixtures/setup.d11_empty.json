@@ -1,0 +1,100 @@
+{
+  "notes": [
+    {
+      "buttons": [],
+      "id": "dialog.link",
+      "status_line": null,
+      "text": "Link a chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.target",
+      "status_line": null,
+      "text": "Tool",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.target_chat",
+      "status_line": null,
+      "text": "Chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.new_chat",
+      "status_line": null,
+      "text": "New chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.retained_side",
+      "status_line": null,
+      "text": "Keep this side",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.ways",
+      "status_line": null,
+      "text": "Ways to link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.what_will_happen",
+      "status_line": null,
+      "text": "What will happen",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "create",
+          "label": "Create",
+          "primary": true
+        },
+        {
+          "id": "copy_without_linking",
+          "label": "Copy without linking",
+          "primary": false
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        },
+        {
+          "id": "change_link",
+          "label": "Change the link",
+          "primary": false
+        },
+        {
+          "id": "full_copy",
+          "label": "Create a full copy",
+          "primary": false
+        }
+      ],
+      "id": "dialog.actions",
+      "status_line": null,
+      "text": "Link a chat",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "tools": []
+}

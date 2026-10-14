@@ -1,0 +1,22 @@
+# Local Claude Code settings for this machine
+.claude/settings.local.json
+
+# Spike hook config for Codex: points at an absolute path on this machine
+.codex/
+.cursor/
+.opencode/
+
+# Spike backups and journals: copies of real chat files, never to be pushed
+.baton-spike/
+
+# Third-party checkout kept only to study the session formats
+reference/
+
+__pycache__/
+*.pyc
+.venv/
+build/
+.DS_Store
+
+# Swift build output
+.build/

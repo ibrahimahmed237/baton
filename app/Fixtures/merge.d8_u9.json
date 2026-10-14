@@ -1,0 +1,204 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Merge in this order",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_merge",
+    "status_line": null,
+    "text": "Merge in this order",
+    "tone": "danger",
+    "values": {
+      "tool": ""
+    }
+  },
+  "decision_needed": false,
+  "keep": "",
+  "link_id": 3,
+  "mismatch_note": {
+    "buttons": [],
+    "id": "write.chat_changed",
+    "status_line": null,
+    "text": "The chat changed before Baton could write. Check it again.",
+    "tone": "warning",
+    "values": {}
+  },
+  "notes": [
+    {
+      "buttons": [],
+      "id": "merge.header",
+      "status_line": null,
+      "text": "Both chats have new turns. Claude has 2 turns Codex never received, and Codex has 1 that Claude never received. Nothing has been changed yet.",
+      "tone": "warning",
+      "values": {
+        "first_count": 2,
+        "first_tool": "Claude",
+        "second_count": 1,
+        "second_tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.order_help",
+      "status_line": null,
+      "text": "Move a turn up or down to change where it goes. Turns from the same app keep their order.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "merge.merged_copy",
+      "status_line": null,
+      "text": "A new chat is created in Claude with the merged order, and the link moves to it. Your current chat stays as it is.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Codex",
+        "tool": "Claude",
+        "turns": 1
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.copy_relaunch",
+      "status_line": null,
+      "text": "Relaunch Claude once to see the new chat.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "keep",
+          "label": "Keep Claude's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Claude's",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "tool_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.merged_copy",
+      "status_line": null,
+      "text": "A new chat is created in Codex with the merged order, and the link moves to it. Your current chat stays as it is.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Claude",
+        "tool": "Codex",
+        "turns": 2
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.copy_visible",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "keep",
+          "label": "Keep Codex's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Codex's",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "tool_id": "codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "split",
+          "label": "Split into two chats",
+          "primary": false
+        }
+      ],
+      "id": "merge.split_choice",
+      "status_line": null,
+      "text": "Split into two chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "always",
+          "label": "Always merge by time without asking",
+          "primary": false
+        }
+      ],
+      "id": "merge.always",
+      "status_line": null,
+      "text": "Always merge by time without asking",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "order": [
+    42,
+    44,
+    43
+  ],
+  "plan_id": "p_e955ab44d3effe4eca54e2e52366b596627232909f72b9da43ac11066dd81a51",
+  "preset": "by_time",
+  "split": false,
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        41,
+        42,
+        44,
+        43
+      ]
+    },
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        44,
+        43
+      ]
+    }
+  ]
+}

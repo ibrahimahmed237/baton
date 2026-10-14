@@ -1,0 +1,30 @@
+{
+  "answer_id": "j_00000000000000000000000000000047",
+  "applied": true,
+  "chat_id": "sample-a",
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "ask.added",
+      "status_line": null,
+      "text": "The reviewed second opinion was added to this chat.",
+      "tone": "ok",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_bf61df24b911025d76ff5e09dd217414",
+  "queued": false,
+  "steps": [
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

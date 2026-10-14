@@ -1,0 +1,13 @@
+{
+  "error": {
+    "kind": "order_not_allowed",
+    "note": {
+      "buttons": [],
+      "id": "merge.order_not_allowed",
+      "status_line": null,
+      "text": "Turns written in one app stay in their own order; only turns from different apps can pass each other.",
+      "tone": "warning",
+      "values": {}
+    }
+  }
+}

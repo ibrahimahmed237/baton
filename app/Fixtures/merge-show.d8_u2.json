@@ -1,0 +1,349 @@
+{
+  "automatic_allowed": false,
+  "decision_needed": true,
+  "last_shared": {
+    "ended_at": "2026-10-05T12:01:00Z",
+    "first_line": "Orchard task 1",
+    "id": 41,
+    "origin": "claude",
+    "pinned": false,
+    "seq": 1,
+    "started_at": "2026-10-05T12:01:00Z",
+    "states": {
+      "claude": "written_here",
+      "codex": "shown"
+    },
+    "tokens": 9
+  },
+  "notes": [
+    {
+      "buttons": [],
+      "id": "merge.header",
+      "status_line": null,
+      "text": "Both chats have new turns. Claude has 2 turns Codex never received, and Codex has 1 that Claude never received. Nothing has been changed yet.",
+      "tone": "warning",
+      "values": {
+        "first_count": 2,
+        "first_tool": "Claude",
+        "second_count": 1,
+        "second_tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.order_help",
+      "status_line": null,
+      "text": "Move a turn up or down to change where it goes. Turns from the same app keep their order.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "merge.keeps_chat",
+      "status_line": null,
+      "text": "Claude keeps its chat. Codex's 1 turns are added at the end.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Codex",
+        "tool": "Claude",
+        "turns": 1
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "keep",
+          "label": "Keep Claude's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Claude's",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "tool_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.merged_copy",
+      "status_line": null,
+      "text": "A new chat is created in Codex with the merged order, and the link moves to it. Your current chat stays as it is.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Claude",
+        "tool": "Codex",
+        "turns": 2
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.copy_visible",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "keep",
+          "label": "Keep Codex's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Codex's",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "tool_id": "codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "split",
+          "label": "Split into two chats",
+          "primary": false
+        }
+      ],
+      "id": "merge.split_choice",
+      "status_line": null,
+      "text": "Split into two chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "always",
+          "label": "Always merge by time without asking",
+          "primary": false
+        }
+      ],
+      "id": "merge.always",
+      "status_line": null,
+      "text": "Always merge by time without asking",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "status.summary",
+      "status_line": null,
+      "text": "Claude's agent has 3 of 4 turns. Its chat shows 3; 1 are waiting.",
+      "tone": "info",
+      "values": {
+        "agent_has": 3,
+        "chat_shows": 3,
+        "tool": "Claude",
+        "total": 4,
+        "waiting": 1
+      }
+    },
+    {
+      "buttons": [],
+      "id": "context.in_use",
+      "status_line": null,
+      "text": "About 8,000 tokens in use, 4% of 200,000.",
+      "tone": "info",
+      "values": {
+        "percent": 4,
+        "size": "200,000",
+        "tokens": "8,000"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "show_changes",
+          "label": "Show what changed",
+          "primary": true
+        }
+      ],
+      "id": "digest.since_you_left",
+      "status_line": null,
+      "text": "Since your last message here at 12:03, Codex did 1 turn, changed 0 files and ran 0 commands.",
+      "tone": "info",
+      "values": {
+        "at": "12:03",
+        "commands": "0 commands",
+        "files": "0 files",
+        "tool": "Codex",
+        "turns": "1 turn"
+      }
+    }
+  ],
+  "offer_brief": false,
+  "order": [
+    42,
+    43,
+    44
+  ],
+  "outcome": {
+    "claude": "keeps_chat",
+    "codex": "merged_copy"
+  },
+  "overlaps": [],
+  "presets": [
+    {
+      "id": "by_time",
+      "label": "By time",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_time",
+        "status_line": null,
+        "text": "By time",
+        "tone": "info",
+        "values": {
+          "tool": "by_time"
+        }
+      },
+      "order": [
+        42,
+        43,
+        44
+      ]
+    },
+    {
+      "id": "claude_first",
+      "label": "Claude first",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_first",
+        "status_line": null,
+        "text": "Claude first",
+        "tone": "info",
+        "values": {
+          "tool": "Claude"
+        }
+      },
+      "order": [
+        42,
+        43,
+        44
+      ]
+    },
+    {
+      "id": "codex_first",
+      "label": "Codex first",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_first",
+        "status_line": null,
+        "text": "Codex first",
+        "tone": "info",
+        "values": {
+          "tool": "Codex"
+        }
+      },
+      "order": [
+        44,
+        42,
+        43
+      ]
+    },
+    {
+      "id": "dont_reorder",
+      "label": "Keep each chat’s order",
+      "label_note": {
+        "buttons": [],
+        "id": "merge.preset_keep",
+        "status_line": null,
+        "text": "Keep each chat’s order",
+        "tone": "info",
+        "values": {
+          "tool": "dont_reorder"
+        }
+      },
+      "order": [
+        42,
+        43,
+        44
+      ]
+    }
+  ],
+  "same_files": [],
+  "selected_preset": "by_time",
+  "tokens": 37,
+  "unsynced": [
+    {
+      "ended_at": "2026-10-05T12:02:00Z",
+      "first_line": "Orchard task 2",
+      "id": 42,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 2"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "claude",
+      "pinned": false,
+      "seq": 2,
+      "started_at": "2026-10-05T12:02:00Z",
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:03:00Z",
+      "first_line": "Orchard task 3",
+      "id": 43,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 3"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "claude",
+      "pinned": false,
+      "seq": 3,
+      "started_at": "2026-10-05T12:03:00Z",
+      "states": {
+        "claude": "written_here",
+        "codex": "waiting"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:04:00Z",
+      "first_line": "Orchard task 4",
+      "id": 44,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 4"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "codex",
+      "pinned": false,
+      "seq": 4,
+      "started_at": "2026-10-05T12:04:00Z",
+      "states": {
+        "claude": "waiting",
+        "codex": "written_here"
+      },
+      "tokens": 9
+    }
+  ]
+}

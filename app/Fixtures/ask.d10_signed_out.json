@@ -1,0 +1,15 @@
+{
+  "error": {
+    "kind": "opinion_unavailable",
+    "note": {
+      "buttons": [],
+      "id": "setup.runner",
+      "status_line": null,
+      "text": "Codex cannot run a background brief. Check its command and sign in, or use the offline brief.",
+      "tone": "warning",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  }
+}

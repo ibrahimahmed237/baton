@@ -1,0 +1,34 @@
+{
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "turn": {
+    "ended_at": "2026-10-05T12:01:00Z",
+    "first_line": "Orchard task 1",
+    "id": 41,
+    "origin": "claude",
+    "pinned": false,
+    "seq": 1,
+    "started_at": "2026-10-05T12:01:00Z",
+    "states": {
+      "claude": "written_here",
+      "codex": "shown"
+    },
+    "tokens": 9
+  }
+}

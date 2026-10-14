@@ -1,0 +1,59 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.attached_history",
+      "status_line": "Agent has 4 turns the chat does not show",
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "tone": "info",
+      "values": {
+        "n": 4
+      }
+    }
+  ],
+  "plan_id": "p_55ca8308a7f49abe007fc1a82449d5df04b6815b7c3bcb2edc281c269d0d30c2",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.attached_history",
+          "status_line": "Agent has 4 turns the chat does not show",
+          "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+          "tone": "info",
+          "values": {
+            "n": 4
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
+    }
+  ]
+}

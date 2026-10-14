@@ -1,0 +1,103 @@
+{
+  "applied": false,
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "cursor"
+      },
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 312,
+    "pinned": [],
+    "pinned_tokens": 0,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "cursor"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Cursor can write this brief and can read the project folder. It cannot change anything. About 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "Cursor",
+        "writer_id": "cursor"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Claude can write this brief and can read the project folder. It cannot change anything. About 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "Claude",
+        "writer_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 312 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 312
+      }
+    }
+  ],
+  "plan_id": "p_659d7688dfa0ea6d64c5d5d5e8588878",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "app_closed",
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": [
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  ]
+}

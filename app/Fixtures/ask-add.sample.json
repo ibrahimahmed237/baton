@@ -1,0 +1,39 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_ask-add",
+  "steps": []
+}

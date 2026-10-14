@@ -1,0 +1,13 @@
+{
+  "error": {
+    "kind": "internal",
+    "note": {
+      "buttons": [],
+      "id": "error.unexpected",
+      "status_line": null,
+      "text": "Something unexpected went wrong in Baton. Check your chats before you try again. Baton's log has the details.",
+      "tone": "danger",
+      "values": {}
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "artifact_id": "a_e72fff907ff4d5b4c3b10994a310ae8e536df23d153ec1e8896e9cc3cd014823",
+  "candidate_estimates": [],
+  "estimated_tokens": 0,
+  "pinned": [
+    42
+  ],
+  "pinned_tokens": 17,
+  "summary": "The first request was:\nOrchard task 1\n\nRequests so far:\n1. Orchard task 1\n2. Orchard task 2\n3. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard\n4. Orchard task 4",
+  "text": "This chat carries on work done in Claude. Below is a brief of it.\n\nThe first request was:\nOrchard task 1\n\nRequests so far:\n1. Orchard task 1\n2. Orchard task 2\n3. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard request. Large public orchard\n4. Orchard task 4\n\nThe full history is saved at /baton-fixtures/transcripts/link-3-c433e829851d119665309db7bb0825a92bc54d40b28a4a6142030eba2278952c.md. Read it for any detail not above.",
+  "tokens": 137,
+  "writer": "offline"
+}

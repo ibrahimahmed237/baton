@@ -1,0 +1,1088 @@
+{
+  "decision_needed": false,
+  "in_sync": true,
+  "link_id": 4,
+  "mode": "full_copy",
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "relaunch",
+          "label": "Relaunch Claude",
+          "primary": true
+        }
+      ],
+      "id": "relaunch_to_see",
+      "status_line": "Relaunch Claude to see 2 new turns",
+      "text": "The agent has these 2 turns. Relaunch Claude to see them as normal messages.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.checked",
+      "status_line": null,
+      "text": "Last checked 2026-10-05T14:00:00Z",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T14:00:00Z"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_hidden_tool",
+      "status_line": null,
+      "text": "Claude reached turn 4 in this conversation.",
+      "tone": "info",
+      "values": {
+        "seq": 4,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Codex reached this turn.",
+      "tone": "info",
+      "values": {
+        "seq": 4,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.settings",
+      "status_line": null,
+      "text": "Settings",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.open_window",
+      "status_line": null,
+      "text": "Open Baton",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.quit",
+      "status_line": null,
+      "text": "Quit Baton…",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_here",
+      "status_line": null,
+      "text": "Position in this conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_both",
+      "status_line": null,
+      "text": "Both agents reached this turn.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_hidden",
+      "status_line": null,
+      "text": "Position outside this view",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme",
+      "status_line": null,
+      "text": "Appearance",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.light",
+      "status_line": null,
+      "text": "Light",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.graphite",
+      "status_line": null,
+      "text": "Dark",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.system",
+      "status_line": null,
+      "text": "System",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.chats",
+      "status_line": null,
+      "text": "Chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.links",
+      "status_line": null,
+      "text": "Links",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.sync_status",
+      "status_line": null,
+      "text": "Sync status",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.turn_by_turn",
+      "status_line": null,
+      "text": "Turn by turn",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.conversation",
+      "status_line": null,
+      "text": "Conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.conversation_guide",
+      "status_line": null,
+      "text": "An agent may have a turn even when its chat does not show it.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.empty",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.list_empty",
+      "status_line": null,
+      "text": "No items yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.popover.title",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.popover.body",
+      "status_line": null,
+      "text": "Choose Link a recent chat to find a conversation to link.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.linked.title",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.linked.body",
+      "status_line": null,
+      "text": "Choose a chat from the sidebar to link it with another coding agent.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.attention.title",
+      "status_line": null,
+      "text": "Nothing needs your attention",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.attention.body",
+      "status_line": null,
+      "text": "Chats that need a decision or another step appear here.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.suggestions.title",
+      "status_line": null,
+      "text": "No suggested links yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.suggestions.body",
+      "status_line": null,
+      "text": "Choose a chat from the sidebar to make a link yourself.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.chats.title",
+      "status_line": null,
+      "text": "No chats found",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.chats.body",
+      "status_line": null,
+      "text": "Start a chat in this app, then refresh Baton.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.activity.title",
+      "status_line": null,
+      "text": "No activity yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.activity.body",
+      "status_line": null,
+      "text": "Syncs and changes to your links appear here.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_link.title",
+      "status_line": null,
+      "text": "Choose a linked conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_link.body",
+      "status_line": null,
+      "text": "Select a pair from the sidebar to see what each agent has received and what is waiting.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_chat.title",
+      "status_line": null,
+      "text": "Choose a chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_chat.body",
+      "status_line": null,
+      "text": "Select a chat to link it with another agent or copy its history.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_suggestion.title",
+      "status_line": null,
+      "text": "Choose a suggested link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_suggestion.body",
+      "status_line": null,
+      "text": "Select a pair to see the two conversations.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_activity.title",
+      "status_line": null,
+      "text": "Choose an activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_activity.body",
+      "status_line": null,
+      "text": "Select an entry to see its linked conversation and what changed.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.conversation.title",
+      "status_line": null,
+      "text": "No conversation turns yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.conversation.body",
+      "status_line": null,
+      "text": "Turns appear here after a conversation has been recorded.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.filtered.title",
+      "status_line": null,
+      "text": "No turns match this filter",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.filtered.body",
+      "status_line": null,
+      "text": "The conversation is still here. Show all turns to see it.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_all_turns",
+      "status_line": null,
+      "text": "Show all turns",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.search",
+      "status_line": null,
+      "text": "Search chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.link",
+      "status_line": null,
+      "text": "Link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.link_recent",
+      "status_line": null,
+      "text": "Link a recent chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.linked",
+      "status_line": null,
+      "text": "Linked",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.attention",
+      "status_line": null,
+      "text": "Needs attention",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.suggestions",
+      "status_line": null,
+      "text": "Suggestions",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.activity",
+      "status_line": null,
+      "text": "Activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.history",
+      "status_line": null,
+      "text": "History",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.remove",
+      "status_line": null,
+      "text": "Remove link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.setup",
+      "status_line": null,
+      "text": "Setup",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.copy",
+      "status_line": null,
+      "text": "Copy to…",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.resume",
+      "status_line": null,
+      "text": "Resume sync",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.pause",
+      "status_line": null,
+      "text": "Pause",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.refresh",
+      "status_line": null,
+      "text": "Refresh",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.decide",
+      "status_line": null,
+      "text": "Decide",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_reply",
+      "status_line": null,
+      "text": "Show full reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.all",
+      "status_line": null,
+      "text": "All",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.waiting",
+      "status_line": null,
+      "text": "Waiting",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.attached",
+      "status_line": null,
+      "text": "Attached",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.kept",
+      "status_line": null,
+      "text": "Kept back",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.pinned",
+      "status_line": null,
+      "text": "Pinned",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_tools",
+      "status_line": null,
+      "text": "Show tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.hide_tools",
+      "status_line": null,
+      "text": "Hide tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.hide_reply",
+      "status_line": null,
+      "text": "Hide full reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.prompt",
+      "status_line": null,
+      "text": "User",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.reply",
+      "status_line": null,
+      "text": "Reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_call",
+      "status_line": null,
+      "text": "Tool call",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_result",
+      "status_line": null,
+      "text": "Tool result",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_text",
+      "status_line": null,
+      "text": "Tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in Claude",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All Claude chats",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in Codex",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All Codex chats",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in OpenCode",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All OpenCode chats",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in Cursor",
+      "tone": "info",
+      "values": {
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All Cursor chats",
+      "tone": "info",
+      "values": {
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "turn.added",
+      "status_line": null,
+      "text": "Added, shown after a relaunch",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "turn.shown",
+      "status_line": null,
+      "text": "Shown",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "turn.written_here",
+      "status_line": null,
+      "text": "Written here",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "status.reached",
+      "status_line": null,
+      "text": "Claude's agent has reached here",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "turn": 48
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Claude reached this turn.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.reached",
+      "status_line": null,
+      "text": "Codex's agent has reached here",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "turn": 48
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Codex reached this turn.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_hidden_tool",
+      "status_line": null,
+      "text": "Codex reached turn 4 in this conversation.",
+      "tone": "info",
+      "values": {
+        "seq": 4,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.earlier_turns",
+      "status_line": null,
+      "text": "2 earlier turns, in both chats",
+      "tone": "info",
+      "values": {
+        "n": 2
+      }
+    }
+  ],
+  "paused": false,
+  "sides": {
+    "claude": {
+      "added": 2,
+      "agent_has": 4,
+      "attached": 0,
+      "chat": {
+        "folder": "/work/baton-fixtures",
+        "id": "d3-4-claude",
+        "link_id": 4,
+        "linked": true,
+        "name": "Imaginary orchard",
+        "tool": "claude",
+        "tool_label": "Claude",
+        "updated_at": "2026-10-05T12:02:00Z"
+      },
+      "chat_shows": 2,
+      "condition": {
+        "app_running": false,
+        "app_started_at": "",
+        "exists": true,
+        "format_known": true,
+        "hooks_ready": true,
+        "open": false,
+        "replying": false
+      },
+      "kept_elsewhere": 0,
+      "next_message": {
+        "tokens": 0,
+        "turns": 0
+      },
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 4 of 4 turns. Its chat shows 2; 0 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 2,
+            "tool": "Claude",
+            "total": 4,
+            "waiting": 0
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relaunch",
+              "label": "Relaunch Claude",
+              "primary": true
+            }
+          ],
+          "id": "relaunch_to_see",
+          "status_line": "Relaunch Claude to see 2 new turns",
+          "text": "The agent has these 2 turns. Relaunch Claude to see them as normal messages.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        }
+      ],
+      "since_you_left": null,
+      "skipped": 0,
+      "synced_up_to": {
+        "ended_at": "2026-10-05T12:04:00Z",
+        "first_line": "Orchard task 4",
+        "id": 48,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 4,
+        "started_at": "2026-10-05T12:04:00Z",
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      },
+      "tool": "claude",
+      "tool_label": "Claude",
+      "total": 4,
+      "usage": {
+        "limit": null,
+        "percent": 4,
+        "size": 200000,
+        "tokens": 8000
+      },
+      "waiting": 0,
+      "waiting_reason": null
+    },
+    "codex": {
+      "added": 0,
+      "agent_has": 4,
+      "attached": 0,
+      "chat": {
+        "folder": "/work/baton-fixtures",
+        "id": "d3-4-codex",
+        "link_id": 4,
+        "linked": true,
+        "name": "Imaginary orchard",
+        "tool": "codex",
+        "tool_label": "Codex",
+        "updated_at": "2026-10-05T12:04:00Z"
+      },
+      "chat_shows": 4,
+      "condition": {
+        "app_running": false,
+        "app_started_at": "",
+        "exists": true,
+        "format_known": true,
+        "hooks_ready": true,
+        "open": false,
+        "replying": false
+      },
+      "kept_elsewhere": 0,
+      "next_message": {
+        "tokens": 0,
+        "turns": 0
+      },
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Codex's agent has 4 of 4 turns. Its chat shows 4; 0 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 4,
+            "tool": "Codex",
+            "total": 4,
+            "waiting": 0
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        }
+      ],
+      "since_you_left": null,
+      "skipped": 0,
+      "synced_up_to": {
+        "ended_at": "2026-10-05T12:04:00Z",
+        "first_line": "Orchard task 4",
+        "id": 48,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 4,
+        "started_at": "2026-10-05T12:04:00Z",
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      },
+      "tool": "codex",
+      "tool_label": "Codex",
+      "total": 4,
+      "usage": {
+        "limit": null,
+        "percent": 4,
+        "size": 200000,
+        "tokens": 8000
+      },
+      "waiting": 0,
+      "waiting_reason": null
+    }
+  },
+  "turns": [
+    {
+      "ended_at": "2026-10-05T12:01:00Z",
+      "first_line": "Orchard task 1",
+      "id": 45,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 1"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "claude",
+      "pinned": false,
+      "seq": 1,
+      "started_at": "2026-10-05T12:01:00Z",
+      "states": {
+        "claude": "written_here",
+        "codex": "shown"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:02:00Z",
+      "first_line": "Orchard task 2",
+      "id": 46,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 2"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "claude",
+      "pinned": true,
+      "seq": 2,
+      "started_at": "2026-10-05T12:02:00Z",
+      "states": {
+        "claude": "written_here",
+        "codex": "shown"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:03:00Z",
+      "first_line": "Orchard task 3",
+      "id": 47,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 3"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "codex",
+      "pinned": false,
+      "seq": 3,
+      "started_at": "2026-10-05T12:03:00Z",
+      "states": {
+        "claude": "added",
+        "codex": "written_here"
+      },
+      "tokens": 9
+    },
+    {
+      "ended_at": "2026-10-05T12:04:00Z",
+      "first_line": "Orchard task 4",
+      "id": 48,
+      "messages": [
+        {
+          "kind": "prompt",
+          "text": "Orchard task 4"
+        },
+        {
+          "kind": "reply",
+          "text": "Completed orchard work."
+        }
+      ],
+      "origin": "codex",
+      "pinned": false,
+      "seq": 4,
+      "started_at": "2026-10-05T12:04:00Z",
+      "states": {
+        "claude": "added",
+        "codex": "written_here"
+      },
+      "tokens": 9
+    }
+  ]
+}

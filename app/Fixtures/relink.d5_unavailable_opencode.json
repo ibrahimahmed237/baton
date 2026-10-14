@@ -1,0 +1,125 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"OpenCode\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "OpenCode",
+        "other_name": "Existing Codex"
+      }
+    }
+  ],
+  "plan_id": "p_740ace794fb1009ddbc83fa141c1a3130c3a177ec1d3302d6ffc6765b9e399c5",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in OpenCode right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"OpenCode\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "OpenCode",
+            "other_name": "Existing Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
+    }
+  ]
+}

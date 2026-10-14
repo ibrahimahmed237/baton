@@ -1,0 +1,715 @@
+diff --git a/baton/domain/conditions.py b/baton/domain/conditions.py
+--- a/baton/domain/conditions.py
++++ b/baton/domain/conditions.py
+@@ -12,3 +12,5 @@
+     replying: bool = False
+     hooks_ready: bool = True
+     app_running: bool = False
++    app_started_at: str = ""
++    format_known: bool = True
+diff --git a/baton/services/planner.py b/baton/services/planner.py
+--- a/baton/services/planner.py
++++ b/baton/services/planner.py
+@@ -19,13 +19,14 @@
+ from ..domain import link as link_states
+ from ..domain.link import LedgerTurn, Link
+ from ..domain.conditions import SideCondition
++from ..domain.capabilities import Capabilities
+ from ..domain.errors import OrderNotAllowed
+ 
+ # What happens to a side's waiting turns.
+-ADD = "add"                              # the chat is closed: added as normal messages
+-ADD_AFTER_RELEASE = "add_after_release"  # open but idle: its process is closed, then added; shown after a relaunch
+-ATTACH = "attach"                        # open: attached to the user's next message there
+-HOLD = "hold"                            # nothing is done now; the reason says why
++ADD = status.ADD                              # the chat is closed: added as normal messages
++ADD_AFTER_RELEASE = status.ADD_AFTER_RELEASE  # open but idle: its process is closed, then added; shown after a relaunch
++ATTACH = status.ATTACH                        # open: attached to the user's next message there
++HOLD = status.HOLD                            # nothing is done now; the reason says why
+ 
+ # Ways to order a merge (merge.md, M3 to M6).
+ BY_TIME = "by_time"
+@@ -38,43 +39,44 @@
+ 
+ @dataclass(frozen=True)
+ class Step:
++    """One side’s delivery action, required visibility step and alternatives."""
+     side: str
+     action: str
+     turns: tuple[LedgerTurn, ...]
+     reason: str = ""
++    needs: tuple[str, ...] = ()
++    alternatives: tuple[str, ...] = ()
+ 
+ 
+ @dataclass(frozen=True)
+ class Plan:
++    """A preview of delivery without changing a chat."""
+     steps: dict[str, Step]  # only sides that have waiting turns
+     decision_needed: bool
+ 
+     @property
+     def writes_anything(self) -> bool:
++        """Whether applying this plan would write real messages."""
+         return any(step.action in (ADD, ADD_AFTER_RELEASE) for step in self.steps.values())
+ 
+ 
+ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
+               conditions: Mapping[str, SideCondition] | None = None,
+-              add_when_idle: Collection[str] = ()) -> Plan:
+-    """`add_when_idle` names the sides whose tool can release one idle chat and
+-    where the user chose to have turns added automatically."""
++              add_when_idle: Collection[str] = (), *,
++              facts: Mapping[str, Capabilities]) -> Plan:
++    """Choose delivery from capabilities and current state, without tool names."""
+     conditions = conditions or {}
+-    current = status.link_status(link, turns, conditions)
++    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle)
+     steps = {}
+     for side, side_status in current.sides.items():
+         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
+         if not waiting:
+             continue
+-        reason = side_status.waiting_reason
+-        if reason == status.NOT_SYNCED_YET:
+-            steps[side] = Step(side, ADD, waiting)
+-        elif reason == status.CHAT_OPEN:
+-            idle = not conditions.get(side, SideCondition()).replying
+-            release = idle and side in add_when_idle and link.mode == link_states.FULL_COPY
+-            steps[side] = Step(side, ADD_AFTER_RELEASE if release else ATTACH, waiting, reason)
+-        else:
+-            steps[side] = Step(side, HOLD, waiting, reason)
++        condition = conditions.get(side, SideCondition())
++        action, reason, needs, alternatives = status.delivery_choice(
++            link, condition, facts[side], side_status.waiting_reason,
++            side in add_when_idle)
++        steps[side] = Step(side, action, waiting, reason, needs, alternatives)
+     return Plan(steps, current.decision_needed)
+ 
+ 
+@@ -112,7 +114,7 @@
+             ordered.append(queue.pop(0))
+         return ordered
+     if preset not in sides:
+-        raise ValueError("no unsynced turns were written in %s" % preset)
++        raise ValueError("no_unsynced_turns:" + preset)
+     return sorted(pending, key=lambda turn: (turn.origin != preset, turn.seq))
+ 
+ 
+@@ -120,20 +122,18 @@
+     """Raise unless `order` is the unsynced turns with each app's own turns in their own order (M4)."""
+     pending = unsynced(turns)
+     if sorted(turn.id for turn in order) != sorted(turn.id for turn in pending):
+-        raise OrderNotAllowed("the order has to hold exactly the turns that are not synced yet")
++        raise OrderNotAllowed(OrderNotAllowed.note_id)
+     for side in {turn.origin for turn in pending}:
+         own = [turn.id for turn in pending if turn.origin == side]
+         if [turn.id for turn in order if turn.origin == side] != own:
+-            raise OrderNotAllowed(
+-                "turns written in %s stay in the order they were written; only turns from"
+-                " different apps can pass each other" % side)
++            raise OrderNotAllowed(OrderNotAllowed.note_id)
+ 
+ 
+ def move(turns: Sequence[LedgerTurn], order: Sequence[LedgerTurn], turn_id: int, position: int) -> list[LedgerTurn]:
+     """Move one turn to a position in the order; refused if it passes a turn of its own app."""
+     moved = [turn for turn in order if turn.id == turn_id]
+     if not moved:
+-        raise OrderNotAllowed("turn %d is not among the turns being merged" % turn_id)
++        raise OrderNotAllowed(OrderNotAllowed.note_id)
+     rest = [turn for turn in order if turn.id != turn_id]
+     result = rest[:position] + moved + rest[position:]
+     check_order(turns, result)
+diff --git a/baton/services/status.py b/baton/services/status.py
+--- a/baton/services/status.py
++++ b/baton/services/status.py
+@@ -8,10 +8,12 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass
+-from typing import Mapping, Sequence
++from datetime import datetime
++from typing import Collection, Mapping, Sequence
+ 
+ from ..domain import link as link_states
+-from ..domain.link import LedgerTurn, Link
++from ..domain.link import Event, LedgerTurn, Link
++from ..domain.capabilities import Capabilities, Visibility, WriteWindow
+ from ..domain.conditions import SideCondition
+ 
+ # Why turns are waiting on a side (R4), most important first.
+@@ -21,12 +23,19 @@
+ HOOKS_NOT_READY = "hooks_not_ready"
+ CHAT_OPEN = "chat_open"
+ NOT_SYNCED_YET = "not_synced_yet"
++FORMAT_UNKNOWN = "format_unknown"
++
++ADD = "add"
++ADD_AFTER_RELEASE = "add_after_release"
++ATTACH = "attach"
++HOLD = "hold"
+ 
+ _CHARS_PER_TOKEN = 4
+ 
+ 
+ @dataclass(frozen=True)
+ class SideStatus:
++    """Counts and pending delivery/visibility instructions for one chat."""
+     side: str
+     total: int            # turns in the conversation
+     agent_has: int
+@@ -40,14 +49,18 @@
+     waiting_reason: str   # '' when nothing is waiting
+     attached_on_next_message: int
+     attached_tokens: int  # rough size of what the next message carries
++    shown_turn_ids: tuple[int, ...] = ()
++    needs: tuple[str, ...] = ()
+ 
+     @property
+     def in_sync(self) -> bool:
++        """Whether this agent has every available turn."""
+         return self.waiting == 0
+ 
+ 
+ @dataclass(frozen=True)
+ class LinkStatus:
++    """Delivery status of all linked sides."""
+     sides: dict[str, SideStatus]
+     paused: bool
+     decision_needed: bool
+@@ -58,14 +71,18 @@
+         return all(status.in_sync for status in self.sides.values())
+ 
+     def side(self, side: str) -> SideStatus:
++        """Return a single side’s status."""
+         return self.sides[side]
+ 
+ 
+ def link_status(link: Link, turns: Sequence[LedgerTurn],
+-                conditions: Mapping[str, SideCondition] | None = None) -> LinkStatus:
++                conditions: Mapping[str, SideCondition] | None = None, *,
++                facts: Mapping[str, Capabilities], history: Sequence[Event] = (),
++                add_when_idle: Collection[str] = ()) -> LinkStatus:
++    """Compute status from facts and explicit delivery/relaunch evidence."""
+     conditions = conditions or {}
+     in_conflict = _in_conflict(turns)
+-    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict)
++    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle)
+              for side in link.sides}
+     return LinkStatus(sides, link.paused, bool(in_conflict))
+ 
+@@ -78,19 +95,29 @@
+ 
+ 
+ def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
+-                 condition: SideCondition, conflict: bool) -> SideStatus:
++                 condition: SideCondition, conflict: bool, facts: Capabilities,
++                 history: Sequence[Event], automatic: bool) -> SideStatus:
+     def count(*states: str) -> int:
+         return sum(1 for turn in turns if turn.states.get(side) in states)
+ 
+     waiting = [turn for turn in turns if turn.states.get(side) == link_states.WAITING]
+     reason = _waiting_reason(link, condition, conflict) if waiting else ""
+-    carried = waiting if reason == CHAT_OPEN else []
++    # Use the planner policy so status cannot promise attachment for an add-only side.
++    action, delivery_reason, _, _ = delivery_choice(link, condition, facts, reason, automatic)
++    if waiting:
++        reason = NOT_SYNCED_YET if action == ADD else delivery_reason
++    carried = waiting if action == ATTACH else []
++    visible = visible_added_turn_ids(turns, side, facts, condition, history)
++    remaining_added = count(link_states.ADDED) - len(visible)
++    needs = ()
++    if remaining_added:
++        needs = ("reopen_chat_to_see",) if facts.added_turn_visible == Visibility.ON_REOPEN_CHAT else ("relaunch_to_see",)
+     return SideStatus(
+         side=side,
+         total=len(turns),
+         agent_has=count(*link_states.AGENT_HAS),
+-        chat_shows=count(*link_states.CHAT_SHOWS),
+-        added=count(link_states.ADDED),
++        chat_shows=count(*link_states.CHAT_SHOWS) + len(visible),
++        added=remaining_added,
+         attached=count(link_states.ATTACHED),
+         waiting=len(waiting),
+         kept_elsewhere=count(link_states.KEPT_BACK),
+@@ -99,6 +126,8 @@
+         waiting_reason=reason,
+         attached_on_next_message=len(carried),
+         attached_tokens=sum(turn.size for turn in carried) // _CHARS_PER_TOKEN,
++        shown_turn_ids=visible,
++        needs=needs,
+     )
+ 
+ 
+@@ -109,6 +138,8 @@
+         return PAUSED
+     if conflict:
+         return DECISION_NEEDED
++    if not condition.format_known and not (condition.open and condition.hooks_ready):
++        return FORMAT_UNKNOWN
+     if condition.open:
+         return CHAT_OPEN if condition.hooks_ready else HOOKS_NOT_READY
+     return NOT_SYNCED_YET
+@@ -124,3 +155,57 @@
+         if state in link_states.AGENT_HAS:
+             last = turn
+     return last
++
++
++def visible_added_turn_ids(turns: Sequence[LedgerTurn], side: str, facts: Capabilities,
++                           condition: SideCondition, history: Sequence[Event] = ()) -> tuple[int, ...]:
++    """Return added turns proven visible, never using a prompt-hook call."""
++    added = [turn.id for turn in turns if turn.states.get(side) == link_states.ADDED]
++    if facts.added_turn_visible == Visibility.AT_ONCE:
++        return tuple(added)
++    delivered = {}
++    for event in sorted(history, key=lambda item: item.id):
++        if event.side == side and event.kind in ("added", "twin_created", "created", "synced", "delivered", "add", "add_after_release", "create", "place"):
++            for turn_id in event.turn_ids:
++                delivered[turn_id] = event.at
++    return tuple(turn_id for turn_id in added
++                 if _later(condition.app_started_at, delivered.get(turn_id, "")))
++
++
++def _later(start: str, delivered: str) -> bool:
++    try:
++        if not start or not delivered:
++            return False
++        started_at = datetime.fromisoformat(start)
++        delivered_at = datetime.fromisoformat(delivered)
++        return bool(started_at.tzinfo and delivered_at.tzinfo) and started_at > delivered_at
++    except (ValueError, TypeError):
++        return False
++
++def delivery_choice(link: Link, condition: SideCondition, facts: Capabilities,
++                    reason: str, automatic: bool = False) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
++    """Select a safe action and note metadata for a single waiting side."""
++    if reason in (SIDE_MISSING, PAUSED, DECISION_NEEDED):
++        return HOLD, reason, (), ()
++    if not condition.format_known:
++        action = ATTACH if condition.open and condition.hooks_ready else HOLD
++        return action, FORMAT_UNKNOWN, (), ()
++    window = facts.write_window
++    allowed = (window == WriteWindow.ANY_TIME
++               or window == WriteWindow.NOT_HELD and not condition.open
++               or window == WriteWindow.APP_CLOSED and not condition.app_running
++               or window == WriteWindow.CLOSED_OR_RELEASED and not condition.open)
++    if allowed:
++        needs = ("reopen_chat_to_see",) if window == WriteWindow.ANY_TIME and condition.open else ()
++        return ADD, "", needs, ()
++    releasable = (window == WriteWindow.CLOSED_OR_RELEASED and condition.open
++                  and not condition.replying and facts.can_release_chat
++                  and link.mode == link_states.FULL_COPY)
++    if releasable and automatic:
++        return ADD_AFTER_RELEASE, CHAT_OPEN, ("relaunch_to_see",), ("relaunch",)
++    alternatives = ("close_sync_reopen",)
++    if releasable:
++        alternatives += ("add_now",)
++    if (condition.open or window == WriteWindow.APP_CLOSED and condition.app_running) and condition.hooks_ready:
++        return ATTACH, CHAT_OPEN, (), alternatives
++    return HOLD, HOOKS_NOT_READY, (), alternatives
+diff --git a/baton/notes/__init__.py b/baton/notes/__init__.py
+new file mode 100644
+--- /dev/null
++++ b/baton/notes/__init__.py
+@@ -0,0 +1 @@
++"""Shared user-facing note templates."""
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+new file mode 100644
+--- /dev/null
++++ b/baton/notes/catalogue.py
+@@ -0,0 +1,151 @@
++"""CP1 user-facing wording from the feature specifications.
++
++Templates substitute tool names and counts instead of branching on a tool.
++E12 will complete the catalogue for the later work packages.
++"""
++from dataclasses import dataclass
++from string import Formatter
++from typing import Mapping
++
++
++@dataclass(frozen=True)
++class Button:
++    """A stable action id and its displayed label."""
++    id: str
++    label: str
++    primary: bool = False
++
++
++_BUTTON_IDS = {
++    "Close {tool}, sync, reopen": "close_sync_reopen",
++    "Sync now, I relaunch later": "sync_relaunch_later",
++    "Cancel": "cancel", "Attach instead": "attach", "Wait until it has finished": "when_idle",
++    "Close anyway": "close_anyway", "Relaunch {tool}": "relaunch", "Add them now": "add_now",
++    "Sync when the reply has finished": "when_idle", "Change the link": "relink",
++    "Keep the current link": "cancel", "Resume": "resume", "Remove link": "unlink",
++    "Keep link": "cancel", "Copy to {tool}": "copy", "Copy and link": "copy_and_link",
++    "{fix}": "setup_fix", "Check again": "setup_check", "Decide": "merge_show",
++}
++
++
++@dataclass(frozen=True)
++class Note:
++    """One note, its confirmation actions and persistent status instruction."""
++    id: str
++    tone: str
++    template: str
++    buttons: tuple[Button, ...] = ()
++    status_line: str = ""
++
++    def __post_init__(self) -> None:
++        """Normalize catalogue shorthand to stable contract actions."""
++        buttons = tuple(Button(_BUTTON_IDS[item], item, index == 0) if isinstance(item, str) else item
++                        for index, item in enumerate(self.buttons))
++        object.__setattr__(self, "buttons", buttons)
++
++    def render(self, values: Mapping[str, object]) -> "Note":
++        """Fill every field, raising when the caller omits a required value."""
++        return Note(self.id, self.tone, self.template.format_map(values),
++                    tuple(Button(button.id, button.label.format_map(values), button.primary) for button in self.buttons),
++                    self.status_line.format_map(values))
++
++    def to_dict(self, values: Mapping[str, object]) -> dict[str, object]:
++        """Render the frozen contract’s Note object."""
++        note = self.render(values)
++        return {"id": note.id, "tone": note.tone, "values": dict(values), "text": note.template,
++                "buttons": [{"id": item.id, "label": item.label, "primary": item.primary}
++                            for item in note.buttons], "status_line": note.status_line or None}
++
++    @property
++    def fields(self) -> tuple[str, ...]:
++        """List the values needed to render this note completely."""
++        texts = (self.template, self.status_line, *(button.label for button in self.buttons))
++        return tuple(sorted({name for text in texts for _, name, _, _ in Formatter().parse(text) if name}))
++
++
++CATALOGUE = {note.id: note for note in (
++    Note("nothing_unusual", "info", "Nothing unusual."),
++    Note("new_chat.at_once", "info", "The new chat appears in {tool} right away. No relaunch."),
++    Note("new_chat.relaunch", "info", "Baton closes {tool}, creates the chat, and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel"), "Relaunch {tool} to see this chat"),
++    Note("write.app_must_close", "warning", "Baton closes {tool}, writes, and opens {tool} again on this folder; your windows come back. Baton never writes while {tool} runs, because {tool} would write over it.", ("Close {tool}, sync, reopen", "Attach instead", "Cancel"), "{n} turns waiting until {tool} is closed"),
++    Note("relaunch.replying", "warning", '{tool} is replying in "{title}". Closing now stops that reply.', ("Wait until it has finished", "Close anyway", "Cancel"), "Will sync when {tool} is idle"),
++    Note("format.unknown_version", "warning", "{tool} was updated and saves chats differently (version {version}). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated.", (), "{tool}: reading only"),
++    Note("link.attached_history", "info", "The agent gets the history with your first message. The chat will never show it as separate messages.", (), "Agent has {n} turns the chat does not show"),
++    Note("write.chat_open", "info", "These {n} turns will be attached to your next message there. To get them as normal messages, relaunch {tool}.", ("Close {tool}, sync, reopen",), "{n} turns waiting, attached on next message"),
++    Note("write.any_time", "info", "Baton adds these {n} turns now. If the chat is on screen, open it again to see them.", (), "Open the chat again to see {n} new turns"),
++    Note("reopen_chat_to_see", "info", "{tool} keeps showing the chat as it was until you open it again. The agent already has the change.", (), "Open the chat again to see the change"),
++    Note("relaunch_to_see", "info", "The agent has these {n} turns. Relaunch {tool} to see them as normal messages.", ("Relaunch {tool}",), "Relaunch {tool} to see {n} new turns"),
++    Note("write.release", "info", "Baton releases the idle chat and adds these {n} turns as real turns. Relaunch {tool} to see them.", ("Add them now", "Relaunch {tool}"), "Relaunch {tool} to see {n} new turns"),
++    Note("write.when_idle", "info", "These {n} turns will be attached to your next message; Baton adds real turns once the reply ends if set to automatic.", ("Sync when the reply has finished",), "Will sync when {tool} is idle"),
++    Note("write.chat_changed", "warning", "The chat changed before Baton could write. Check it again."),
++    Note("link.already_linked", "warning", '"{name}" is already linked to "{other_name}" in {tool}. A chat can be linked to one chat at a time.', ("Change the link", "Cancel")),
++    Note("link.change", "warning", 'Link "{name}" to "{new_name}" instead? The link to "{other_name}" is removed first. That chat stays exactly as it is and is no longer synced.', ("Change the link", "Keep the current link")),
++    Note("link.paused", "info", "Syncing is paused for this chat. Nothing is sent either way until you resume. {n} turns are waiting.", ("Resume",), "Paused, {n} waiting"),
++    Note("link.remove", "warning", 'Remove the link between "{name}" and "{other_name}"? Both chats stay exactly as they are. Baton stops syncing them. The {n} turns still waiting for {tool} will not be delivered.', ("Remove link", "Keep link")),
++    Note("link.copy", "info", "A new chat is created in {tool} with all {n} turns. The two chats will not be kept in sync.", ("Copy to {tool}", "Copy and link", "Cancel")),
++    Note("tool.cannot", "info", "{action} is not available: {reason}."),
++    Note("setup.missing", "warning", "{missing}. {effect}. {fix}.", ("{fix}", "Check again"), "Setup: 1 step left"),
++    Note("setup.trust_once", "info", "In {tool}, type /hooks and trust Baton's two entries.", (), "Setup: 1 step left"),
++    Note("setup.restart_once", "info", "Restart {tool} once so Baton's plugin loads.", (), "Setup: 1 step left"),
++    Note("merge.decision_needed", "warning", "Both sides have turns the other never received. A decision is needed.", ("Decide",), "A decision is needed"),
++    Note("merge.order_not_allowed", "warning", "Turns written in one app stay in their own order; only turns from different apps can pass each other."),
++    Note("keep.too_late", "warning", "This turn has already reached the other side."),
++    Note("side.missing", "warning", "This chat is missing. Nothing is sent to it.", (), "Chat missing"),
++    Note("history.marker", "info", "[Baton: continued from {tool}]"),
++    Note("turn.written_here", "info", "Written here"),
++    Note("turn.shown", "info", "Shown"),
++    Note("turn.added", "info", "Added, shown after a relaunch"),
++    Note("turn.attached", "info", "Attached"),
++    Note("turn.waiting", "info", "Waiting"),
++    Note("turn.skipped", "info", "Skipped"),
++    Note("turn.kept_back", "info", "Kept back"),
++    Note("status.in_sync", "ok", "In sync"),
++    Note("status.ahead", "info", "{tool} is {n} turns ahead"),
++    Note("status.if_send", "info", "If you send a message now, {tool} gets {n} turns, about {tokens} tokens."),
++    Note("status.paused", "warning", "Paused"),
++    Note("status.pinned", "info", "Pinned"),
++    Note("status.kept", "info", "Kept in {tool}"),
++    Note("screen.chats", "info", "Chats"),
++    Note("screen.links", "info", "Links"),
++    Note("screen.sync_status", "info", "Sync status"),
++    Note("screen.empty", "info", "No linked chats yet"),
++    Note("screen.search", "info", "Search chats"),
++    Note("screen.continue", "info", "Continue in {tool}"),
++    Note("screen.open", "info", "Open in {tool}"),
++    Note("screen.link", "info", "Link"),
++    Note("screen.link_recent", "info", "Link a recent chat"),
++    Note("screen.linked", "info", "Linked"),
++    Note("screen.attention", "info", "Needs attention"),
++    Note("screen.suggestions", "info", "Suggestions"),
++    Note("screen.all_chats", "info", "All {tool} chats"),
++    Note("screen.activity", "info", "Activity"),
++    Note("screen.history", "info", "History"),
++    Note("screen.remove", "info", "Remove link"),
++    Note("screen.setup", "info", "Setup"),
++    Note("status.summary", "info", "{tool}'s agent has {agent_has} of {total} turns. Its chat shows {chat_shows}; {waiting} are waiting."),
++    Note("status.synced_up_to", "info", "Synced up to {first_line}"),
++    Note("status.since_you_left", "info", "Since you left: {n} turns, {files} files, {commands} commands"),
++    Note("status.context", "info", "Context in use: {tokens} tokens"),
++    Note("status.reached", "info", "{tool}'s agent has everything above this line"),
++    Note("screen.earlier_turns", "info", "{n} earlier turns, in both chats"),
++    Note("screen.copy", "info", "Copy to…"),
++    Note("screen.resume", "info", "Resume sync"),
++    Note("screen.pause", "info", "Pause"),
++    Note("screen.refresh", "info", "Refresh"),
++    Note("screen.decide", "info", "Decide"),
++    Note("screen.show_reply", "info", "Show full reply"),
++    Note("screen.tool_calls", "info", "{n} tool calls"),
++    Note("filter.all", "info", "All"),
++    Note("filter.waiting", "info", "Waiting"),
++    Note("filter.attached", "info", "Attached"),
++    Note("filter.kept", "info", "Kept back"),
++    Note("filter.pinned", "info", "Pinned"),
++    Note("status.agent_has", "info", "Agent has {n} turns"),
++    Note("status.chat_shows", "info", "Chat shows {n} turns"),
++    Note("status.next_message", "info", "{n} turns attached on next message"),
++)}
++
++
++def get(note_id: str) -> Note:
++    """Read the wording for a note id."""
++    return CATALOGUE[note_id]
+diff --git a/tests/unit/test_planner.py b/tests/unit/test_planner.py
+--- a/tests/unit/test_planner.py
++++ b/tests/unit/test_planner.py
+@@ -1,6 +1,7 @@
+ """Delivery rules, and the scenarios of docs/features/merge.md at the level of the record."""
+ import unittest
+ 
++from baton.adapters.fake.facts import CLAUDE_LIKE
+ from baton.services import planner, status
+ from baton.domain.link import ATTACHED_HISTORY, CLAUDE, CODEX, FULL_COPY, SHOWN, SKIPPED
+ from baton.ledger.sqlite_store import Ledger
+@@ -31,7 +32,7 @@
+         return self.ledger.turns(self.link.id)
+ 
+     def plan(self, add_when_idle=(), **conditions):
+-        return plan_sync(self.ledger.get_link(self.link.id), self.turns(), conditions, add_when_idle)
++        return plan_sync(self.ledger.get_link(self.link.id), self.turns(), conditions, add_when_idle, facts={side: CLAUDE_LIKE for side in self.link.sides})
+ 
+     def names(self, order):
+         return [turn.origin_id for turn in order]
+diff --git a/tests/unit/test_status.py b/tests/unit/test_status.py
+--- a/tests/unit/test_status.py
++++ b/tests/unit/test_status.py
+@@ -1,6 +1,7 @@
+ """The scenarios of docs/features/sync-status.md, at the level of the record."""
+ import unittest
+ 
++from baton.adapters.fake.facts import CLAUDE_LIKE
+ from baton.services import status
+ from baton.domain.link import ADDED, ATTACHED, ATTACHED_HISTORY, CLAUDE, CODEX, FULL_COPY, SHOWN
+ from baton.ledger.sqlite_store import Ledger
+@@ -30,7 +31,7 @@
+ 
+     def status(self, **conditions):
+         link = self.ledger.get_link(self.link.id)
+-        return link_status(link, self.ledger.turns(link.id), conditions)
++        return link_status(link, self.ledger.turns(link.id), conditions, facts={side: CLAUDE_LIKE for side in link.sides})
+ 
+ 
+ class FullCopyTest(StatusCase):
+diff --git a/tests/unit/test_planner_delivery.py b/tests/unit/test_planner_delivery.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_planner_delivery.py
+@@ -0,0 +1,91 @@
++"""The eight rows of Best delivery per tool, plus safety priority boundaries."""
++from dataclasses import replace
++import unittest
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE, CURSOR_LIKE
++from baton.domain.conditions import SideCondition
++from baton.domain.link import FULL_COPY, ATTACHED_HISTORY, Link
++from baton.ledger.sqlite_store import Ledger
++from baton.services.planner import plan_sync
++from baton.services.status import link_status
++from tests.unit.test_ledger import make_turn
++
++
++class DeliveryFactsTest(unittest.TestCase):
++    """Each named measured fact set runs through the same generic service."""
++
++    def setUp(self):
++        self.store = Ledger(":memory:")
++        self.addCleanup(self.store.close)
++        self.link = self.store.link({"claude": "a", "codex": "b"}, FULL_COPY)
++        self.store.record_turns(self.link.id, "claude", [make_turn("one")])
++
++    def check(self, facts, condition, action, automatic=False, mode=FULL_COPY):
++        adapter = FakeAdapter(facts)
++        facts = {"claude": adapter.facts, "codex": adapter.facts}
++        conditions = {"codex": condition}
++        link = replace(self.link, mode=mode)
++        step = plan_sync(link, self.store.turns(link.id), conditions,
++                         {"codex"} if automatic else (), facts=facts).steps["codex"]
++        self.assertEqual(step.action, action)
++        status = link_status(link, self.store.turns(link.id), conditions, facts=facts, add_when_idle={"codex"} if automatic else ()).side("codex")
++        self.assertEqual(status.attached_on_next_message, int(action == "attach"))
++        return step
++
++    def test_row_1_open_on_screen(self):
++        step = self.check(OPENCODE_LIKE, SideCondition(open=True, app_running=True), "add")
++        self.assertEqual(step.needs, ("reopen_chat_to_see",))
++
++    def test_row_2_not_held(self):
++        self.check(CODEX_LIKE, SideCondition(app_running=True), "add")
++
++    def test_row_3_held(self):
++        step = self.check(CODEX_LIKE, SideCondition(open=True), "attach")
++        self.assertIn("close_sync_reopen", step.alternatives)
++
++    def test_row_4_app_closed(self):
++        self.check(CLAUDE_LIKE, SideCondition(), "add")
++
++    def test_row_5_idle_automatic(self):
++        step = self.check(CLAUDE_LIKE, SideCondition(open=True), "add_after_release", True)
++        self.assertEqual(step.needs, ("relaunch_to_see",))
++
++    def test_row_6_replying(self):
++        self.check(CLAUDE_LIKE, SideCondition(open=True, replying=True), "attach", True)
++
++    def test_row_7_closed(self):
++        self.check(CURSOR_LIKE, SideCondition(), "add")
++
++    def test_row_8_running(self):
++        self.check(CURSOR_LIKE, SideCondition(app_running=True), "attach")
++
++    def test_unknown_format_open_hooks_ready_attaches(self):
++        step = self.check(OPENCODE_LIKE, SideCondition(open=True, format_known=False), "attach")
++        self.assertEqual(step.reason, "format_unknown")
++
++    def test_unknown_format_closed_holds(self):
++        step = self.check(OPENCODE_LIKE, SideCondition(format_known=False), "hold")
++        self.assertEqual(step.reason, "format_unknown")
++
++    def test_unknown_format_without_hooks_holds(self):
++        self.check(CLAUDE_LIKE, SideCondition(open=True, hooks_ready=False, format_known=False), "hold")
++
++    def test_any_time_without_hooks_still_adds(self):
++        self.check(OPENCODE_LIKE, SideCondition(open=True, hooks_ready=False), "add")
++
++    def test_running_without_hooks_holds(self):
++        self.check(CURSOR_LIKE, SideCondition(app_running=True, hooks_ready=False), "hold")
++
++    def test_idle_manual_offers_add_now(self):
++        step = self.check(CLAUDE_LIKE, SideCondition(open=True), "attach")
++        self.assertIn("add_now", step.alternatives)
++
++    def test_attached_history_never_releases(self):
++        self.check(CLAUDE_LIKE, SideCondition(open=True), "attach", True, ATTACHED_HISTORY)
++
++    def test_missing_and_paused_override_any_time(self):
++        self.check(OPENCODE_LIKE, SideCondition(exists=False, open=True), "hold")
++        self.store.set_paused(self.link.id, True)
++        self.link = self.store.get_link(self.link.id)
++        self.check(OPENCODE_LIKE, SideCondition(open=True), "hold")
+diff --git a/tests/unit/test_status_visibility.py b/tests/unit/test_status_visibility.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_status_visibility.py
+@@ -0,0 +1,65 @@
++"""Visibility needs actual app-start evidence, never a prompt-hook call."""
++import unittest
++
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE
++from baton.domain.conditions import SideCondition
++from baton.domain.link import ADDED, ATTACHED, FULL_COPY
++from baton.ledger.sqlite_store import Ledger
++from baton.services.status import link_status
++from tests.unit.test_ledger import make_turn
++
++
++class VisibilityTest(unittest.TestCase):
++    def setUp(self):
++        self.store = Ledger(":memory:")
++        self.addCleanup(self.store.close)
++        self.link = self.store.link({"claude": "a", "codex": "b"}, FULL_COPY)
++        self.ids = self.store.record_turns(self.link.id, "claude", [make_turn("one")])
++        self.store.deliver(self.link.id, "codex", self.ids, ADDED, "added", at="2026-10-05T10:00:00Z")
++
++    def side(self, facts, start=""):
++        return link_status(self.link, self.store.turns(self.link.id),
++                           {"codex": SideCondition(open=True, app_started_at=start)},
++                           facts={"claude": facts, "codex": facts},
++                           history=self.store.history(self.link.id)).side("codex")
++
++    def test_at_once_is_immediately_shown(self):
++        side = self.side(CODEX_LIKE)
++        self.assertEqual((side.chat_shows, side.added, side.needs), (1, 0, ()))
++
++    def test_relaunch_keeps_note_until_later_start(self):
++        for start in ("", "2026-10-05T09:00:00Z", "2026-10-05T10:00:00Z", "bad"):
++            with self.subTest(start=start):
++                side = self.side(CLAUDE_LIKE, start)
++                self.assertEqual((side.chat_shows, side.added, side.needs), (0, 1, ("relaunch_to_see",)))
++        side = self.side(CLAUDE_LIKE, "2026-10-05T10:00:00.001Z")
++        self.assertEqual((side.chat_shows, side.added, side.shown_turn_ids), (1, 0, tuple(self.ids)))
++
++    def test_reopen_requires_start_or_explicit_user_mark(self):
++        self.assertEqual(self.side(OPENCODE_LIKE).needs, ("reopen_chat_to_see",))
++        self.assertEqual(self.side(OPENCODE_LIKE, "2026-10-05T10:01:00Z").chat_shows, 1)
++        self.store.mark_shown(self.link.id, "codex")
++        self.assertEqual(self.side(OPENCODE_LIKE).chat_shows, 1)
++
++    def test_prompt_hook_and_non_delivery_event_are_not_evidence(self):
++        self.store._event(self.link.id, "2026-10-05T11:00:00Z", "prompt_hook", "codex", turn_ids=self.ids)
++        self.assertEqual(self.side(OPENCODE_LIKE).chat_shows, 0)
++        self.assertEqual(self.side(OPENCODE_LIKE, "2026-10-05T10:01:00Z").chat_shows, 1)
++
++    def test_mixed_delivery_times_only_show_older_turn(self):
++        ids = self.store.record_turns(self.link.id, "claude", [make_turn("two")])
++        self.store.deliver(self.link.id, "codex", ids, ADDED, "added", at="2026-10-05T12:00:00Z")
++        side = self.side(CLAUDE_LIKE, "2026-10-05T11:00:00Z")
++        self.assertEqual((side.chat_shows, side.added, side.shown_turn_ids), (1, 1, tuple(self.ids)))
++
++    def test_attached_never_becomes_shown_after_start(self):
++        ids = self.store.record_turns(self.link.id, "claude", [make_turn("two")])
++        self.store.deliver(self.link.id, "codex", ids, ATTACHED, "attached", at="2026-10-05T10:00:00Z")
++        side = self.side(CLAUDE_LIKE, "2026-10-05T12:00:00Z")
++        self.assertEqual((side.chat_shows, side.attached), (1, 1))
++
++    def test_naive_or_invalid_delivery_time_does_not_prove_visibility(self):
++        self.store.db.execute("update events set at='bad' where kind='added'")
++        self.assertEqual(self.side(CLAUDE_LIKE, "2026-10-05T12:00:00Z").chat_shows, 0)
++        self.store.db.execute("update events set at='2026-10-05T10:00:00' where kind='added'")
++        self.assertEqual(self.side(CLAUDE_LIKE, "2026-10-05T12:00:00Z").chat_shows, 0)
+diff --git a/tests/unit/test_notes.py b/tests/unit/test_notes.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_notes.py
+@@ -0,0 +1,32 @@
++"""CP1 note templates render complete contract values and stable actions."""
++import unittest
++from baton.notes.catalogue import CATALOGUE, get
++
++
++class NoteCatalogueTest(unittest.TestCase):
++    def test_every_note_renders_all_fields_for_each_tool(self):
++        for tool in ("Claude", "Codex", "OpenCode", "Cursor"):
++            for note in CATALOGUE.values():
++                with self.subTest(tool=tool, note=note.id):
++                    values = {field: tool if field == "tool" else "sample" for field in note.fields}
++                    result = note.to_dict(values)
++                    self.assertEqual(result["id"], note.id)
++                    self.assertEqual(result["values"], values)
++                    for text in (result["text"], result["status_line"] or "", *(item["label"] for item in result["buttons"])):
++                        self.assertNotIn("{", text)
++                    for button in result["buttons"]:
++                        self.assertTrue(button["id"])
++                        self.assertIsInstance(button["primary"], bool)
++
++    def test_missing_value_refuses_partial_note(self):
++        with self.assertRaises(KeyError):
++            get("format.unknown_version").render({"tool": "Example"})
++
++    def test_delivery_alternatives_have_stable_actions(self):
++        self.assertEqual(get("new_chat.relaunch").buttons[0].id, "close_sync_reopen")
++        self.assertEqual(get("write.release").buttons[0].id, "add_now")
++
++    def test_templates_do_not_hard_code_a_tool_name(self):
++        for note in CATALOGUE.values():
++            for name in ("Claude", "Codex", "OpenCode", "Cursor"):
++                self.assertNotIn(name, note.template)

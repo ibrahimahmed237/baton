@@ -1,0 +1,335 @@
+# Track D — the Mac app
+
+SwiftUI, macOS menu-bar app plus a window. It shows what the engine returns and sends the user's choices back. It holds no rules: no sync logic, no per-tool behaviour, no sentences of its own. Built against [CONTRACT.md](CONTRACT.md) and the fixture files, so it does not wait for the engine.
+
+Mockup: https://claude.ai/artifact/XCLxrptfHM5QAqWMoRdLjh. Each package names its board.
+
+## Structure
+
+```
+app/Sources/Baton/             thin executable and scenes
+app/Sources/BatonKit/          Engine/ and Models/
+app/Sources/BatonUI/           Theme/, Components/, Screens/ (views and view models)
+app/Tests/BatonKitTests/       existing engine/model tests
+app/Tests/BatonUITests/        fixture view-model tests and ImageRenderer snapshots
+app/Fixtures/                 hand-made through CP1; C2 generates later
+app/Snapshots/                light/graphite PNGs for human review, git-ignored
+```
+
+Rules for this track:
+- A view model takes an `EngineClient` and nothing else. Previews and tests use `FixtureEngine`.
+- A view shows `Note.text`; it never builds a sentence. Buttons come from `Note.buttons`.
+- Colour comes from `Theme` by meaning (state, tool, tone), never a literal in a view.
+- Every destructive or unusual action goes through `ConfirmBar`, which stays disabled until its notes are on screen (more-tools G4a).
+- Each screen has an ImageRenderer test in light and graphite for every fixture state below: assert a non-empty image and write its PNG to app/Snapshots/. View-model tests provide behavioural assertions. No third-party dependencies.
+- D1 adds the BatonUI target and app/.gitignore entry for Snapshots/. D2–D4 add hand-made fixtures until C2.
+
+---
+
+## D0. Project, models, engine client
+
+**Status.** Done 2026-10-05, commit `bc2e180`.
+
+**Goal.** An app that launches, decodes every contract object, and can run either engine.
+**From.** CONTRACT.md.
+**Depends on.** CONTRACT.md frozen (CP0).
+**Files.** `App/`, `Engine/`, `Models/`.
+**As built.** A Swift package (`app/Package.swift`) with a library `BatonKit` and an executable `Baton`, so it builds and tests from the command line with `swift build` and `swift test`. An Xcode project is added in D13 for signing.
+**Steps.** 1. Swift package, menu-bar extra plus window, no dock icon by default. 2. Codable models for Note, Chat, Side, Turn, Step, Plan and each command's result. 3. `EngineClient` with one async function per command. 4. `ProcessEngine` runs `baton … --json`, maps `error` objects to a Swift error carrying the note. 5. `FixtureEngine` loads `Fixtures/<command>.<state>.json`.
+**Tests.** Decoding every fixture file.
+**Done when.** The app starts and lists the fixture links.
+
+## D1. Theme and components
+
+**Goal.** The look, once.
+**From.** DESIGN 7 (glass, light and Graphite, colour by meaning, tool identity colours).
+**Board.** all.
+**Files.** `app/Package.swift`, `app/.gitignore`, `app/Sources/BatonUI/Theme/`, `app/Sources/BatonUI/Components/`, `app/Tests/BatonUITests/`.
+**Components.** NoteView, StateChip, ToolDot, TurnRow, MessageBubble, PlanSteps, ConfirmBar, MeterBar.
+**Steps.** 1. Palette tokens for light and graphite; the glass material with the see-through setting. 2. `StateColour`: added green, attached and waiting amber, merged violet, link changes and main action blue, undo and conflict red. 3. `ToolColour`: Claude coral, Codex teal, OpenCode yellow, Cursor sky. 4. Components listed above, each with previews in both themes. 5. `NoteView` by tone; `PlanSteps` numbers steps and colours close red, write green, reopen blue.
+**Tests.** Snapshot per component and theme.
+**Done when.** Every component previews in both themes with no literal colour.
+
+## D2. Menu-bar popover
+
+**Files.** `app/Sources/BatonUI/Screens/Popover/`, `app/Sources/Baton/`, `app/Sources/BatonKit/Models/Results.swift` (optional engine notes, additive), `app/Sources/BatonUI/Components/Components.swift` (optional exclusion of duplicated plan notes), `app/Fixtures/`, `app/Tests/BatonUITests/`.
+
+**Board.** Menu bar and window. **From.** DESIGN 7; sync-status R15, R16; G9.
+**Shows.** One line per link: both tools' dots, name, headline note, state colour. Continue button for the selected link. "Link a recent chat" with the suggestion count. Icon badge when a link needs a decision.
+**Fixture states.** no links; in sync; one side ahead; waiting; relaunch needed; decision needed; paused; setup incomplete.
+**Done when.** All eight states snapshot correctly; Continue calls `continue` and shows its plan.
+
+## D3. Window shell and chat lists
+
+**Files.** `app/Sources/BatonUI/Screens/Window/`, `app/Sources/Baton/`, `app/Sources/BatonKit/Models/Shared.swift` (optional engine needs_attention, additive), `app/Fixtures/`, `app/Tests/BatonUITests/`.
+
+**Board.** Menu bar and window. **From.** DESIGN 7; G2, G9.
+**Shows.** Sidebar: Linked, Needs attention, Suggestions, All chats per tool (only installed tools), Activity. Detail area hosts the screens below.
+**Fixture states.** each list empty and filled; a tool not installed.
+**Done when.** Navigation works on fixtures; an uninstalled tool is not offered.
+
+## D4. Sync status
+
+**Files.** `app/Sources/BatonUI/Screens/SyncStatus/`, `app/Sources/BatonUI/Screens/Window/` (detail integration), `app/Sources/BatonUI/Screens/Popover/PopoverPreviews.swift` (supplementary fixture previews left uncommitted from D2), `app/Sources/BatonUI/Components/Components.swift` (engine-provided state labels), `app/Sources/BatonKit/Engine/EngineClient.swift` (pause/resume immediate-command flags), `app/Sources/BatonKit/Engine/FixtureEngine.swift` (additive per-link fixture routing), `app/Fixtures/`, `app/Tests/BatonUITests/`, `app/Tests/BatonKitTests/` (pause/resume transport regression).
+
+**Board.** Sync status. **From.** sync-status R1 to R20; S1 to S12; W5 to W8; A1, A7.
+**Shows.** Both names with tool dots and folder; a card per side (agent has, chat shows, attached, waiting and why, synced up to, "if you send here now", context meter, since-you-left line, setup line, notes with their buttons); the turn-by-turn strip; the conversation as messages with each turn's state per side; filter; pause, history, remove, copy, open chat.
+**Fixture states.** S1 to S12, one fixture each; plus paused, side missing, hooks not ready, format unknown.
+**Done when.** Each S fixture renders the sentence its spec row expects.
+
+## D4b. Visual fidelity pass
+
+**Goal.** D1 to D4 look like the mockup boards, not just contain the same information.
+**From.** DESIGN 7 (glass, Graphite, colour by meaning); the mockup boards "Menu bar and window" and "Sync status"; reviewer findings F2 to F6 in STATUS.md.
+**Depends on.** D4.
+**Files.** `app/Sources/BatonUI/` (theme, components, the three screens), `app/Sources/Baton/BatonApp.swift` (native menu-bar scene integration), `app/Sources/BatonKit/Models/` (tool labels), `app/Fixtures/`, `app/Tests/BatonUITests/`; F2/F6 support also adds to `docs/plan/CONTRACT.md`, `baton/notes/catalogue.py`, and `tests/unit/test_notes.py` (no other engine behavior changes).
+**Steps.** 1. Glass panels with the see-through setting; window with sidebar and detail as on the board. 2. Sync status: both names and tool dots in the header, the two app cards side by side, each with its sentences, meter with its sentence, since-you-left only where it applies, offer buttons in one row. 3. Turn strip and conversation under the cards, messages as bubbles with the app chip and state per side. 4. Tool display names from `tool_label`; times formatted by the system. 5. Popover as on the board: pair dots, name, headline, state colour.
+**Tests.** View-model tests for F2, F3, F5, F6. PNGs for every state, light and Graphite.
+**Done when.** Ibrahim has looked at the running app next to the mockup and says the three screens match. The PNGs are for the orchestrator's own check before asking him.
+
+## D5. Link and copy dialogs
+
+**Files.** `app/Sources/BatonUI/Screens/Link/`, `app/Sources/BatonUI/Screens/Window/` (dialog integration), `app/Sources/BatonKit/Engine/` (additive dialog transport and fixture routing), `app/Sources/BatonKit/Models/` (additive presentation fields), `app/Fixtures/`, `app/Tests/BatonUITests/`, `app/Tests/BatonKitTests/`; `baton/notes/catalogue.py` and `tests/unit/test_notes.py` for the specified dialog labels; additive `docs/plan/CONTRACT.md` for R9 and engine-supplied presentation. Orchestrator coordinates shared catalogue/contract edits.
+
+**Board.** Link a chat. **From.** DESIGN 4 "Linking"; A0, A3, A4; G2, G4a, G5, G6; X1, X2.
+**Shows.** Tool picker (installed tools; one not set up is shown with what is missing); the three ways with their tags; the "What will happen" block from the plan's notes; Create, Copy without linking, Cancel. Already-linked chat: the change-link note.
+**Fixture states.** one per target tool; already linked; a way greyed out with its reason; large chat suggesting a brief.
+**Done when.** Switching the tool swaps the notes with no text in the view.
+
+## UI1. Window, navigation and scroll interaction audit
+
+**Goal.** Repair the interaction defects Ibrahim reported on 2026-10-06, preserving the accepted glass appearance.
+**From.** Ibrahim's UI review request; D3/D4/D5 existing screens. No feature spec is changed.
+**Depends on.** D4b and D5 working-tree implementations.
+**Files.** BatonApp.swift; WindowView/WindowViewModel; SyncStatusView/SyncStatusViewModel; LinkDialogView; PopoverView; Components/WindowPresentation.swift; WindowInteractionTests, PopoverTests, LinkDialogTests; plan status, this track and UI1 report.
+**Steps.** Allow native resize/full screen and flexible content; make padded row areas clickable; retain selection on repeated navigation; bound long dialog/popover content and use native overlay scrolling; repair repeated turn jumps; independently challenge and validate.
+**Tests.** Native fixture window controls, actual blank-row mouse events, repeat navigation/jump requests, full-size renders in both themes, native SwiftUI overlay attachment/overflow, scroll to end of long dialog. Mutation of click shapes must fail the click test.
+**Done when.** These regression checks and the full engine/app checks pass, and the independent review has no blockers. Human confirmation of the actual full-screen transition and live visual appearance remains explicitly pending when desktop capture is unavailable. Broader polish stays tracked in the UI1 report and D13.
+
+## UI2. Glass title bar
+
+**Goal.** Blend native window chrome into the approved light/graphite app palette.
+**From.** Ibrahim's title-bar request, 2026-10-06.
+**Files.** BatonApp.swift; Components/WindowPresentation.swift; WindowView.swift; WindowInteractionTests.swift; plan status/track/report.
+**Tests.** Native title-bar flags/colors/controls in both themes, theme-change attachment, hosted content at minimum size, existing click/resize tests and full app suite.
+**Done when.** Native title bar uses the existing palette without losing controls or clipping body content, independent review and checks pass. Native CUA confirmed light chrome and actual full-screen entry; graphite is checked by native configuration tests.
+
+## D6. What-will-happen and confirmation
+
+**Status.** D6 accepted 2026-10-09 for CP2 fixture-screen scope after five reviewer findings were fixed;129 app/build pass. Committed `604e6d8`; [report](reports/D6-2026-10-09.md).
+**Files.** `app/Sources/BatonUI/Screens/PlanReview/`, additive `app/Sources/BatonKit/Models/` and shared `ConfirmationGate`, focused D6/D5 tests and minimal D6 fixtures. C2 owns final fixture generation; root owns shared contract/catalogue.
+**Repair acceptance.** Exact plan/revision display receipt, action provenance and side routing, semantic copy-and-link, preservation of unavailable CP3 requests and action-specific catalogue confirmation/Cancel controls. Unknown or ambiguous buttons never apply. Tests validate full requests and tokens, not unconditional fake success.
+
+**Board.** What will happen, per tool; Relaunch warning. **From.** more-tools notes table, G4a, G4b; A6; T5, T6.
+**Shows.** `PlanSteps` and notes for any plan; the offers close-sync-reopen, sync now and relaunch later, attach instead; the replying warning naming chats, with "when idle".
+**Fixture states.** each row of the notes table that has buttons.
+**Done when.** No plan can be confirmed before its notes are shown.
+
+## D7. Hand-off and limit offer
+
+**Board.** Hand-off. **From.** DESIGN 6; W1 to W6; V1 to V6.
+**Shows.** Limit banner with or without a reset time; both sides' fullness; full sync or brief; who writes the brief and why; preview.
+**Fixture states.** linked and not linked; with and without reset time; with and without context size; brief fallback.
+**Done when.** V1 to V6 fixtures render.
+
+**CP2 repair scope (Ibrahim approved, 2026-10-09).** `Screens/HandOff/`, additive BriefDetails metadata, PlanReviewView rendering the exact engine artifact before Create chat, and shared PlanReviewViewModel stage/policy validation with narrow D6 compatibility regressions. Reload clears prior actions and validates link/destination; stale responses cannot act. Full mode previews Continue without any brief request. Automatic/Offline and target changes invalidate approval; limit offers route by immutable source/destination metadata. Actual catalogue notes and generation/create display gates are required, with adversarial view-model tests and inspected light/Graphite PNGs. Final generated fixtures belong to C2; production window wiring remains D12.
+
+## D8. Merge
+
+**Board.** Both chats have new turns. **From.** merge.md M1 to M12; U1 to U9.
+**Shows.** Last shared turn; unsynced turns as messages with app and time; reorder by buttons and drag, refused moves explained; presets; live result per app; overlap and same-file warnings; keep one side, split; "always by time".
+**Fixture states.** U1, U2, U4, U6, U7.
+**Done when.** Reordering calls `merge --show` with the new order and redraws the outcome.
+
+## D9. History and undo
+
+**Board.** History; Undo in Claude; Undo in Codex. **From.** A8 to A10; T7 to T11; notes table (four undo rows).
+**Shows.** Entries newest first, each with kind tag, colour bar and legend; undo and restore buttons. Undo dialog: turns grouped as "Baton added" and "written afterwards", those that exist only there called out, the turn it ends at, and the per-tool note (cut, or shorter chat).
+**Fixture states.** history with every kind; undo for a cut-capable tool and a shorter-chat tool; undo while replying.
+**Done when.** T7 to T11 fixtures render and the confirm button names the action and count.
+
+## D10. Second opinion
+
+**Board.** Second opinion. **From.** W9 to W11; V9, V10.
+**Shows.** The turn, the question, token estimate, read-only note, the answer, add / copy / ask again / discard, and the cannot-run note.
+**Fixture states.** before running; answer; cannot run (limit, command missing, signed out).
+**Carry-over from CP0.** The contract gained `answer_id` on `ask` after the models were written; add it to the `ask` result type and its sample here. Also replace the `facts` dictionary in the setup models by a typed `Capabilities` now that its JSON is fixed.
+
+## D11. Setup and settings
+
+**Board.** Setup and settings. **From.** DESIGN 6, 7; G7; X5; CONTRACT settings table.
+**Shows.** A card per tool with findings and their fix buttons; settings from the contract table; theme and see-through.
+**Fixture states.** all ready; Codex not trusted; OpenCode command damaged; Cursor runner signed out; a tool not installed; unknown format version.
+
+## D12. Wire to the real engine
+
+**Goal.** Replace fixtures by `ProcessEngine` everywhere; refresh on a timer through `baton watch --once` and on window focus.
+**Depends on.** CP3 (C1 to C5).
+**Tests.** UI test on a temporary `BATON_HOME` with fake-adapter data.
+**Done when.** Every screen works against the engine with the fake adapters.
+
+## D13. Polish
+
+Empty states, loading and error states for every screen, keyboard navigation, VoiceOver labels on chips and dots (state and tool names spoken), reduced-transparency setting honoured, notifications for offers.
+**Done when.** Each screen has its empty, loading and error snapshot in both themes.
+
+## UI3 — native full-screen routing
+
+**Goal:** Correct Ibrahim’s reported normal window zoom and transition chrome churn.
+
+**Files:** app/Sources/BatonUI/Components/WindowPresentation.swift; app/Tests/BatonUITests/WindowInteractionTests.swift; plan status/report records.
+
+**Tests:** Both window paths receive fullScreenPrimary without conflicting auxiliary/none flags; repeated chrome updates do not mutate window geometry/styles; native fixture enter/exit full screen and sidebar click after transition.
+
+**Done when:** Green control enters native full screen on the ordinary window, transitions preserve interaction, full regression/build gates pass and independent review completes.
+
+UI3 continuation (Ibrahim, 2026-10-06): main window opens on Finder launch and reopen, with close/minimize/full-screen controls; menu icon remains. Scope also includes app/Sources/Baton/BatonApp.swift and a shared main-window controller in WindowPresentation.swift. A single window/model is reused, rather than separate review and ordinary windows. Tests cover native style/control presence and close/reopen identity.
+
+UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; separate code review no blocker; ordinary fixture launch plus native full-screen/Escape/sidebar verified; Ibrahim confirms visible controls. Ctrl-Command-F wiring remains in keyboard polish, not claimed fixed.
+
+## UI4 — orient the conversation timeline
+
+**Goal.** Make it immediately clear which turn a message belongs to, which app produced it, what each app has received, where the reached boundary sits, and which folder a linked chat belongs to.
+
+**From.** Ibrahim's 2026-10-06 report that the Attention conversation's messages and “has everything above this line” notes are difficult to interpret; sync-status R9, R10, R11 and R13.
+
+**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Sources/BatonUI/Screens/Window/WindowView.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI4-2026-10-06.md`; `docs/plan/reports/patches/UI4.patch`.
+
+**Steps.** Label each conversation card with its turn sequence, source app and time; group the per-app state with each app identity; place each existing reached note inside its reached turn card, directly below its messages, with an inset connector rail instead of a full-width divider. If filtering or folding hides that reached turn, show its note above the visible subset; suppress it when no turns remain visible. Show chat folders as compact path chips with middle truncation and the full path available on hover and to accessibility tools. Keep engine wording, ordering, filtering, folding, jump behavior, and the existing palette.
+
+**Checks.** Challenge the diff against S1–S12 and R9–R13; run the repository's app build and tests; inspect the actual fixture rendering before closing visual acceptance. Do not infer the display copy from tool names or create user-facing sentences in the view.
+
+**Done when.** Each visible card is self-identifying, both sides' state is adjacent to its tool identity, reached notes appear only when there are visible turns and their “above this line” wording matches their position, and folder paths read as intentional location labels. No message or state ordering changes.
+
+## UI5 — signed identity and useful empty screens
+
+**Goal.** Use Ibrahim's chosen burgundy/black handoff logo, including I.A in its compact form, to replace blank window/detail/list/conversation areas with relevant explanations.
+
+**From.** Ibrahim's 2026-10-06 logo and empty-screen requests; he selected burgundy/black and asked for I.A in the compact logo.
+
+**Depends on.** UI4, D3 and D4.
+
+**Files.** `app/Brand/`; `app/Package.swift`; `app/Sources/Baton/BatonApp.swift`; BatonUI `Resources/Brand/`, `Components/BrandMark.swift`, `Components/EmptyStateView.swift`, WindowView/WindowViewModel, SyncStatusView/SyncStatusViewModel, PopoverView/PopoverViewModel; existing fixtures' notes; focused BatonUITests; `baton/notes/catalogue.py`; plan status, this track, UI5 report and package patch.
+
+**Steps.** Generate the chosen signed icon without changing the handoff mark. Bundle the reviewed identity in BatonUI. Use catalogue-provided title/body notes for no item selected, no linked chats, no attention items, no suggestions/chats/activity, no conversation turns, and filters without matches. Use the appropriate existing navigation action where it is useful; never invent a data action. Show no empty-success claim while a model is loading or failed. Keep changes additive and preserve existing palette, sync rules and launch/window behavior.
+
+**Tests.** Check empty-state selection against real fixture model data, loading/error versus empty success, and filtered conversation versus genuinely empty history. Render new components/states in both themes; run engine suite and app build/tests. Inspect the signed compact artwork and current fixture window.
+
+**Done when.** Empty places explain their state and next step, with catalogue sentences only. Burgundy/black and I.A are present in the compact logo and app review; brand remains readable on graphite using its light backing. Build/tests and independent review pass. Menu-bar adoption of tiny signed artwork is not required by this package.
+
+UI4/UI5 completion 2026-10-06: independent review findings fixed. Shared tree passes 377 engine tests, Swift build and 79 app tests with installed SDK26.5/TestingMacros flags. Signed compact asset and light/graphite renders inspected; current native fixture shows signed empty state and Show all turns restores messages. UI5 preserves the intentionally legacy fixture without presentation notes.
+
+## UI6 — transparent logo and dark glass
+
+**Goal.** Carry the signed burgundy/black mark into the menu bar and remove the baked-in white tile from current app logo placements.
+
+**From.** Ibrahim's 2026-10-06 request for the changed menu icon, no white margins around B/I.A, and gray glass around the logo in dark mode.
+
+**Files.** app/Brand asset and README; BatonUI/Resources/Brand asset; Components/BrandMark.swift and WindowPresentation.swift; Screens/Popover/PopoverView.swift; Theme/Theme.swift if needed; Sources/Baton/BatonApp.swift; focused BatonUITests; plan status/track/UI6 report/patch.
+
+**Steps.** Extract transparent signed mark with imagegen, preserve handoff shape and I.A. Use the cutout directly in light mode and a restrained gray glass backing for graphite. Replace the menu's chain glyph with the same identity while retaining the decision badge. Keep icon colors readable on both surfaces; refresh only the already-authorized fixture bundle.
+
+**Checks.** Confirm PNG alpha excludes the old white tile; inspect rendered brand and menu states in both themes, badge/no badge and reduced transparency. Run the repository engine/app gates and independent review.
+
+**Done when.** Menu uses the signed mark, no baked-in white square remains in runtime logo placements, graphite uses gray glass and reduced-transparency fallback, and tests/build/review are green. I.A is retained but its tiny menu rendering is not claimed as comfortably readable.
+
+UI6 completion 2026-10-06:377 engine /81 app tests and installed-SDK Swift build pass. Separate reviewer confirms accessibility injection/opaque pixels and stable initial root identity fixes. Native graphite fixture and light/graphite/menu/badge/reduced-transparency renders inspected. Direct menu-item capture was unavailable; signature remains tiny at menu size. Ready after UI5.
+
+## UI7 — bare in-app identity and theme choice
+
+**Goal.** Keep a white-tile Dock icon, remove all panels around in-app logos in both appearances, and expose Light/Dark/System choices.
+
+**From.** Ibrahim's 2026-10-06 clarification: app bar icon should have white around it, inside app no surrounding panel, and where to switch between themes. Earlier context identifies app bar as Dock.
+
+**Files.** app/Brand and BatonUI/Resources/Brand dark asset; Components/BrandMark.swift and WindowPresentation.swift; Theme/Theme.swift and ThemePreference.swift; WindowView.swift; PopoverView.swift; BatonApp.swift; note catalogue and applicable links fixtures; focused BatonUITests; status/track/UI7 report/patch.
+
+**Steps.** Separate content, menu and Dock placements. Bare transparent marks for content in both themes; B and I.A remain burgundy/black as Ibrahim explicitly clarified. Dock keeps burgundy/black on white; menu retains its prior theme-aware badge rendering. Persist local app Light/Dark/System appearance preference and expose a catalogue-labelled sidebar selector; System follows macOS. Update window/popover without losing selection and without changing OS settings. C2/D12 must later wire preference to engine settings as applicable.
+
+**Checks.** Pixel/snapshot assertions for bare content and white Dock, persistence/resolution of preferences, stable window/model state, full app/engine gates, native fixture theme switching and independent review.
+
+**Done when.** In-app logo has no backing in either theme, Dock tile is white, theme choice is visible and retained, build/tests/review pass and running fixture was inspected.
+
+UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build pass. B/I.A image pixels identical across themes, content margins transparent, Dock borders white. Native sidebar Light/Dark/System inspected and changed surfaces; independent hosted-update test warning fixed and rechecked. Engine preference integration remains C2/D12. No image replacement, real chats or Git writes.
+
+
+## UI8. Clear receipts, brand contrast and preview settings
+
+**From.** Ibrahim, 2026-10-06: white edge around black menu artwork; smaller white Dock margins; burgundy/black dark backdrop; clearer same-turn history receipts; Settings with defaults; compact popover and confirmed Quit.
+**Files.** app/Sources, app/Tests, app/Fixtures; baton/notes/catalogue.py and tests/unit/test_notes.py; additive CONTRACT settings notes; docs/plan records/reports.
+**Steps.** Preserve burgundy/black B and I.A; outline menu silhouette, never recolor content artwork. Group receipt boundaries by their actual turn, explain hidden boundaries separately and suppress when no displayed messages. Build the settings portion of D11 early, with all ten contract keys, choices, defaults and saved fixture-only configuration. Apply appearance/glass immediately across window/popover. Confirm every user Quit request; keep compact popover footer accessible while long content scrolls.
+**Tests.** Receipt grouping/filtering; Settings choices, defaults, validation, persistence, failed save; native CLI settings arguments; Quit cancel/confirm; brand pixels and light/graphite PNGs.
+**Done when.** Shared tests/build pass; separate review is resolved; rendered views and refreshed fixture are inspected. Full D11 setup boards and D12 real-engine connection are not claimed.
+
+## UI9 — calm graphite and a refined menu popover
+
+**Goal.** Make the compact menu surface feel current and readable, replace the near-black dark backdrop with softer gray and a very restrained burgundy tint, and use a neutral theme-aware outline around the menu mark. Preserve the signed B/I.A artwork.
+
+**From.** Ibrahim's 2026-10-06 request for a black/white/gray-only menu-icon surround, a gray dark theme with distant calm burgundy, and modernization of the small window.
+
+**Files.** `app/Sources/BatonUI/Theme/Theme.swift`; `Components/BrandMark.swift`; `Screens/Popover/PopoverView.swift`; focused `app/Tests/BatonUITests/`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI9-2026-10-06.md`; `docs/plan/reports/patches/UI9.patch`.
+
+**Steps.** Raise dark surface luminance into graphite gray; use layered neutral gray surfaces and a low-intensity burgundy accent set back from content. Choose the menu silhouette edge from neutral grayscale according to appearance, without changing the source image. Tighten popover hierarchy, row surfaces, action pills, and footer spacing within its existing compact footprint; preserve all engine-provided sentences, controls, actions and accessibility behavior.
+
+**Checks.** Assert the neutral outline palette and preserve source-image pixels; render menu mark with/without badge in both themes; snapshot the compact popover in both themes; run app build/tests and engine suite per the package loop. Inspect the refreshed fixture in dark appearance and compare its gray/burgundy balance to the previous version. Independently challenge the scoped diff.
+
+**Done when.** The popover is visually coherent at its compact size, the menu mark has contrast on both light and dark surfaces without a white tile, the dark palette reads as gray with a quiet remote burgundy cast, behavior and copy are unchanged, checks/review pass, and Ibrahim can inspect the running fixture.
+
+## UI10 — tighter Dock tile and glass-gray menu mark
+
+**Goal.** Reduce the excess white margin around the Dock identity and make the menu-bar mark read as a neutral, glassy grayscale symbol. Keep the signed burgundy-and-black artwork unchanged in the app and Dock.
+
+**From.** Ibrahim, 2026-10-06: shrink the white surround on the app/Dock icon and make the menu-bar icon glassy without colors.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Theme/Theme.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI10-2026-10-06.md`; `docs/plan/reports/patches/UI10.patch`.
+
+**Steps.** Crop only transparent source padding for the Dock renderer, retain a small clear margin around every mark and signature, and keep the original color pixels. Render the menu mark with a theme-aware neutral grayscale gradient and neutral decision badge on a transparent background; leave app/content and Dock colors unchanged.
+
+**Checks.** Assert Dock mark bounds expand while the signature remains visible and burgundy source colors remain. Assert menu icon pixels are grayscale in Light and Graphite with and without the decision badge; render all four snapshots. Run `swift build`, `swift test`, and the engine suite; inspect the rendered menu and Dock PNGs.
+
+**Done when.** The Dock white margin is visibly tighter without clipping the signature; the menu-bar mark and badge use only neutral grayscale on transparent surroundings; app and Dock identity colors stay intact; snapshots, checks and independent review pass.
+
+## UI11 — conventional Dock scale and crisp menu-bar symbol
+
+**Goal.** Bring the B/I.A artwork closer to the visual scale of other macOS Dock icons and keep the menu-bar mark sharp at its small size, with a neutral glass finish and no colors.
+
+**From.** Ibrahim, 2026-10-06: the Dock artwork still looks oversized beside other apps; the menu-bar artwork looks pixelated and should be colorless glass like ChatGPT.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI11-2026-10-06.md`; `docs/plan/reports/patches/UI11.patch`.
+
+**Steps.** Scale only the complete signed Dock artwork down to a conventional safe area while preserving the white rounded tile and B/I.A colors. Replace the tiny raster menu mark with a native vector link symbol, use the existing grayscale glass gradient, and keep the decision dot neutral.
+
+**Checks.** Assert the Dock mark occupies a bounded conventional fraction of its tile and the complete signature remains visible. Check the menu image's near-opaque pixels for neutral grayscale, transparent background, clear badge state and distinct Light/Graphite rendering. Snapshot both Dock sizes and all menu states; run the app build/tests and engine suite.
+
+**Done when.** The Dock mark reads at a familiar macOS app-icon scale with the entire signature; the menu image is crisp, monochrome, glass-like, and visible in both themes; all snapshots and tests pass and independent review finds no issue.
+
+## UI12 — compact Dock tile and signed monochrome menu mark
+
+**Goal.** Make the whole Baton Dock icon sit more quietly beside other apps and restore the B/I.A logo to the menu bar without colored pixels.
+
+**From.** Ibrahim, 2026-10-06: the application icon still looks too large, and UI11's chain symbol no longer looks like Baton's own logo. Use the same signed logo in a glassy monochrome menu treatment.
+
+**Files.** `app/Sources/BatonUI/Components/BrandMark.swift`; `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`; `app/Tests/BatonUITests/BrandTests.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI12-2026-10-06.md`; `docs/plan/reports/patches/UI12.patch`.
+
+**Steps.** Fit the white Dock tile and its complete colored artwork inside a smaller transparent app-icon canvas. Render the bundled signed mark, cropped to its alpha bounds, as a high-resolution grayscale gradient in the menu bar; keep the neutral decision badge. Do not change the content logo or its source colors.
+
+**Checks.** Measure transparent space outside the Dock tile, white inside the tile, bounded mark size and surviving I.A pixels. Compare the plain menu image to a render of the signed mark so a generic link cannot replace it unnoticed; check all menu pixels remain neutral in both themes and badge states. Inspect the generated PNGs and the running fixture, then run the app and engine gates and review the diff.
+
+**Done when.** The complete Dock tile is visibly smaller, the signed logo is back in the menu bar with only gray glass values, badge/plain states remain distinct, and the build/tests and visual review pass.
+
+UI12 completion 2026-10-06: 379 engine tests, 96 app tests and Swift build pass with the installed SDK flags. Dock and all four menu PNGs were inspected; the final signed fixture launches and shows the main window. Independent review found a repeated large-image crop and a self-referential menu test; both were fixed and the reviewer found no remaining blocker. Actual system menu-bar pixels were not captured.
+
+## UI13 — clearer conversation receipt and reading order
+
+**Goal.** Make the point each agent has reached easy to understand while reading a turn, without the near-black receipt box overwhelming the messages.
+
+**From.** Ibrahim, 2026-10-07: the black history area in the conversation looks out of place, and it is hard to tell what is going on.
+
+**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Tests/BatonUITests/ReceiptTests.swift`; `app/Fixtures/status*.json`; `baton/notes/catalogue.py`; `tests/unit/test_notes.py`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI13-2026-10-07.md`; `docs/plan/reports/patches/UI13.patch`.
+
+**Steps.** Present the receipt as a small timeline endpoint attached to its exact turn, using the same graphite/light surface as the conversation. Put one plain explanation of agent context versus visible chat messages near the conversation heading. Clarify receipt copy in the note catalogue and fixture projections. Preserve filtered and folded receipt placement and per-side turn states.
+
+**Checks.** Render the shared, separate and hidden receipt states in Light and Graphite; inspect the resulting PNGs and the running fixture. Assert the note copy and model receipt grouping, including an empty filter. Run Swift build/tests and the engine suite, then independent review.
+
+**Done when.** A reader can follow a turn to the endpoint marker and understand what both agents have, while the card has no near-black inset; hidden and filtered states remain truthful, and all checks pass.
+
+UI13 completion 2026-10-07: 380 engine tests, 96 app tests and Swift build pass with installed SDK flags. Shared, separate and hidden receipt renders were inspected in both themes, and the final signed fixture shows the updated conversation. Independent review caught copy that overstated receipt continuity and a missing separate-endpoint render; both were fixed, then review found no remaining blocker. The receipt is a position in the combined order, not a guarantee that every earlier turn was received after a skip.

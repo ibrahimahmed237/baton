@@ -1,0 +1,24 @@
+{
+  "ended_at": "2026-10-05T12:01:00Z",
+  "first_line": "Orchard task 1",
+  "id": 41,
+  "messages": [
+    {
+      "kind": "prompt",
+      "text": "Orchard task 1"
+    },
+    {
+      "kind": "reply",
+      "text": "Completed orchard work."
+    }
+  ],
+  "origin": "claude",
+  "pinned": false,
+  "seq": 1,
+  "started_at": "2026-10-05T12:01:00Z",
+  "states": {
+    "claude": "written_here",
+    "codex": "shown"
+  },
+  "tokens": 9
+}

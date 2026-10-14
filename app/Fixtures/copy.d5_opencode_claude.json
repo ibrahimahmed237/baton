@@ -1,0 +1,39 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d5_opencode_claude",
+  "refusal_kind": "not_available",
+  "steps": []
+}

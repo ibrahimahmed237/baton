@@ -1,0 +1,159 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Claude to see this chat",
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"Claude\" instead? The link to \"Existing OpenCode\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "Claude",
+        "other_name": "Existing OpenCode"
+      }
+    }
+  ],
+  "plan_id": "p_44aa41d8355d8cffc1286b5be2eab839533b9b2c51784e0d396180156a27a471",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"Claude\" instead? The link to \"Existing OpenCode\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "Claude",
+            "other_name": "Existing OpenCode"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

@@ -1,0 +1,318 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Relaunch Claude",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_relaunch",
+    "status_line": null,
+    "text": "Relaunch Claude as described above.",
+    "tone": "info",
+    "values": {
+      "tool": "Claude"
+    }
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "sync_relaunch_later",
+          "label": "Sync now, I relaunch later",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Claude to see this chat",
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "close_sync_reopen",
+          "confirm",
+          "cancel",
+          "sync_relaunch_later"
+        ],
+        "n": 2,
+        "opens_at_chat": true,
+        "relaunch_plan_id": "p_83ed6620655e138e096434e913c6c0cc503f00fa24112bead54c11a306c3cf3e",
+        "running": true,
+        "sync_relaunch_later_command": "link",
+        "sync_relaunch_later_plan_id": "p_6002505928906ebf66c313df3ab940f3",
+        "tool": "Claude"
+      }
+    }
+  ],
+  "plan_id": "p_de4f948c43a04b9b7e19143b88710de2",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "sync_relaunch_later"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "relaunch_plan_id": "p_83ed6620655e138e096434e913c6c0cc503f00fa24112bead54c11a306c3cf3e",
+            "running": true,
+            "sync_relaunch_later_command": "link",
+            "sync_relaunch_later_plan_id": "p_6002505928906ebf66c313df3ab940f3",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "sync_relaunch_later"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "relaunch_plan_id": "p_83ed6620655e138e096434e913c6c0cc503f00fa24112bead54c11a306c3cf3e",
+            "running": true,
+            "sync_relaunch_later_command": "link",
+            "sync_relaunch_later_plan_id": "p_6002505928906ebf66c313df3ab940f3",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "sync_relaunch_later"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "relaunch_plan_id": "p_83ed6620655e138e096434e913c6c0cc503f00fa24112bead54c11a306c3cf3e",
+            "running": true,
+            "sync_relaunch_later_command": "link",
+            "sync_relaunch_later_plan_id": "p_6002505928906ebf66c313df3ab940f3",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "sync_relaunch_later",
+              "label": "Sync now, I relaunch later",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "sync_relaunch_later"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "relaunch_plan_id": "p_83ed6620655e138e096434e913c6c0cc503f00fa24112bead54c11a306c3cf3e",
+            "running": true,
+            "sync_relaunch_later_command": "link",
+            "sync_relaunch_later_plan_id": "p_6002505928906ebf66c313df3ab940f3",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

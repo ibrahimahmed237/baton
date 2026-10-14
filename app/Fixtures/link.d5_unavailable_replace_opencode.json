@@ -1,0 +1,50 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "format.unknown_version",
+      "status_line": "OpenCode: reading only",
+      "text": "OpenCode was updated and saves chats differently (version future-99). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated.",
+      "tone": "warning",
+      "values": {
+        "tool": "OpenCode",
+        "version": "future-99"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d5_unavailable_replace_opencode",
+  "refusal_kind": "not_available",
+  "steps": []
+}

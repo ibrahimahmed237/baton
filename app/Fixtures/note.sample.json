@@ -1,0 +1,26 @@
+{
+  "buttons": [
+    {
+      "id": "close_sync_reopen",
+      "label": "Close Claude, sync, reopen",
+      "primary": true
+    },
+    {
+      "id": "sync_relaunch_later",
+      "label": "Sync now, I relaunch later",
+      "primary": false
+    },
+    {
+      "id": "cancel",
+      "label": "Cancel",
+      "primary": false
+    }
+  ],
+  "id": "new_chat.relaunch",
+  "status_line": "Relaunch Claude to see this chat",
+  "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+  "tone": "info",
+  "values": {
+    "tool": "Claude"
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in OpenCode right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    }
+  ],
+  "plan_id": "p_8f9d45c81db3951568d0b9e53e427af1dcc0cf194c175c613d2cf7d4992d0a26",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new OpenCode chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in OpenCode right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "OpenCode"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "turns": []
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "applied": false,
+  "brief": {
+    "artifact_id": "a_17d4a5578234e9b51574c3d66c2d498acc995fa26ba27863a08d4ed0cd09c1f4",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "01fa7374b04eff1d69d8b71b55801caad669210903d20008b8b0a2831e82137b",
+        "tokens": 165154,
+        "writer": "codex"
+      }
+    ],
+    "estimated_tokens": 165154,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 18,
+    "summary": "Preserve the orchard decisions and finish the tests.",
+    "text": "This chat carries on work done in OpenCode. Below is a brief of it.\n\nPreserve the orchard decisions and finish the tests.\n\nThe full history is saved at /baton-fixtures/transcripts/link-3-0c04486b08b6a7ce804f80f05693d5ed3c5ff6ccb24975286c3a7a1b96e0ac2d.md. Read it for any detail not above.",
+    "tokens": 72,
+    "writer": "codex"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_creation",
+    "status_line": null,
+    "text": "Create a new chat with this brief. The earlier chat is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.skipped_limit",
+      "status_line": null,
+      "text": "OpenCode couldn't write the brief because it has reached its usage limit.",
+      "tone": "warning",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 18 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 18
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.summary_receipt",
+      "status_line": null,
+      "text": "Summarized through this turn. The original messages are in the saved history.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_324de4ac8f9c797a35ecc0d1046c4985",
+  "stage": "create",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
+}

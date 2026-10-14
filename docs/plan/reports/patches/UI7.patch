@@ -1,0 +1,1768 @@
+diff --git a/app/Brand/README.md b/app/Brand/README.md
+--- a/app/Brand/README.md
++++ b/app/Brand/README.md
+@@ -10,6 +10,6 @@
+ - `baton-icon-burgundy-black-signed.png`: earlier white-tile compact study with I.A.
+ - `baton-mark-transparent.png`: current cutout containing only the B handoff and I.A, with no white tile. Its identical runtime copy lives at `Sources/BatonUI/Resources/Brand/baton-mark.png`.
+ 
+-The emblem combines two conversation shapes into a B silhouette, joined by a diagonal baton. The signed wordmark and final compact icon include Ibrahim's `I.A` maker's signature. Light surfaces show the cutout directly. Dark surfaces add a close-fitting gray glass backing in code so black and I.A remain visible.
++The emblem combines two conversation shapes into a B silhouette, joined by a diagonal baton. The signed wordmark and final compact icon include Ibrahim's `I.A` maker's signature. Light surfaces show the cutout directly. In-app content has no backing in either theme; B and I.A remain the same burgundy/black. The Dock has a white tile in either theme. Only the system-menu mark retains its earlier graphite gray surround.
+ 
+-Generated with the built-in image-generation tool. Prompts and review limits are in `docs/plan/reports/UI5-2026-10-06.md`. Rendered at 58/92 points for compact/full empty states; the native fixture shows the signature. The menu bar uses the same 22-point signed mark and retains its decision badge. I.A is present but necessarily tiny there; the larger in-app marks carry the readable signature. Appearance follows macOS without changing system settings.
++Generated with the built-in image-generation tool. Prompts and review limits are in `docs/plan/reports/UI5-2026-10-06.md`. Rendered at 58/92 points for compact/full empty states; the native fixture shows the signature. The menu bar uses the same 22-point signed mark and retains its decision badge. I.A is present but necessarily tiny there; the larger in-app marks carry the readable signature. A sidebar Light/Dark/System selector controls app surfaces, with System following macOS. Logo colors never change.
+diff --git a/app/Sources/BatonUI/Components/BrandMark.swift b/app/Sources/BatonUI/Components/BrandMark.swift
+--- a/app/Sources/BatonUI/Components/BrandMark.swift
++++ b/app/Sources/BatonUI/Components/BrandMark.swift
+@@ -1,5 +1,8 @@
+ import AppKit
+ import SwiftUI
++
++/// Different surroundings for content, the system menu and the Dock.
++public enum BrandPlacement: Sendable { case content, menu, dock }
+ 
+ /// Supplies the signed burgundy-and-black identity bundled with BatonUI.
+ public enum BatonBrand {
+@@ -9,23 +12,25 @@
+         return NSImage(contentsOf: url)
+     }
+ 
+-    /// Renders the Dock identity with a gray backing when the system uses dark appearance.
++    /// Renders the Dock identity on its white tile in either appearance.
+     @MainActor public static func applicationIcon(theme: Theme, reduceTransparency: Bool? = nil) -> NSImage? {
+-        let renderer = ImageRenderer(content: BrandMark(size: 256, reduceTransparency: reduceTransparency ?? NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency).batonTheme(theme))
++        let renderer = ImageRenderer(content: BrandMark(size: 256, reduceTransparency: reduceTransparency, placement: .dock).batonTheme(.light))
+         renderer.scale = 2
+         return renderer.nsImage
+     }
+ }
+ 
+-/// Displays the cutout directly on light surfaces, with gray glass for graphite.
++/// Keeps the mark colors unchanged and chooses only the surrounding surface.
+ public struct BrandMark: View {
+     @Environment(\.batonTheme) private var theme
+     @Environment(\.accessibilityReduceTransparency) private var systemReduceTransparency
++    private let placement: BrandPlacement
+     private let size: CGFloat
+     private let reduceTransparencyOverride: Bool?
+ 
+     /// Creates the signed logo at a size appropriate to its surrounding content.
+-    public init(size: CGFloat = 96, reduceTransparency: Bool? = nil) {
++    public init(size: CGFloat = 96, reduceTransparency: Bool? = nil, placement: BrandPlacement = .content) {
++        self.placement = placement
+         self.size = size; self.reduceTransparencyOverride = reduceTransparency
+     }
+ 
+@@ -35,9 +40,12 @@
+                 Image(nsImage: icon).resizable().interpolation(.high).scaledToFit()
+             }
+         }
++        .frame(width: placement == .dock ? size * 0.82 : size, height: placement == .dock ? size * 0.82 : size)
+         .frame(width: size, height: size)
+         .background {
+-            if theme == .graphite {
++            if placement == .dock {
++                RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white)
++            } else if placement == .menu, theme == .graphite {
+                 RoundedRectangle(cornerRadius: size * 0.18)
+                     .fill(LinearGradient(colors: [Color(white: 0.76), Color(white: 0.57)],
+                                          startPoint: .topLeading, endPoint: .bottomTrailing))
+diff --git a/app/Sources/BatonUI/Components/WindowPresentation.swift b/app/Sources/BatonUI/Components/WindowPresentation.swift
+--- a/app/Sources/BatonUI/Components/WindowPresentation.swift
++++ b/app/Sources/BatonUI/Components/WindowPresentation.swift
+@@ -33,22 +33,24 @@
+ /// Owns one main window across launch, menu-bar actions and reopening after close.
+ @MainActor public final class BatonMainWindowController: NSWindowController {
+     public let model: WindowViewModel
+-    public init(model: WindowViewModel) {
++    private let appearance: ThemePreference
++    public init(model: WindowViewModel, appearance: ThemePreference? = nil) {
++        let preference = appearance ?? .shared
++        self.appearance = preference
+         self.model = model
+         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 600),
+                               styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                               backing: .buffered, defer: false)
+-        BatonWindowConfiguration.apply(to: window)
++        BatonWindowConfiguration.apply(to: window, theme: preference.theme)
+         window.title = "Baton"
+         window.isReleasedWhenClosed = false
+-        window.contentView = NSHostingView(rootView: AnyView(WindowView(model: model).batonTheme(.light).task { await model.refresh() }))
++        window.contentView = NSHostingView(rootView: AppearanceWindowContent(preference: preference, model: model))
+         window.center()
+         super.init(window: window)
+     }
+-    /// Applies the system palette without replacing the window or its model.
++    /// Selects a fixed app palette without replacing the window or its model.
+     public func setTheme(_ theme: Theme) {
+-        guard let hosting = window?.contentView as? NSHostingView<AnyView> else { return }
+-        hosting.rootView = AnyView(WindowView(model: model).batonTheme(theme).task { [model] in await model.refresh() })
++        appearance.choose(theme == .light ? .light : .graphite)
+     }
+     public required init?(coder: NSCoder) { nil }
+     public override func showWindow(_ sender: Any?) {
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowView.swift b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+--- a/app/Sources/BatonUI/Screens/Window/WindowView.swift
++++ b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+@@ -8,9 +8,11 @@
+     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+     @State private var linkDialog: LinkDialogViewModel?
+     @StateObject private var statusModel: SyncStatusViewModel
++    @ObservedObject private var appearance: ThemePreference
+     @ObservedObject private var model: WindowViewModel
+     /// Shows the engine-backed window model.
+-    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil) {
++    public init(model: WindowViewModel, statusModel: SyncStatusViewModel? = nil, appearance: ThemePreference? = nil) {
++        self.appearance = appearance ?? .shared
+         self.model = model
+         _statusModel = StateObject(wrappedValue: statusModel ?? model.makeStatusModel())
+     }
+@@ -31,6 +33,8 @@
+                     Rectangle().fill(theme.hairline).frame(height: 1).padding(.vertical, 8)
+                     WindowScrollArea { listContent }
+                 }
++                Spacer(minLength: 12)
++                ThemeSelector(preference: appearance, notes: model.notes)
+             }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
+                 .background { Rectangle().fill(.regularMaterial).overlay(theme.sidebar.opacity(reduceTransparency ? 1 : glass / 200)) }
+             if model.section != .linked && model.section != .attention {
+diff --git a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+--- a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++++ b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+@@ -101,7 +101,7 @@
+         return image
+     }
+     public var body: some View {
+-        BrandMark(size: 22, reduceTransparency: reduceTransparency)
++        BrandMark(size: 22, reduceTransparency: reduceTransparency, placement: .menu)
+             .frame(width: 26, height: 22, alignment: .leading)
+             .overlay(alignment: .topTrailing) {
+                 if needsDecision {
+diff --git a/app/Sources/BatonUI/Theme/ThemePreference.swift b/app/Sources/BatonUI/Theme/ThemePreference.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Theme/ThemePreference.swift
+@@ -0,0 +1,98 @@
++import AppKit
++import Combine
++import Foundation
++import SwiftUI
++import BatonKit
++
++/// The saved appearance choice, using the engine contract's values.
++public enum AppearanceMode: String, CaseIterable, Sendable {
++    case light, graphite, system
++    /// Resolves System against macOS while explicit choices stay fixed.
++    public func resolve(system: Theme) -> Theme {
++        switch self { case .light: return .light; case .graphite: return .graphite; case .system: return system }
++    }
++}
++
++/// Shares the local app preference across the window and popover without changing macOS.
++@MainActor public final class ThemePreference: ObservableObject {
++    public static let shared: ThemePreference = {
++        let preference = ThemePreference(storedValue: UserDefaults.standard.string(forKey: "baton.ui.theme"),
++            systemTheme: NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light,
++            save: { UserDefaults.standard.set($0, forKey: "baton.ui.theme") })
++        preference.observeSystemAppearance()
++        return preference
++    }()
++    @Published public private(set) var mode: AppearanceMode
++    @Published public private(set) var theme: Theme
++    @Published public private(set) var systemTheme: Theme
++    private let save: (String) -> Void
++    private var appearanceObservation: NSKeyValueObservation?
++
++    /// Uses injectable persistence so fixture tests never touch real preferences.
++    public init(storedValue: String? = nil, systemTheme: Theme = .light, save: @escaping (String) -> Void = { _ in }) {
++        let choice = AppearanceMode(rawValue: storedValue ?? "") ?? .system
++        mode = choice; self.systemTheme = systemTheme; theme = choice.resolve(system: systemTheme); self.save = save
++    }
++
++    /// Saves the chosen app appearance and updates all observing surfaces.
++    public func choose(_ choice: AppearanceMode) {
++        guard mode != choice else { return }
++        mode = choice; save(choice.rawValue); resolve()
++    }
++
++    /// Follows macOS only when the saved choice is System.
++    public func updateSystemTheme(_ value: Theme) {
++        systemTheme = value; resolve()
++    }
++    private func resolve() {
++        let resolved = mode.resolve(system: systemTheme)
++        if theme != resolved { theme = resolved }
++    }
++    private func observeSystemAppearance() {
++        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, change in
++            let value: Theme = change.newValue?.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light
++            Task { @MainActor [weak self] in self?.updateSystemTheme(value) }
++        }
++    }
++}
++
++/// A visible appearance choice with wording supplied by the catalogue.
++public struct ThemeSelector: View {
++    @Environment(\.batonTheme) private var theme
++    @ObservedObject private var preference: ThemePreference
++    private let notes: [Note]
++    /// Receives the shared preference and the engine's presentation labels.
++    public init(preference: ThemePreference, notes: [Note]) { self.preference = preference; self.notes = notes }
++    public var body: some View {
++        if let heading = notes.first(where: { $0.id == "screen.theme" }) {
++            VStack(alignment: .leading, spacing: 8) {
++                Label(heading.text, systemImage: "circle.lefthalf.filled")
++                    .font(.caption).foregroundStyle(theme.secondaryText)
++                HStack(spacing: 3) {
++                    ForEach(AppearanceMode.allCases, id: \.rawValue) { mode in
++                        if let label = notes.first(where: { $0.id == "screen.theme." + mode.rawValue }) {
++                            Button { preference.choose(mode) } label: {
++                                Text(label.text).font(.system(size: 11, weight: preference.mode == mode ? .semibold : .regular))
++                                    .frame(maxWidth: .infinity).padding(.vertical, 7)
++                                    .background(preference.mode == mode ? theme.colour(for: .action).opacity(0.16) : .clear,
++                                                in: RoundedRectangle(cornerRadius: 7))
++                                    .contentShape(Rectangle())
++                            }.buttonStyle(.plain)
++                                .accessibilityAddTraits(preference.mode == mode ? .isSelected : [])
++                        }
++                    }
++                }.padding(3).background(theme.sidebar.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
++            }
++        }
++    }
++}
++
++/// Keeps window identity and selection stable as the shared palette changes.
++struct AppearanceWindowContent: View {
++    @ObservedObject var preference: ThemePreference
++    let model: WindowViewModel
++    var body: some View {
++        WindowView(model: model, appearance: preference).batonTheme(preference.theme)
++            .task { await model.refresh() }
++    }
++}
+diff --git a/app/Sources/Baton/BatonApp.swift b/app/Sources/Baton/BatonApp.swift
+--- a/app/Sources/Baton/BatonApp.swift
++++ b/app/Sources/Baton/BatonApp.swift
+@@ -8,6 +8,7 @@
+ struct BatonApp: App {
+     @NSApplicationDelegateAdaptor(BatonAppDelegate.self) private var appDelegate
+     @StateObject private var state: PopoverViewModel
++    @StateObject private var appearance = ThemePreference.shared
+     @State private var menuBarInserted = true
+     @Environment(\.colorScheme) private var colorScheme
+     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+@@ -20,7 +21,7 @@
+     var body: some Scene {
+         MenuBarExtra(isInserted: $menuBarInserted) {
+             PopoverView(model: state, linkRecent: { appDelegate.showMainWindow(section: .suggestions) })
+-                .batonTheme(colorScheme == .dark ? .graphite : .light)
++                .batonTheme(appearance.theme)
+                 .task { await state.refresh() }
+         } label: {
+             if CommandLine.arguments.contains("--review-label") {
+@@ -45,37 +46,10 @@
+         return BatonMainWindowController(model: WindowViewModel(engine: FixtureEngine(directory: fixtures, state: "d3_filled")))
+     }()
+ 
+-    private var appearanceObservation: NSKeyValueObservation?
+-    private var displayOptionsObserver: NSObjectProtocol?
+-
+     func applicationDidFinishLaunching(_ notification: Notification) {
+-        updateAppearance(NSApplication.shared.effectiveAppearance)
+-        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, change in
+-            let theme: Theme = change.newValue?.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light
+-            Task { @MainActor [weak self] in self?.applyTheme(theme) }
+-        }
+-        displayOptionsObserver = NSWorkspace.shared.notificationCenter.addObserver(
+-            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+-            object: nil, queue: .main) { [weak self] _ in
+-                Task { @MainActor [weak self] in
+-                    self?.updateApplicationIcon(NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light)
+-                }
+-            }
++        if let icon = BatonBrand.applicationIcon(theme: .light) { NSApplication.shared.applicationIconImage = icon }
+         NSApplication.shared.setActivationPolicy(.regular)
+         showMainWindow()
+-    }
+-
+-    private func updateAppearance(_ appearance: NSAppearance) {
+-        applyTheme(appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? .graphite : .light)
+-    }
+-
+-    private func applyTheme(_ theme: Theme) {
+-        updateApplicationIcon(theme)
+-        mainWindow.setTheme(theme)
+-    }
+-
+-    private func updateApplicationIcon(_ theme: Theme) {
+-        if let icon = BatonBrand.applicationIcon(theme: theme) { NSApplication.shared.applicationIconImage = icon }
+     }
+ 
+     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+diff --git a/app/Tests/BatonUITests/BrandTests.swift b/app/Tests/BatonUITests/BrandTests.swift
+--- a/app/Tests/BatonUITests/BrandTests.swift
++++ b/app/Tests/BatonUITests/BrandTests.swift
+@@ -30,7 +30,7 @@
+     }
+ 
+     @MainActor @Test
+-    func logoAndMenuUseDifferentDarkBacking() throws {
++    func contentHasNoTileAndDockStaysWhiteWithoutChangingArtwork() throws {
+         let directory = ComponentTests.root.appendingPathComponent("Snapshots")
+         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+         var data: [Theme: Data] = [:]
+@@ -43,29 +43,40 @@
+             let png = try #require(bitmap.representation(using: .png, properties: [:]))
+             data[theme] = png
+             #expect(image.size == NSSize(width: 92, height: 92))
+-            try png.write(to: directory.appendingPathComponent("UI6-brand-\(theme.rawValue).png"))
++            try png.write(to: directory.appendingPathComponent("UI7-brand-\(theme.rawValue).png"))
+         }
+-        #expect(data[.light] != data[.graphite])
+-        for reduced in [false, true] {
+-            let renderer = ImageRenderer(content: BrandMark(size: 92, reduceTransparency: reduced).batonTheme(.graphite))
+-            renderer.scale = 2
+-            let image = try #require(renderer.nsImage)
++        for theme in Theme.allCases {
++            let content = ImageRenderer(content: BrandMark(size: 92).batonTheme(theme))
++            content.scale = 2
++            let image = try #require(content.nsImage)
+             let tiff = try #require(image.tiffRepresentation)
+-            let bitmap = try #require(NSBitmapImageRep(data: tiff))
+-            let backing = try #require(bitmap.colorAt(x: 2, y: bitmap.pixelsHigh / 2))
+-            #expect(reduced ? backing.alphaComponent > 0.99 : backing.alphaComponent < 0.95)
+-            let png = try #require(bitmap.representation(using: .png, properties: [:]))
+-            try png.write(to: directory.appendingPathComponent("UI6-brand-graphite-reduced-\(reduced).png"))
++            let pixels = try #require(NSBitmapImageRep(data: tiff))
++            #expect(try #require(pixels.colorAt(x: 2, y: pixels.pixelsHigh / 2)).alphaComponent < 0.1)
++            #expect(try #require(pixels.colorAt(x: pixels.pixelsWide / 2, y: 2)).alphaComponent < 0.1)
++            let dock = try #require(BatonBrand.applicationIcon(theme: theme))
++            let dockTiff = try #require(dock.tiffRepresentation)
++            let dockPixels = try #require(NSBitmapImageRep(data: dockTiff))
++            let border = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
++            #expect(border.alphaComponent > 0.99)
++            #expect(min(border.redComponent, border.greenComponent, border.blueComponent) > 0.99)
++            let png = try #require(dockPixels.representation(using: .png, properties: [:]))
++            try png.write(to: directory.appendingPathComponent("UI7-dock-\(theme.rawValue).png"))
++        }
++        let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
++        let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
++        for y in stride(from: 0, to: lightMark.pixelsHigh, by: 5) {
++            for x in stride(from: 0, to: lightMark.pixelsWide, by: 5) {
++                #expect(lightMark.colorAt(x: x, y: y) == darkMark.colorAt(x: x, y: y))
++            }
+         }
+         let opaqueMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: true))
+         let translucentMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: false))
+         #expect(opaqueMenu.tiffRepresentation != translucentMenu.tiffRepresentation)
+-        let opaqueDock = try #require(BatonBrand.applicationIcon(theme: .graphite, reduceTransparency: true))
+-        let translucentDock = try #require(BatonBrand.applicationIcon(theme: .graphite, reduceTransparency: false))
+-        #expect(opaqueDock.tiffRepresentation != translucentDock.tiffRepresentation)
+         let light = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .light))
+         let dark = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+         #expect(!light.isTemplate && !dark.isTemplate)
+         #expect(light.tiffRepresentation != dark.tiffRepresentation)
+     }
++    private func requireData(_ value: Data?) throws -> Data { try #require(value) }
++
+ }
+diff --git a/app/Tests/BatonUITests/ThemePreferenceTests.swift b/app/Tests/BatonUITests/ThemePreferenceTests.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Tests/BatonUITests/ThemePreferenceTests.swift
+@@ -0,0 +1,80 @@
++import AppKit
++import SwiftUI
++import Testing
++import BatonKit
++@testable import BatonUI
++
++@Suite(.serialized)
++struct ThemePreferenceTests {
++    @MainActor @Test
++    func savesExplicitAppearanceAndOnlySystemFollowsMacOS() {
++        var saved: String?
++        let preference = ThemePreference(systemTheme: .graphite, save: { saved = $0 })
++        #expect(preference.mode == .system); #expect(preference.theme == .graphite)
++        preference.choose(.light)
++        #expect(saved == "light"); #expect(preference.theme == .light)
++        preference.updateSystemTheme(.graphite)
++        #expect(preference.theme == .light)
++        let reopened = ThemePreference(storedValue: saved, systemTheme: .graphite)
++        #expect(reopened.mode == .light); #expect(reopened.theme == .light)
++        preference.choose(.graphite); preference.updateSystemTheme(.light)
++        #expect(saved == "graphite"); #expect(preference.theme == .graphite)
++        preference.choose(.system)
++        #expect(saved == "system"); #expect(preference.theme == .light)
++        preference.updateSystemTheme(.graphite)
++        #expect(preference.theme == .graphite)
++        let invalid = ThemePreference(storedValue: "unrecognized", systemTheme: .graphite)
++        #expect(invalid.mode == .system); #expect(invalid.theme == .graphite)
++    }
++
++    @MainActor @Test
++    func switchingAppearanceKeepsWindowModelAndSelection() async throws {
++        let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
++        await model.refresh(); model.select(.link(3))
++        let preference = ThemePreference(systemTheme: .light)
++        let controller = BatonMainWindowController(model: model, appearance: preference)
++        let window = try #require(controller.window)
++        let content = window.contentView
++        window.setFrameOrigin(NSPoint(x: -10000, y: -10000))
++        window.orderBack(nil)
++        defer { window.close() }
++        window.contentView?.layoutSubtreeIfNeeded()
++        try await Task.sleep(for: .milliseconds(200))
++        let frame = window.frame
++        let flags = window.styleMask
++        for choice in AppearanceMode.allCases {
++            preference.choose(choice)
++            window.contentView?.layoutSubtreeIfNeeded()
++            try await Task.sleep(for: .milliseconds(100))
++            #expect(window.appearance?.name == (preference.theme == .graphite ? .darkAqua : .aqua))
++            #expect(window.backgroundColor == NSColor(preference.theme.background))
++            #expect(controller.window === window)
++            #expect(controller.model === model)
++            #expect(window.contentView === content)
++            #expect(model.selection == .link(3))
++            #expect(window.frame == frame)
++            #expect(window.styleMask == flags)
++        }
++        preference.choose(.system)
++        preference.updateSystemTheme(.graphite)
++        window.contentView?.layoutSubtreeIfNeeded()
++        try await Task.sleep(for: .milliseconds(100))
++        #expect(window.appearance?.name == .darkAqua)
++        #expect(window.backgroundColor == NSColor(Theme.graphite.background))
++        #expect(window.contentView === content && model.selection == .link(3))
++        let directory = ComponentTests.root.appendingPathComponent("Snapshots")
++        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
++        for choice in AppearanceMode.allCases {
++            preference.choose(choice)
++            let renderer = ImageRenderer(content: ThemeSelector(preference: preference, notes: model.notes)
++                .frame(width: 205).padding(12).background(preference.theme.background).batonTheme(preference.theme))
++            renderer.scale = 2
++            let image = try #require(renderer.nsImage)
++            let tiff = try #require(image.tiffRepresentation)
++            let bitmap = try #require(NSBitmapImageRep(data: tiff))
++            let png = try #require(bitmap.representation(using: .png, properties: [:]))
++            #expect(!png.isEmpty)
++            try png.write(to: directory.appendingPathComponent("UI7-selector-\(choice.rawValue).png"))
++        }
++    }
++}
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+--- a/baton/notes/catalogue.py
++++ b/baton/notes/catalogue.py
+@@ -112,6 +112,10 @@
+     Note("status.paused", "warning", "Paused"),
+     Note("status.pinned", "info", "Pinned"),
+     Note("status.kept", "info", "Kept in {tool}"),
++    Note("screen.theme", "info", "Appearance"),
++    Note("screen.theme.light", "info", "Light"),
++    Note("screen.theme.graphite", "info", "Dark"),
++    Note("screen.theme.system", "info", "System"),
+     Note("screen.chats", "info", "Chats"),
+     Note("screen.links", "info", "Links"),
+     Note("screen.sync_status", "info", "Sync status"),
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,6 +24,8 @@
+ 
+ ## Now
+ 
++- UI7 complete: Dock surroundings are white, in-app content marks have no surrounding tile in either theme, and the B/I.A retain exactly the existing burgundy/black pixels. Appearance Light/Dark/System is visible at the sidebar bottom; the shared local app preference updates window/popover without changing macOS settings. Native Light/Dark switching inspected; separate review's hosted-update test finding fixed. Root377 engine /83 app tests and installed-SDK Swift build pass. Ready patch follows UI6, with no image replacement or Git writes.
++
+ - UI6 complete: menu renderer now uses the signed burgundy/black B and I.A; runtime marks have transparent margins in light mode and close-fitting gray glass in graphite. Window/popover/Dock follow system appearance, including native Reduce Transparency injection and Dock update notifications. Independent review findings fixed. Root377 engine / 81 app / Swift build pass; refreshed native fixture visibly shows graphite signed mark. Menu theme/badge renders inspected; direct system-menu capture timed out, so its actual on-screen item was not separately photographed. Ready-to-commit patch follows UI5; Git remains read-only.
+ 
+ - UI5 complete: Ibrahim's chosen burgundy/black compact logo includes I.A; branded empty/selection/filter states use catalogue wording and preserve loading/failure distinctions. Independent review's popover navigation-copy warning is fixed. Current shared tree: 377 engine / 79 app tests and Swift build pass with the installed SDK flags. Running fixture inspected; Show all turns restores messages. Ready-to-commit patch follows UI4, including binary assets; Git remains read-only.
+@@ -36,11 +38,11 @@
+ 
+ - CP1 is approved; Ibrahim accepted retaining the existing glass style and instructed commit/continue. R10 and D4b are complete, separately reviewed and ready to commit.
+ - E7 merge and D5 link/copy dialogs are complete within their recorded scopes, after independent review and fixes. B1 native adapter implementation is independently reviewed and fixture-verified; its live acceptance remains pending and is not a completed checkpoint claim.
+-- Current working tree: 377 engine tests, 81 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI6 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
++- Current working tree: 377 engine tests, 83 app tests and Swift build pass with installed SDK26.5/TestingMacros command flags, checked by root after independent UI7 review. Plain default Swift6.4/SDK27 commands have the separately recorded macro-loading environment failure. Git remains read-only; no commit or push. A sandbox escalation was used only for the previously authorized fixture-only app launch, never for Git or a real coding app. Ordered package patches reconstruct the reviewed files. This batch stops at a green implementation boundary.
+ 
+ ## Next
+ 
+-UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI6, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. UI6 replaces the menu glyph with the signed mark. I.A is retained but tiny at 22 points; no claim of easy signature reading at menu size.
++UI5 signed branding/empty states and UI4 conversation orientation are complete at a green boundary. Review/commit the ordered patches through UI7, then continue E9/E10 and D6/D7, with B2/C1/C2 still pending. UI6 replaces the menu glyph with the signed mark. I.A is retained but tiny at 22 points; no claim of easy signature reading at menu size.
+ 
+ UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
+ 
+@@ -71,6 +73,7 @@
+ | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
+ | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
+ | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
++| UI7 logo surroundings and appearance selector | 2026-10-06 | Ready to commit — independent review finding fixed; native selector/Light/Dark inspected | 377 engine /83 app |
+ | UI6 transparent logo and dark glass | 2026-10-06 | Ready to commit — separate review fixes confirmed; native graphite preview inspected | 377 engine / 81 app |
+ | UI5 signed identity and empty states | 2026-10-06 | Ready to commit — independent review warning fixed; native fixture and both themes inspected | 377 engine / 79 app |
+ | UI4 conversation orientation | 2026-10-06 | Ready to commit — separate review; final connector correction included in UI5 | Shared UI5 tree: 377 engine / 79 app |
+@@ -698,6 +701,53 @@
+ Replace the menu glyph and white tile with the transparent Baton identity. Keep black and I.A readable on gray glass in dark mode, preserve the decision badge, and respect system appearance and reduced transparency.
+ ```
+ 
++### UI7 — logo surroundings and appearance selector
++
++Patch: `docs/plan/reports/patches/UI7.patch`, applies after UI6. No binary artwork change. Independent reviewer confirms no remaining findings; root377/83/build pass.
++
++Exact paths:
++
++- `app/Brand/README.md`
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Components/WindowPresentation.swift`
++- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Sources/BatonUI/Theme/ThemePreference.swift`
++- `app/Sources/Baton/BatonApp.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `app/Tests/BatonUITests/ThemePreferenceTests.swift`
++- `baton/notes/catalogue.py`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI7-2026-10-06.md`
++- `app/Fixtures/links.d2_decision_needed.json`
++- `app/Fixtures/links.d2_in_sync.json`
++- `app/Fixtures/links.d2_no_links.json`
++- `app/Fixtures/links.d2_one_side_ahead.json`
++- `app/Fixtures/links.d2_paused.json`
++- `app/Fixtures/links.d2_relaunch_needed.json`
++- `app/Fixtures/links.d2_setup_incomplete.json`
++- `app/Fixtures/links.d2_waiting.json`
++- `app/Fixtures/links.d3_empty.json`
++- `app/Fixtures/links.d3_filled.json`
++- `app/Fixtures/links.d3_tool_missing.json`
++- `app/Fixtures/links.d5_already.json`
++- `app/Fixtures/links.d5_claude.json`
++- `app/Fixtures/links.d5_codex.json`
++- `app/Fixtures/links.d5_cursor.json`
++- `app/Fixtures/links.d5_large.json`
++- `app/Fixtures/links.d5_opencode.json`
++- `app/Fixtures/links.d5_unavailable.json`
++- `app/Fixtures/links.empty.json`
++
++Message:
++
++```text
++Keep logo colors fixed and make appearance selectable
++
++Give the Dock a white tile while leaving in-app logos bare in both themes. Expose a remembered Light, Dark or System app preference so people can choose the surfaces without recoloring B or I.A or changing macOS settings.
++```
++
+ ## Decisions
+ 
+ 27. **Ibrahim (2026-10-06):** normal app launch should open the window directly, and the upper-left native close/minimize/full-screen controls must be available. UI3 expands to executable routing and one shared native controller; normal activation supplies the Dock/reopen path while retaining the menu icon. Protected feature/design docs were not edited.
+@@ -748,7 +798,11 @@
+ 
+ 27. **Transparent signed identity (Ibrahim, 2026-10-06):** requested menu adoption, no white margins around B/I.A in current logo placements, and gray glass in dark mode. UI6 implements this and follows macOS appearance without changing its setting.
+ 
++28. **Logo surroundings and selector (Ibrahim,2026-10-06):** Dock margins should be white; in-app marks have no surrounding panel. He explicitly clarified that B/I.A colors must not change. Light/Dark/System controls app surfaces only; pixel invariance is checked. Local app preference storage is the orchestrator’s fixture implementation; engine settings must be connected in C2/D12.
++
+ ## Questions
++
++- UI7 preference currently lives in the app’s UserDefaults. C2/D12 must reconcile it with the engine theme setting before real app wiring; fixture tests inject memory persistence and never write real preferences.
+ 
+ - UI3 native functions and Ibrahim’s visible-controls check pass. Ctrl-Command-F shortcut is not wired after removal of the SwiftUI Window scene; Escape exits native fullscreen, standard green control works. Track standard command integration in D13/keyboard polish; do not claim it repaired.
+ 
+@@ -762,6 +816,8 @@
+ - C2 depends on the staged catalogue through CP2; E12 remains the complete CP3 audit. Real coding-app runs remain unauthorized. U9 now passes E8 fixtures; M12 remains tracked for E9/E10.
+ 
+ ## Log
++
++- 2026-10-06 — UI7 complete:377 engine/83 app/build pass with installedSDKflags. Kept exact existing B/I.A artwork after Ibrahim clarified surroundings only; no alternate-color asset adopted. Content is bare, Dock tile white, selector visible at sidebar bottom. Native Light/Dark switches inspected; user later selected System/Activity, so no further automation or relaunch. Review warning fixed with mounted offscreen native theme/retained-state assertions after layout settles; final full suite passes. UI7 ready after UI6; no Git or real-chat writes.
+ 
+ - 2026-10-06 — UI6 completed:377 engine /81 app/build pass. Imagegen transparent extraction replaces white runtime tile; brand/menu/theme/reduced-transparency PNGs inspected. Root native fixture confirms graphite signed gray-glass logo after exact-binary refresh. Separate reviewer warning closed by explicit native accessibility injection, opaque pixel assertions and Dock notification refresh; initial hosted view identity corrected. UI6 patch follows UI5; no Git/real-chat writes. SystemUIServer direct menu capture timed out, so no native item photograph claimed.
+ 
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -228,3 +228,19 @@
+ **Done when.** Menu uses the signed mark, no baked-in white square remains in runtime logo placements, graphite uses gray glass and reduced-transparency fallback, and tests/build/review are green. I.A is retained but its tiny menu rendering is not claimed as comfortably readable.
+ 
+ UI6 completion 2026-10-06:377 engine /81 app tests and installed-SDK Swift build pass. Separate reviewer confirms accessibility injection/opaque pixels and stable initial root identity fixes. Native graphite fixture and light/graphite/menu/badge/reduced-transparency renders inspected. Direct menu-item capture was unavailable; signature remains tiny at menu size. Ready after UI5.
++
++## UI7 — bare in-app identity and theme choice
++
++**Goal.** Keep a white-tile Dock icon, remove all panels around in-app logos in both appearances, and expose Light/Dark/System choices.
++
++**From.** Ibrahim's 2026-10-06 clarification: app bar icon should have white around it, inside app no surrounding panel, and where to switch between themes. Earlier context identifies app bar as Dock.
++
++**Files.** app/Brand and BatonUI/Resources/Brand dark asset; Components/BrandMark.swift and WindowPresentation.swift; Theme/Theme.swift and ThemePreference.swift; WindowView.swift; PopoverView.swift; BatonApp.swift; note catalogue and applicable links fixtures; focused BatonUITests; status/track/UI7 report/patch.
++
++**Steps.** Separate content, menu and Dock placements. Bare transparent marks for content in both themes; B and I.A remain burgundy/black as Ibrahim explicitly clarified. Dock keeps burgundy/black on white; menu retains its prior theme-aware badge rendering. Persist local app Light/Dark/System appearance preference and expose a catalogue-labelled sidebar selector; System follows macOS. Update window/popover without losing selection and without changing OS settings. C2/D12 must later wire preference to engine settings as applicable.
++
++**Checks.** Pixel/snapshot assertions for bare content and white Dock, persistence/resolution of preferences, stable window/model state, full app/engine gates, native fixture theme switching and independent review.
++
++**Done when.** In-app logo has no backing in either theme, Dock tile is white, theme choice is visible and retained, build/tests/review pass and running fixture was inspected.
++
++UI7 completion2026-10-06:377 engine /83 app tests and installedSDK Swift build pass. B/I.A image pixels identical across themes, content margins transparent, Dock borders white. Native sidebar Light/Dark/System inspected and changed surfaces; independent hosted-update test warning fixed and rechecked. Engine preference integration remains C2/D12. No image replacement, real chats or Git writes.
+diff --git a/docs/plan/reports/UI7-2026-10-06.md b/docs/plan/reports/UI7-2026-10-06.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI7-2026-10-06.md
+@@ -0,0 +1,366 @@
++# UI7 — logo surroundings and visible appearance choice
++
++Date:2026-10-06
++Status: complete, independently reviewed; ready to commit after UI6.377 engine/83 app tests and installedSDK Swift build pass.
++
++Ibrahim clarified that only the surroundings should change: Dock white tile, no surrounding tile in the app, and no change to the burgundy/black B or I.A. The implementation keeps the existing transparent asset unchanged, separates content/menu/Dock placements, and keeps a white Dock tile in both themes. A briefly generated light-ink draft was not copied into the repository or adopted after his correction; no palette change is shipped.
++
++A catalogue-labelled Light/Dark/System selector now sits at the bottom of the sidebar. One shared local preference drives the window and popover and saves contract-compatible system/light/graphite values under the app's own UserDefaults key. Tests inject memory-only persistence. The hosted window and model remain stable while the preference changes. C2/D12 engine-settings wiring remains future work; this fixture preference never changes macOS settings.
++
++
++## Files and package result
++
++- `app/Brand/README.md`
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Components/WindowPresentation.swift`
++- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Sources/BatonUI/Theme/ThemePreference.swift`
++- `app/Sources/Baton/BatonApp.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `app/Tests/BatonUITests/ThemePreferenceTests.swift`
++- `baton/notes/catalogue.py`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI7-2026-10-06.md`
++- `app/Fixtures/links.d2_decision_needed.json`
++- `app/Fixtures/links.d2_in_sync.json`
++- `app/Fixtures/links.d2_no_links.json`
++- `app/Fixtures/links.d2_one_side_ahead.json`
++- `app/Fixtures/links.d2_paused.json`
++- `app/Fixtures/links.d2_relaunch_needed.json`
++- `app/Fixtures/links.d2_setup_incomplete.json`
++- `app/Fixtures/links.d2_waiting.json`
++- `app/Fixtures/links.d3_empty.json`
++- `app/Fixtures/links.d3_filled.json`
++- `app/Fixtures/links.d3_tool_missing.json`
++- `app/Fixtures/links.d5_already.json`
++- `app/Fixtures/links.d5_claude.json`
++- `app/Fixtures/links.d5_codex.json`
++- `app/Fixtures/links.d5_cursor.json`
++- `app/Fixtures/links.d5_large.json`
++- `app/Fixtures/links.d5_opencode.json`
++- `app/Fixtures/links.d5_unavailable.json`
++- `app/Fixtures/links.empty.json`
++
++Before:377 engine/81 app. After:377 engine/83 app (66 BatonUI+17 BatonKit). Two preference tests added; placement tests updated to assert no content backing, identical logo pixels in both themes, white Dock surroundings and retained menu reduced-transparency behavior. No PNG file changed.
++
++## Challenge and independent review
++
++Ibrahim corrected my proposed dark light-ink treatment: only surroundings should change, never B or I.A. I discarded the unused generated draft and retained the existing source/runtime asset. Pixel equality checks substantiate the fixed logo colors.
++
++Separate reviewer found the hosted preference test could pass before SwiftUI updated, even with stale theme UI. The test now mounts an offscreen window, allows initial layout sizing to settle, and waits for each preference update before asserting native window appearance/background color and unchanged content/window/model/frame/style/selection. It also verifies an injected macOS change while System is selected. First mounted run found initial auto-sizing changed its too-early baseline; capturing the baseline after initial layout fixes the setup without weakening the assertions. Focused2 tests and final full suite pass. Reviewer rechecked and reported no remaining findings.
++
++Root inspected white Dock tile, bare content mark and selector snapshots. CUA verified the running fixture's catalogue labels and switched Light/Dark; screen captures show surfaces changed with the same burgundy/black B/I.A and no surrounding panel. The user also interacted during review and later selected System/Activity; automation stopped without replacing their selection. Native relaunch persistence was not separately exercised; injected persisted-value reconstruction is tested, and production app UserDefaults wiring is reviewed. Dock white pixels are asserted/rendered; its actual position in the macOS Dock was not independently photographed.
++
++Temporary app executable matched build SHA-256 aa8bb7f58ce402d0fc9db42a6dd3462a4bdff791682e30e61f1d7744782764e2; both resource bundles were refreshed and the owned preview relaunched. No real chats, OS settings, Git writes or push. Theme-choice interactions wrote only the fixture app's own local preference. Future C2/D12 must connect this to engine settings; no CP2 completion or live adapter acceptance is claimed.
++
++## Final checks
++
++Engine command:python3 -m unittest discover -s tests -t . Exit0.
++
++```text
++.........................................................................................................................................................................................................................................................................................................................................................................................
++----------------------------------------------------------------------
++Ran 377 tests in 3.975s
++
++OK
++```
++
++Layer:rg -n "^(from|import) .*(adapters|ledger)" baton/domain baton/ports baton/services. Exit1/no matches.
++
++```text
++
++```
++
++Names:rg -ni "claude|codex|opencode|cursor" baton/ports baton/services tests/adapters/suite.py. Exit1/no matches.
++
++```text
++
++```
++
++Catalogue:Appearance/Light/Dark/System labels are provided by new screen.theme notes, injected from CATALOGUE into applicable fixtures. The legacy omitted-notes fixture remains untouched. No display sentence is composed in Swift.
++
++App commands in app/, exit0:
++
++```sh
++CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache swift build --disable-sandbox --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib
++CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache swift test --disable-sandbox --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib
++```
++
++The prior default SDK/macro compiler environment issue remains recorded; the explicit installedSDK gate passes.
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[Planning deferred tasks]
++Build complete! (0.37 secs)
++```
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++Build complete! (0.28 secs)
++◇ Test run started.
++↳ Testing Library Version: 2084
++↳ Target Platform: arm64e-apple-macos14.0
++◇ Suite BrandTests started.
++◇ Suite SyncStatusTests started.
++◇ Suite WindowInteractionTests started.
++◇ Suite WindowTests started.
++◇ Suite EmptyStateTests started.
++◇ Suite LinkDialogTests started.
++◇ Suite ComponentTests started.
++◇ Test reviewWindowAllowsResizeAndFullScreen() started.
++◇ Test bundledMarkHasTransparentMarginsAndNoWhiteTile() started.
++◇ Suite PopoverTests started.
++◇ Test emptyListsExplainTheirOwnSectionAndFilledListsAskForSelection() started.
++◇ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() started.
++◇ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() started.
++◇ Suite ThemePreferenceTests started.
++◇ Test selectionContinueAndDecisionBadgeUseEngineData() started.
++◇ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() started.
++◇ Test eachTargetShowsItsOwnEngineNotesAndEligibility() started.
++◇ Test savesExplicitAppearanceAndOnlySystemFollowsMacOS() started.
++✔ Test reviewWindowAllowsResizeAndFullScreen() passed after 0.041 seconds.
++◇ Test ordinaryWindowProbeEnablesNativeFullScreen() started.
++✔ Test nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes() passed after 0.188 seconds.
++◇ Test confirmationRequiresExactDisplayedNotes() started.
++✔ Test confirmationRequiresExactDisplayedNotes() passed after 0.001 seconds.
++◇ Test semanticMappingsCoverStatesAndPlanActions() started.
++✔ Test semanticMappingsCoverStatesAndPlanActions() passed after 0.001 seconds.
++◇ Test snapshotsEachComponentInBothThemes() started.
++✔ Test bundledMarkHasTransparentMarginsAndNoWhiteTile() passed after 0.457 seconds.
++◇ Test contentHasNoTileAndDockStaysWhiteWithoutChangingArtwork() started.
++✔ Test savesExplicitAppearanceAndOnlySystemFollowsMacOS() passed after 0.462 seconds.
++◇ Test switchingAppearanceKeepsWindowModelAndSelection() started.
++✔ Test ordinaryWindowProbeEnablesNativeFullScreen() passed after 0.427 seconds.
++◇ Test repeatedChromeUpdatesDoNotResetWindowStyleOrFrame() started.
++✔ Test snapshotsEachComponentInBothThemes() passed after 0.362 seconds.
++✔ Suite ComponentTests passed after 0.552 seconds.
++✔ Test contentHasNoTileAndDockStaysWhiteWithoutChangingArtwork() passed after 0.201 seconds.
++✔ Suite BrandTests passed after 0.658 seconds.
++✔ Test repeatedChromeUpdatesDoNotResetWindowStyleOrFrame() passed after 0.194 seconds.
++◇ Test mainWindowRetainsStandardControlsAndReopensTheSameContent() started.
++✔ Test selectionContinueAndDecisionBadgeUseEngineData() passed after 0.666 seconds.
++◇ Test omittedPresentationNotesRemainCompatible() started.
++✔ Test omittedPresentationNotesRemainCompatible() passed after 0.001 seconds.
++◇ Test refreshingInvalidatesAnInFlightPreview() started.
++✔ Test mainWindowRetainsStandardControlsAndReopensTheSameContent() passed after 0.044 seconds.
++◇ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() started.
++✔ Test titleBarUsesTheAppPaletteAndRetainsNativeControls() passed after 0.082 seconds.
++◇ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() started.
++✔ Test refreshingInvalidatesAnInFlightPreview() passed after 0.131 seconds.
++◇ Test continuePreviewRendersInBothThemes() started.
++✔ Test swiftUIWindowChromeUpdatesWhenTheThemeChanges() passed after 0.012 seconds.
++◇ Test glassWindowMinimumSizeFitsHostedContent() started.
++✔ Test continuePreviewRendersInBothThemes() passed after 0.284 seconds.
++◇ Test snapshotsAllEightStatesInBothThemes() started.
++✔ Test refreshErrorsChangeTheSharedDetailSurfaceForLinkedAndAttention() passed after 1.403 seconds.
++◇ Test navigationSelectionAndAttentionUseEngineFlags() started.
++✔ Test glassWindowMinimumSizeFitsHostedContent() passed after 0.714 seconds.
++◇ Test repeatedSidebarClickPreservesTheSelectedChat() started.
++✔ Test emptyListsExplainTheirOwnSectionAndFilledListsAskForSelection() passed after 1.620 seconds.
++◇ Test windowDoesNotClaimAnEmptySuccessDuringRefreshOrAfterFailure() started.
++✔ Test repeatedSidebarClickPreservesTheSelectedChat() passed after 0.248 seconds.
++◇ Test expandedWindowUsesTheAvailableSpaceInBothThemes() started.
++✔ Test switchingAppearanceKeepsWindowModelAndSelection() passed after 1.320 seconds.
++✔ Suite ThemePreferenceTests passed after 1.783 seconds.
++✔ Test eachAcceptanceScenarioKeepsTheExpectedEnginePositionAndWording() passed after 1.797 seconds.
++◇ Test suppliedToolLabelsAndIdleOffersRemainEngineData() started.
++✔ Test navigationSelectionAndAttentionUseEngineFlags() passed after 0.449 seconds.
++◇ Test uninstalledToolIsNeverOfferedOrQueried() started.
++✔ Test snapshotsAllEightStatesInBothThemes() passed after 0.815 seconds.
++✔ Suite PopoverTests passed after 1.898 seconds.
++✔ Test windowDoesNotClaimAnEmptySuccessDuringRefreshOrAfterFailure() passed after 0.280 seconds.
++◇ Test filteredConversationOffersAllTurnsWhileEmptyHistoryDoesNot() started.
++✔ Test eachTargetShowsItsOwnEngineNotesAndEligibility() passed after 1.901 seconds.
++◇ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() started.
++✔ Test expandedWindowUsesTheAvailableSpaceInBothThemes() passed after 0.573 seconds.
++◇ Test sidebarBlankAreaRespondsToOneClick() started.
++✔ Test suppliedToolLabelsAndIdleOffersRemainEngineData() passed after 0.545 seconds.
++◇ Test anUpToDateSideCannotShowASinceYouLeftDigest() started.
++✔ Test uninstalledToolIsNeverOfferedOrQueried() passed after 0.492 seconds.
++◇ Test legacyAttentionFlagIsOptional() started.
++✔ Test legacyAttentionFlagIsOptional() passed after 0.001 seconds.
++◇ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() started.
++✔ Test anUpToDateSideCannotShowASinceYouLeftDigest() passed after 0.002 seconds.
++◇ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() started.
++✔ Test filteredConversationOffersAllTurnsWhileEmptyHistoryDoesNot() passed after 0.445 seconds.
++◇ Test popoverOnlyExplainsNoLinksAfterASuccessfulReadyResponse() started.
++✔ Test timestampPresentationUsesLocalCalendarDayAndSystemStyles() passed after 0.004 seconds.
++◇ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() started.
++✔ Test popoverOnlyExplainsNoLinksAfterASuccessfulReadyResponse() passed after 0.051 seconds.
++◇ Test renderEmptyAndSelectionSurfacesWithTheSignedBrandInBothThemes() started.
++✔ Test filtersStripJumpAndFoldPreserveRealTurnIdentity() passed after 0.047 seconds.
++◇ Test longReplyAndToolActivityExpandWithoutHookText() started.
++✔ Test longReplyAndToolActivityExpandWithoutHookText() passed after 0.002 seconds.
++◇ Test buttonsUseImmediateCommandsAndPreviewWritingActions() started.
++✔ Test renderEmptyAndSelectionSurfacesWithTheSignedBrandInBothThemes() passed after 2.166 seconds.
++✔ Suite EmptyStateTests passed after 4.564 seconds.
++✔ Test suggestionIdentitySurvivesReorderingAndClearsOnRemoval() passed after 2.227 seconds.
++◇ Test fractionalHistoryTimesSortAfterWholeSeconds() started.
++✔ Test switchingTargetInvalidatesDisplayedNotesAndIgnoresStalePreview() passed after 2.686 seconds.
++◇ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() started.
++✔ Test buttonsUseImmediateCommandsAndPreviewWritingActions() passed after 2.186 seconds.
++◇ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() started.
++✔ Test fractionalHistoryTimesSortAfterWholeSeconds() passed after 0.019 seconds.
++◇ Test snapshotsEveryListEmptyFilledAndMissingTool() started.
++✔ Test unavailableNavigationActionsAreDisabledAndNeverDispatched() passed after 0.005 seconds.
++◇ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() started.
++✔ Test confirmationUsesOnlyTheDisplayedPreviewAndCopyNeverLinks() passed after 0.006 seconds.
++◇ Test replacementRoutesNameRetainedSideAndSelectedMode() started.
++✔ Test sidebarBlankAreaRespondsToOneClick() passed after 3.121 seconds.
++◇ Test longDialogCanScrollToItsFinalActions() started.
++✔ Test exactPreviewIDIsUsedForConfirmationAndOnlyItsActionButtonsAreEnabled() passed after 1.394 seconds.
++◇ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() started.
++✔ Test snapshotsEveryListEmptyFilledAndMissingTool() passed after 1.470 seconds.
++✔ Suite WindowTests passed after 6.064 seconds.
++✔ Test longDialogCanScrollToItsFinalActions() passed after 0.603 seconds.
++◇ Test repeatedTurnJumpIssuesANewScrollRequest() started.
++✔ Test replacementRoutesNameRetainedSideAndSelectedMode() passed after 1.474 seconds.
++◇ Test applyingLocksTheSelectionUntilTheResultIsVisible() started.
++✔ Test repeatedTurnJumpIssuesANewScrollRequest() passed after 0.004 seconds.
++◇ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() started.
++✔ Test liveSwiftUIScrollHostUsesOverlayAndKeepsOverflow() passed after 0.074 seconds.
++◇ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() started.
++✔ Test applyingLocksTheSelectionUntilTheResultIsVisible() passed after 0.079 seconds.
++◇ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() started.
++✔ Test attachedHistoryModeGetsItsOwnNotesAndFreshLoadClearsChatSelection() passed after 0.002 seconds.
++◇ Test copyAndFullCopyNeverBypassUnavailableFullHistory() started.
++✔ Test copyAndFullCopyNeverBypassUnavailableFullHistory() passed after 0.002 seconds.
++◇ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() started.
++✔ Test overlayProbeConfiguresOnlyItsEnclosingScrollView() passed after 0.025 seconds.
++✔ Suite WindowInteractionTests passed after 6.169 seconds.
++✔ Test oldToolChatsCannotBeSelectedWhileNewToolChatsLoad() passed after 0.066 seconds.
++◇ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() started.
++✔ Test replacementPreviewNamesExistingLinkAndPreservesEarlierChat() passed after 0.001 seconds.
++◇ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() started.
++✔ Test unavailableFixturesGiveEachToolItsMeasuredFixAndCopyOffersLink() passed after 0.002 seconds.
++◇ Test eachFixtureRendersInBothThemes() started.
++✔ Test concurrentConfirmationRunsOnceAndRemovalRefreshClearsWindowSelection() passed after 0.350 seconds.
++◇ Test narrowWindowHostsReadableStatusAndPreservesBothNames() started.
++✔ Test narrowWindowHostsReadableStatusAndPreservesBothNames() passed after 0.258 seconds.
++◇ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() started.
++✔ Test eachFixtureRendersInBothThemes() passed after 0.543 seconds.
++✔ Suite LinkDialogTests passed after 6.768 seconds.
++✔ Test delayedActionsCannotReplaceANewLinksPlanHistoryOrStatus() passed after 0.170 seconds.
++◇ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() started.
++✔ Test selectedLinkFixturesMatchIDsAndNamesAndMismatchedResponsesAreRejected() passed after 0.001 seconds.
++◇ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() started.
++✔ Test refreshingTheSameLinkInvalidatesVisibleAndPendingPreviews() passed after 0.067 seconds.
++◇ Test changedLinkAndEngineFailureNeverShowThePreviousChat() started.
++✔ Test changedLinkAndEngineFailureNeverShowThePreviousChat() passed after 0.001 seconds.
++◇ Test snapshotsEverySpecifiedStateAndExpandedReply() started.
++✔ Test snapshotsEverySpecifiedStateAndExpandedReply() passed after 2.510 seconds.
++✔ Suite SyncStatusTests passed after 9.349 seconds.
++✔ Test run with 66 tests in 9 suites passed after 9.350 seconds.
++◇ Test run started.
++↳ Testing Library Version: 2084
++↳ Target Platform: arm64e-apple-macos14.0
++◇ Suite ProcessEngineTests started.
++◇ Suite ImmediateCommandTests started.
++◇ Suite LinkFixtureRoutingTests started.
++◇ Suite FixtureDecodingTests started.
++◇ Suite FixtureEngineTests started.
++◇ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() started.
++◇ Test testSnakeCaseEncodingAndOptionalButtonPrimary() started.
++◇ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() started.
++◇ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() started.
++◇ Test testRefusalAndCrashBothCarryTheEngineNote() started.
++◇ Test testBothOutputPipesAreDrained() started.
++◇ Test testMalformedSuccessRemainsADecodingError() started.
++◇ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() started.
++◇ Test testSubcommandDispatchAndPreview() started.
++◇ Test testEveryFixtureDecodesAndIgnoresUnknownFields() started.
++◇ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() started.
++◇ Test testConcurrentProcessesDrainBothPipes() started.
++◇ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() started.
++◇ Test testEveryCommandThroughEngineClient() started.
++◇ Test testStateSelection() started.
++◇ Test testFixtureErrorPreservesNote() started.
++◇ Test testMissingFixtureThrows() started.
++✔ Test testSnakeCaseEncodingAndOptionalButtonPrimary() passed after 0.009 seconds.
++✔ Test selectedLinksGetDistinctHandMadeStatusesWhileOtherCommandsKeepTheirDefault() passed after 0.009 seconds.
++✔ Test pauseAndResumeNeverCarryPlanFlagsEvenForLegacyMutationArguments() passed after 0.009 seconds.
++✔ Suite LinkFixtureRoutingTests passed after 0.009 seconds.
++✔ Suite ImmediateCommandTests passed after 0.009 seconds.
++✔ Test testMissingFixtureThrows() passed after 0.009 seconds.
++✔ Test testStateSelection() passed after 0.010 seconds.
++✔ Test testFixtureErrorPreservesNote() passed after 0.011 seconds.
++✔ Test testEveryCommandThroughEngineClient() passed after 0.028 seconds.
++✔ Suite FixtureEngineTests passed after 0.028 seconds.
++✔ Test testEveryFixtureDecodesAndIgnoresUnknownFields() passed after 0.089 seconds.
++✔ Suite FixtureDecodingTests passed after 0.089 seconds.
++✔ Test testCatchUpPreservesRawOutputAndOmitsJSONFlag() passed after 0.330 seconds.
++✔ Test testSuccessAddsJSONFlagAndIgnoresUnknownFields() passed after 0.337 seconds.
++✔ Test testBothOutputPipesAreDrained() passed after 0.356 seconds.
++✔ Test testUnstructuredNonzeroExitPreservesStatusAndStderr() passed after 0.401 seconds.
++✔ Test testConcurrentProcessesDrainBothPipes() passed after 0.420 seconds.
++✔ Test testArgumentsArePassedLiterallyAndConfirmationIsExclusive() passed after 0.420 seconds.
++✔ Test testSubcommandDispatchAndPreview() passed after 0.538 seconds.
++✔ Test testMalformedSuccessRemainsADecodingError() passed after 0.602 seconds.
++✔ Test testRefusalAndCrashBothCarryTheEngineNote() passed after 0.639 seconds.
++✔ Suite ProcessEngineTests passed after 0.639 seconds.
++✔ Test run with 17 tests in 5 suites passed after 0.639 seconds.
++```
++
++Scoped git diff --check:no output/exit0.
++
++```text
++
++```
++
++Scoped git status --short:exit0 (earlier dirty packages preserved outside output).
++
++```text
++ M app/Fixtures/links.d2_decision_needed.json
++ M app/Fixtures/links.d2_in_sync.json
++ M app/Fixtures/links.d2_no_links.json
++ M app/Fixtures/links.d2_one_side_ahead.json
++ M app/Fixtures/links.d2_paused.json
++ M app/Fixtures/links.d2_relaunch_needed.json
++ M app/Fixtures/links.d2_setup_incomplete.json
++ M app/Fixtures/links.d2_waiting.json
++ M app/Fixtures/links.d3_empty.json
++ M app/Fixtures/links.d3_filled.json
++ M app/Fixtures/links.d3_tool_missing.json
++ M app/Fixtures/links.empty.json
++ M app/Sources/Baton/BatonApp.swift
++ M app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++ M app/Sources/BatonUI/Screens/Window/WindowView.swift
++ M baton/notes/catalogue.py
++ M docs/plan/STATUS.md
++ M docs/plan/track-d-app.md
++?? app/Brand/README.md
++?? app/Fixtures/links.d5_already.json
++?? app/Fixtures/links.d5_claude.json
++?? app/Fixtures/links.d5_codex.json
++?? app/Fixtures/links.d5_cursor.json
++?? app/Fixtures/links.d5_large.json
++?? app/Fixtures/links.d5_opencode.json
++?? app/Fixtures/links.d5_unavailable.json
++?? app/Sources/BatonUI/Components/BrandMark.swift
++?? app/Sources/BatonUI/Components/WindowPresentation.swift
++?? app/Sources/BatonUI/Theme/ThemePreference.swift
++?? app/Tests/BatonUITests/BrandTests.swift
++?? app/Tests/BatonUITests/ThemePreferenceTests.swift
++?? docs/plan/reports/UI7-2026-10-06.md
++```
++
++Done when:PASS — unchanged artwork, bare content and white Dock confirmed by pixel checks; selector visible/native Light and Dark working; saved values/resolution tested; native hosted theme updates preserve state; build/full suites and independent review pass. Ready-to-commit entry contains exact paths/message and ordered patch follows UI6.
++
++## Ordered patch reconstruction
++
++Actual output (read-only Git inspection and git apply in a temporary folder, no Git repository initialized):
++
++```text
++PASS: ordered patches through UI7 apply; all 32 UI7 files match current tree byte for byte.
++PASS: no binary artwork changes; scoped whitespace check passes. No Git writes or temporary Git repository.
++```
+diff --git a/app/Fixtures/links.d2_decision_needed.json b/app/Fixtures/links.d2_decision_needed.json
+--- a/app/Fixtures/links.d2_decision_needed.json
++++ b/app/Fixtures/links.d2_decision_needed.json
+@@ -238,6 +238,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_in_sync.json b/app/Fixtures/links.d2_in_sync.json
+--- a/app/Fixtures/links.d2_in_sync.json
++++ b/app/Fixtures/links.d2_in_sync.json
+@@ -232,6 +232,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_no_links.json b/app/Fixtures/links.d2_no_links.json
+--- a/app/Fixtures/links.d2_no_links.json
++++ b/app/Fixtures/links.d2_no_links.json
+@@ -196,6 +196,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_one_side_ahead.json b/app/Fixtures/links.d2_one_side_ahead.json
+--- a/app/Fixtures/links.d2_one_side_ahead.json
++++ b/app/Fixtures/links.d2_one_side_ahead.json
+@@ -235,6 +235,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_paused.json b/app/Fixtures/links.d2_paused.json
+--- a/app/Fixtures/links.d2_paused.json
++++ b/app/Fixtures/links.d2_paused.json
+@@ -240,6 +240,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_relaunch_needed.json b/app/Fixtures/links.d2_relaunch_needed.json
+--- a/app/Fixtures/links.d2_relaunch_needed.json
++++ b/app/Fixtures/links.d2_relaunch_needed.json
+@@ -241,6 +241,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_setup_incomplete.json b/app/Fixtures/links.d2_setup_incomplete.json
+--- a/app/Fixtures/links.d2_setup_incomplete.json
++++ b/app/Fixtures/links.d2_setup_incomplete.json
+@@ -234,6 +234,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d2_waiting.json b/app/Fixtures/links.d2_waiting.json
+--- a/app/Fixtures/links.d2_waiting.json
++++ b/app/Fixtures/links.d2_waiting.json
+@@ -232,6 +232,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d3_empty.json b/app/Fixtures/links.d3_empty.json
+--- a/app/Fixtures/links.d3_empty.json
++++ b/app/Fixtures/links.d3_empty.json
+@@ -256,6 +256,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d3_filled.json b/app/Fixtures/links.d3_filled.json
+--- a/app/Fixtures/links.d3_filled.json
++++ b/app/Fixtures/links.d3_filled.json
+@@ -380,6 +380,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d3_tool_missing.json b/app/Fixtures/links.d3_tool_missing.json
+--- a/app/Fixtures/links.d3_tool_missing.json
++++ b/app/Fixtures/links.d3_tool_missing.json
+@@ -380,6 +380,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_already.json b/app/Fixtures/links.d5_already.json
+--- a/app/Fixtures/links.d5_already.json
++++ b/app/Fixtures/links.d5_already.json
+@@ -235,6 +235,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_claude.json b/app/Fixtures/links.d5_claude.json
+--- a/app/Fixtures/links.d5_claude.json
++++ b/app/Fixtures/links.d5_claude.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_codex.json b/app/Fixtures/links.d5_codex.json
+--- a/app/Fixtures/links.d5_codex.json
++++ b/app/Fixtures/links.d5_codex.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_cursor.json b/app/Fixtures/links.d5_cursor.json
+--- a/app/Fixtures/links.d5_cursor.json
++++ b/app/Fixtures/links.d5_cursor.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_large.json b/app/Fixtures/links.d5_large.json
+--- a/app/Fixtures/links.d5_large.json
++++ b/app/Fixtures/links.d5_large.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_opencode.json b/app/Fixtures/links.d5_opencode.json
+--- a/app/Fixtures/links.d5_opencode.json
++++ b/app/Fixtures/links.d5_opencode.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.d5_unavailable.json b/app/Fixtures/links.d5_unavailable.json
+--- a/app/Fixtures/links.d5_unavailable.json
++++ b/app/Fixtures/links.d5_unavailable.json
+@@ -199,6 +199,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }
+diff --git a/app/Fixtures/links.empty.json b/app/Fixtures/links.empty.json
+--- a/app/Fixtures/links.empty.json
++++ b/app/Fixtures/links.empty.json
+@@ -160,6 +160,38 @@
+       "text": "Choose Link a recent chat to find a conversation to link.",
+       "buttons": [],
+       "status_line": null
++    },
++    {
++      "id": "screen.theme",
++      "tone": "info",
++      "values": {},
++      "text": "Appearance",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.light",
++      "tone": "info",
++      "values": {},
++      "text": "Light",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.graphite",
++      "tone": "info",
++      "values": {},
++      "text": "Dark",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.theme.system",
++      "tone": "info",
++      "values": {},
++      "text": "System",
++      "buttons": [],
++      "status_line": null
+     }
+   ]
+ }

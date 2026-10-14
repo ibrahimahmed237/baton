@@ -1,0 +1,36 @@
+{
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "offers": [
+    {
+      "buttons": [
+        {
+          "id": "continue",
+          "label": "Continue in Codex",
+          "primary": true
+        },
+        {
+          "id": "not_now",
+          "label": "Not now",
+          "primary": false
+        }
+      ],
+      "id": "limit.offer_linked_no_reset_behind",
+      "status_line": null,
+      "text": "OpenCode has reached its usage limit. It did not say when it resets. Continue this chat in Codex?",
+      "tone": "warning",
+      "values": {
+        "destination_chat_id": "sample-b",
+        "destination_tool_id": "codex",
+        "link_id": 3,
+        "offer_key": "[\"opencode\",\"sample-a\",\"p4\"]",
+        "other_tool": "Codex",
+        "source_chat_id": "sample-a",
+        "source_tool_id": "opencode",
+        "tool": "OpenCode"
+      }
+    }
+  ],
+  "queued": [],
+  "synced": []
+}

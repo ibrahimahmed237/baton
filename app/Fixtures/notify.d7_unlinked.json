@@ -1,0 +1,37 @@
+{
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "offers": [
+    {
+      "buttons": [
+        {
+          "id": "link_and_continue",
+          "label": "Link it and continue in Codex",
+          "primary": true
+        },
+        {
+          "id": "not_now",
+          "label": "Not now",
+          "primary": false
+        }
+      ],
+      "id": "limit.offer_unlinked",
+      "status_line": null,
+      "text": "Claude has reached its usage limit. It resets at 2026-10-09 15:00. This chat is not linked to a Codex chat yet.",
+      "tone": "warning",
+      "values": {
+        "destination_chat_id": null,
+        "destination_tool_id": "codex",
+        "link_id": null,
+        "offer_key": "[\"claude\",\"sample-a\",\"p4\"]",
+        "other_tool": "Codex",
+        "source_chat_id": "sample-a",
+        "source_tool_id": "claude",
+        "time": "2026-10-09 15:00",
+        "tool": "Claude"
+      }
+    }
+  ],
+  "queued": [],
+  "synced": []
+}

@@ -1,0 +1,70 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Keep Claude's",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_keep",
+    "status_line": null,
+    "text": "Keep Claude's turns",
+    "tone": "warning",
+    "values": {
+      "tool": "Claude"
+    }
+  },
+  "decision_needed": false,
+  "keep": "claude",
+  "link_id": 3,
+  "mismatch_note": {
+    "buttons": [],
+    "id": "write.chat_changed",
+    "status_line": null,
+    "text": "The chat changed before Baton could write. Check it again.",
+    "tone": "warning",
+    "values": {}
+  },
+  "notes": [
+    {
+      "buttons": [],
+      "id": "merge.keep",
+      "status_line": null,
+      "text": "Only Claude's turns are sent across. Codex's unsynced turns stay where they were written and are marked skipped.",
+      "tone": "warning",
+      "values": {
+        "other_tool": "Codex",
+        "tool": "Claude"
+      }
+    }
+  ],
+  "order": [
+    42,
+    44,
+    43
+  ],
+  "plan_id": "p_0771c849ae916d71363549fa4833cf1db1d8ee82015c9cb08d87b417a77a396b",
+  "preset": "",
+  "split": false,
+  "steps": [
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        42,
+        43
+      ]
+    }
+  ]
+}

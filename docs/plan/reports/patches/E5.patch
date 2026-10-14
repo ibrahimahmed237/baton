@@ -1,0 +1,1380 @@
+diff --git a/baton/services/applier.py b/baton/services/applier.py
+new file mode 100644
+--- /dev/null
++++ b/baton/services/applier.py
+@@ -0,0 +1,429 @@
++"""Confirm previews, safely deliver whole turns, and reconcile observed chats."""
++from __future__ import annotations
++
++from copy import deepcopy
++from dataclasses import asdict, dataclass, replace
++from hashlib import sha256
++import json
++from time import monotonic, sleep
++from typing import Callable, Collection, Mapping, Sequence
++
++from ..domain.capabilities import Visibility
++from ..domain.conditions import SideCondition
++from ..domain.errors import ChatChanged, DecisionNeeded, NotAvailable
++from ..domain.link import ADDED, SHOWN, ATTACHED, WAITING
++from ..domain.model import Turn
++from ..ports.clock import Clock
++from ..ports.store import RecordStore
++from ..ports.tool import ToolAdapter
++from .journal import Guard, Journal
++from .mapping import for_target, content_key
++from .planner import plan_sync
++from .status import link_status, visible_added_turn_ids
++
++
++@dataclass(frozen=True)
++class ApplyStep:
++    """A single confirmed action with its complete turn payload."""
++    side: str
++    action: str
++    turn_ids: tuple[int, ...] = ()
++    turns: tuple[Turn, ...] = ()
++    reason: str = ''
++    needs: tuple[str, ...] = ()
++    name: str = ''
++    folder: str = ''
++    before_local_id: str = ''
++    keep_through_local_id: str = ''
++    alternatives: tuple[str, ...] = ()
++
++
++@dataclass(frozen=True)
++class PreparedPlan:
++    """An immutable preview token and the observations it confirms."""
++    plan_id: str
++    link_id: int | None
++    steps: tuple[ApplyStep, ...]
++    snapshots: dict[str, dict]
++    record: dict
++    decision_needed: bool = False
++
++
++@dataclass(frozen=True)
++class StepResult:
++    """The recorded outcome of one attempted side action."""
++    side: str
++    action: str
++    chat_id: str
++    turn_ids: tuple[int, ...]
++    reason: str = ''
++    entry_id: int | None = None
++
++
++@dataclass(frozen=True)
++class ApplyResult:
++    """Completed steps and an explicit failure or recovery requirement."""
++    plan_id: str
++    applied: bool
++    completed: tuple[StepResult, ...]
++    error: str = ''
++    failed_side: str = ''
++    rollback_error: str = ''
++    pending_entry: int | None = None
++
++
++class Applier:
++    """Execute confirmed previews and reconcile durable delivery evidence."""
++    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock,
++                 elapsed: Callable[[], float] = monotonic, wait: Callable[[float], None] = sleep):
++        self.store, self.adapters, self.clock = store, adapters, clock
++        self.elapsed, self.wait = elapsed, wait
++        self.guard = Guard(store)
++        self.journal = Journal(store, adapters, clock)
++        self.recovery = self.journal.recover()
++
++    def _record(self, link_id: int | None) -> dict:
++        if link_id is None:
++            return {}
++        return {'link': asdict(self.store.get_link(link_id)),
++                'turns': [asdict(t) for t in self.store.turns(link_id)]}
++
++    def _snapshot(self, side: str, chat_id: str) -> dict:
++        adapter = self.adapters[side]
++        ref = adapter.locator.resolve(chat_id)
++        return {'chat_id': ref.id, 'ref': asdict(ref),
++                'turns': [asdict(t) for t in adapter.reader.read(ref.id)],
++                'condition': asdict(self._condition(side, ref.id)),
++                'facts': {k: getattr(v, 'value', v) for k,v in asdict(adapter.facts).items()}}
++
++    def prepare(self, link_id: int | None, steps: Sequence[ApplyStep],
++                chats: Mapping[str, str], decision_needed: bool = False) -> PreparedPlan:
++        """Fingerprint complete planned actions, chat contents and current records."""
++        snapshots = {side: self._snapshot(side, chat) for side, chat in chats.items()}
++        record = self._record(link_id)
++        if link_id is not None and any(record['link']['chats'].get(side) != snapshot['chat_id']
++                                       for side, snapshot in snapshots.items()):
++            raise ChatChanged()
++        steps = tuple(deepcopy(list(steps)))
++        data = {'link_id': link_id, 'steps': [asdict(s) for s in steps],
++                'snapshots': snapshots, 'record': record, 'decision_needed': decision_needed}
++        plan_id = 'p_' + sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
++        return PreparedPlan(plan_id, link_id, steps, snapshots, record, decision_needed)
++
++    def _initial_history_sides(self, link, observed: Mapping[str, Sequence[Turn]]) -> tuple[str, ...]:
++        if link.mode != 'attached_history':
++            return ()
++        delivered = {e.side for e in self.store.history(link.id)
++                     if e.kind in ('attached', 'add', 'create', 'place', 'shown', 'added', 'delivered')}
++        return tuple(s for s in link.sides if not observed.get(s) and s not in delivered)
++
++    def preview(self, link_id: int, add_when_idle: Collection[str] = ()) -> PreparedPlan:
++        """Build delivery actions from freshly observed whole turns and facts."""
++        link = self.store.get_link(link_id)
++        if link.removed_at:
++            raise NotAvailable()
++        for side, chat in link.chats.items():
++            try:
++                canonical = self.adapters[side].locator.resolve(chat).id
++            except KeyError:
++                continue
++            if canonical != chat:
++                # Refresh records moved chats; a preview must not silently mutate a link.
++                raise ChatChanged()
++        conditions = {s: self._condition(s, c) for s, c in link.chats.items()}
++        facts = {s: self.adapters[s].facts for s in link.sides}
++        observed = {s: self.adapters[s].reader.read(c) for s,c in link.chats.items()}
++        plan = plan_sync(link, self.store.turns(link_id), conditions,
++                         add_when_idle=add_when_idle, facts=facts,
++                         initial_history_sides=self._initial_history_sides(link, observed))
++        source = {s: {t.id: t for t in values} for s, values in observed.items()}
++        steps = []
++        for step in plan.steps.values():
++            turns = []
++            for recorded in step.turns:
++                try:
++                    original = source[recorded.origin][recorded.origin_id]
++                except KeyError:
++                    raise ChatChanged() from None
++                if (conditions[recorded.origin].replying and observed[recorded.origin]
++                        and original.id == observed[recorded.origin][-1].id):
++                    raise NotAvailable()
++                mapped = for_target(original, facts[step.side])
++                turns.append(self._local_turn(mapped, link_id, recorded.id))
++            steps.append(ApplyStep(step.side, step.action, tuple(t.id for t in step.turns),
++                                   tuple(turns), step.reason, step.needs, alternatives=step.alternatives))
++        prepared = self.prepare(link_id, steps, link.chats, plan.decision_needed)
++        for side in link.sides:
++            # A changed read during preview must not confirm an older mapped payload.
++            snapshot = prepared.snapshots[side]
++            current_facts = {k: getattr(v, 'value', v) for k,v in asdict(facts[side]).items()}
++            if (snapshot['turns'] != [asdict(t) for t in observed[side]] or
++                    snapshot['condition'] != asdict(conditions[side]) or
++                    snapshot['facts'] != current_facts):
++                raise ChatChanged()
++        return prepared
++
++    @staticmethod
++    def _local_turn(turn: Turn, link_id: int, turn_id: int) -> Turn:
++        ids = {message.id: f'baton_{link_id}_{turn_id}_{index}'
++               for index, message in enumerate((turn.prompt, *turn.messages))}
++        return Turn(replace(turn.prompt, id=ids[turn.prompt.id]), tuple(
++            replace(m, id=ids[m.id], call_id=ids.get(m.call_id, m.call_id)) for m in turn.messages))
++
++    @staticmethod
++    def _turns(values) -> list[Turn]:
++        from ..domain.model import Message
++        return [Turn(Message(**t['prompt']), tuple(Message(**m) for m in t['messages'])) for t in values]
++
++    def _condition(self, side: str, chat: str) -> SideCondition:
++        adapter = self.adapters[side]
++        condition = adapter.state.condition(chat)
++        return replace(condition, format_known=condition.format_known and adapter.state.format_version().known)
++
++    def apply_confirmed(self, link_id: int, plan_id: str,
++                        add_when_idle: Collection[str] = ()) -> ApplyResult:
++        """Apply only when a freshly rebuilt preview still matches the confirmation."""
++        plan = self.preview(link_id, add_when_idle)
++        if plan.plan_id != plan_id:
++            raise ChatChanged()
++        return self.apply(plan)
++
++    def _validate(self, plan: PreparedPlan) -> None:
++        if self.store.journal_entries(pending=True):
++            raise NotAvailable()
++        if self._record(plan.link_id) != plan.record:
++            raise ChatChanged()
++        self._check_snapshots(plan.snapshots)
++        checked = self.prepare(plan.link_id, plan.steps,
++                               {s: v['chat_id'] for s, v in plan.snapshots.items()}, plan.decision_needed)
++        if checked.plan_id != plan.plan_id:
++            raise ChatChanged()
++
++    def _check_snapshots(self, snapshots: Mapping[str, dict]) -> None:
++        for side, snapshot in snapshots.items():
++            try:
++                fresh = self._snapshot(side, snapshot['chat_id'])
++            except KeyError:
++                raise ChatChanged() from None
++            if fresh != snapshot:
++                raise ChatChanged()
++    def apply(self, plan: PreparedPlan) -> ApplyResult:
++        """Journal, verify and record each action, stopping at the first failure."""
++        self._validate(plan)
++        if plan.decision_needed:
++            raise DecisionNeeded()
++        completed = []
++        working = deepcopy(plan.snapshots)
++        for step in plan.steps:
++            chat = self.store.get_link(plan.link_id).chat(step.side) if plan.link_id is not None else ''
++            entry = None
++            action, reason = step.action, step.reason
++            try:
++                self._check_snapshots(working)
++                if plan.link_id is not None:
++                    current_link = self.store.get_link(plan.link_id)
++                    if current_link.removed_at or (current_link.paused and action != 'hold'):
++                        raise NotAvailable()
++                if action == 'hold':
++                    completed.append(StepResult(step.side, action, chat, step.turn_ids, reason))
++                    continue
++                if action == 'add_after_release':
++                    action, reason = self._release(step, chat, plan.link_id)
++                if action == 'attach':
++                    condition = self._condition(step.side, chat)
++                    if not condition.exists or not condition.hooks_ready:
++                        raise NotAvailable()
++                    if plan.link_id is not None:
++                        self.store.record_event(plan.link_id, 'attach_pending', step.side,
++                                                self.clock.now(), step.turn_ids, {'reason': reason})
++                    completed.append(StepResult(step.side, 'attach', chat, step.turn_ids, reason))
++                    continue
++                if action not in ('add', 'create', 'place', 'cut') or (action == 'cut' and step.turn_ids):
++                    raise NotAvailable()
++                adapter = self.adapters[step.side]
++                before = adapter.reader.read(chat) if action != 'create' else []
++                expected = self._turns(working[step.side]['turns']) if action != 'create' else None
++                self.guard.check_write(adapter, None if action == 'create' else chat,
++                                       plan.link_id, expected=expected, action=action)
++                entry = self.journal.begin(plan.link_id, step.side, None if action == 'create' else chat, action)
++                result = self._write(step, action, chat)
++                if (result.receipt.tool, result.receipt.chat_id, result.receipt.kind) != (step.side, result.chat_id, action):
++                    raise ChatChanged()
++                self._verify(step, action, before, result.chat_id, result.local_ids)
++                visibility = adapter.facts.new_chat_visible if action == 'create' else adapter.facts.added_turn_visible
++                state = SHOWN if visibility == Visibility.AT_ONCE else ADDED
++                self.store.complete_write(entry, asdict(result.receipt), self.clock.now(), plan.link_id,
++                                          step.side, step.turn_ids, state, action,
++                                          result.local_ids if action != 'cut' else (),
++                                          {'reason': reason})
++                completed.append(StepResult(step.side, action, result.chat_id, step.turn_ids, reason, entry))
++                if plan.link_id is not None:
++                    working[step.side] = self._snapshot(step.side, result.chat_id)
++            except Exception as error:
++                rollback_error = ''
++                pending = None
++                if entry is not None:
++                    self.journal.fail(entry, error)
++                    try:
++                        self.journal.take_back(entry)
++                    except Exception as rollback:
++                        rollback_error = type(rollback).__name__
++                        pending = entry
++                return ApplyResult(plan.plan_id, False, tuple(completed), type(error).__name__,
++                                   step.side, rollback_error, pending)
++        return ApplyResult(plan.plan_id, True, tuple(completed))
++
++    def _release(self, step: ApplyStep, chat: str, link_id: int | None) -> tuple[str, str]:
++        adapter = self.adapters[step.side]
++        try:
++            self.guard.check_release(adapter, chat, link_id)
++            adapter.app.release(chat)
++            deadline = self.elapsed() + 10.0
++            for _ in range(101):
++                if not adapter.state.condition(chat).open:
++                    return 'add', ''
++                remaining = deadline - self.elapsed()
++                if remaining <= 0:
++                    break
++                self.wait(min(0.1, remaining))
++            return 'attach', 'release_timeout'
++        except Exception as error:
++            return 'attach', 'release_failed:' + type(error).__name__
++
++    def _write(self, step: ApplyStep, action: str, chat: str):
++        writer = self.adapters[step.side].writer
++        if action == 'create':
++            return writer.create(step.turns, step.name, step.folder)
++        if action == 'place':
++            return writer.place(chat, step.turns, step.before_local_id)
++        if action == 'cut':
++            return writer.cut(chat, step.keep_through_local_id)
++        return writer.add(chat, step.turns)
++
++    def _verify(self, step: ApplyStep, action: str, before: list[Turn], chat: str,
++                local_ids: Sequence[str]) -> None:
++        after = self.adapters[step.side].reader.read(chat)
++        if action == 'cut':
++            index = next((i for i,t in enumerate(before) if t.id == step.keep_through_local_id), -1)
++            expected = before[:index + 1]
++        elif action == 'place':
++            index = next((i for i,t in enumerate(before) if t.id == step.before_local_id), -1)
++            if index < 0:
++                raise ChatChanged()
++            expected = before[:index] + list(step.turns) + before[index:]
++        else:
++            expected = (before if action == 'add' else []) + list(step.turns)
++        if len(local_ids) != len(step.turns) and action != 'cut':
++            raise ChatChanged()
++        if action != 'cut':
++            written = after[-len(step.turns):] if action != 'place' and step.turns else []
++            if len(set(local_ids)) != len(local_ids):
++                raise ChatChanged()
++            # Adapters may assign local ids; compare public content, then use the returned identities.
++            if action == 'place':
++                written = after[index:index + len(step.turns)]
++            if [content_key(t) for t in written] != [content_key(t) for t in step.turns]:
++                raise ChatChanged()
++        if [content_key(t) for t in after] != [content_key(t) for t in expected]:
++            raise ChatChanged()
++        if len({turn.id for turn in after}) != len(after):
++            raise ChatChanged()
++        if action == 'add' and after[:len(before)] != before:
++            raise ChatChanged()
++        if action == 'place' and (after[:index] != before[:index] or
++                after[index + len(step.turns):] != before[index:]):
++            raise ChatChanged()
++        if action == 'cut' and after != expected:
++            raise ChatChanged()
++        if action != 'cut' and step.turns and [t.id for t in written] != list(local_ids):
++            raise ChatChanged()
++
++    def record_attached(self, link_id: int, side: str, turn_ids: Sequence[int], message_id: str) -> int:
++        """Record a hook acknowledgement without inferring chat visibility."""
++        if not message_id or not turn_ids or len(set(turn_ids)) != len(turn_ids):
++            raise NotAvailable()
++        waiting = {t.id for t in self.store.turns(link_id) if t.states.get(side) == WAITING}
++        if not set(turn_ids).issubset(waiting):
++            raise NotAvailable()
++        link = self.store.get_link(link_id)
++        condition = self._condition(side, link.chat(side))
++        if link.removed_at or link.paused or not condition.exists or not condition.hooks_ready:
++            raise NotAvailable()
++        if link_status(link, self.store.turns(link_id),
++                       {s: self._condition(s,c) for s,c in link.chats.items()},
++                       facts={s: self.adapters[s].facts for s in link.sides}).decision_needed:
++            raise DecisionNeeded()
++        return self.store.deliver(link_id, side, turn_ids, ATTACHED, 'attached', self.clock.now(),
++                                  detail={'message_id': message_id})
++
++    def refresh(self, link_id: int) -> dict:
++        """Reconcile fresh names, content and visibility evidence with turn states."""
++        link = self.store.get_link(link_id)
++        observed = {}
++        names = {}
++        missing = []
++        for side, chat in link.chats.items():
++            adapter = self.adapters[side]
++            try:
++                ref = adapter.locator.resolve(chat)
++            except KeyError:
++                missing.append(side)
++                continue
++            if not adapter.state.condition(ref.id).exists:
++                missing.append(side)
++                continue
++            if ref.id != chat:
++                self.store.move_link(link_id, side, ref.id, at=self.clock.now())
++            names[side] = ref.name
++            observed[side] = adapter.reader.read(ref.id)
++        for side, values in observed.items():
++            local_ids = self.store.local_ids(link_id, side)
++            read = {t.id: t for t in values}
++            bypassed = []
++            for recorded in self.store.turns(link_id):
++                if recorded.states.get(side) not in (ADDED, SHOWN):
++                    continue
++                actual = read.get(local_ids.get(recorded.id))
++                source = next((t for t in observed.get(recorded.origin, ())
++                               if t.id == recorded.origin_id), None)
++                if actual is None or source is None or content_key(actual) != content_key(source):
++                    bypassed.append(recorded.id)
++            self.store.reset_delivery(link_id, side, bypassed, self.clock.now())
++            self.store.record_turns(link_id, side, values)
++        link = self.store.get_link(link_id)
++        conditions = {s: self._condition(s,c) for s,c in link.chats.items()}
++        facts = {s: self.adapters[s].facts for s in link.sides}
++        for side in link.sides:
++            if side in missing:
++                continue
++            shown = visible_added_turn_ids(self.store.turns(link_id), side, facts[side],
++                                           conditions[side], self.store.history(link_id))
++            self.store.mark_shown(link_id, side, shown)
++        turns = self.store.turns(link_id)
++        return {'link': link, 'status': link_status(link, turns, conditions, facts=facts,
++                                                  history=self.store.history(link_id),
++                                                  initial_history_sides=self._initial_history_sides(link, observed)),
++                'names': names, 'turns': turns,
++                'messages': {s: [for_target(t, replace(facts[s], replays_tool_calls=True)) for t in values]
++                             for s,values in observed.items()}, 'checked_at': self.clock.now(),
++                'missing': tuple(missing)}
++
++    def mark_seen(self, link_id: int, side: str, turn_ids: Sequence[int] | None = None) -> int:
++        """Accept explicit user visibility evidence only for reopen-visible chats."""
++        if self.adapters[side].facts.added_turn_visible != Visibility.ON_REOPEN_CHAT:
++            raise NotAvailable()
++        self.refresh(link_id)
++        return self.store.mark_shown(link_id, side, turn_ids)
++
++    def conversation(self, link_id: int) -> list[dict]:
++        """Supply public full content; the app owns shortening and expanding it."""
++        fresh = self.refresh(link_id)
++        rows = []
++        for recorded in fresh['turns']:
++            original = next((t for t in fresh['messages'].get(recorded.origin, ())
++                             if t.id == recorded.origin_id), None)
++            rows.append({'turn': recorded, 'prompt': original.prompt.text if original else None,
++                         'reply': original.reply_text if original else None,
++                         'tool_activity': tuple(m for m in original.messages
++                                                if m.kind not in ('prompt','reply')) if original else ()})
++        return rows
+diff --git a/baton/services/planner.py b/baton/services/planner.py
+--- a/baton/services/planner.py
++++ b/baton/services/planner.py
+@@ -63,10 +63,12 @@
+ def plan_sync(link: Link, turns: Sequence[LedgerTurn],
+               conditions: Mapping[str, SideCondition] | None = None,
+               add_when_idle: Collection[str] = (), *,
+-              facts: Mapping[str, Capabilities]) -> Plan:
++              facts: Mapping[str, Capabilities],
++              initial_history_sides: Collection[str] = ()) -> Plan:
+     """Choose delivery from capabilities and current state, without tool names."""
+     conditions = conditions or {}
+-    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle)
++    current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle,
++                                 initial_history_sides=initial_history_sides)
+     steps = {}
+     for side, side_status in current.sides.items():
+         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
+@@ -75,7 +77,7 @@
+         condition = conditions.get(side, SideCondition())
+         action, reason, needs, alternatives = status.delivery_choice(
+             link, condition, facts[side], side_status.waiting_reason,
+-            side in add_when_idle)
++            side in add_when_idle, side in initial_history_sides)
+         steps[side] = Step(side, action, waiting, reason, needs, alternatives)
+     return Plan(steps, current.decision_needed)
+ 
+diff --git a/baton/services/status.py b/baton/services/status.py
+--- a/baton/services/status.py
++++ b/baton/services/status.py
+@@ -78,11 +78,12 @@
+ def link_status(link: Link, turns: Sequence[LedgerTurn],
+                 conditions: Mapping[str, SideCondition] | None = None, *,
+                 facts: Mapping[str, Capabilities], history: Sequence[Event] = (),
+-                add_when_idle: Collection[str] = ()) -> LinkStatus:
++                add_when_idle: Collection[str] = (),
++                initial_history_sides: Collection[str] = ()) -> LinkStatus:
+     """Compute status from facts and explicit delivery/relaunch evidence."""
+     conditions = conditions or {}
+     in_conflict = _in_conflict(turns)
+-    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle)
++    sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle, side in initial_history_sides)
+              for side in link.sides}
+     return LinkStatus(sides, link.paused, bool(in_conflict))
+ 
+@@ -96,14 +97,14 @@
+ 
+ def _side_status(link: Link, turns: Sequence[LedgerTurn], side: str,
+                  condition: SideCondition, conflict: bool, facts: Capabilities,
+-                 history: Sequence[Event], automatic: bool) -> SideStatus:
++                 history: Sequence[Event], automatic: bool, initial_history: bool = False) -> SideStatus:
+     def count(*states: str) -> int:
+         return sum(1 for turn in turns if turn.states.get(side) in states)
+ 
+     waiting = [turn for turn in turns if turn.states.get(side) == link_states.WAITING]
+     reason = _waiting_reason(link, condition, conflict) if waiting else ""
+     # Use the planner policy so status cannot promise attachment for an add-only side.
+-    action, delivery_reason, _, _ = delivery_choice(link, condition, facts, reason, automatic)
++    action, delivery_reason, _, _ = delivery_choice(link, condition, facts, reason, automatic, initial_history)
+     if waiting:
+         reason = NOT_SYNCED_YET if action == ADD else delivery_reason
+     carried = waiting if action == ATTACH else []
+@@ -183,13 +184,15 @@
+         return False
+ 
+ def delivery_choice(link: Link, condition: SideCondition, facts: Capabilities,
+-                    reason: str, automatic: bool = False) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
++                    reason: str, automatic: bool = False, initial_history: bool = False) -> tuple[str, str, tuple[str, ...], tuple[str, ...]]:
+     """Select a safe action and note metadata for a single waiting side."""
+     if reason in (SIDE_MISSING, PAUSED, DECISION_NEEDED):
+         return HOLD, reason, (), ()
+     if not condition.format_known:
+         action = ATTACH if condition.open and condition.hooks_ready else HOLD
+         return action, FORMAT_UNKNOWN, (), ()
++    if initial_history:
++        return (ATTACH, 'initial_history', (), ()) if condition.hooks_ready else (HOLD, HOOKS_NOT_READY, (), ())
+     window = facts.write_window
+     allowed = (window == WriteWindow.ANY_TIME
+                or window == WriteWindow.NOT_HELD and not condition.open
+diff --git a/baton/ledger/sqlite_store.py b/baton/ledger/sqlite_store.py
+--- a/baton/ledger/sqlite_store.py
++++ b/baton/ledger/sqlite_store.py
+@@ -137,6 +137,66 @@
+                 "update journal set pre_receipt=null,post_receipt=null where state in ('committed','taken_back')"
+                 " and julianday(ended_at)<julianday(?) and pre_receipt is not null", (before,))
+         return cur.rowcount
++
++    def local_ids(self, link_id: int, side: str) -> dict[int, str]:
++        """Read local identities, including unconfirmed prior deliveries."""
++        return {row["turn_id"]: row["local_id"] for row in self.db.execute(
++            "select s.turn_id,s.local_id from turn_states s join turns t on t.id=s.turn_id"
++            " where t.link_id=? and s.side=? and s.local_id<>''", (link_id, side))}
++
++    def reset_delivery(self, link_id: int, side: str, turn_ids: Sequence[int], at: str) -> None:
++        """Keep bypassed identities while making their delivery state truthful."""
++        with self.db:
++            for turn_id in turn_ids:
++                current = self._state(link_id, turn_id, side)
++                if current not in (ADDED, SHOWN):
++                    continue
++                self.db.execute("update turn_states set state=?,event_id=null where turn_id=? and side=?",
++                                (WAITING, turn_id, side))
++            if turn_ids:
++                self._event(link_id, at, "not_confirmed", side, turn_ids=turn_ids)
++
++    def record_event(self, link_id: int, kind: str, side: str, at: str,
++                     turn_ids: Sequence[int] = (), detail: dict[str, Any] | None = None) -> int:
++        """Persist a non-delivery action in the link history."""
++        with self.db:
++            return self._event(link_id, at, kind, side, detail, turn_ids)
++
++    def complete_write(self, entry_id: int, receipt: dict[str, Any], at: str,
++                       link_id: int | None, side: str, turn_ids: Sequence[int], state: str,
++                       kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
++        """Atomically persist verified local delivery and journal completion."""
++        entry = self.journal_entry(entry_id)
++        if (entry["state"] != "begun" or entry["link_id"] != link_id or
++                (entry["tool"],entry["chat_id"],entry["action"]) !=
++                (receipt["tool"],receipt["chat_id"],receipt["kind"]) or
++                side != receipt["tool"] or kind != receipt["kind"]):
++            raise ValueError("receipt_identity_mismatch")
++        if link_id is not None and kind != 'create' and self.get_link(link_id).chat(side) != receipt['chat_id']:
++            raise ValueError("chat_identity_mismatch")
++        if link_id is not None:
++            if state not in DELIVERED or len(local_ids) != len(turn_ids):
++                raise ValueError("delivery_identity_mismatch")
++            for turn_id in turn_ids:
++                if self._state(link_id, turn_id, side) != WAITING:
++                    raise ValueError("delivery_not_waiting")
++        # One transaction: a committed journal and its delivery states are inseparable.
++        with self.db:
++            event_id = None
++            if link_id is not None:
++                if kind == 'create':
++                    before_chat = self.get_link(link_id).chat(side)
++                    self.db.execute("update link_chats set chat=? where link_id=? and tool=?",
++                                    (receipt['chat_id'], link_id, side))
++                    self._event(link_id, at, 'link_moved', side,
++                                {'from': before_chat, 'to': receipt['chat_id']})
++                event_id = self._event(link_id, at, kind, side, detail, turn_ids)
++                for turn_id, local_id in zip(turn_ids, local_ids):
++                    self.db.execute("update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?",
++                                    (state, local_id, event_id, turn_id, side))
++            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
++                            (at, json.dumps(receipt), entry_id))
++        return event_id
+ 
+     # Links
+ 
+diff --git a/baton/ports/store.py b/baton/ports/store.py
+--- a/baton/ports/store.py
++++ b/baton/ports/store.py
+@@ -90,3 +90,19 @@
+     def journal_finish(self, entry_id: int, state: str, at: str,
+                        receipt: dict[str, Any] | None = None, error: str = "") -> None: ...
+     def journal_prune(self, before: str) -> int: ...
++
++    def local_ids(self, link_id: int, side: str) -> dict[int, str]:
++        """Return persisted local identities for recorded turns on one side."""
++        ...
++    def reset_delivery(self, link_id: int, side: str, turn_ids: Sequence[int], at: str) -> None:
++        """Return bypassed deliveries to waiting while retaining their identities."""
++        ...
++    def record_event(self, link_id: int, kind: str, side: str, at: str,
++                     turn_ids: Sequence[int] = (), detail: dict[str, Any] | None = None) -> int:
++        """Record an observed action without changing delivery states."""
++        ...
++    def complete_write(self, entry_id: int, receipt: dict[str, Any], at: str,
++                       link_id: int | None, side: str, turn_ids: Sequence[int], state: str,
++                       kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
++        """Commit verified delivery metadata and the journal in one transaction."""
++        ...
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+--- a/baton/notes/catalogue.py
++++ b/baton/notes/catalogue.py
+@@ -160,6 +160,9 @@
+     Note("message.tool_result", "info", "Tool result"),
+     Note("message.tool_text", "info", "Tool activity"),
+     Note("status.tool_activity", "info", "Ran {commands} commands, changed {files} files"),
++    Note("status.attached", "info", "{tool}'s agent has {n} attached turns. They are not shown as messages in this chat."),
++    Note("status.setup_ready", "ok", "Baton's hooks are installed and trusted in {tool}."),
++    Note("status.new_chat_relaunch", "info", "Relaunch {tool} to see this chat.", ("Relaunch {tool}",), "Relaunch {tool} to see this chat"),
+ )}
+ 
+ 
+diff --git a/tests/unit/test_applier.py b/tests/unit/test_applier.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_applier.py
+@@ -0,0 +1,463 @@
++"""Confirmed plan execution, receipts, rechecks and interrupted writes."""
++from dataclasses import replace
++import unittest
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE
++from baton.domain.errors import ChatChanged, NotAvailable
++from baton.domain.model import Message, Turn, PROMPT, REPLY
++from baton.ledger.sqlite_store import Ledger
++from baton.ports.clock import FixedClock
++from baton.services.applier import Applier, ApplyStep
++from tests.adapters.suite import turns
++
++
++class ApplierTests(unittest.TestCase):
++    def setUp(self):
++        self.store = Ledger(':memory:')
++        self.clock = FixedClock('2026-01-01T01:00:00Z')
++        self.adapters = {'claude': FakeAdapter(CLAUDE_LIKE, 'claude'),
++                         'codex': FakeAdapter(CODEX_LIKE, 'codex')}
++        self.source = self.adapters['claude'].build_chat(turns())
++        self.target = self.adapters['codex'].build_chat([])
++        self.link = self.store.link({'claude': self.source, 'codex': self.target}, 'full_copy', at=self.clock.now())
++        self.store.record_turns(self.link.id, 'claude', turns())
++        self.applier = Applier(self.store, self.adapters, self.clock)
++
++    def tearDown(self):
++        self.store.close()
++
++    def test_preview_is_read_only_and_confirmation_adds_once(self):
++        plan = self.applier.preview(self.link.id)
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries(), [])
++        result = self.applier.apply_confirmed(self.link.id, plan.plan_id)
++        self.assertTrue(result.applied)
++        self.assertEqual(len(self.adapters['codex'].reader.read(self.target)), 3)
++        self.assertTrue(all(t.states['codex'] == 'shown' for t in self.store.turns(self.link.id)))
++        self.assertEqual(self.applier.preview(self.link.id).steps, ())
++        self.assertEqual(self.applier.refresh(self.link.id)['status'].side('codex').agent_has, 3)
++        self.assertEqual(len(self.store.turns(self.link.id)), 3)
++        self.assertEqual(self.store.journal_entries()[0]['state'], 'committed')
++
++    def test_changed_source_refuses_even_when_ids_counts_and_first_lines_match(self):
++        plan = self.applier.preview(self.link.id)
++        source = self.adapters['claude']
++        before = source.chats[self.source][0]
++        source.chats[self.source][0] = replace(before, messages=(Message('a1', REPLY, 'changed full reply'),))
++        with self.assertRaises(ChatChanged): self.applier.apply(plan)
++        with self.assertRaises(ChatChanged): self.applier.apply_confirmed(self.link.id, plan.plan_id)
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries(), [])
++
++    def test_changed_target_and_paused_record_refuse_stale_plan(self):
++        plan = self.applier.preview(self.link.id)
++        self.adapters['codex'].build_chat([])
++        self.adapters['codex'].chats[self.target].append(Turn(Message('local', PROMPT, 'new')))
++        with self.assertRaises(ChatChanged): self.applier.apply(plan)
++        self.adapters['codex'].chats[self.target].clear()
++        self.store.set_paused(self.link.id, True, self.clock.now())
++        with self.assertRaises(ChatChanged): self.applier.apply(plan)
++
++    def test_readback_mismatch_rolls_back_and_leaves_waiting(self):
++        original = self.applier._verify
++        self.applier._verify = lambda *args: (_ for _ in ()).throw(ChatChanged())
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error, 'ChatChanged')
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertTrue(all(t.states['codex'] == 'waiting' for t in self.store.turns(self.link.id)))
++        self.assertEqual(self.store.journal_entries()[0]['state'], 'taken_back')
++        self.applier._verify = original
++        self.assertTrue(self.applier.apply(self.applier.preview(self.link.id)).applied)
++
++    def test_writer_failure_after_mutation_takes_it_back(self):
++        writer = self.adapters['codex'].writer
++        original = writer.add
++        def broken(chat, incoming):
++            original(chat, incoming)
++            raise RuntimeError('crash')
++        writer.add = broken
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error, 'RuntimeError')
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries()[0]['state'], 'taken_back')
++
++    def test_delivery_failure_rolls_back_atomic_transaction_and_chat(self):
++        self.store.db.execute("create trigger fail_delivery before update on turn_states begin select raise(abort,'fail'); end")
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertFalse(result.applied)
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertTrue(all(t.states['codex'] == 'waiting' for t in self.store.turns(self.link.id)))
++        self.assertEqual(len([e for e in self.store.history(self.link.id) if e.kind == 'add']), 0)
++        self.assertEqual(self.store.journal_entries()[0]['state'], 'taken_back')
++
++    def test_create_verifies_before_commit_and_failure_removes_chat(self):
++        step = ApplyStep('codex', 'create', turns=tuple(turns()), name='copy', folder='folder')
++        plan = self.applier.prepare(None, [step], {'claude': self.source})
++        result = self.applier.apply(plan)
++        self.assertTrue(result.applied)
++        chat = result.completed[0].chat_id
++        self.assertEqual(self.adapters['codex'].reader.read(chat), turns())
++        self.assertEqual(self.store.journal_entries()[0]['state'], 'committed')
++        before = len(self.adapters['codex'].locator.chats())
++        self.applier._verify = lambda *args: (_ for _ in ()).throw(ChatChanged())
++        failed = self.applier.apply(self.applier.prepare(None, [step], {'claude': self.source}))
++        self.assertFalse(failed.applied)
++        self.assertEqual(len(self.adapters['codex'].locator.chats()), before)
++        self.assertEqual(self.store.journal_entries()[-1]['state'], 'taken_back')
++
++    def test_release_success_rechecks_write_state_after_release(self):
++        # Target has release-capable facts; writes must happen only after it closes.
++        target = self.adapters['codex']
++        target.facts = CLAUDE_LIKE
++        target.set_format(True, CLAUDE_LIKE.checked_versions[0])
++        target.set_condition(self.target, open=True, app_running=True)
++        plan = self.applier.preview(self.link.id, add_when_idle=['codex'])
++        self.assertEqual(plan.steps[0].action, 'add_after_release')
++        release = target.app.release
++        def now_replying(chat):
++            release(chat)
++            target.set_condition(chat, replying=True)
++        target.app.release = now_replying
++        result = self.applier.apply(plan)
++        self.assertEqual(result.error, 'ChatReplying')
++        self.assertEqual(target.reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries(), [])
++
++    def test_release_timeout_falls_back_to_pending_attach_without_write(self):
++        target = self.adapters['codex']
++        target.facts = CLAUDE_LIKE
++        target.set_format(True, CLAUDE_LIKE.checked_versions[0])
++        target.set_condition(self.target, open=True)
++        target.app.release = lambda chat: None
++        elapsed = [0.0]
++        self.applier.elapsed = lambda: elapsed[0]
++        self.applier.wait = lambda seconds: elapsed.__setitem__(0, elapsed[0] + seconds)
++        result = self.applier.apply(self.applier.preview(self.link.id, ['codex']))
++        self.assertTrue(result.applied)
++        self.assertEqual(result.completed[0].reason, 'release_timeout')
++        self.assertLessEqual(elapsed[0], 10.00001)
++        self.assertEqual(target.reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries(), [])
++        self.assertTrue(all(t.states['codex'] == 'waiting' for t in self.store.turns(self.link.id)))
++        self.assertEqual(self.store.history(self.link.id)[0].detail['reason'], 'release_timeout')
++
++    def test_release_exception_falls_back_only_when_hooks_ready(self):
++        target = self.adapters['codex']
++        target.facts = CLAUDE_LIKE
++        target.set_format(True, CLAUDE_LIKE.checked_versions[0])
++        target.set_condition(self.target, open=True)
++        target.app.release = lambda chat: (_ for _ in ()).throw(RuntimeError())
++        plan = self.applier.preview(self.link.id, ['codex'])
++        target.set_condition(self.target, hooks_ready=False)
++        with self.assertRaises(ChatChanged): self.applier.apply(plan)
++        target.set_condition(self.target, hooks_ready=True)
++        result = self.applier.apply(plan)
++        self.assertEqual(result.completed[0].reason, 'release_failed:RuntimeError')
++        self.assertEqual(target.reader.read(self.target), [])
++
++    def test_failing_second_step_keeps_first_and_stops_third(self):
++        plan = self.applier.preview(self.link.id)
++        first = plan.steps[0]
++        steps = [replace(first, turn_ids=first.turn_ids[:1], turns=first.turns[:1]),
++                 ApplyStep('claude', 'unsupported'),
++                 replace(first, turn_ids=first.turn_ids[1:], turns=first.turns[1:])]
++        result = self.applier.apply(self.applier.prepare(self.link.id, steps, self.link.chats))
++        self.assertFalse(result.applied)
++        self.assertEqual(len(result.completed), 1)
++        self.assertEqual(len(self.adapters['codex'].reader.read(self.target)), 1)
++        self.assertEqual([t.states['codex'] for t in self.store.turns(self.link.id)], ['shown','waiting','waiting'])
++
++    def test_startup_recovers_pending_write_and_blocks_after_failed_recovery(self):
++        entry = self.applier.journal.begin(self.link.id, 'codex', self.target, 'add')
++        self.adapters['codex'].writer.add(self.target, turns())
++        self.adapters['codex'].set_condition(self.target, open=True)
++        restarted = Applier(self.store, self.adapters, self.clock)
++        self.assertEqual(restarted.recovery[0]['state'], 'failed')
++        with self.assertRaises(NotAvailable): restarted.apply(restarted.preview(self.link.id))
++        self.adapters['codex'].set_condition(self.target, open=False)
++        restarted = Applier(self.store, self.adapters, self.clock)
++        self.assertEqual(self.store.journal_entry(entry)['state'], 'taken_back')
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++
++    def test_local_id_collision_does_not_overwrite_existing_turn(self):
++        target = self.adapters['codex']
++        target.chats[self.target] = [turns()[0]]
++        # This already-existing p1 is kept back locally, so no conflict is created.
++        ids = self.store.record_turns(self.link.id, 'codex', target.reader.read(self.target))
++        self.store.keep_back(self.link.id, ids[0], self.clock.now())
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertTrue(result.applied)
++        observed = target.reader.read(self.target)
++        self.assertEqual(len(observed), 4)
++        self.assertEqual(len({t.id for t in observed}), 4)
++        self.applier.refresh(self.link.id)
++        self.assertEqual(len(self.store.turns(self.link.id)), 4)
++
++    def test_failed_rollback_is_explicit_blocks_apply_and_startup_retries(self):
++        target = self.adapters['codex']
++        add = target.writer.add
++        def broken(chat, incoming):
++            add(chat, incoming)
++            target.set_condition(chat, open=True)
++            raise RuntimeError()
++        target.writer.add = broken
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual((result.error,result.rollback_error),('RuntimeError','ChatHeld'))
++        self.assertIsNotNone(result.pending_entry)
++        self.assertEqual(self.store.journal_entry(result.pending_entry)['state'],'failed')
++        self.assertEqual(len(target.reader.read(self.target)),3)
++        self.assertTrue(all(t.states['codex']=='waiting' for t in self.store.turns(self.link.id)))
++        with self.assertRaises(NotAvailable): self.applier.apply(self.applier.preview(self.link.id))
++        target.set_condition(self.target,open=False)
++        restarted = Applier(self.store,self.adapters,self.clock)
++        self.assertEqual(restarted.recovery[0]['state'],'taken_back')
++        self.assertEqual(target.reader.read(self.target),[])
++
++    def test_rewriting_existing_id_during_add_is_refused_and_rolled_back(self):
++        target = self.adapters['codex']
++        original_turn = Turn(Message('local',PROMPT,'local'))
++        target.chats[self.target] = [original_turn]
++        add = target.writer.add
++        def rewrite(chat, incoming):
++            result = add(chat,incoming)
++            target.chats[chat][0] = replace(original_turn,prompt=replace(original_turn.prompt,id='rewritten'))
++            return result
++        target.writer.add = rewrite
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(target.reader.read(self.target),[original_turn])
++
++    def test_hook_acknowledgment_refuses_empty_duplicate_and_cross_link_ids(self):
++        for ids in ([],[1,1],[999]):
++            with self.assertRaises(NotAvailable):
++                self.applier.record_attached(self.link.id,'codex',ids,'message')
++        self.assertEqual(len(self.store.history(self.link.id)),1)
++
++    def test_atomic_completion_refuses_wrong_journal_link_or_side(self):
++        plan = self.applier.preview(self.link.id)
++        step = plan.steps[0]
++        entry = self.applier.journal.begin(self.link.id,'codex',self.target,'add')
++        result = self.adapters['codex'].writer.add(self.target,step.turns)
++        from dataclasses import asdict
++        for link_id,side,kind in ((None,'codex','add'),(self.link.id,'claude','add'),(self.link.id,'codex','create')):
++            with self.assertRaises(ValueError):
++                self.store.complete_write(entry,asdict(result.receipt),self.clock.now(),link_id,
++                                          side,step.turn_ids,'shown',kind,result.local_ids)
++        self.assertEqual(self.store.journal_entry(entry)['state'],'begun')
++        self.assertTrue(all(t.states['codex']=='waiting' for t in self.store.turns(self.link.id)))
++        self.applier.journal.take_back(entry)
++
++    def test_changed_delivered_content_is_unconfirmed_without_bouncing_into_origin(self):
++        self.applier.apply(self.applier.preview(self.link.id))
++        target = self.adapters['codex']
++        first = target.chats[self.target][0]
++        target.chats[self.target][0] = replace(first,messages=(Message('changed',REPLY,'different'),))
++        fresh = self.applier.refresh(self.link.id)
++        self.assertEqual(fresh['status'].side('codex').waiting,1)
++        self.assertEqual(len(fresh['turns']),3)
++        self.assertEqual(self.store.turns(self.link.id)[0].origin,'claude')
++
++    def test_source_replying_latest_turn_is_refused_until_idle(self):
++        self.adapters['claude'].set_condition(self.source,replying=True)
++        with self.assertRaises(NotAvailable): self.applier.preview(self.link.id)
++        self.adapters['claude'].set_condition(self.source,replying=False)
++        self.assertTrue(self.applier.apply(self.applier.preview(self.link.id)).applied)
++
++    def test_linked_create_moves_link_in_same_transaction_as_delivery(self):
++        step = self.applier.preview(self.link.id).steps[0]
++        create = replace(step,action='create',name='copy')
++        result = self.applier.apply(self.applier.prepare(self.link.id,[create],self.link.chats))
++        self.assertTrue(result.applied)
++        self.assertEqual(self.store.get_link(self.link.id).chat('codex'),result.completed[0].chat_id)
++        self.assertEqual(self.adapters['codex'].reader.read(self.target),[])
++        self.assertTrue(all(t.states['codex']=='shown' for t in self.store.turns(self.link.id)))
++        self.assertEqual(self.store.journal_entries()[0]['state'],'committed')
++
++    def test_multiple_steps_on_same_side_use_updated_expected_snapshot(self):
++        plan = self.applier.preview(self.link.id)
++        full = plan.steps[0]
++        parts = [replace(full,turn_ids=full.turn_ids[:1],turns=full.turns[:1]),
++                 replace(full,turn_ids=full.turn_ids[1:],turns=full.turns[1:])]
++        result = self.applier.apply(self.applier.prepare(self.link.id,parts,self.link.chats))
++        self.assertTrue(result.applied)
++        self.assertEqual(len(result.completed),2)
++        self.assertEqual(len(self.adapters['codex'].reader.read(self.target)),3)
++
++    def test_source_change_after_earlier_step_stops_later_step(self):
++        plan = self.applier.preview(self.link.id)
++        full = plan.steps[0]
++        parts = [replace(full,turn_ids=full.turn_ids[:1],turns=full.turns[:1]),
++                 replace(full,turn_ids=full.turn_ids[1:],turns=full.turns[1:])]
++        complete = self.store.complete_write
++        def change_after_commit(*args,**kwargs):
++            event = complete(*args,**kwargs)
++            source = self.adapters['claude']
++            source.chats[self.source][-1] = replace(source.chats[self.source][-1],messages=())
++            return event
++        self.store.complete_write = change_after_commit
++        result = self.applier.apply(self.applier.prepare(self.link.id,parts,self.link.chats))
++        self.assertFalse(result.applied)
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(len(result.completed),1)
++        self.assertEqual(len(self.adapters['codex'].reader.read(self.target)),1)
++
++    def test_unknown_format_after_partial_write_reports_pending_until_recovered(self):
++        target = self.adapters['codex']
++        add = target.writer.add
++        def broken(chat,incoming):
++            add(chat,incoming)
++            target.set_format(False,'new')
++            raise RuntimeError()
++        target.writer.add = broken
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.rollback_error,'UnknownFormat')
++        self.assertIsNotNone(result.pending_entry)
++        self.assertEqual(self.store.journal_entry(result.pending_entry)['state'],'failed')
++        target.set_format(True,CODEX_LIKE.checked_versions[0])
++        restarted = Applier(self.store,self.adapters,self.clock)
++        self.assertEqual(restarted.recovery[0]['state'],'taken_back')
++        self.assertEqual(target.reader.read(self.target),[])
++
++    def test_preview_refuses_source_change_between_payload_and_fingerprint_reads(self):
++        source = self.adapters['claude']
++        read = source.reader.read
++        calls = [0]
++        def changing(chat):
++            calls[0] += 1
++            if calls[0] == 2:
++                original = source.chats[chat][0]
++                source.chats[chat][0] = replace(original,messages=(Message('r',REPLY,'new answer'),))
++            return read(chat)
++        source.reader.read = changing
++        with self.assertRaises(ChatChanged):
++            self.applier.preview(self.link.id)
++        self.assertEqual(self.adapters['codex'].reader.read(self.target), [])
++        self.assertEqual(self.store.journal_entries(), [])
++
++    def test_later_local_message_after_bypass_requires_decision_before_resend(self):
++        self.applier.apply(self.applier.preview(self.link.id))
++        target = self.adapters['codex']
++        target.chats[self.target].pop(0)
++        target.chats[self.target].append(Turn(Message('later',PROMPT,'new local question')))
++        fresh = self.applier.refresh(self.link.id)
++        self.assertEqual(fresh['turns'][0].states['codex'],'waiting')
++        self.assertTrue(fresh['status'].decision_needed)
++        from baton.domain.errors import DecisionNeeded
++        with self.assertRaises(DecisionNeeded):
++            self.applier.apply(self.applier.preview(self.link.id))
++
++    def test_existing_reply_identity_must_not_change_during_append(self):
++        target = self.adapters['codex']
++        existing = Turn(Message('local',PROMPT,'local'),(Message('original-reply',REPLY,'same reply'),))
++        target.chats[self.target] = [existing]
++        add = target.writer.add
++        def rewrite(chat,incoming):
++            result = add(chat,incoming)
++            target.chats[chat][0] = replace(existing,messages=(replace(existing.messages[0],id='rewritten-reply'),))
++            return result
++        target.writer.add = rewrite
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(target.reader.read(self.target),[existing])
++
++    def test_writer_result_and_receipt_chat_identity_must_agree(self):
++        target = self.adapters['codex']
++        add = target.writer.add
++        def misleading(chat,incoming):
++            result = add(chat,incoming)
++            return replace(result,receipt=replace(result.receipt,chat_id='wrong-chat'))
++        target.writer.add = misleading
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(target.reader.read(self.target),[])
++
++    def test_added_local_identity_must_not_collide_with_existing_turn(self):
++        target = self.adapters['codex']
++        existing = Turn(Message('local',PROMPT,'local'))
++        target.chats[self.target] = [existing]
++        add = target.writer.add
++        def colliding(chat,incoming):
++            result = add(chat,incoming)
++            written = target.chats[chat][-len(incoming)]
++            target.chats[chat][-len(incoming)] = replace(written,prompt=replace(written.prompt,id='local'))
++            return replace(result,local_ids=('local',*result.local_ids[1:]))
++        target.writer.add = colliding
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(target.reader.read(self.target),[existing])
++
++    def test_refresh_follows_compaction_alias_even_when_old_chat_is_absent(self):
++        target = self.adapters['codex']
++        old = self.target
++        new = target.build_chat([],name='compacted chat')
++        target.chats.pop(old)
++        target.refs.pop(old)
++        target.conditions.pop(old)
++        resolve = target.locator.resolve
++        target.locator.resolve = lambda chat: resolve(new if chat == old else chat)
++        self.assertFalse(target.state.condition(old).exists)
++        with self.assertRaises(ChatChanged):
++            self.applier.preview(self.link.id)
++        self.assertEqual(self.store.get_link(self.link.id).chat('codex'),old)
++        fresh = self.applier.refresh(self.link.id)
++        self.assertEqual(fresh['missing'],())
++        self.assertEqual(fresh['names']['codex'],'compacted chat')
++        self.assertEqual(fresh['link'].chat('codex'),new)
++        self.assertTrue(self.applier.apply(self.applier.preview(self.link.id)).applied)
++        self.assertEqual(len(target.reader.read(new)),3)
++        self.assertNotIn(old,target.chats)
++
++    def test_snapshot_reads_and_checks_the_resolved_canonical_id(self):
++        source = self.adapters['claude']
++        old = self.source
++        new = source.build_chat(turns(),name='new canonical chat')
++        source.chats.pop(old)
++        source.refs.pop(old)
++        source.conditions.pop(old)
++        source.set_condition(new,open=True)
++        resolve = source.locator.resolve
++        source.locator.resolve = lambda chat: resolve(new if chat == old else chat)
++        snapshot = self.applier._snapshot('claude',old)
++        self.assertEqual(snapshot['chat_id'],new)
++        self.assertEqual(snapshot['ref']['id'],new)
++        self.assertTrue(snapshot['condition']['exists'])
++        self.assertTrue(snapshot['condition']['open'])
++        self.assertEqual(len(snapshot['turns']),3)
++
++
++    def test_pause_or_removal_during_first_write_stops_later_steps(self):
++        for remove in (False, True):
++            with self.subTest(remove=remove):
++                if remove:
++                    self.store.set_paused(self.link.id, False, self.clock.now())
++                    self.adapters['codex'].chats[self.target].clear()
++                    self.store.db.execute("update turn_states set state='waiting',local_id='' where side='codex'")
++                    self.store.db.commit()
++                prepared = self.applier.preview(self.link.id)
++                step = prepared.steps[0]
++                steps = [replace(step,turn_ids=(i,),turns=(t,)) for i,t in zip(step.turn_ids,step.turns)]
++                prepared = self.applier.prepare(self.link.id, steps, self.link.chats)
++                original = self.adapters['codex'].writer.add
++                def add(chat, values):
++                    result = original(chat, values)
++                    if remove:
++                        self.store.remove_link(self.link.id, self.clock.now())
++                    else:
++                        self.store.set_paused(self.link.id, True, self.clock.now())
++                    return result
++                self.adapters['codex'].writer.add = add
++                result = self.applier.apply(prepared)
++                self.adapters['codex'].writer.add = original
++                self.assertFalse(result.applied)
++                self.assertEqual(result.error, 'NotAvailable')
++                self.assertEqual(len(result.completed), 1)
++                self.assertEqual(len(self.adapters['codex'].reader.read(self.target)), 1)
++
++    def test_removed_link_refuses_preview_and_hook_acknowledgement(self):
++        ids = [t.id for t in self.store.turns(self.link.id)]
++        self.store.remove_link(self.link.id, self.clock.now())
++        with self.assertRaises(NotAvailable): self.applier.preview(self.link.id)
++        with self.assertRaises(NotAvailable):
++            self.applier.record_attached(self.link.id, 'codex', ids, 'message')
++        self.assertFalse(any(e.kind == 'attached' for e in self.store.history(self.link.id)))
+diff --git a/tests/scenarios/__init__.py b/tests/scenarios/__init__.py
+new file mode 100644
+--- /dev/null
++++ b/tests/scenarios/__init__.py
+@@ -0,0 +1 @@
++"""Feature acceptance scenarios on made-up chats."""
+diff --git a/tests/scenarios/test_sync_status.py b/tests/scenarios/test_sync_status.py
+new file mode 100644
+--- /dev/null
++++ b/tests/scenarios/test_sync_status.py
+@@ -0,0 +1,282 @@
++"""S1–S12: observed conversation effects and truthful per-side states."""
++from dataclasses import replace
++import unittest
++from functools import wraps
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE, CURSOR_LIKE
++from baton.domain.capabilities import Visibility
++from baton.domain.errors import DecisionNeeded
++from baton.domain.model import Message, Turn, PROMPT, REPLY, TOOL_CALL
++from baton.ledger.sqlite_store import Ledger
++from baton.ports.clock import FixedClock
++from baton.services.applier import Applier, ApplyStep
++from tests.adapters.suite import turns
++
++
++FACT_SETS = (CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE, CURSOR_LIKE)
++HELD_FACTS = (CLAUDE_LIKE, CODEX_LIKE, CURSOR_LIKE)
++DEFERRED_ADD_FACTS = (CLAUDE_LIKE, OPENCODE_LIKE, CURSOR_LIKE)
++RELAUNCH_CREATE_FACTS = (CLAUDE_LIKE, CURSOR_LIKE)
++
++# Applicability is about facts, not the tool identity used by a made-up chat.
++# S1/S2/S4b/S8: all except ANY_TIME (that tool writes instead of waiting).
++# S3: AFTER_RELAUNCH and ON_REOPEN_CHAT (AT_ONCE needs no later visibility proof).
++# S4: AT_ONCE added turns only; S10: AFTER_RELAUNCH created chats only.
++# S5/S6/S7/S9/S11/S12: all four; the generic delivery test covers other S4 outcomes.
++SCENARIO_FACTS = {
++    'S1': HELD_FACTS, 'S2': HELD_FACTS, 'S3': DEFERRED_ADD_FACTS,
++    'S4': (CODEX_LIKE,), 'S4b': HELD_FACTS, 'S5': FACT_SETS,
++    'S6': FACT_SETS, 'S7': FACT_SETS, 'S8': HELD_FACTS,
++    'S9': FACT_SETS, 'S10': RELAUNCH_CREATE_FACTS,
++    'S11': FACT_SETS, 'S12': FACT_SETS,
++}
++
++
++def scenario(number, side='claude'):
++    """Run a named acceptance scenario with every applicable target fact set."""
++    def decorate(test):
++        @wraps(test)
++        def run(self):
++            for facts in SCENARIO_FACTS[number]:
++                with self.subTest(scenario=number, window=facts.write_window):
++                    self.use_facts(side, facts)
++                    test(self)
++        return run
++    return decorate
++
++
++class SyncStatusScenarios(unittest.TestCase):
++    def setUp(self):
++        self.store = Ledger(':memory:')
++        self.clock = FixedClock('2026-01-01T01:00:00Z')
++        self.adapters = {'claude': FakeAdapter(CLAUDE_LIKE, 'claude'),
++                         'codex': FakeAdapter(CODEX_LIKE, 'codex')}
++        self.chats = {s: a.build_chat([]) for s,a in self.adapters.items()}
++        self.link = self.store.link(self.chats, 'full_copy', self.clock.now())
++        self.applier = Applier(self.store, self.adapters, self.clock)
++
++    def tearDown(self):
++        self.store.close()
++
++    def use_facts(self, side, facts):
++        self.store.close()
++        self.setUp()
++        self.adapters[side].facts = facts
++        self.adapters[side].set_format(True, facts.checked_versions[0])
++
++    def seed(self, side, values):
++        self.adapters[side].chats[self.chats[side]].extend(values)
++        return self.store.record_turns(self.link.id, side, values)
++
++    def status(self, side):
++        return self.applier.refresh(self.link.id)['status'].side(side)
++
++    @scenario('S1')
++    def test_S1_open_chat_has_waiting_turns_and_relaunch_alternative(self):
++        self.adapters['claude'].set_condition(self.chats['claude'], open=True, app_running=True)
++        self.seed('codex', turns()[:2])
++        plan = self.applier.preview(self.link.id)
++        self.assertEqual(plan.steps[0].action, 'attach')
++        self.assertIn('close_sync_reopen', plan.steps[0].alternatives)
++        status = self.status('claude')
++        self.assertEqual((status.waiting,status.waiting_reason), (2,'chat_open'))
++        self.assertEqual(self.adapters['claude'].reader.read(self.chats['claude']), [])
++        self.assertEqual(self.status('codex').agent_has, 2)
++
++    @scenario('S2')
++    def test_S2_hook_acknowledgment_attaches_without_claiming_visible_messages(self):
++        self.adapters['claude'].set_condition(self.chats['claude'], open=True, app_running=True)
++        ids = self.seed('codex', turns()[:2])
++        self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(self.status('claude').waiting, 2)
++        self.applier.record_attached(self.link.id, 'claude', ids, 'sent-message')
++        status = self.status('claude')
++        self.assertEqual((status.agent_has,status.chat_shows,status.attached,status.waiting),(2,0,2,0))
++        self.assertEqual(status.needs, ())
++        self.assertEqual(self.store.history(self.link.id)[0].detail['message_id'], 'sent-message')
++
++    @scenario('S3')
++    def test_S3_relaunch_after_add_proves_deferred_turns_shown(self):
++        target = self.adapters['claude']
++        # First recreate S1's held state; closing for sync precedes the next start.
++        target.set_condition(self.chats['claude'], open=True, app_running=True)
++        self.seed('codex', turns()[:2])
++        target.set_condition(self.chats['claude'], open=False, app_running=False)
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertTrue(result.applied)
++        status = self.status('claude')
++        self.assertEqual((status.agent_has,status.added,status.chat_shows),(2,2,0))
++        need = 'reopen_chat_to_see' if self.adapters['claude'].facts.added_turn_visible == Visibility.ON_REOPEN_CHAT else 'relaunch_to_see'
++        self.assertEqual(status.needs, (need,))
++        self.adapters['claude'].set_condition(self.chats['claude'], app_started_at='2026-01-01T01:00:01Z')
++        status = self.status('claude')
++        self.assertEqual((status.agent_has,status.chat_shows,status.added),(2,2,0))
++        self.assertTrue(all(t.states['claude']=='shown' for t in self.store.turns(self.link.id)))
++
++    @scenario('S4', 'codex')
++    def test_S4_released_destination_shows_added_turn_immediately(self):
++        self.seed('claude', turns()[:1])
++        self.adapters['codex'].set_condition(self.chats['codex'], open=False)
++        self.assertTrue(self.applier.apply(self.applier.preview(self.link.id)).applied)
++        self.assertEqual((self.status('codex').agent_has,self.status('codex').chat_shows),(1,1))
++        self.assertEqual(len(self.adapters['codex'].reader.read(self.chats['codex'])),1)
++
++    @scenario('S4b', 'codex')
++    def test_S4b_held_destination_never_written(self):
++        self.seed('claude', turns()[:1])
++        self.adapters['codex'].set_condition(self.chats['codex'], open=True, app_running=True)
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.completed[0].action, 'attach')
++        self.assertEqual((self.status('codex').waiting,self.status('codex').waiting_reason),(1,'chat_open'))
++        self.assertEqual(self.adapters['codex'].reader.read(self.chats['codex']),[])
++
++    @scenario('S5')
++    def test_S5_initial_attached_history_waits_even_before_closed_chat_first_prompt(self):
++        self.store.db.execute("update links set mode='attached_history' where id=?", (self.link.id,))
++        values = [replace(turns()[0],prompt=replace(turns()[0].prompt,id=f'p{i}')) for i in range(12)]
++        self.seed('codex', values)
++        self.adapters['claude'].set_condition(self.chats['claude'], open=False)
++        plan = self.applier.preview(self.link.id)
++        self.assertEqual(plan.steps[0].action, 'attach')
++        self.assertEqual(plan.steps[0].reason, 'initial_history')
++        self.applier.apply(plan)
++        status = self.status('claude')
++        self.assertEqual((status.waiting,status.attached_on_next_message),(12,12))
++        self.assertEqual(status.needs, ())
++        self.assertEqual(self.adapters['claude'].reader.read(self.chats['claude']),[])
++
++    @scenario('S6')
++    def test_S6_first_message_attaches_initial_history_for_each_fact_set(self):
++        self.store.db.execute("update links set mode='attached_history' where id=?", (self.link.id,))
++        values = [replace(turns()[0],prompt=replace(turns()[0].prompt,id=f'p{i}')) for i in range(12)]
++        ids = self.seed('codex', values)
++        self.assertEqual(self.applier.preview(self.link.id).steps[0].action, 'attach')
++        self.applier.record_attached(self.link.id, 'claude', ids, 'first')
++        status = self.status('claude')
++        self.assertEqual((status.agent_has,status.chat_shows,status.attached,status.waiting),(12,0,12,0))
++        self.assertEqual(self.adapters['claude'].reader.read(self.chats['claude']), [])
++
++    @scenario('S7')
++    def test_S7_conflict_blocks_both_sides(self):
++        self.seed('claude',turns()[:1])
++        self.seed('codex',turns()[1:2])
++        plan = self.applier.preview(self.link.id)
++        self.assertTrue(plan.decision_needed)
++        with self.assertRaises(DecisionNeeded): self.applier.apply(plan)
++        for side in self.link.sides:
++            self.assertEqual(self.status(side).waiting_reason,'decision_needed')
++            self.assertEqual(len(self.adapters[side].reader.read(self.chats[side])),1)
++        self.assertEqual(self.store.journal_entries(),[])
++
++    @scenario('S8', 'codex')
++    def test_S8_missing_hooks_hold_and_never_mark_attached(self):
++        self.seed('claude',turns()[:1])
++        self.adapters['codex'].set_condition(self.chats['codex'],open=True,app_running=True,hooks_ready=False)
++        result = self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(result.completed[0].action,'hold')
++        self.assertEqual(self.status('codex').waiting_reason,'hooks_not_ready')
++        self.assertEqual(self.status('codex').attached,0)
++        self.assertEqual(self.store.journal_entries(),[])
++
++    @scenario('S9')
++    def test_S9_bypassed_turn_returns_to_waiting_and_is_delivered_again(self):
++        self.seed('codex',turns()[:1])
++        self.applier.apply(self.applier.preview(self.link.id))
++        self.adapters['claude'].chats[self.chats['claude']].clear()
++        status = self.status('claude')
++        self.assertEqual((status.agent_has,status.chat_shows,status.waiting),(0,0,1))
++        self.assertEqual(self.store.history(self.link.id)[0].kind,'not_confirmed')
++        self.applier.apply(self.applier.preview(self.link.id))
++        self.assertEqual(len(self.adapters['claude'].reader.read(self.chats['claude'])),1)
++        self.assertEqual(len(self.store.turns(self.link.id)),1)
++
++    @scenario('S10')
++    def test_S10_created_chat_requires_relaunch_until_observed_start(self):
++        self.seed('codex',turns()[:1])
++        step = self.applier.preview(self.link.id).steps[0]
++        create = ApplyStep('claude','create',step.turn_ids,step.turns,name='twin')
++        result = self.applier.apply(self.applier.prepare(self.link.id,[create],self.link.chats))
++        chat = result.completed[0].chat_id
++        self.assertEqual(self.store.get_link(self.link.id).chat('claude'), chat)
++        self.chats['claude'] = chat
++        self.assertEqual(self.status('claude').needs,('relaunch_to_see',))
++        self.adapters['claude'].set_condition(chat,app_started_at='2026-01-01T01:00:01Z')
++        self.assertEqual(self.status('claude').chat_shows,1)
++
++    @scenario('S11', 'codex')
++    def test_S11_names_are_read_fresh_after_rename(self):
++        self.adapters['codex'].writer.rename(self.chats['codex'],'new name')
++        fresh = self.applier.refresh(self.link.id)
++        self.assertEqual(fresh['names'],{'claude':'chat','codex':'new name'})
++
++    @scenario('S12')
++    def test_S12_conversation_supplies_full_public_reply_and_expandable_tool_activity(self):
++        reply = 'long answer ' * 300
++        original = Turn(Message('p',PROMPT,'task'), (
++            Message('secret','reasoning','private'),
++            Message('c1',TOOL_CALL,tool='run',tool_input={'command':'test'}),
++            Message('c2',TOOL_CALL,tool='write',tool_input={'path':'file'}),
++            Message('r',REPLY,reply)))
++        self.seed('claude',[original])
++        rows = self.applier.conversation(self.link.id)
++        self.assertEqual(rows[0]['reply'],reply)
++        self.assertEqual(len(rows[0]['tool_activity']),2)
++        self.assertNotIn('private',repr(rows))
++        # D4 asserts preview shortening/expansion; C2 later serializes this public data.
++
++    def test_delivery_and_visibility_on_each_fact_set(self):
++        for facts in (CLAUDE_LIKE,CODEX_LIKE,OPENCODE_LIKE,CURSOR_LIKE):
++            with self.subTest(window=facts.write_window):
++                store = Ledger(':memory:')
++                try:
++                    source = FakeAdapter(CODEX_LIKE,'codex')
++                    target = FakeAdapter(facts,'claude')
++                    chats = {'codex':source.build_chat(turns()[:1]),'claude':target.build_chat([])}
++                    link = store.link(chats,'full_copy',self.clock.now())
++                    store.record_turns(link.id,'codex',turns()[:1])
++                    applier = Applier(store,{'claude':target,'codex':source},self.clock)
++                    result = applier.apply(applier.preview(link.id))
++                    self.assertTrue(result.applied)
++                    self.assertEqual(len(target.reader.read(chats['claude'])),1)
++                    status = applier.refresh(link.id)['status'].side('claude')
++                    self.assertEqual(status.agent_has,1)
++                    from baton.domain.capabilities import Visibility
++                    self.assertEqual(status.chat_shows, int(facts.added_turn_visible==Visibility.AT_ONCE))
++                    target.set_condition(chats['claude'],app_started_at='not-a-date')
++                    self.assertEqual(applier.refresh(link.id)['status'].side('claude').chat_shows,status.chat_shows)
++                    target.set_condition(chats['claude'],app_started_at='2026-01-01T00:59:59Z')
++                    self.assertEqual(applier.refresh(link.id)['status'].side('claude').chat_shows,status.chat_shows)
++                    target.set_condition(chats['claude'],app_started_at='2026-01-01T01:00:01Z')
++                    self.assertEqual(applier.refresh(link.id)['status'].side('claude').chat_shows,1)
++                    self.assertEqual(applier.preview(link.id).steps,())
++                    self.assertEqual(len(store.turns(link.id)),1)
++                finally: store.close()
++
++    def test_initial_history_unknown_format_holds_closed_and_attaches_open(self):
++        self.store.db.execute("update links set mode='attached_history' where id=?",(self.link.id,))
++        self.seed('codex',turns()[:1])
++        target = self.adapters['claude']
++        target.set_format(False,'new')
++        closed = self.applier.preview(self.link.id)
++        self.assertEqual((closed.steps[0].action,closed.steps[0].reason),('hold','format_unknown'))
++        target.set_condition(self.chats['claude'],open=True,hooks_ready=True)
++        opened = self.applier.preview(self.link.id)
++        self.assertEqual((opened.steps[0].action,opened.steps[0].reason),('attach','format_unknown'))
++        self.assertTrue(self.applier.apply(opened).applied)
++        self.assertEqual(target.reader.read(self.chats['claude']),[])
++        self.assertEqual(self.store.journal_entries(),[])
++
++    def test_on_reopen_user_seen_evidence_is_selective_and_hook_never_proves_shown(self):
++        target = self.adapters['claude']
++        target.facts = OPENCODE_LIKE
++        target.set_format(True,OPENCODE_LIKE.checked_versions[0])
++        self.seed('codex',turns()[:2])
++        self.applier.apply(self.applier.preview(self.link.id))
++        ids = [t.id for t in self.store.turns(self.link.id)]
++        self.assertEqual(self.applier.mark_seen(self.link.id,'claude',ids[:1]),1)
++        self.assertEqual([t.states['claude'] for t in self.store.turns(self.link.id)],['shown','added'])
++        self.seed('codex',turns()[2:])
++        third = self.store.turns(self.link.id)[-1].id
++        self.applier.record_attached(self.link.id,'claude',[third],'hook-message')
++        self.assertEqual([t.states['claude'] for t in self.store.turns(self.link.id)],['shown','added','attached'])

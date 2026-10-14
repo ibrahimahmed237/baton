@@ -1,0 +1,273 @@
+{
+  "applied": true,
+  "confirmation": null,
+  "decision_needed": false,
+  "ends_at": {
+    "ended_at": "2026-10-05T12:01:00Z",
+    "first_line": "Orchard task 1",
+    "id": 41,
+    "origin": "codex",
+    "pinned": false,
+    "seq": 1,
+    "started_at": "2026-10-05T12:01:00Z",
+    "states": {
+      "claude": "added",
+      "codex": "written_here"
+    },
+    "tokens": 9
+  },
+  "event_id": 5,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "undo",
+          "label": "Remove 4 turns from the Claude chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.cut",
+      "status_line": "Relaunch Claude to stop seeing the removed turns",
+      "text": "This removes 4 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+      "tone": "warning",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 4,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "undo.only_here",
+      "status_line": null,
+      "text": "Those 2 exist only in Claude.",
+      "tone": "warning",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 2,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "undo.ends_at",
+      "status_line": null,
+      "text": "Afterwards the Claude chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 4,
+        "tool": "Claude"
+      }
+    }
+  ],
+  "plan_id": "p_392c380900ddd3e1a529fa5d1796846262990c458a866b28870f8082208ae1a8",
+  "removal_groups": [
+    {
+      "category": "added",
+      "heading": {
+        "buttons": [],
+        "id": "undo.group_added",
+        "status_line": null,
+        "text": "Baton added in Claude",
+        "tone": "info",
+        "values": {
+          "tool": "Claude"
+        }
+      },
+      "removes": [
+        {
+          "only_here": false,
+          "tool": "claude",
+          "turn": {
+            "ended_at": "2026-10-05T12:02:00Z",
+            "first_line": "Orchard task 2",
+            "id": 42,
+            "origin": "codex",
+            "pinned": false,
+            "seq": 2,
+            "started_at": "2026-10-05T12:02:00Z",
+            "states": {
+              "claude": "added",
+              "codex": "written_here"
+            },
+            "tokens": 9
+          }
+        },
+        {
+          "only_here": false,
+          "tool": "claude",
+          "turn": {
+            "ended_at": "2026-10-05T12:03:00Z",
+            "first_line": "Orchard task 3",
+            "id": 43,
+            "origin": "codex",
+            "pinned": false,
+            "seq": 3,
+            "started_at": "2026-10-05T12:03:00Z",
+            "states": {
+              "claude": "added",
+              "codex": "written_here"
+            },
+            "tokens": 9
+          }
+        }
+      ],
+      "tool": "claude"
+    },
+    {
+      "category": "written",
+      "heading": {
+        "buttons": [],
+        "id": "undo.group_written",
+        "status_line": null,
+        "text": "Written afterwards in Claude",
+        "tone": "info",
+        "values": {
+          "tool": "Claude"
+        }
+      },
+      "removes": [
+        {
+          "only_here": true,
+          "tool": "claude",
+          "turn": {
+            "ended_at": "2026-10-05T12:04:00Z",
+            "first_line": "Orchard task 4",
+            "id": 44,
+            "origin": "claude",
+            "pinned": false,
+            "seq": 4,
+            "started_at": "2026-10-05T12:04:00Z",
+            "states": {
+              "claude": "written_here",
+              "codex": "waiting"
+            },
+            "tokens": 9
+          }
+        },
+        {
+          "only_here": true,
+          "tool": "claude",
+          "turn": {
+            "ended_at": "2026-10-05T12:05:00Z",
+            "first_line": "Orchard task 5",
+            "id": 45,
+            "origin": "claude",
+            "pinned": false,
+            "seq": 5,
+            "started_at": "2026-10-05T12:05:00Z",
+            "states": {
+              "claude": "written_here",
+              "codex": "waiting"
+            },
+            "tokens": 9
+          }
+        }
+      ],
+      "tool": "claude"
+    }
+  ],
+  "removes": [
+    {
+      "only_here": false,
+      "tool": "claude",
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "tool": "claude",
+      "turn": {
+        "ended_at": "2026-10-05T12:03:00Z",
+        "first_line": "Orchard task 3",
+        "id": 43,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 3,
+        "started_at": "2026-10-05T12:03:00Z",
+        "states": {
+          "claude": "added",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": true,
+      "tool": "claude",
+      "turn": {
+        "ended_at": "2026-10-05T12:04:00Z",
+        "first_line": "Orchard task 4",
+        "id": 44,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 4,
+        "started_at": "2026-10-05T12:04:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "waiting"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": true,
+      "tool": "claude",
+      "turn": {
+        "ended_at": "2026-10-05T12:05:00Z",
+        "first_line": "Orchard task 5",
+        "id": 45,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 5,
+        "started_at": "2026-10-05T12:05:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "waiting"
+        },
+        "tokens": 9
+      }
+    }
+  ],
+  "steps": [
+    {
+      "action": "cut",
+      "needs": [
+        "release_chat",
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        41
+      ]
+    }
+  ]
+}

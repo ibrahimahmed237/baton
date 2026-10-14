@@ -1,0 +1,500 @@
+diff --git a/app/Package.swift b/app/Package.swift
+--- a/app/Package.swift
++++ b/app/Package.swift
+@@ -6,15 +6,18 @@
+     platforms: [.macOS(.v14)],
+     products: [
+         .library(name: "BatonKit", targets: ["BatonKit"]),
++        .library(name: "BatonUI", targets: ["BatonUI"]),
+         .executable(name: "Baton", targets: ["Baton"])
+     ],
+     targets: [
+         .target(name: "BatonKit"),
++        .target(name: "BatonUI", dependencies: ["BatonKit"]),
+         .executableTarget(
+-            name: "Baton", dependencies: ["BatonKit"], path: ".",
+-            exclude: ["Tests", "Sources/BatonKit", "README.md"],
++            name: "Baton", dependencies: ["BatonKit", "BatonUI"], path: ".",
++            exclude: ["Tests", "Sources/BatonKit", "Sources/BatonUI", "Snapshots", "README.md"],
+             sources: ["Sources/Baton"], resources: [.copy("Fixtures")]
+         ),
+-        .testTarget(name: "BatonKitTests", dependencies: ["BatonKit"])
++        .testTarget(name: "BatonKitTests", dependencies: ["BatonKit"]),
++        .testTarget(name: "BatonUITests", dependencies: ["BatonUI", "BatonKit"])
+     ]
+ )
+diff --git a/app/.gitignore b/app/.gitignore
+new file mode 100644
+--- /dev/null
++++ b/app/.gitignore
+@@ -0,0 +1 @@
++Snapshots/
+diff --git a/app/Sources/BatonUI/Theme/Theme.swift b/app/Sources/BatonUI/Theme/Theme.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Theme/Theme.swift
+@@ -0,0 +1,115 @@
++import SwiftUI
++
++/// The two palettes used by Baton's surfaces and semantic accents.
++public enum Theme: String, CaseIterable, Sendable {
++    case light, graphite
++
++    public var background: Color { self == .light ? colour(0xf4f5f8) : colour(0x3e4148) }
++    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x484b52) }
++    public var text: Color { self == .light ? colour(0x20242d) : colour(0xffffff) }
++    public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xd5d8e0) }
++    public var hairline: Color { text.opacity(0.1) }
++    public var scheme: ColorScheme { self == .light ? .light : .dark }
++
++    /// Returns a colour for a meaning, rather than for a particular screen.
++    public func colour(for meaning: StateColour) -> Color {
++        let light: [StateColour: UInt32] = [.added: 0x187148, .waiting: 0x875c00, .merged: 0x7541bb,
++                                          .action: 0x1763b5, .danger: 0xb33343, .neutral: 0x535967]
++        let dark: [StateColour: UInt32] = [.added: 0x70e3ac, .waiting: 0xffd278, .merged: 0xd3b2ff,
++                                         .action: 0x9ccaff, .danger: 0xffa5b1, .neutral: 0xd5d8e0]
++        return colour((self == .light ? light : dark)[meaning]!)
++    }
++
++    /// Returns the identity colour for a tool, with a neutral unknown-tool fallback.
++    public func colour(for tool: ToolColour) -> Color {
++        let light: [ToolColour: UInt32] = [.claude: 0xb74b38, .codex: 0x007b75,
++                                         .opencode: 0x896700, .cursor: 0x2878ae, .unknown: 0x535967]
++        let dark: [ToolColour: UInt32] = [.claude: 0xffad98, .codex: 0x79dacf,
++                                        .opencode: 0xffda77, .cursor: 0x9ed6ff, .unknown: 0xd5d8e0]
++        return colour((self == .light ? light : dark)[tool]!)
++    }
++
++    private func colour(_ hex: UInt32) -> Color {
++        Color(red: Double((hex >> 16) & 255) / 255, green: Double((hex >> 8) & 255) / 255,
++              blue: Double(hex & 255) / 255)
++    }
++}
++
++/// Semantic colours shared by states, tones and plan steps.
++public enum StateColour: Sendable {
++    case added, waiting, merged, action, danger, neutral
++
++    /// Maps delivery states to their presentation meaning.
++    public static func state(_ value: String) -> Self {
++        switch value {
++        case "added", "shown", "written_here", "in_sync": return .added
++        case "attached", "waiting": return .waiting
++        case "merged", "merged_copy": return .merged
++        case "linked", "relinked": return .action
++        case "undo", "conflict", "decision_needed", "removed": return .danger
++        default: return .neutral
++        }
++    }
++
++    /// Maps note severity to its presentation meaning.
++    public static func tone(_ value: String) -> Self {
++        switch value {
++        case "ok": return .added
++        case "warning": return .waiting
++        case "danger": return .danger
++        default: return .action
++        }
++    }
++
++    /// Maps plan actions to their presentation meaning.
++    public static func step(_ value: String) -> Self {
++        switch value {
++        case "close", "release", "cut", "create_shorter": return .danger
++        case "add", "add_after_release", "create", "place", "write": return .added
++        case "reopen", "open": return .action
++        case "attach", "hold": return .waiting
++        default: return .neutral
++        }
++    }
++}
++
++/// A tool's identity, used only for presentation.
++public enum ToolColour: String, Sendable {
++    case claude, codex, opencode, cursor, unknown
++    /// Preserves unknown tools as neutral identities.
++    public init(tool: String) { self = Self(rawValue: tool) ?? .unknown }
++}
++
++private struct ThemeKey: EnvironmentKey { static let defaultValue = Theme.light }
++private struct GlassKey: EnvironmentKey { static let defaultValue = 62.0 }
++public extension EnvironmentValues {
++    var batonTheme: Theme { get { self[ThemeKey.self] } set { self[ThemeKey.self] = newValue } }
++    var batonGlass: Double { get { self[GlassKey.self] } set { self[GlassKey.self] = newValue } }
++}
++
++public extension View {
++    /// Applies the palette and the user's surface opacity setting.
++    func batonTheme(_ theme: Theme, glass: Double = 62) -> some View {
++        environment(\.batonTheme, theme).environment(\.batonGlass, min(95, max(40, glass)))
++            .preferredColorScheme(theme.scheme).foregroundStyle(theme.text)
++    }
++}
++
++/// A material surface with readable content and reduced-transparency support.
++public struct GlassCard<Content: View>: View {
++    @Environment(\.batonTheme) private var theme
++    @Environment(\.batonGlass) private var glass
++    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
++    private let content: Content
++    /// Wraps content in a readable material surface.
++    public init(@ViewBuilder content: () -> Content) { self.content = content() }
++    public var body: some View {
++        content.padding(12)
++            .background {
++                RoundedRectangle(cornerRadius: 12).fill(.regularMaterial)
++                    .overlay(RoundedRectangle(cornerRadius: 12)
++                        .fill(theme.background.opacity(reduceTransparency ? 1 : max(0.85, glass / 100))))
++            }
++            .overlay(RoundedRectangle(cornerRadius: 12).stroke(theme.hairline))
++    }
++}
+diff --git a/app/Sources/BatonUI/Components/Components.swift b/app/Sources/BatonUI/Components/Components.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Components/Components.swift
+@@ -0,0 +1,210 @@
++import SwiftUI
++import BatonKit
++
++/// A tool's dot and engine-provided name.
++public struct ToolDot: View {
++    @Environment(\.batonTheme) private var theme
++    public let tool: String
++    /// Creates a dot for the supplied tool identity.
++    public init(tool: String) { self.tool = tool }
++    public var body: some View {
++        HStack(spacing: 6) {
++            Circle().fill(theme.colour(for: ToolColour(tool: tool))).frame(width: 8, height: 8)
++                .accessibilityHidden(true)
++            Text(tool)
++        }.accessibilityElement(children: .combine)
++    }
++}
++
++/// A state label whose colour reinforces its text.
++public struct StateChip: View {
++    @Environment(\.batonTheme) private var theme
++    public let state: String
++    public let label: String
++    /// Creates a chip from a state and its optional supplied label.
++    public init(state: String, label: String? = nil) { self.state = state; self.label = label ?? state }
++    public var body: some View {
++        Text(label).font(.caption.weight(.semibold)).padding(.horizontal, 8).padding(.vertical, 4)
++            .foregroundStyle(theme.colour(for: StateColour.state(state)))
++            .background(theme.colour(for: StateColour.state(state)).opacity(0.12), in: Capsule())
++    }
++}
++
++/// Displays the engine's note and button labels without creating text.
++public struct NoteView: View {
++    @Environment(\.batonTheme) private var theme
++    public let note: Note
++    private let action: (NoteButton) -> Void
++    /// Presents a note and forwards its button choices.
++    public init(note: Note, action: @escaping (NoteButton) -> Void = { _ in }) {
++        self.note = note; self.action = action
++    }
++    public var body: some View {
++        HStack(alignment: .top, spacing: 10) {
++            RoundedRectangle(cornerRadius: 2).fill(theme.colour(for: StateColour.tone(note.tone)))
++                .frame(width: 3)
++            VStack(alignment: .leading, spacing: 8) {
++                Text(note.text).fixedSize(horizontal: false, vertical: true)
++                if let line = note.statusLine { Text(line).font(.caption).foregroundStyle(theme.secondaryText) }
++                HStack {
++                    ForEach(note.buttons, id: \.id) { button in
++                        Button(button.label) { action(button) }
++                            .buttonStyle(BatonButtonStyle(meaning: StateColour.tone(note.tone)))
++                    }
++                }
++            }
++        }.fixedSize(horizontal: false, vertical: true)
++    }
++}
++
++/// One turn's summary and state per tool.
++public struct TurnRow: View {
++    public let turn: Turn
++    /// Presents one contract turn.
++    public init(turn: Turn) { self.turn = turn }
++    public var body: some View {
++        VStack(alignment: .leading, spacing: 8) {
++            HStack { Text(turn.seq, format: .number).monospacedDigit(); ToolDot(tool: turn.origin) }
++            Text(turn.firstLine).fixedSize(horizontal: false, vertical: true)
++            HStack {
++                ForEach(turn.states.keys.sorted(), id: \.self) { tool in
++                    VStack(alignment: .leading, spacing: 4) {
++                        ToolDot(tool: tool).font(.caption)
++                        StateChip(state: turn.states[tool]!)
++                    }
++                }
++            }
++        }
++    }
++}
++
++/// A message's supplied content and kind in a readable surface.
++public struct MessageBubble: View {
++    @Environment(\.batonTheme) private var theme
++    public let message: TurnMessage
++    /// Presents one contract message.
++    public init(message: TurnMessage) { self.message = message }
++    public var body: some View {
++        GlassCard {
++            VStack(alignment: .leading, spacing: 8) {
++                HStack {
++                    Text(message.kind).font(.caption).foregroundStyle(theme.secondaryText)
++                    if let tool = message.tool { ToolDot(tool: tool).font(.caption) }
++                }
++                Text(message.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
++            }.frame(maxWidth: .infinity, alignment: .leading)
++        }
++    }
++}
++
++/// Numbered plan steps with their engine notes and semantic action colour.
++public struct PlanSteps: View {
++    @Environment(\.batonTheme) private var theme
++    public let steps: [Step]
++    /// Presents steps in the order returned by the engine.
++    public init(steps: [Step]) { self.steps = steps }
++    public var body: some View {
++        VStack(alignment: .leading, spacing: 12) {
++            ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
++                HStack(alignment: .top, spacing: 12) {
++                    Text(index + 1, format: .number).font(.headline).monospacedDigit()
++                        .foregroundStyle(theme.colour(for: StateColour.step(step.action)))
++                    VStack(alignment: .leading, spacing: 8) {
++                        HStack { ToolDot(tool: step.tool); Text(step.action).font(.caption) }
++                        ForEach(Array(step.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
++                    }
++                }
++            }
++        }
++    }
++}
++
++/// Tracks whether the exact current notes have appeared before an action is enabled.
++public struct ConfirmationGate: Equatable {
++    private var displayed: [Note]?
++    /// Starts with no notes acknowledged as displayed.
++    public init() {}
++    /// Acknowledges the exact notes that appeared on screen.
++    public mutating func markDisplayed(_ notes: [Note]) { displayed = notes }
++    /// Allows confirmation only for non-empty unchanged notes.
++    public func permits(_ notes: [Note]) -> Bool { !notes.isEmpty && displayed == notes }
++}
++
++/// Displays all required notes before enabling their confirmation buttons.
++public struct ConfirmBar: View {
++    @Environment(\.batonTheme) private var theme
++    @State private var gate = ConfirmationGate()
++    public let notes: [Note]
++    public let buttons: [NoteButton]
++    private let action: (NoteButton) -> Void
++    /// Presents notes with confirmation buttons gated on their appearance.
++    public init(notes: [Note], buttons: [NoteButton], action: @escaping (NoteButton) -> Void = { _ in }) {
++        self.notes = notes; self.buttons = buttons; self.action = action
++    }
++    private var displayIdentity: Data? {
++        let encoder = JSONEncoder()
++        encoder.outputFormatting = .sortedKeys
++        return try? encoder.encode(notes)
++    }
++    public var body: some View {
++        VStack(alignment: .leading, spacing: 12) {
++            VStack(alignment: .leading, spacing: 8) {
++                ForEach(Array(notes.enumerated()), id: \.offset) { _, note in
++                    NoteView(note: Note(id: note.id, tone: note.tone, values: note.values,
++                                        text: note.text, buttons: [], statusLine: note.statusLine))
++                }
++            }
++            .id(displayIdentity)
++            .onAppear { gate.markDisplayed(notes) }
++            HStack {
++                ForEach(buttons, id: \.id) { button in
++                    Button(button.label) { if gate.permits(notes) { action(button) } }
++                        .disabled(!gate.permits(notes))
++                        .buttonStyle(BatonButtonStyle(meaning: button.primary == true ? .action : .neutral))
++                }
++            }
++        }
++    }
++}
++
++/// SwiftUI-drawn buttons remain visible in ImageRenderer and preserve native actions.
++private struct BatonButtonStyle: ButtonStyle {
++    @Environment(\.batonTheme) private var theme
++    @Environment(\.isEnabled) private var enabled
++    let meaning: StateColour
++    func makeBody(configuration: Configuration) -> some View {
++        configuration.label.font(.callout.weight(.semibold))
++            .padding(.horizontal, 10).padding(.vertical, 6)
++            .foregroundStyle(theme.colour(for: meaning))
++            .background(theme.colour(for: meaning).opacity(configuration.isPressed ? 0.22 : 0.1),
++                        in: RoundedRectangle(cornerRadius: 7))
++            .opacity(enabled ? 1 : 0.5)
++    }
++}
++
++/// A context meter with supplied accessibility text; unknown capacity stays indeterminate.
++public struct MeterBar: View {
++    @Environment(\.batonTheme) private var theme
++    public let percent: Double?
++    public let label: String
++    /// Presents a known or unknown percentage with supplied text.
++    public init(percent: Double?, label: String) { self.percent = percent; self.label = label }
++    public var body: some View {
++        VStack(alignment: .leading, spacing: 6) {
++            Text(label).font(.caption)
++            if let percent {
++                GeometryReader { geometry in
++                    Capsule().fill(theme.hairline)
++                        .overlay(alignment: .leading) {
++                            Capsule().fill(theme.colour(for: percent >= 90 ? .danger : .action))
++                                .frame(width: geometry.size.width * min(100, max(0, percent)) / 100)
++                        }
++                }.frame(height: 7)
++                .accessibilityValue(Text(percent / 100, format: .percent.precision(.fractionLength(0))))
++            } else {
++                Capsule().stroke(theme.secondaryText, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
++                    .frame(height: 7)
++            }
++        }.accessibilityElement(children: .combine).accessibilityLabel(label)
++    }
++}
+diff --git a/app/Sources/BatonUI/Components/ComponentPreviews.swift b/app/Sources/BatonUI/Components/ComponentPreviews.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Components/ComponentPreviews.swift
+@@ -0,0 +1,38 @@
++import SwiftUI
++import BatonKit
++
++/// Fixture-backed previews for every D1 component in both palettes.
++struct ComponentPreviews: PreviewProvider {
++    private static let directory = URL(fileURLWithPath: #filePath)
++        .deletingLastPathComponent().deletingLastPathComponent()
++        .deletingLastPathComponent().deletingLastPathComponent()
++        .appendingPathComponent("Fixtures")
++
++    private static func fixture<T: Decodable>(_ name: String, as: T.Type) throws -> T {
++        try JSONDecoder().decode(T.self, from: Data(contentsOf: directory.appendingPathComponent(name)))
++    }
++
++    static var previews: some View {
++        ForEach(Theme.allCases, id: \.rawValue) { theme in
++            if let note = try? fixture("note.sample.json", as: Note.self),
++               let turn = try? fixture("turn.sample.json", as: Turn.self),
++               let message = try? fixture("turn-message.sample.json", as: TurnMessage.self),
++               let plan = try? fixture("plan.sample.json", as: Plan.self) {
++                let components: [(String, AnyView)] = [
++                    ("ToolDot", AnyView(ToolDot(tool: turn.origin))),
++                    ("StateChip", AnyView(StateChip(state: turn.states.values.sorted().first ?? ""))),
++                    ("NoteView", AnyView(NoteView(note: note))),
++                    ("TurnRow", AnyView(TurnRow(turn: turn))),
++                    ("MessageBubble", AnyView(MessageBubble(message: message))),
++                    ("PlanSteps", AnyView(PlanSteps(steps: plan.steps))),
++                    ("ConfirmBar", AnyView(ConfirmBar(notes: plan.notes, buttons: note.buttons))),
++                    ("MeterBar", AnyView(MeterBar(percent: 82, label: note.statusLine ?? note.text)))
++                ]
++                ForEach(components, id: \.0) { name, component in
++                    component.padding(20).frame(width: 420).background(theme.background)
++                        .batonTheme(theme).previewDisplayName("\(name) · \(theme.rawValue)")
++                }
++            }
++        }
++    }
++}
+diff --git a/app/Tests/BatonUITests/ComponentTests.swift b/app/Tests/BatonUITests/ComponentTests.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Tests/BatonUITests/ComponentTests.swift
+@@ -0,0 +1,86 @@
++import AppKit
++import SwiftUI
++import Testing
++import BatonKit
++@testable import BatonUI
++
++@Suite(.serialized)
++struct ComponentTests {
++    static let root = URL(fileURLWithPath: #filePath)
++        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
++
++    private func fixture<T: Decodable>(_ name: String, as: T.Type) throws -> T {
++        try JSONDecoder().decode(T.self, from: Data(contentsOf: Self.root
++            .appendingPathComponent("Fixtures").appendingPathComponent(name)))
++    }
++
++    @Test
++    func confirmationRequiresExactDisplayedNotes() throws {
++        let note = try fixture("note.sample.json", as: Note.self)
++        var gate = ConfirmationGate()
++        #expect(!gate.permits([note]))
++        gate.markDisplayed([note])
++        #expect(gate.permits([note]))
++        var changed = note
++        changed.text += "!"
++        #expect(!gate.permits([changed]))
++        changed = note
++        changed.buttons[0].label += "!"
++        #expect(!gate.permits([changed]))
++        gate.markDisplayed([changed])
++        #expect(gate.permits([changed]))
++        #expect(!gate.permits([note]))
++        #expect(!gate.permits([]))
++    }
++
++    @Test
++    func semanticMappingsCoverStatesAndPlanActions() {
++        #expect(StateColour.state("added") == .added)
++        #expect(StateColour.state("attached") == .waiting)
++        #expect(StateColour.state("waiting") == .waiting)
++        #expect(StateColour.state("merged_copy") == .merged)
++        #expect(StateColour.state("relinked") == .action)
++        #expect(StateColour.state("conflict") == .danger)
++        #expect(StateColour.step("close") == .danger)
++        #expect(StateColour.step("write") == .added)
++        #expect(StateColour.step("reopen") == .action)
++        #expect(StateColour.tone("danger") == .danger)
++        #expect(StateColour.state("future_state") == .neutral)
++        #expect(ToolColour(tool: "future_tool") == .unknown)
++    }
++
++    @MainActor @Test
++    func snapshotsEachComponentInBothThemes() throws {
++        let note = try fixture("note.sample.json", as: Note.self)
++        let turn = try fixture("turn.sample.json", as: Turn.self)
++        let message = try fixture("turn-message.sample.json", as: TurnMessage.self)
++        let plan = try fixture("plan.sample.json", as: Plan.self)
++        let components: [(String, AnyView)] = [
++            ("ToolDot", AnyView(ToolDot(tool: turn.origin))),
++            ("StateChip", AnyView(StateChip(state: "added"))),
++            ("NoteView", AnyView(NoteView(note: note))),
++            ("TurnRow", AnyView(TurnRow(turn: turn))),
++            ("MessageBubble", AnyView(MessageBubble(message: message))),
++            ("PlanSteps", AnyView(PlanSteps(steps: plan.steps))),
++            ("ConfirmBar", AnyView(ConfirmBar(notes: plan.notes, buttons: note.buttons))),
++            ("MeterBar", AnyView(MeterBar(percent: 82, label: note.statusLine ?? note.text)))
++        ]
++        let output = Self.root.appendingPathComponent("Snapshots", isDirectory: true)
++        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++        for theme in Theme.allCases {
++            for (name, component) in components {
++                let content = component.padding(20).frame(width: 420)
++                    .background(theme.background).batonTheme(theme)
++                let renderer = ImageRenderer(content: content)
++                renderer.scale = 2
++                let image = try #require(renderer.nsImage)
++                #expect(image.size.width > 0 && image.size.height > 0)
++                let tiff = try #require(image.tiffRepresentation)
++                let bitmap = try #require(NSBitmapImageRep(data: tiff))
++                let png = try #require(bitmap.representation(using: .png, properties: [:]))
++                #expect(!png.isEmpty)
++                try png.write(to: output.appendingPathComponent("D1-\(name)-\(theme.rawValue).png"))
++            }
++        }
++    }
++}

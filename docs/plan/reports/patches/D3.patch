@@ -1,0 +1,1637 @@
+diff --git a/app/Sources/Baton/BatonApp.swift b/app/Sources/Baton/BatonApp.swift
+--- a/app/Sources/Baton/BatonApp.swift
++++ b/app/Sources/Baton/BatonApp.swift
+@@ -3,51 +3,29 @@
+ import BatonKit
+ import BatonUI
+ 
+-/// The D0 list shared by the menu-bar extra and the main window.
+-struct LinkList: View {
+-    @ObservedObject var state: PopoverViewModel
+-
+-    var body: some View {
+-        List {
+-            if let note = state.errorNote {
+-                Text(note.text)
+-            }
+-            ForEach(state.links, id: \.linkID) { link in
+-                VStack(alignment: .leading) {
+-                    ForEach(link.sides.keys.sorted(), id: \.self) { tool in
+-                        if let chat = link.sides[tool] {
+-                            Text(chat.name)
+-                        }
+-                    }
+-                    Text(link.headline.text)
+-                }
+-            }
+-        }
+-        .task { await state.refresh() }
+-    }
+-}
+-
+ /// A fixture-backed menu-bar app and window, built directly by Swift Package Manager.
+ @main
+ struct BatonApp: App {
+     @StateObject private var state: PopoverViewModel
++    @StateObject private var windowState: WindowViewModel
+     @Environment(\.openWindow) private var openWindow
+ 
+     init() {
+         NSApplication.shared.setActivationPolicy(.accessory)
+         let fixtures = Bundle.module.resourceURL!.appendingPathComponent("Fixtures", isDirectory: true)
+         _state = StateObject(wrappedValue: PopoverViewModel(engine: FixtureEngine(directory: fixtures, states: ["links": "d2_in_sync", "suggestions": "d2_in_sync", "continue": "d2_in_sync"])))
++        _windowState = StateObject(wrappedValue: WindowViewModel(engine: FixtureEngine(directory: fixtures, state: "d3_filled")))
+     }
+ 
+     var body: some Scene {
+         MenuBarExtra {
+-            PopoverView(model: state, linkRecent: { openWindow(id: "links") }).task { await state.refresh() }
++            PopoverView(model: state, linkRecent: { windowState.navigate(to: .suggestions); openWindow(id: "links") }).task { await state.refresh() }
+         } label: {
+             BatonMenuIcon(needsDecision: state.needsDecision)
+         }
+         .menuBarExtraStyle(.window)
+         Window("Baton", id: "links") {
+-            LinkList(state: state)
++            WindowView(model: windowState).task { await windowState.refresh() }
+         }
+     }
+ }
+diff --git a/app/Sources/BatonKit/Models/Shared.swift b/app/Sources/BatonKit/Models/Shared.swift
+--- a/app/Sources/BatonKit/Models/Shared.swift
++++ b/app/Sources/BatonKit/Models/Shared.swift
+@@ -437,9 +437,10 @@
+     public var headline: Note
+     public var inSync: Bool
+     public var decisionNeeded: Bool
+-
+-    /// Creates a contract value without requiring JSON.
+-    public init(linkID: Int, sides: [String: Chat], mode: String, paused: Bool, headline: Note, inSync: Bool, decisionNeeded: Bool) {
++    public var needsAttention: Bool?
++
++    /// Creates a contract value without requiring JSON.
++    public init(linkID: Int, sides: [String: Chat], mode: String, paused: Bool, headline: Note, inSync: Bool, decisionNeeded: Bool, needsAttention: Bool? = nil) {
+         self.linkID = linkID
+         self.sides = sides
+         self.mode = mode
+@@ -447,6 +448,7 @@
+         self.headline = headline
+         self.inSync = inSync
+         self.decisionNeeded = decisionNeeded
++        self.needsAttention = needsAttention
+     }
+ 
+     private enum CodingKeys: String, CodingKey {
+@@ -457,6 +459,7 @@
+         case headline
+         case inSync = "in_sync"
+         case decisionNeeded = "decision_needed"
++        case needsAttention = "needs_attention"
+     }
+ }
+ 
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowPreviews.swift b/app/Sources/BatonUI/Screens/Window/WindowPreviews.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Screens/Window/WindowPreviews.swift
+@@ -0,0 +1,32 @@
++import SwiftUI
++import BatonKit
++
++private struct FixtureWindow: View {
++    @StateObject private var model: WindowViewModel
++    let destination: WindowSection
++    @MainActor init(state: String, destination: WindowSection) {
++        self.destination = destination
++        let directory = URL(fileURLWithPath: #filePath)
++            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
++            .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Fixtures")
++        _model = StateObject(wrappedValue: WindowViewModel(engine: FixtureEngine(directory: directory, state: state)))
++    }
++    var body: some View {
++        WindowView(model: model).task { await model.refresh(); model.navigate(to: destination) }
++    }
++}
++
++/// Empty and filled previews for all sidebar lists in both palettes.
++@MainActor
++struct WindowPreviews: PreviewProvider {
++    static var previews: some View {
++        ForEach(["empty", "filled"], id: \.self) { state in
++            ForEach([WindowSection.linked, .attention, .suggestions, .chats("claude"), .chats("codex"), .chats("opencode"), .chats("cursor"), .activity], id: \.self) { section in
++                ForEach(Theme.allCases, id: \.rawValue) { theme in
++                    FixtureWindow(state: "d3_" + state, destination: section).batonTheme(theme)
++                        .previewDisplayName("\(state) · \(section) · \(theme.rawValue)")
++                }
++            }
++        }
++    }
++}
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowView.swift b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+@@ -0,0 +1,154 @@
++import SwiftUI
++import BatonKit
++
++/// Sidebar, lists and a detail host for the later screens.
++public struct WindowView: View {
++    @Environment(\.batonTheme) private var theme
++    @ObservedObject private var model: WindowViewModel
++    /// Shows the engine-backed window model.
++    public init(model: WindowViewModel) { self.model = model }
++    public var body: some View {
++        HStack(alignment: .top, spacing: 0) {
++            VStack(alignment: .leading, spacing: 6) {
++                ForEach(model.sections, id: \.self) { destination in
++                    if let note = model.label(for: destination) {
++                        Button { model.navigate(to: destination) } label: {
++                            HStack { Text(note.text); Spacer(minLength: 0) }
++                                .font(.callout.weight(model.section == destination ? .semibold : .regular))
++                                .padding(10).background(theme.colour(for: .action)
++                                    .opacity(model.section == destination ? 0.12 : 0), in: RoundedRectangle(cornerRadius: 8))
++                        }.buttonStyle(.plain)
++                    }
++                }
++            }.padding(12).frame(width: 205).frame(maxHeight: .infinity, alignment: .top)
++                .background(theme.sidebar)
++            VStack(alignment: .leading, spacing: 14) {
++                if let label = model.label(for: model.section) { Text(label.text).font(.title2.weight(.semibold)) }
++                if let error = model.errorNote { NoteView(note: error) }
++                WindowScrollArea { listContent }
++            }.padding(20).frame(width: 305).frame(maxHeight: .infinity, alignment: .top)
++            Rectangle().fill(theme.hairline).frame(width: 1)
++            WindowScrollArea { detail }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
++        }.frame(width: 1000, height: 600).background(theme.background)
++    }
++
++    @ViewBuilder private var listContent: some View {
++        VStack(alignment: .leading, spacing: 12) {
++            switch model.section {
++            case .linked, .attention:
++                if model.listedLinks.isEmpty { empty }
++                ForEach(model.listedLinks, id: \.linkID) { link in
++                    row(.link(link.linkID)) { linkSummary(link) }
++                }
++            case .suggestions:
++                if model.suggestions.isEmpty { empty }
++                ForEach(model.suggestions.map { IdentifiedSuggestion(selection: model.suggestionSelection($0), suggestion: $0) }) { item in
++                    let suggestion = item.suggestion
++                    row(model.suggestionSelection(suggestion)) { suggestionSummary(suggestion) }
++                }
++            case .chats(let tool):
++                if (model.chats[tool] ?? []).isEmpty { empty }
++                ForEach(model.chats[tool] ?? [], id: \.id) { chat in
++                    row(.chat(tool, chat.id)) { chatSummary(chat) }
++                }
++            case .activity:
++                if model.activity.isEmpty { empty }
++                ForEach(model.activity) { entry in
++                    row(.event(entry.link.linkID, entry.event.id)) {
++                        VStack(alignment: .leading, spacing: 8) {
++                            linkSummary(entry.link)
++                            Text(entry.event.text).font(.callout)
++                            Text(entry.event.at).font(.caption).foregroundStyle(theme.secondaryText)
++                        }
++                    }
++                }
++            }
++        }.frame(maxWidth: .infinity, alignment: .leading)
++    }
++
++    @ViewBuilder private var detail: some View {
++        switch model.selection {
++        case .link:
++            if let link = model.selectedLink { linkSummary(link) }
++        case .suggestion:
++            if let suggestion = model.selectedSuggestion { suggestionSummary(suggestion) }
++        case .chat(let tool, let id):
++            if let chat = model.chats[tool]?.first(where: { $0.id == id }) { chatSummary(chat) }
++        case .event(let link, let id):
++            if let entry = model.activity.first(where: { $0.link.linkID == link && $0.event.id == id }) {
++                VStack(alignment: .leading, spacing: 12) { linkSummary(entry.link); Text(entry.event.text) }
++            }
++        case nil: EmptyView()
++        }
++    }
++
++    @ViewBuilder private var empty: some View {
++        if let note = model.notes.first(where: { $0.id == "screen.list_empty" }) { NoteView(note: note) }
++    }
++
++    private func row<Content: View>(_ selection: WindowSelection, @ViewBuilder content: () -> Content) -> some View {
++        Button { model.select(selection) } label: {
++            content().frame(maxWidth: .infinity, alignment: .leading).padding(10)
++                .background(theme.colour(for: .action).opacity(model.selection == selection ? 0.1 : 0),
++                            in: RoundedRectangle(cornerRadius: 9))
++        }.buttonStyle(.plain)
++    }
++
++    private func linkSummary(_ link: LinkSummary) -> some View {
++        VStack(alignment: .leading, spacing: 8) {
++            ForEach(link.sides.keys.sorted(), id: \.self) { tool in
++                if let chat = link.sides[tool] { chatSummary(chat) }
++            }
++            Text(link.headline.statusLine ?? link.headline.text).font(.callout).foregroundStyle(theme.secondaryText)
++        }
++    }
++
++    private func chatSummary(_ chat: Chat) -> some View {
++        VStack(alignment: .leading, spacing: 4) {
++            ToolDot(tool: chat.tool).font(.caption)
++            Text(chat.name).font(.headline)
++            Text(chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
++        }
++    }
++
++    private func suggestionSummary(_ suggestion: Suggestion) -> some View {
++        VStack(alignment: .leading, spacing: 10) { chatSummary(suggestion.a); chatSummary(suggestion.b) }
++    }
++}
++
++/// Native macOS scrolling is not drawn by ImageRenderer. Snapshot presentation
++/// lays out the very same content directly; live windows keep their scroll area.
++private struct SnapshotPresentationKey: EnvironmentKey {
++    static let defaultValue = false
++}
++
++extension EnvironmentValues {
++    var batonSnapshotPresentation: Bool {
++        get { self[SnapshotPresentationKey.self] }
++        set { self[SnapshotPresentationKey.self] = newValue }
++    }
++}
++
++struct WindowScrollArea<Content: View>: View {
++    @Environment(\.batonSnapshotPresentation) private var snapshot
++    private let content: Content
++    init(@ViewBuilder content: () -> Content) { self.content = content() }
++    var body: some View {
++        Group {
++            if snapshot {
++                GeometryReader { geometry in
++                    content.frame(width: geometry.size.width, alignment: .topLeading)
++                        .frame(height: geometry.size.height, alignment: .topLeading).clipped()
++                }
++            } else {
++                ScrollView { content }
++            }
++        }
++    }
++}
++
++private struct IdentifiedSuggestion: Identifiable {
++    let selection: WindowSelection
++    let suggestion: Suggestion
++    var id: WindowSelection { selection }
++}
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowViewModel.swift b/app/Sources/BatonUI/Screens/Window/WindowViewModel.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Screens/Window/WindowViewModel.swift
+@@ -0,0 +1,135 @@
++import Foundation
++import Combine
++import BatonKit
++
++/// Sidebar destinations, including only tools reported as installed.
++public enum WindowSection: Hashable, Sendable {
++    case linked, attention, suggestions, chats(String), activity
++}
++
++/// Stable selections within the window's lists.
++public enum WindowSelection: Hashable, Sendable {
++    case link(Int), suggestion(String, String, String, String), chat(String, String), event(Int, Int)
++}
++
++/// Associates a history event with the link whose pair it describes.
++public struct ActivityEntry: Identifiable, Sendable {
++    public let link: LinkSummary
++    public let event: HistoryEvent
++    public var id: String { "\(link.linkID):\(event.id)" }
++}
++
++/// Loads window lists through the engine, without reading chat files or deriving sync rules.
++@MainActor
++public final class WindowViewModel: ObservableObject {
++    @Published public private(set) var section: WindowSection = .linked
++    @Published public private(set) var selection: WindowSelection?
++    @Published public private(set) var links: [LinkSummary] = []
++    @Published public private(set) var notes: [Note] = []
++    @Published public private(set) var suggestions: [Suggestion] = []
++    @Published public private(set) var installedTools: [String] = []
++    @Published public private(set) var chats: [String: [Chat]] = [:]
++    @Published public private(set) var activity: [ActivityEntry] = []
++    @Published public private(set) var errorNote: Note?
++    private let engine: any EngineClient
++    private var refreshNumber = 0
++
++    /// Takes the sole source of data and displayed wording.
++    public init(engine: any EngineClient) { self.engine = engine }
++
++    public var sections: [WindowSection] { [.linked, .attention, .suggestions] + installedTools.map(WindowSection.chats) + [.activity] }
++    public var attentionLinks: [LinkSummary] { links.filter { $0.needsAttention ?? $0.decisionNeeded } }
++    public var listedLinks: [LinkSummary] { section == .attention ? attentionLinks : links }
++    public var selectedLink: LinkSummary? {
++        guard case .link(let id) = selection else { return nil }
++        return links.first { $0.linkID == id }
++    }
++
++    public var selectedSuggestion: Suggestion? { suggestions.first { suggestionSelection($0) == selection } }
++
++    /// Identifies a suggestion by both chats, preserving identity when the list reorders.
++    public func suggestionSelection(_ suggestion: Suggestion) -> WindowSelection {
++        .suggestion(suggestion.a.tool, suggestion.a.id, suggestion.b.tool, suggestion.b.id)
++    }
++
++    /// Gets sidebar wording from the engine's optional presentation notes.
++    public func label(for destination: WindowSection) -> Note? {
++        let id: String
++        switch destination {
++        case .linked: id = "screen.linked"
++        case .attention: id = "screen.attention"
++        case .suggestions: id = "screen.suggestions"
++        case .chats(let tool):
++            return notes.first { $0.id == "screen.all_chats" && $0.values["tool"] == .string(tool) }
++        case .activity: id = "screen.activity"
++        }
++        return notes.first { $0.id == id }
++    }
++
++    /// Refreshes all list data and preserves only selections that remain valid.
++    public func refresh() async {
++        refreshNumber += 1
++        let refresh = refreshNumber
++        do {
++            let response = try await engine.links()
++            let setup = try await engine.setup()
++            let suggested = try await engine.suggestions()
++            let installed = setup.tools.filter(\.installed).map(\.tool).sorted()
++            var allChats: [String: [Chat]] = [:]
++            for tool in installed {
++                allChats[tool] = try await engine.chats(tool: tool, folder: nil).chats.filter { $0.tool == tool }
++            }
++            var events: [ActivityEntry] = []
++            for link in response.links {
++                events += try await engine.history(link: link.linkID).events.map { ActivityEntry(link: link, event: $0) }
++            }
++            guard refreshNumber == refresh else { return }
++            links = response.links; notes = response.notes; suggestions = suggested.suggestions
++            installedTools = installed; chats = allChats
++            let datedEvents: [(index: Int, entry: ActivityEntry, date: Date)] = events.enumerated().map { index, entry in
++                (index: index, entry: entry, date: eventDate(entry.event.at))
++            }
++            let sortedEvents = datedEvents.sorted { first, second in
++                if first.date == second.date { return first.index < second.index }
++                return first.date > second.date
++            }
++            activity = sortedEvents.map { $0.entry }
++            if !sections.contains(section) { section = .linked; selection = nil }
++            if let selection, !selections.contains(selection) { self.selection = nil }
++            errorNote = nil
++        } catch let error as EngineCommandError {
++            guard refreshNumber == refresh else { return }; errorNote = error.note
++        } catch {
++            guard refreshNumber == refresh else { return }; errorNote = nil
++        }
++    }
++
++    /// Navigates only to a destination still supported by the current setup.
++    public func navigate(to destination: WindowSection) {
++        guard sections.contains(destination) else { return }
++        section = destination; selection = nil
++    }
++
++    /// Selects only an item that belongs to the current list.
++    public func select(_ item: WindowSelection) {
++        guard selections.contains(item) else { return }
++        selection = item
++    }
++
++    private var selections: [WindowSelection] {
++        switch section {
++        case .linked, .attention: return listedLinks.map { .link($0.linkID) }
++        case .suggestions: return suggestions.map(suggestionSelection)
++        case .chats(let tool): return (chats[tool] ?? []).map { .chat(tool, $0.id) }
++        case .activity: return activity.map { .event($0.link.linkID, $0.event.id) }
++        }
++    }
++
++    private func eventDate(_ time: String) -> Date {
++        let parser = ISO8601DateFormatter()
++        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
++        if let date = parser.date(from: time) { return date }
++        parser.formatOptions = [.withInternetDateTime]
++        return parser.date(from: time) ?? .distantPast
++    }
++}
+diff --git a/app/Tests/BatonUITests/WindowTests.swift b/app/Tests/BatonUITests/WindowTests.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Tests/BatonUITests/WindowTests.swift
+@@ -0,0 +1,155 @@
++import AppKit
++import SwiftUI
++import Testing
++import BatonKit
++@testable import BatonUI
++
++private actor RecordingWindowEngine: EngineTransport {
++    let fixture: FixtureEngine
++    var calls: [(String, [String])] = []
++    init(state: String) { fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: state) }
++    func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
++        calls.append((command, arguments))
++        return try await fixture.response(command: command, arguments: arguments, as: type)
++    }
++}
++
++private actor ChangingWindowEngine: EngineTransport {
++    var suggestionOrder = 0
++    func reorderSuggestions() { suggestionOrder = 1 }
++    func removeFirstSuggestion() { suggestionOrder = 2 }
++    func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
++        let data = try Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/\(command).d3_filled.json"))
++        var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
++        if command == "suggestions" {
++            let originals = try #require(object["suggestions"] as? [[String: Any]])
++            let first = try #require(originals.first)
++            var second = first
++            for side in ["a", "b"] {
++                var chat = try #require(second[side] as? [String: Any])
++                chat["id"] = (chat["id"] as? String ?? "") + "_other"
++                second[side] = chat
++            }
++            object["suggestions"] = suggestionOrder == 0 ? [first, second] : suggestionOrder == 1 ? [second, first] : [second]
++        }
++        if command == "history" {
++            let originals = try #require(object["events"] as? [[String: Any]])
++            var first = try #require(originals.first)
++            first["at"] = "2026-10-05T10:00:00Z"
++            var later = first; later["id"] = 2; later["at"] = "2026-10-05T10:00:00.9Z"
++            object["events"] = [first, later]
++        }
++        return try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: object))
++    }
++}
++
++@Suite(.serialized)
++struct WindowTests {
++    @MainActor @Test
++    func navigationSelectionAndAttentionUseEngineFlags() async {
++        let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_filled"))
++        await model.refresh()
++        #expect(model.sections.count == 8)
++        #expect(model.attentionLinks.map(\.linkID) == [3, 4])
++        model.select(.link(3))
++        #expect(model.selectedLink?.linkID == 3)
++        await model.refresh()
++        #expect(model.selectedLink?.linkID == 3)
++        model.navigate(to: .attention)
++        #expect(model.selection == nil)
++        model.select(.link(5))
++        #expect(model.selection == nil)
++        model.select(.link(4))
++        #expect(model.selectedLink?.headline.id == "relaunch_to_see")
++        model.navigate(to: .suggestions)
++        let selectedSuggestion = model.suggestionSelection(model.suggestions[0])
++        model.select(selectedSuggestion)
++        #expect(model.selection == selectedSuggestion)
++        model.navigate(to: .chats("codex"))
++        model.select(.chat("codex", "d3-unlinked-codex"))
++        #expect(model.selection == .chat("codex", "d3-unlinked-codex"))
++        model.navigate(to: .activity)
++        #expect(Set(model.activity.map(\.id)).count == 3)
++        model.select(.event(3, 1))
++        #expect(model.selection == .event(3, 1))
++    }
++
++    @MainActor @Test
++    func uninstalledToolIsNeverOfferedOrQueried() async {
++        let engine = RecordingWindowEngine(state: "d3_tool_missing")
++        let model = WindowViewModel(engine: engine)
++        await model.refresh()
++        #expect(!model.installedTools.contains("cursor"))
++        #expect(!model.sections.contains(.chats("cursor")))
++        model.navigate(to: .chats("cursor"))
++        #expect(model.section == .linked)
++        let calls = await engine.calls
++        #expect(!calls.contains { $0.0 == "chats" && $0.1.contains("cursor") })
++    }
++
++    @Test
++    func legacyAttentionFlagIsOptional() throws {
++        let value = try JSONDecoder().decode(LinksResult.self, from: Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/links.sample.json")))
++        #expect(value.links.first?.needsAttention == nil)
++    }
++
++    @MainActor @Test
++    func suggestionIdentitySurvivesReorderingAndClearsOnRemoval() async {
++        let engine = ChangingWindowEngine()
++        let model = WindowViewModel(engine: engine)
++        await model.refresh()
++        model.navigate(to: .suggestions)
++        let original = model.suggestionSelection(model.suggestions[0])
++        model.select(original)
++        await engine.reorderSuggestions()
++        await model.refresh()
++        #expect(model.selection == original)
++        #expect(model.selectedSuggestion?.a.id == "d3-suggestion-claude")
++        await engine.removeFirstSuggestion()
++        await model.refresh()
++        #expect(model.selection == nil)
++        #expect(model.selectedSuggestion == nil)
++    }
++
++    @MainActor @Test
++    func fractionalHistoryTimesSortAfterWholeSeconds() async {
++        let model = WindowViewModel(engine: ChangingWindowEngine())
++        await model.refresh()
++        #expect(model.activity.map(\.event.id) == [2, 2, 2, 1, 1, 1])
++        #expect(model.activity.prefix(3).map(\.link.linkID) == [3, 4, 5])
++    }
++
++    @MainActor @Test
++    func snapshotsEveryListEmptyFilledAndMissingTool() async throws {
++        let output = ComponentTests.root.appendingPathComponent("Snapshots")
++        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++        for fixture in ["empty", "filled", "tool_missing"] {
++            let model = WindowViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d3_" + fixture))
++            await model.refresh()
++            let destinations = fixture == "tool_missing" ? [WindowSection.linked] : model.sections
++            #expect(destinations.count == (fixture == "tool_missing" ? 1 : 8))
++            for section in destinations {
++                model.navigate(to: section)
++                let name: String
++                switch section {
++                case .linked: name = "linked"; if fixture == "filled" { model.select(.link(3)) }
++                case .attention: name = "attention"; if fixture == "filled" { model.select(.link(4)) }
++                case .suggestions: name = "suggestions"; if fixture == "filled" { model.select(model.suggestionSelection(model.suggestions[0])) }
++                case .chats(let tool): name = "chats_" + tool; if fixture == "filled" { model.select(.chat(tool, "d3-unlinked-" + tool)) }
++                case .activity: name = "activity"; if fixture == "filled" { model.select(.event(3, 1)) }
++                }
++                for theme in Theme.allCases {
++                    let renderer = ImageRenderer(content: WindowView(model: model).batonTheme(theme).environment(\.batonSnapshotPresentation, true))
++                    renderer.scale = 1
++                    let image = try #require(renderer.nsImage)
++                    #expect(image.size.width > 0 && image.size.height > 0)
++                    let tiff = try #require(image.tiffRepresentation)
++                    let bitmap = try #require(NSBitmapImageRep(data: tiff))
++                    let png = try #require(bitmap.representation(using: .png, properties: [:]))
++                    #expect(!png.isEmpty)
++                    try png.write(to: output.appendingPathComponent("D3-\(name)-\(fixture)-\(theme.rawValue).png"))
++                }
++            }
++        }
++    }
++}
+diff --git a/app/Fixtures/chats.d3_empty.json b/app/Fixtures/chats.d3_empty.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/chats.d3_empty.json
+@@ -0,0 +1,3 @@
++{
++  "chats": []
++}
+diff --git a/app/Fixtures/chats.d3_filled.json b/app/Fixtures/chats.d3_filled.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/chats.d3_filled.json
+@@ -0,0 +1,36 @@
++{
++  "chats": [
++    {
++      "tool": "claude",
++      "id": "d3-unlinked-claude",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "codex",
++      "id": "d3-unlinked-codex",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "opencode",
++      "id": "d3-unlinked-opencode",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "cursor",
++      "id": "d3-unlinked-cursor",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    }
++  ]
++}
+diff --git a/app/Fixtures/chats.d3_tool_missing.json b/app/Fixtures/chats.d3_tool_missing.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/chats.d3_tool_missing.json
+@@ -0,0 +1,36 @@
++{
++  "chats": [
++    {
++      "tool": "claude",
++      "id": "d3-unlinked-claude",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "codex",
++      "id": "d3-unlinked-codex",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "opencode",
++      "id": "d3-unlinked-opencode",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    },
++    {
++      "tool": "cursor",
++      "id": "d3-unlinked-cursor",
++      "name": "Orchard review",
++      "folder": "/tmp/baton-sample",
++      "updated_at": "2026-10-04T14:05:00Z",
++      "linked": false
++    }
++  ]
++}
+diff --git a/app/Fixtures/history.d3_empty.json b/app/Fixtures/history.d3_empty.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/history.d3_empty.json
+@@ -0,0 +1,3 @@
++{
++  "events": []
++}
+diff --git a/app/Fixtures/history.d3_filled.json b/app/Fixtures/history.d3_filled.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/history.d3_filled.json
+@@ -0,0 +1,16 @@
++{
++  "events": [
++    {
++      "id": 1,
++      "at": "2026-10-05T10:00:00Z",
++      "kind": "sync",
++      "tool": "codex",
++      "turns": [
++        41
++      ],
++      "text": "Shown",
++      "can_undo": true,
++      "can_restore": false
++    }
++  ]
++}
+diff --git a/app/Fixtures/history.d3_tool_missing.json b/app/Fixtures/history.d3_tool_missing.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/history.d3_tool_missing.json
+@@ -0,0 +1,16 @@
++{
++  "events": [
++    {
++      "id": 1,
++      "at": "2026-10-05T10:00:00Z",
++      "kind": "sync",
++      "tool": "codex",
++      "turns": [
++        41
++      ],
++      "text": "Shown",
++      "can_undo": true,
++      "can_restore": false
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d3_empty.json b/app/Fixtures/links.d3_empty.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d3_empty.json
+@@ -0,0 +1,101 @@
++{
++  "links": [],
++  "notes": [
++    {
++      "id": "screen.linked",
++      "tone": "info",
++      "values": {},
++      "text": "Linked",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.attention",
++      "tone": "info",
++      "values": {},
++      "text": "Needs attention",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.suggestions",
++      "tone": "info",
++      "values": {},
++      "text": "Suggestions",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.activity",
++      "tone": "info",
++      "values": {},
++      "text": "Activity",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.list_empty",
++      "tone": "info",
++      "values": {},
++      "text": "No items yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.sync_status",
++      "tone": "info",
++      "values": {},
++      "text": "Sync status",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "All claude chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "All codex chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "opencode"
++      },
++      "text": "All opencode chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "cursor"
++      },
++      "text": "All cursor chats",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d3_filled.json b/app/Fixtures/links.d3_filled.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d3_filled.json
+@@ -0,0 +1,219 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-3-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-3-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "merge.decision_needed",
++        "tone": "warning",
++        "values": {},
++        "text": "Both sides have turns the other never received. A decision is needed.",
++        "buttons": [
++          {
++            "id": "merge_show",
++            "label": "Decide",
++            "primary": true
++          }
++        ],
++        "status_line": "A decision is needed"
++      },
++      "in_sync": false,
++      "decision_needed": true,
++      "needs_attention": true
++    },
++    {
++      "link_id": 4,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-4-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-4-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "relaunch_to_see",
++        "tone": "info",
++        "values": {
++          "tool": "claude",
++          "n": 2
++        },
++        "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
++        "buttons": [
++          {
++            "id": "relaunch",
++            "label": "Relaunch claude",
++            "primary": true
++          }
++        ],
++        "status_line": "Relaunch claude to see 2 new turns"
++      },
++      "in_sync": false,
++      "decision_needed": false,
++      "needs_attention": true
++    },
++    {
++      "link_id": 5,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-5-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-5-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "status.in_sync",
++        "tone": "ok",
++        "values": {},
++        "text": "In sync",
++        "buttons": [],
++        "status_line": null
++      },
++      "in_sync": true,
++      "decision_needed": false,
++      "needs_attention": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.linked",
++      "tone": "info",
++      "values": {},
++      "text": "Linked",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.attention",
++      "tone": "info",
++      "values": {},
++      "text": "Needs attention",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.suggestions",
++      "tone": "info",
++      "values": {},
++      "text": "Suggestions",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.activity",
++      "tone": "info",
++      "values": {},
++      "text": "Activity",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.list_empty",
++      "tone": "info",
++      "values": {},
++      "text": "No items yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.sync_status",
++      "tone": "info",
++      "values": {},
++      "text": "Sync status",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "All claude chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "All codex chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "opencode"
++      },
++      "text": "All opencode chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "cursor"
++      },
++      "text": "All cursor chats",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d3_tool_missing.json b/app/Fixtures/links.d3_tool_missing.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d3_tool_missing.json
+@@ -0,0 +1,219 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-3-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-3-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "merge.decision_needed",
++        "tone": "warning",
++        "values": {},
++        "text": "Both sides have turns the other never received. A decision is needed.",
++        "buttons": [
++          {
++            "id": "merge_show",
++            "label": "Decide",
++            "primary": true
++          }
++        ],
++        "status_line": "A decision is needed"
++      },
++      "in_sync": false,
++      "decision_needed": true,
++      "needs_attention": true
++    },
++    {
++      "link_id": 4,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-4-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-4-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "relaunch_to_see",
++        "tone": "info",
++        "values": {
++          "tool": "claude",
++          "n": 2
++        },
++        "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
++        "buttons": [
++          {
++            "id": "relaunch",
++            "label": "Relaunch claude",
++            "primary": true
++          }
++        ],
++        "status_line": "Relaunch claude to see 2 new turns"
++      },
++      "in_sync": false,
++      "decision_needed": false,
++      "needs_attention": true
++    },
++    {
++      "link_id": 5,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "d3-5-claude",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "d3-5-codex",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "status.in_sync",
++        "tone": "ok",
++        "values": {},
++        "text": "In sync",
++        "buttons": [],
++        "status_line": null
++      },
++      "in_sync": true,
++      "decision_needed": false,
++      "needs_attention": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.linked",
++      "tone": "info",
++      "values": {},
++      "text": "Linked",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.attention",
++      "tone": "info",
++      "values": {},
++      "text": "Needs attention",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.suggestions",
++      "tone": "info",
++      "values": {},
++      "text": "Suggestions",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.activity",
++      "tone": "info",
++      "values": {},
++      "text": "Activity",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.list_empty",
++      "tone": "info",
++      "values": {},
++      "text": "No items yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.sync_status",
++      "tone": "info",
++      "values": {},
++      "text": "Sync status",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "All claude chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "All codex chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "opencode"
++      },
++      "text": "All opencode chats",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.all_chats",
++      "tone": "info",
++      "values": {
++        "tool": "cursor"
++      },
++      "text": "All cursor chats",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/setup.d3_empty.json b/app/Fixtures/setup.d3_empty.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/setup.d3_empty.json
+@@ -0,0 +1,92 @@
++{
++  "tools": [
++    {
++      "tool": "claude",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "closed_or_released",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": true,
++        "can_place": false,
++        "can_release_chat": true,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "codex",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "not_held",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "at_once",
++        "can_cut": false,
++        "can_place": false,
++        "can_release_chat": false,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "trust once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "opencode",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "any_time",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "on_reopen_chat",
++        "can_cut": true,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": false,
++        "hooks_need": "restart once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "cursor",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "app_closed",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": false,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    }
++  ]
++}
+diff --git a/app/Fixtures/setup.d3_filled.json b/app/Fixtures/setup.d3_filled.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/setup.d3_filled.json
+@@ -0,0 +1,92 @@
++{
++  "tools": [
++    {
++      "tool": "claude",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "closed_or_released",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": true,
++        "can_place": false,
++        "can_release_chat": true,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "codex",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "not_held",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "at_once",
++        "can_cut": false,
++        "can_place": false,
++        "can_release_chat": false,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "trust once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "opencode",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "any_time",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "on_reopen_chat",
++        "can_cut": true,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": false,
++        "hooks_need": "restart once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "cursor",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "app_closed",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": false,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    }
++  ]
++}
+diff --git a/app/Fixtures/setup.d3_tool_missing.json b/app/Fixtures/setup.d3_tool_missing.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/setup.d3_tool_missing.json
+@@ -0,0 +1,92 @@
++{
++  "tools": [
++    {
++      "tool": "claude",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "closed_or_released",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": true,
++        "can_place": false,
++        "can_release_chat": true,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "codex",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "not_held",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "at_once",
++        "can_cut": false,
++        "can_place": false,
++        "can_release_chat": false,
++        "opens_at_chat": true,
++        "limit_has_reset_time": true,
++        "context_size_known": true,
++        "hooks_need": "trust once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "opencode",
++      "installed": true,
++      "ready": true,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "any_time",
++        "new_chat_visible": "at_once",
++        "added_turn_visible": "on_reopen_chat",
++        "can_cut": true,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": false,
++        "hooks_need": "restart once",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    },
++    {
++      "tool": "cursor",
++      "installed": false,
++      "ready": false,
++      "version": "sample-1",
++      "findings": [],
++      "facts": {
++        "write_window": "app_closed",
++        "new_chat_visible": "after_relaunch",
++        "added_turn_visible": "after_relaunch",
++        "can_cut": false,
++        "can_place": true,
++        "can_release_chat": false,
++        "opens_at_chat": false,
++        "limit_has_reset_time": false,
++        "context_size_known": true,
++        "hooks_need": "none",
++        "checked_versions": [
++          "sample-1"
++        ]
++      }
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d3_empty.json b/app/Fixtures/suggestions.d3_empty.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d3_empty.json
+@@ -0,0 +1,3 @@
++{
++  "suggestions": []
++}
+diff --git a/app/Fixtures/suggestions.d3_filled.json b/app/Fixtures/suggestions.d3_filled.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d3_filled.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "d3-suggestion-claude",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": false
++      },
++      "b": {
++        "tool": "codex",
++        "id": "d3-suggestion-codex",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": false
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d3_tool_missing.json b/app/Fixtures/suggestions.d3_tool_missing.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d3_tool_missing.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "d3-suggestion-claude",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": false
++      },
++      "b": {
++        "tool": "codex",
++        "id": "d3-suggestion-codex",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": false
++      },
++      "matched_turns": 1
++    }
++  ]
++}

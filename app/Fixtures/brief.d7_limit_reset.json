@@ -1,0 +1,105 @@
+{
+  "applied": false,
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b9038a3e38471c4bdb018beaf4164f658bd1985d2fa0854514839cd7e9856e38",
+        "tokens": 165152,
+        "writer": "codex"
+      }
+    ],
+    "estimated_tokens": 165152,
+    "pinned": [
+      42
+    ],
+    "pinned_tokens": 17,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "codex"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.skipped_limit",
+      "status_line": null,
+      "text": "Claude couldn't write the brief because it has reached its usage limit.",
+      "tone": "warning",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Codex can write this brief and can read the project folder. It cannot change anything. About 165152 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 165152,
+        "tool": "Codex",
+        "writer_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 165152 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 165152
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.pinned_size",
+      "status_line": null,
+      "text": "Pinned turns add about 17 tokens in full.",
+      "tone": "info",
+      "values": {
+        "tokens": 17
+      }
+    }
+  ],
+  "plan_id": "p_cac36bfdb7dedd1d25a09edea182d61e",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Sync",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_sync",
+    "status_line": null,
+    "text": "Sync the waiting turns.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [],
+  "plan_id": "p_115a5a88caa107809766a19039dbcc933cec6518f3dbd142936712fdf9822fcd",
+  "steps": [
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 4 of 5 turns. Its chat shows 4; 1 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 4,
+            "tool": "Claude",
+            "total": 5,
+            "waiting": 1
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "show_changes",
+              "label": "Show what changed",
+              "primary": true
+            }
+          ],
+          "id": "digest.since_you_left",
+          "status_line": null,
+          "text": "Since your last message here at 12:04, Codex did 1 turn, changed 0 files and ran 0 commands.",
+          "tone": "info",
+          "values": {
+            "at": "12:04",
+            "commands": "0 commands",
+            "files": "0 files",
+            "tool": "Codex",
+            "turns": "1 turn"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        45
+      ]
+    },
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Codex's agent has 4 of 5 turns. Its chat shows 4; 1 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 4,
+            "chat_shows": 4,
+            "tool": "Codex",
+            "total": 5,
+            "waiting": 1
+          }
+        },
+        {
+          "buttons": [],
+          "id": "context.in_use",
+          "status_line": null,
+          "text": "About 8,000 tokens in use, 4% of 200,000.",
+          "tone": "info",
+          "values": {
+            "percent": 4,
+            "size": "200,000",
+            "tokens": "8,000"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        44
+      ]
+    }
+  ]
+}

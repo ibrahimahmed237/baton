@@ -1,0 +1,911 @@
+diff --git a/baton/services/merger.py b/baton/services/merger.py
+new file mode 100644
+--- /dev/null
++++ b/baton/services/merger.py
+@@ -0,0 +1,266 @@
++"""Confirmed merge decisions, preserving old chats and all-side atomic records."""
++from __future__ import annotations
++
++from copy import deepcopy
++from dataclasses import asdict, dataclass, replace
++from hashlib import sha256
++import json
++from typing import Collection, Mapping, Sequence
++
++from ..domain.capabilities import Visibility, WriteWindow
++from ..domain.errors import ChatChanged, NotAvailable, OrderNotAllowed
++from ..domain.link import ADDED, SHOWN, WAITING, KEPT_BACK, SKIPPED
++from ..ports.clock import Clock
++from ..ports.store import RecordStore
++from ..ports.tool import ToolAdapter
++from . import planner, status
++from .applier import Applier
++from .delivery_plan import ApplyStep, PreparedPlan
++from .mapping import for_target, for_created_chat, title
++
++
++@dataclass(frozen=True)
++class MergePlan:
++    """An immutable decision fingerprint including its full delivery observations."""
++    plan_id: str
++    delivery: PreparedPlan
++    order: tuple[int, ...]
++    preset: str = ''
++    keep: str = ''
++    split: bool = False
++    skips: tuple[tuple[int, str], ...] = ()
++    same_files: tuple[dict, ...] = ()
++    automatic: bool = False
++
++
++@dataclass(frozen=True)
++class MergeResult:
++    """One completed merge event or explicit failure and pending rollback details."""
++    plan_id: str
++    applied: bool
++    event_id: int | None = None
++    error: str = ''
++    rollback_errors: tuple[dict, ...] = ()
++
++
++class Merger:
++    """Preview and execute an explicit decision, never rewriting an existing chat."""
++    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
++        self.store, self.adapters, self.clock = store, adapters, clock
++        self.applier = Applier(store, adapters, clock)
++        self.recovery = self.applier.recovery
++
++    def _observed(self, link_id):
++        record = self.applier._record(link_id)
++        link = self.store.get_link(link_id)
++        if link.removed_at:
++            raise NotAvailable()
++        rows = self.store.turns(link_id)
++        observations = {s: self.applier._snapshot(s, c) for s, c in link.chats.items()}
++        originals = {s: {t.id: t for t in self.applier._turns(o['turns'])}
++                     for s, o in observations.items()}
++        for side, observed in originals.items():
++            known = set(self.store.local_ids(link_id, side).values())
++            known.update(t.origin_id for t in rows if t.origin == side)
++            if not set(observed).issubset(known):
++                raise ChatChanged()
++        try:
++            payload = {t.id: originals[t.origin][t.origin_id] for t in rows}
++        except KeyError:
++            raise ChatChanged() from None
++        if self.applier._record(link_id) != record:
++            raise ChatChanged()
++        return link, rows, observations, payload
++
++    def show(self, link_id: int, *, merge_setting: str = 'ask',
++             brief_threshold_tokens: int = 150000) -> dict:
++        """Return complete unsynced messages, valid presets and fact-based outcomes."""
++        link, rows, observations, payload = self._observed(link_id)
++        pending = planner.unsynced(rows)
++        order = planner.merge_order(rows)
++        changed = {}
++        for turn in pending:
++            for path in self.adapters[turn.origin].reader.files_changed(payload[turn.id]):
++                changed.setdefault(path, []).append(turn)
++        same_files = [{'file': path, 'turns': [t.id for t in values]}
++                      for path, values in sorted(changed.items())
++                      if len({t.origin for t in values}) > 1]
++        presets = [{'id': 'by_time', 'order': [t.id for t in order]}]
++        presets += [{'id': side + '_first', 'order': [t.id for t in planner.merge_order(rows, side)]}
++                    for side in link.sides if any(t.origin == side for t in pending)]
++        presets += [{'id': 'dont_reorder', 'order': [t.id for t in order]}]
++        tokens = sum(t.size for t in rows if KEPT_BACK not in t.states.values()
++                     and SKIPPED not in t.states.values()) // 4
++        return {'last_shared': planner.last_shared(rows), 'unsynced': pending,
++                'messages': {t.id: payload[t.id] for t in pending},
++                'order': [t.id for t in order], 'presets': presets,
++                'outcome': planner.outcome(order),
++                'overlaps': [[a.id, b.id] for a, b in planner.overlapping(order)],
++                'same_files': same_files, 'tokens': tokens,
++                'offer_brief': tokens >= brief_threshold_tokens,
++                'automatic_allowed': merge_setting == 'by_time' and not same_files}
++
++    @staticmethod
++    def _fingerprint(plan: MergePlan) -> str:
++        data = asdict(plan)
++        data.pop('plan_id')
++        return 'p_' + sha256(json.dumps(data, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
++
++    def plan(self, link_id: int, *, order: Sequence[int] | None = None,
++             preset: str = '', keep: str = '', split: bool = False,
++             automatic: bool = False, merge_setting: str = 'ask', add_when_idle: Collection[str] = ()) -> MergePlan:
++        """Confirm one order or exit; creation payload includes the shared prefix."""
++        if sum((order is not None, bool(preset), bool(keep), split)) > 1:
++            raise OrderNotAllowed()
++        record = self.applier._record(link_id)
++        link, rows, observations, payload = self._observed(link_id)
++        if not split and any(o['condition']['replying'] for o in observations.values()):
++            raise NotAvailable()
++        pending = planner.unsynced(rows)
++        if not split and len({t.origin for t in pending}) < 2:
++            raise NotAvailable()
++        if keep and keep not in link.sides:
++            raise NotAvailable()
++        choice = preset.removesuffix('_first') if preset.endswith('_first') else preset
++        if order is not None:
++            try:
++                ordered = [next(t for t in pending if t.id == ident) for ident in order]
++            except StopIteration:
++                raise OrderNotAllowed() from None
++        else:
++            ordered = planner.merge_order(rows, choice or planner.BY_TIME)
++        planner.check_order(rows, ordered)
++        screen = self.show(link_id)
++        if automatic and (merge_setting != 'by_time' or screen['same_files'] or choice not in ('', planner.BY_TIME)
++                          or keep or split or order is not None):
++            raise NotAvailable()
++        skips = tuple((t.id, keep) for t in planner.turns_to_skip(rows, keep)) if keep else ()
++        outcomes = planner.outcome(ordered, choice)
++        queue = iter(ordered)
++        pending_ids = {t.id for t in pending}
++        reordered = [next(queue) if t.id in pending_ids else t for t in rows]
++        steps = []
++        if not split:
++            for side in link.sides:
++                condition = self.applier._condition(side, link.chat(side))
++                facts = self.adapters[side].facts
++                receiving = [t for t in ordered if t.states[side] == WAITING
++                             and (not keep or t.origin == keep)]
++                if keep or outcomes.get(side) == planner.KEEPS_CHAT:
++                    if not receiving:
++                        continue
++                    action, reason, needs, alternatives = status.delivery_choice(
++                        link, condition, facts, '', side in add_when_idle)
++                    turns = [self.applier._local_turn(for_target(payload[t.id], facts), link_id, t.id)
++                             for t in receiving]
++                    steps.append(ApplyStep(side, action, tuple(t.id for t in receiving), tuple(turns),
++                                           reason, needs, alternatives=alternatives))
++                else:
++                    visible = [t for t in reordered if t.states[side] not in (KEPT_BACK, SKIPPED)]
++                    turns = [self.applier._local_turn(payload[t.id], link_id, t.id) for t in visible]
++                    needs = ('app_closed',) if facts.write_window == WriteWindow.APP_CLOSED else ()
++                    if facts.new_chat_visible == Visibility.AFTER_RELAUNCH:
++                        needs += ('relaunch_to_see',)
++                    ref = observations[side]['ref']
++                    steps.append(ApplyStep(side, 'create', tuple(t.id for t in visible),
++                                           tuple(for_created_chat(turns, facts)), needs=needs,
++                                           name=title(ref['name'], link.others(side)[0], True), folder=ref['folder']))
++        delivery = self.applier.prepare(link_id, steps, link.chats)
++        if delivery.snapshots != observations or delivery.record != record:
++            raise ChatChanged()
++        plan = MergePlan('', delivery, tuple(t.id for t in ordered), preset, keep, split,
++                         skips, tuple(screen['same_files']), automatic)
++        return replace(plan, plan_id=self._fingerprint(plan))
++
++    def merge_if_automatic(self, link_id: int, *, merge_setting: str = 'ask',
++                           add_when_idle: Collection[str] = ()) -> MergeResult | None:
++        """Dispatch an allowed by-time decision; same-file conflicts keep asking."""
++        shown = self.show(link_id, merge_setting=merge_setting)
++        if not shown['automatic_allowed']:
++            return None
++        plan = self.plan(link_id, automatic=True, merge_setting=merge_setting,
++                         add_when_idle=add_when_idle)
++        return self.apply(plan, plan.plan_id)
++
++    def apply(self, plan: MergePlan, plan_id: str | None = None) -> MergeResult:
++        """Write every side safely, then commit one durable merge event or roll back."""
++        if self._fingerprint(plan) != plan.plan_id or (plan_id is not None and plan_id != plan.plan_id):
++            raise ChatChanged()
++        self.applier._validate(plan.delivery)
++        if tuple(self.show(plan.delivery.link_id)['same_files']) != plan.same_files:
++            raise ChatChanged()
++        link_id = plan.delivery.link_id
++        before = deepcopy(plan.delivery.record)
++        before['local_ids'] = {s: self.store.local_ids(link_id, s) for s in before['link']['chats']}
++        working = deepcopy(plan.delivery.snapshots)
++        writes, entries, created = [], [], {}
++        try:
++            if self.store.get_link(link_id).paused and not plan.split:
++                raise NotAvailable()
++            for step in plan.delivery.steps:
++                self.applier._check_snapshots(working)
++                if self.applier._record(link_id) != plan.delivery.record:
++                    raise ChatChanged()
++                current = self.store.get_link(link_id)
++                if current.paused or current.removed_at:
++                    raise NotAvailable()
++                adapter = self.adapters[step.side]
++                chat = current.chat(step.side)
++                action, reason = step.action, step.reason
++                if action == 'hold':
++                    raise NotAvailable()
++                if action == 'add_after_release':
++                    action, reason = self.applier._release(step, chat, link_id)
++                    working[step.side] = self.applier._snapshot(step.side, chat)
++                if action == 'attach':
++                    condition = self.applier._condition(step.side, chat)
++                    if not condition.exists or not condition.hooks_ready:
++                        raise NotAvailable()
++                    writes.append({'side': step.side, 'action': 'attach', 'turn_ids': step.turn_ids,
++                                   'chat_id': chat, 'reason': reason})
++                    continue
++                old = self.applier._turns(working[step.side]['turns'])
++                self.applier.guard.check_write(adapter, None if action == 'create' else chat,
++                                                link_id, expected=old if action != 'create' else None,
++                                                action=action)
++                entry = self.applier.journal.begin(link_id, step.side,
++                                                   None if action == 'create' else chat, action)
++                entries.append(entry)
++                result = self.applier._write(step, action, chat)
++                if (result.receipt.tool, result.receipt.chat_id, result.receipt.kind) != (step.side, result.chat_id, action):
++                    raise ChatChanged()
++                prepared = self.store.journal_entry(entry)
++                if result.chat_id != prepared['chat_id']:
++                    # A broken adapter reservation must not make its actual write disappear from recovery.
++                    actual = self.store.journal_begin(link_id, step.side, result.chat_id, action,
++                                                      self.clock.now(), asdict(result.receipt))
++                    entries.append(actual)
++                    raise ChatChanged()
++                self.applier._verify(step, action, old, result.chat_id, result.local_ids)
++                visibility = adapter.facts.new_chat_visible if action == 'create' else adapter.facts.added_turn_visible
++                writes.append({'side': step.side, 'action': action, 'turn_ids': step.turn_ids,
++                               'chat_id': result.chat_id, 'local_ids': result.local_ids,
++                               'state': SHOWN if visibility == Visibility.AT_ONCE else ADDED,
++                               'entry_id': entry, 'receipt': asdict(result.receipt), 'reason': reason})
++                if action == 'create':
++                    created[step.side] = self.applier._snapshot(step.side, result.chat_id)
++                if action != 'create':
++                    working[step.side] = self.applier._snapshot(step.side, chat)
++            self.applier._check_snapshots(working)
++            if self.applier._record(link_id) != plan.delivery.record:
++                raise ChatChanged()
++            self.applier._check_snapshots(created)
++            detail = {'before': before, 'writes': writes, 'preset': plan.preset,
++                      'keep': plan.keep, 'split': plan.split, 'automatic': plan.automatic}
++            event = self.store.complete_merge(link_id, plan.order, writes, plan.skips,
++                                               self.clock.now(), detail)
++            return MergeResult(plan.plan_id, True, event)
++        except Exception as error:
++            failures = []
++            for entry in reversed(entries):
++                self.applier.journal.fail(entry, error)
++                try:
++                    self.applier.journal.take_back(entry)
++                except Exception as rollback:
++                    failures.append({'entry_id': entry, 'error': type(rollback).__name__})
++            return MergeResult(plan.plan_id, False, error=type(error).__name__, rollback_errors=tuple(failures))
+diff --git a/baton/services/planner.py b/baton/services/planner.py
+--- a/baton/services/planner.py
++++ b/baton/services/planner.py
+@@ -17,7 +17,7 @@
+ 
+ from . import status
+ from ..domain import link as link_states
+-from ..domain.link import LedgerTurn, Link
++from ..domain.link import Event, LedgerTurn, Link
+ from ..domain.conditions import SideCondition
+ from ..domain.capabilities import Capabilities
+ from ..domain.errors import OrderNotAllowed
+@@ -64,11 +64,12 @@
+               conditions: Mapping[str, SideCondition] | None = None,
+               add_when_idle: Collection[str] = (), *,
+               facts: Mapping[str, Capabilities],
+-              initial_history_sides: Collection[str] = ()) -> Plan:
++              initial_history_sides: Collection[str] = (),
++              history: Sequence[Event] = ()) -> Plan:
+     """Choose delivery from capabilities and current state, without tool names."""
+     conditions = conditions or {}
+     current = status.link_status(link, turns, conditions, facts=facts, add_when_idle=add_when_idle,
+-                                 initial_history_sides=initial_history_sides)
++                                 initial_history_sides=initial_history_sides, history=history)
+     steps = {}
+     for side, side_status in current.sides.items():
+         waiting = tuple(turn for turn in turns if turn.states.get(side) == link_states.WAITING)
+diff --git a/baton/services/status.py b/baton/services/status.py
+--- a/baton/services/status.py
++++ b/baton/services/status.py
+@@ -82,10 +82,22 @@
+                 initial_history_sides: Collection[str] = ()) -> LinkStatus:
+     """Compute status from facts and explicit delivery/relaunch evidence."""
+     conditions = conditions or {}
+-    in_conflict = _in_conflict(turns)
++    in_conflict = set() if merge_decision_applies(link, turns, history) else _in_conflict(turns)
+     sides = {side: _side_status(link, turns, side, conditions.get(side, SideCondition()), side in in_conflict, facts[side], history, side in add_when_idle, side in initial_history_sides)
+              for side in link.sides}
+     return LinkStatus(sides, link.paused, bool(in_conflict))
++
++
++def merge_decision_applies(link: Link, turns: Sequence[LedgerTurn], history: Sequence[Event]) -> bool:
++    """Only the exact pending deliveries explicitly approved for these chats bypass S7."""
++    merge = next((event for event in history if event.kind == 'merge'), None)
++    if merge is None or merge.detail.get('chats') != link.chats:
++        return False
++    approved = merge.detail.get('pending', {})
++    pending = {(turn.id, side) for turn in turns for side, state in turn.states.items()
++               if state == link_states.WAITING}
++    allowed = {(ident, side) for side, ids in approved.items() for ident in ids}
++    return bool(pending) and pending.issubset(allowed)
+ 
+ 
+ def _in_conflict(turns: Sequence[LedgerTurn]) -> set[str]:
+@@ -169,6 +181,11 @@
+         if event.side == side and event.kind in ("added", "twin_created", "created", "synced", "delivered", "add", "add_after_release", "create", "place"):
+             for turn_id in event.turn_ids:
+                 delivered[turn_id] = event.at
++        if event.kind == "merge":
++            for write in event.detail.get("writes", ()):
++                if write.get("side") == side and write.get("action") in ("add", "create"):
++                    for turn_id in write.get("turn_ids", ()):
++                        delivered[turn_id] = event.at
+     return tuple(turn_id for turn_id in added
+                  if _later(condition.app_started_at, delivered.get(turn_id, "")))
+ 
+diff --git a/baton/services/preview.py b/baton/services/preview.py
+--- a/baton/services/preview.py
++++ b/baton/services/preview.py
+@@ -35,7 +35,8 @@
+         if link_id is None:
+             return {}
+         return {'link': asdict(self.store.get_link(link_id)),
+-                'turns': [asdict(t) for t in self.store.turns(link_id)]}
++                'turns': [asdict(t) for t in self.store.turns(link_id)],
++                'history': [asdict(e) for e in self.store.history(link_id)]}
+ 
+ 
+     def _snapshot(self, side: str, chat_id: str) -> dict:
+@@ -80,7 +81,8 @@
+         observed = {s: self.adapters[s].reader.read(c) for s,c in link.chats.items()}
+         plan = plan_sync(link, self.store.turns(link_id), conditions,
+                          add_when_idle=add_when_idle, facts=facts,
+-                         initial_history_sides=self._initial_history_sides(link, observed))
++                         initial_history_sides=self._initial_history_sides(link, observed),
++                         history=self.store.history(link_id))
+         source = {s: {t.id: t for t in values} for s, values in observed.items()}
+         steps = []
+         for step in plan.steps.values():
+diff --git a/baton/services/applier.py b/baton/services/applier.py
+--- a/baton/services/applier.py
++++ b/baton/services/applier.py
+@@ -254,7 +254,8 @@
+             raise NotAvailable()
+         if link_status(link, self.store.turns(link_id),
+                        {s: self._condition(s,c) for s,c in link.chats.items()},
+-                       facts={s: self.adapters[s].facts for s in link.sides}).decision_needed:
++                       facts={s: self.adapters[s].facts for s in link.sides},
++                       history=self.store.history(link_id)).decision_needed:
+             raise DecisionNeeded()
+         return self.store.deliver(link_id, side, turn_ids, ATTACHED, 'attached', self.clock.now(),
+                                   detail={'message_id': message_id})
+diff --git a/baton/ports/store.py b/baton/ports/store.py
+--- a/baton/ports/store.py
++++ b/baton/ports/store.py
+@@ -130,3 +130,8 @@
+     def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
+         """Commit an unlinked creation and durable visibility metadata atomically."""
+         ...
++
++    def complete_merge(self, link_id: int, order: Sequence[int], writes: Sequence[dict],
++                       skips: Sequence[tuple[int, str]], at: str, detail: dict) -> int:
++        """Atomically record all sides, journal receipts and one recoverable merge event."""
++        ...
+diff --git a/baton/ledger/links.py b/baton/ledger/links.py
+--- a/baton/ledger/links.py
++++ b/baton/ledger/links.py
+@@ -2,14 +2,102 @@
+ from __future__ import annotations
+ 
+ import json
++from dataclasses import asdict
+ from typing import Mapping, Sequence
+-from ..domain.link import ADDED, MODES, SHOWN, TOOLS, WAITING, WRITTEN_HERE, Link
++from ..domain.link import ADDED, MODES, SHOWN, SKIPPED, TOOLS, WAITING, WRITTEN_HERE, Link
+ from ..domain.errors import AlreadyLinked
+ from .records import _FIRST_LINE_CHARS, _size, _tool, now
+ 
+ 
+ class LinksRecords:
+     """Internal method group; transaction boundaries remain on the shared connection."""
++
++    def complete_merge(self, link_id: int, order: Sequence[int], writes: Sequence[dict],
++                       skips: Sequence[tuple[int, str]], at: str, detail: dict) -> int:
++        """Commit every side and its rollback receipt as one history operation."""
++        link = self.get_link(link_id)
++        if link.removed_at or (link.paused and not detail.get("split")):
++            raise ValueError('link_unavailable')
++        rows = self.turns(link_id)
++        expected = detail.get('before')
++        current = {'link': asdict(link), 'turns': [asdict(t) for t in rows],
++                   'history': [asdict(e) for e in self.history(link_id)],
++                   'local_ids': {s: self.local_ids(link_id, s) for s in link.sides}}
++        if expected != current:
++            raise ValueError('merge_record_changed')
++        pending = [t.id for t in rows if WAITING in t.states.values()]
++        if sorted(order) != sorted(pending) or len(set(order)) != len(order):
++            raise ValueError('merge_order')
++        for side in link.sides:
++            own = [t.id for t in rows if t.id in pending and t.origin == side]
++            if [ident for ident in order if self._origin(link_id, ident) == side] != own:
++                raise ValueError('merge_origin_order')
++        if len({w['side'] for w in writes}) != len(writes):
++            raise ValueError('merge_side_duplicate')
++        for write in writes:
++            side, action = write['side'], write['action']
++            if side not in link.sides or action not in ('add', 'create', 'attach'):
++                raise ValueError('merge_action')
++            ids = write['turn_ids']
++            if len(set(ids)) != len(ids):
++                raise ValueError('merge_duplicate_turn')
++            for ident in ids:
++                if action != 'create' and self._state(link_id, ident, side) != WAITING:
++                    raise ValueError('merge_not_waiting')
++                self._origin(link_id, ident)
++            if action == 'attach':
++                if write['chat_id'] != link.chat(side):
++                    raise ValueError('merge_chat')
++                continue
++            receipt = write['receipt']
++            entry = self.journal_entry(write['entry_id'])
++            if (entry['state'] != 'begun' or entry['link_id'] != link_id or
++                    entry['tool'] != side or entry['action'] != action or
++                    entry['chat_id'] != receipt['chat_id'] or
++                    receipt['tool'] != side or receipt['kind'] != action or
++                    receipt['chat_id'] != write['chat_id'] or
++                    (action == 'add' and receipt['chat_id'] != link.chat(side)) or
++                    len(ids) != len(write['local_ids']) or
++                    len(set(write['local_ids'])) != len(write['local_ids']) or
++                    write['state'] not in (SHOWN, ADDED)):
++                raise ValueError('merge_receipt')
++            if action == 'create' and self.link_for(side, write['chat_id']):
++                raise AlreadyLinked(side, self.link_for(side, write['chat_id']))
++        for ident, side in skips:
++            if self._state(link_id, ident, side) != WAITING:
++                raise ValueError('merge_skip')
++        detail = dict(detail, chats={s: next((w['chat_id'] for w in writes
++                                            if w['side'] == s and w['action'] == 'create'), link.chat(s))
++                                    for s in link.sides},
++                      pending={w['side']: list(w['turn_ids']) for w in writes if w['action'] == 'attach'})
++        with self.db:
++            event = self._event(link_id, at, 'merge', detail=detail, turn_ids=order)
++            seqs = sorted(t.seq for t in rows if t.id in pending)
++            self.db.executemany('update turns set seq=? where id=?', zip(seqs, order))
++            for ident, side in skips:
++                self.db.execute('update turn_states set state=?,event_id=? where turn_id=? and side=?',
++                                (SKIPPED, event, ident, side))
++            for write in writes:
++                side, action = write['side'], write['action']
++                if action == 'attach':
++                    continue
++                if action == 'create':
++                    self.db.execute('update link_chats set chat=? where link_id=? and tool=?',
++                                    (write['chat_id'], link_id, side))
++                    self._record_copy(write['receipt'], at)
++                for ident, local_id in zip(write['turn_ids'], write['local_ids']):
++                    self.db.execute('update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?',
++                                    (write['state'], local_id, event, ident, side))
++                    if action == 'create':
++                        self.db.execute('update turns set origin_id=? where id=? and origin=?',
++                                        (local_id, ident, side))
++                self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
++                                (at, json.dumps(write['receipt']), write['entry_id']))
++            if detail.get('split'):
++                self.db.execute('update links set removed_at=? where id=?', (at, link_id))
++                self.db.execute('update link_chats set active=0 where link_id=?', (link_id,))
++        return event
++
+ 
+     def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
+                       entry_id: int | None = None, receipt: dict | None = None,
+diff --git a/baton/adapters/fake/tool.py b/baton/adapters/fake/tool.py
+--- a/baton/adapters/fake/tool.py
++++ b/baton/adapters/fake/tool.py
+@@ -1,5 +1,7 @@
+ """Settable chat facts, writes and app behavior without external I/O."""
+ from __future__ import annotations
++
++import json
+ 
+ from copy import deepcopy
+ from dataclasses import asdict, replace
+@@ -278,7 +280,7 @@
+                 not self.adapter.state.condition(receipt.chat_id).exists):
+             raise ValueError("receipt does not belong to an outstanding write")
+         if key in self.writes:
+-            if self.writes[key][0] != receipt:
++            if json.dumps(asdict(self.writes[key][0]), sort_keys=True) != json.dumps(asdict(receipt), sort_keys=True):
+                 raise ValueError("receipt mismatch")
+             undo = self.writes[key][1]
+         elif "undo" in receipt.data:
+diff --git a/tests/scenarios/test_merge.py b/tests/scenarios/test_merge.py
+new file mode 100644
+--- /dev/null
++++ b/tests/scenarios/test_merge.py
+@@ -0,0 +1,338 @@
++"""Named merge scenarios using temporary fake chats and capability combinations."""
++from copy import deepcopy
++from dataclasses import replace
++from itertools import permutations
++import unittest
++from unittest.mock import patch
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE, CURSOR_LIKE
++from baton.domain.errors import ChatChanged, DecisionNeeded, NotAvailable, OrderNotAllowed
++from baton.domain.model import Message, Turn
++from baton.domain.link import WAITING, SKIPPED
++from baton.ledger.sqlite_store import Ledger
++from baton.ports.clock import FixedClock
++from baton.services.applier import Applier
++from baton.services.linker import Linker
++from baton.services.merger import Merger
++
++FACTS = {'claude': CLAUDE_LIKE, 'codex': CODEX_LIKE,
++         'opencode': OPENCODE_LIKE, 'cursor': CURSOR_LIKE}
++
++
++def turn(ident, minute, file=''):
++    messages = [Message(ident+'r', 'reply', 'reply '+ident,
++                        f'2026-10-05T00:{minute+2:02}:00Z')]
++    if file:
++        messages.insert(0, Message(ident+'c', 'tool_call', tool='write', tool_input={'path': file}))
++    return Turn(Message(ident, 'prompt', ident, f'2026-10-05T00:{minute:02}:00Z'), tuple(messages))
++
++
++class MergeScenarios(unittest.TestCase):
++    def make(self, first='claude', second='codex', files=False):
++        store = Ledger(':memory:')
++        self.addCleanup(store.close)
++        clock = FixedClock('2026-10-05T01:00:00Z')
++        adapters = {s: FakeAdapter(FACTS[s], s) for s in (first, second)}
++        a = adapters[first].build_chat([turn('shared', 0), turn('C1', 10), turn('C2', 30, 'same.py' if files else '')])
++        b = adapters[second].build_chat([turn('shared', 0), turn('X1', 20, 'same.py' if files else '')])
++        if files:
++            adapters[first].changed_files['C2'] = ['same.py']
++            adapters[second].changed_files['X1'] = ['same.py']
++        linker = Linker(store, adapters, clock)
++        link_id = linker.apply(linker.plan_link(first, a, second, b)).link_id
++        merger = Merger(store, adapters, clock)
++        ids = {t.first_line: t.id for t in store.turns(link_id)}
++        return store, adapters, merger, link_id, ids
++
++    def test_U1_default_order_and_two_merged_copies_without_writes(self):
++        for first, second in permutations(FACTS, 2):
++            with self.subTest(first=first, second=second):
++                store, adapters, service, link, ids = self.make(first, second)
++                before = {s: deepcopy(a.chats) for s, a in adapters.items()}
++                shown = service.show(link)
++                self.assertEqual(shown['order'], [ids['C1'], ids['X1'], ids['C2']])
++                self.assertEqual(set(shown['outcome'].values()), {'merged_copy'})
++                self.assertEqual(shown['last_shared'].first_line, 'shared')
++                self.assertEqual(len(shown['messages']), 3)
++                self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
++                self.assertEqual(len(store.history(link)), 2)
++
++    def test_U2_origin_first_keeps_only_that_chat(self):
++        for first, second in permutations(FACTS, 2):
++            with self.subTest(first=first, second=second):
++                store, _, service, link, ids = self.make(first, second)
++                plan = service.plan(link, preset=first+'_first')
++                self.assertEqual(plan.order, (ids['C1'], ids['C2'], ids['X1']))
++                self.assertEqual({s.side: s.action for s in plan.delivery.steps}, {first: 'add', second: 'create'})
++
++    def test_U3_refuse_reordering_own_turns(self):
++        for first, second in permutations(FACTS, 2):
++            with self.subTest(first=first, second=second):
++                _, _, service, link, ids = self.make(first, second)
++                with self.assertRaises(OrderNotAllowed):
++                    service.plan(link, order=[ids['C2'], ids['C1'], ids['X1']])
++                for invalid in ([ids['C1']], [ids['C1'], ids['X1'], ids['X1']], [999]):
++                    with self.assertRaises(OrderNotAllowed): service.plan(link, order=invalid)
++
++    def test_U4_other_first_keeps_other_chat(self):
++        for first, second in permutations(FACTS, 2):
++            store, _, service, link, ids = self.make(first, second)
++            plan = service.plan(link, order=[ids['X1'], ids['C1'], ids['C2']])
++            self.assertEqual({s.side: s.action for s in plan.delivery.steps}, {first: 'create', second: 'add'})
++
++    def test_U5_open_first_waits_for_attachment_and_other_gets_full_copy(self):
++        for first in ('claude', 'codex'):
++            for second in FACTS:
++                if first == second: continue
++                with self.subTest(first=first, second=second):
++                    store, adapters, service, link, ids = self.make(first, second)
++                    old = store.get_link(link)
++                    adapters[first].set_condition(old.chat(first), open=True, hooks_ready=True)
++                    original = deepcopy(adapters[second].reader.read(old.chat(second)))
++                    result = service.apply(service.plan(link, preset=first+'_first'))
++                    self.assertTrue(result.applied, result)
++                    fresh = store.get_link(link)
++                    self.assertEqual(fresh.chat(first), old.chat(first))
++                    self.assertNotEqual(fresh.chat(second), old.chat(second))
++                    self.assertEqual([t.prompt.text for t in adapters[second].reader.read(fresh.chat(second))], ['shared', 'C1', 'C2', 'X1'])
++                    self.assertEqual(adapters[second].reader.read(old.chat(second)), original)
++                    self.assertEqual(next(t for t in store.turns(link) if t.id==ids['X1']).states[first], WAITING)
++                    self.assertFalse(service.applier.refresh(link)['status'].decision_needed)
++                    service.applier.record_attached(link, first, [ids['X1']], 'message')
++                    self.assertFalse(service.applier.refresh(link)['status'].decision_needed)
++
++    def test_U6_dont_reorder_adds_after_own_without_new_chats(self):
++        for first, second in permutations(FACTS, 2):
++            with self.subTest(first=first, second=second):
++                store, adapters, service, link, _ = self.make(first, second)
++                before = store.get_link(link)
++                result = service.apply(service.plan(link, preset='dont_reorder'))
++                self.assertTrue(result.applied, result)
++                self.assertEqual(store.get_link(link).chats, before.chats)
++                self.assertEqual([t.prompt.text for t in adapters[first].reader.read(before.chat(first))], ['shared','C1','C2','X1'])
++                self.assertEqual([t.prompt.text for t in adapters[second].reader.read(before.chat(second))], ['shared','X1','C1','C2'])
++                self.assertEqual(len([e for e in store.history(link) if e.kind=='merge']), 1)
++
++    def test_U7_same_files_stop_automatic_merge(self):
++        for first, second in permutations(FACTS, 2):
++            with self.subTest(first=first, second=second):
++                _, _, service, link, ids = self.make(first, second, files=True)
++                shown = service.show(link, merge_setting='by_time')
++                self.assertEqual(shown['same_files'], [{'file':'same.py', 'turns':[ids['C2'], ids['X1']]}])
++                self.assertFalse(shown['automatic_allowed'])
++                with self.assertRaises(NotAvailable): service.plan(link, automatic=True, merge_setting='by_time')
++                self.assertIsNone(service.merge_if_automatic(link, merge_setting='by_time'))
++                self.assertFalse(service.show(link, merge_setting='ask')['automatic_allowed'])
++
++    def test_U8_keep_first_skips_other_without_removing_local_turn(self):
++        for first, second in permutations(FACTS, 2):
++            store, adapters, service, link, ids = self.make(first, second)
++            old = store.get_link(link)
++            result = service.apply(service.plan(link, keep=first))
++            self.assertTrue(result.applied, result)
++            self.assertEqual(next(t for t in store.turns(link) if t.id==ids['X1']).states[first], SKIPPED)
++            self.assertEqual([t.prompt.text for t in adapters[second].reader.read(old.chat(second))], ['shared','X1','C1','C2'])
++            self.assertFalse(service.applier.refresh(link)['status'].decision_needed)
++
++    def test_merge_history_exposes_undo_receipts_and_old_chat_links_for_E8_U9(self):
++        store, _, service, link, _ = self.make()
++        before = store.get_link(link)
++        result = service.apply(service.plan(link))
++        self.assertTrue(result.applied, result)
++        event = store.history(link)[0]
++        self.assertEqual(event.kind, 'merge')
++        self.assertEqual(event.detail['before']['link']['chats'], before.chats)
++        self.assertEqual(len(event.detail['writes']), 2)
++        for write in event.detail['writes']:
++            entry = store.journal_entry(write['entry_id'])
++            self.assertEqual(entry['state'], 'committed')
++            self.assertIsNotNone(entry['pre_receipt'])
++            self.assertIsNotNone(entry['post_receipt'])
++
++    def test_confirmed_content_and_record_changes_refused(self):
++        store, adapters, service, link, _ = self.make()
++        plan = service.plan(link)
++        adapters['claude'].chats[store.get_link(link).chat('claude')].append(turn('new', 40))
++        with self.assertRaises(ChatChanged): service.apply(plan)
++        self.assertEqual(store.journal_entries(), [])
++
++    def test_later_side_failure_rolls_back_earlier_add_and_preserves_metadata(self):
++        store, adapters, service, link, _ = self.make()
++        plan = service.plan(link, preset='dont_reorder')
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        records = service.applier._record(link)
++        with patch.object(adapters['codex'].writer, 'add', side_effect=RuntimeError('failed')):
++            result = service.apply(plan)
++        self.assertFalse(result.applied)
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        self.assertEqual(records, service.applier._record(link))
++        self.assertEqual({e['state'] for e in store.journal_entries()}, {'taken_back'})
++
++    def test_late_store_failure_rolls_back_both_created_copies(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        plan = service.plan(link)
++        store.db.execute("create trigger fail_merge before update of state on turn_states begin select raise(abort, 'late'); end")
++        result = service.apply(plan)
++        self.assertFalse(result.applied)
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        self.assertEqual(len([e for e in store.history(link) if e.kind=='merge']), 0)
++        self.assertTrue(all(e['state']=='taken_back' for e in store.journal_entries()))
++
++    def test_open_open_dont_reorder_acknowledges_and_new_turn_requires_decision(self):
++        store, adapters, service, link, ids = self.make()
++        chats = store.get_link(link).chats
++        for side in chats: adapters[side].set_condition(chats[side], open=True, hooks_ready=True)
++        result = service.apply(service.plan(link, preset='dont_reorder'))
++        self.assertTrue(result.applied, result)
++        self.assertFalse(service.applier.refresh(link)['status'].decision_needed)
++        self.assertFalse(service.applier.preview(link).decision_needed)
++        adapters['claude'].chats[chats['claude']].append(turn('new', 40))
++        self.assertTrue(service.applier.refresh(link)['status'].decision_needed)
++        with self.assertRaises(DecisionNeeded): service.applier.record_attached(link, 'claude', [ids['X1']], 'message')
++
++    def test_split_confirms_one_history_entry_and_changes_no_chat(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        result = service.apply(service.plan(link, split=True))
++        self.assertTrue(result.applied, result)
++        self.assertTrue(store.get_link(link).removed_at)
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        self.assertEqual(store.history(link)[0].kind, 'merge')
++
++    def test_large_merge_and_by_time_offer_are_structured_before_E10(self):
++        _, _, service, link, _ = self.make()
++        shown = service.show(link, merge_setting='by_time', brief_threshold_tokens=1)
++        self.assertTrue(shown['offer_brief'])
++        self.assertTrue(shown['automatic_allowed'])
++        self.assertIsNone(service.merge_if_automatic(link, merge_setting='ask'))
++        self.assertTrue(service.merge_if_automatic(link, merge_setting='by_time').applied)
++
++    def test_show_while_replying_is_read_only_and_apply_has_no_incomplete_copy(self):
++        store, adapters, service, link, ids = self.make()
++        adapters['claude'].set_condition(store.get_link(link).chat('claude'), replying=True)
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        self.assertEqual(len(service.show(link)['unsynced']), 3)
++        with self.assertRaises(NotAvailable): service.plan(link)
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++
++    def test_startup_recovers_all_begun_writes_in_reverse_after_interruption(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        plan = service.plan(link, preset='dont_reorder')
++        with patch.object(adapters['codex'].writer, 'add', side_effect=KeyboardInterrupt):
++            with self.assertRaises(KeyboardInterrupt): service.apply(plan)
++        self.assertEqual(len(store.journal_entries(pending=True)), 2)
++        restarted = Merger(store, adapters, service.clock)
++        self.assertEqual([e['id'] for e in restarted.recovery], [2, 1])
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        self.assertFalse(store.journal_entries(pending=True))
++        self.assertFalse(any(e.kind=='merge' for e in store.history(link)))
++
++    def test_rollback_failure_remains_pending_and_prevents_more_writes_until_recovery(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        plan = service.plan(link, preset='dont_reorder')
++        with patch.object(adapters['codex'].writer, 'add', side_effect=RuntimeError), \
++             patch.object(adapters['claude'].writer, 'take_back', side_effect=RuntimeError):
++            result = service.apply(plan)
++        self.assertFalse(result.applied)
++        self.assertEqual(len(result.rollback_errors), 1)
++        with self.assertRaises(NotAvailable): service.apply(plan)
++        Merger(store, adapters, service.clock)
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        self.assertFalse(store.journal_entries(pending=True))
++
++    def test_unknown_format_release_and_running_guards(self):
++        store, adapters, service, link, _ = self.make('claude', 'cursor')
++        adapters['cursor'].app_running = True
++        before = deepcopy({s:a.chats for s,a in adapters.items()})
++        result = service.apply(service.plan(link))
++        self.assertEqual(result.error, 'AppMustBeClosed')
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++        adapters['cursor'].app_running = False
++        adapters['cursor'].set_format(False, 'unknown')
++        result = service.apply(service.plan(link))
++        self.assertEqual(result.error, 'UnknownFormat')
++        self.assertEqual(before, {s:a.chats for s,a in adapters.items()})
++
++    def test_open_open_acknowledges_each_side_without_inventing_delivery(self):
++        store, adapters, service, link, ids = self.make()
++        chats = store.get_link(link).chats
++        for side in chats: adapters[side].set_condition(chats[side], open=True, hooks_ready=True)
++        self.assertTrue(service.apply(service.plan(link, preset='dont_reorder')).applied)
++        service.applier.record_attached(link, 'claude', [ids['X1']], 'claude_message')
++        self.assertFalse(service.applier.preview(link).decision_needed)
++        service.applier.record_attached(link, 'codex', [ids['C1'], ids['C2']], 'codex_message')
++        self.assertFalse(service.applier.preview(link).steps)
++        self.assertEqual(service.applier.refresh(link)['status'].side('claude').attached, 1)
++        self.assertEqual(service.applier.refresh(link)['status'].side('codex').attached, 2)
++
++    def test_merge_add_and_created_copy_become_shown_only_after_later_app_start(self):
++        for side, other in (('claude', 'codex'), ('cursor', 'opencode')):
++            for preset in ('dont_reorder', 'by_time'):
++                with self.subTest(side=side, preset=preset):
++                    store, adapters, service, link, _ = self.make(side, other)
++                    self.assertTrue(service.apply(service.plan(link, preset=preset)).applied)
++                    chat = store.get_link(link).chat(side)
++                    before = service.applier.refresh(link)['status'].side(side)
++                    self.assertGreater(before.added, 0)
++                    adapters[side].set_condition(chat, app_started_at='2026-10-05T01:00:00Z')
++                    self.assertGreater(service.applier.refresh(link)['status'].side(side).added, 0)
++                    adapters[side].set_condition(chat, app_started_at='2026-10-05T02:00:00Z')
++                    after = service.applier.refresh(link)['status'].side(side)
++                    self.assertEqual(after.added, 0)
++                    self.assertEqual(after.chat_shows, after.total)
++                    self.assertNotIn('relaunch_to_see', after.needs)
++
++    def test_merge_open_code_add_waits_for_explicit_seen_or_later_app_start(self):
++        store, adapters, service, link, _ = self.make('opencode', 'codex')
++        self.assertTrue(service.apply(service.plan(link, preset='dont_reorder')).applied)
++        self.assertGreater(service.applier.refresh(link)['status'].side('opencode').added, 0)
++        service.applier.mark_seen(link, 'opencode')
++        self.assertEqual(service.applier.refresh(link)['status'].side('opencode').added, 0)
++
++    def test_split_paused_link_leaves_both_chats_unchanged(self):
++        store, adapters, service, link, _ = self.make()
++        store.set_paused(link, True)
++        before = deepcopy({s: a.chats for s, a in adapters.items()})
++        result = service.apply(service.plan(link, split=True))
++        self.assertTrue(result.applied, result)
++        self.assertTrue(store.get_link(link).removed_at)
++        self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
++        self.assertFalse(store.journal_entries())
++
++    def test_unexpected_created_id_rolls_back_actual_chat_before_another_write(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s: a.chats for s, a in adapters.items()})
++        original = adapters['claude'].writer.create
++        def wrong_reservation(*args):
++            adapters['claude'].writer._prepared_create = None
++            return original(*args)
++        with patch.object(adapters['claude'].writer, 'create', side_effect=wrong_reservation), \
++             patch.object(adapters['codex'].writer, 'create', wraps=adapters['codex'].writer.create) as later:
++            result = service.apply(service.plan(link))
++        self.assertFalse(result.applied)
++        self.assertEqual(result.error, 'ChatChanged')
++        self.assertFalse(result.rollback_errors)
++        later.assert_not_called()
++        self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
++        self.assertFalse(store.journal_entries(pending=True))
++
++    def test_unexpected_created_id_failed_rollback_stays_durable_for_recovery(self):
++        store, adapters, service, link, _ = self.make()
++        before = deepcopy({s: a.chats for s, a in adapters.items()})
++        original = adapters['claude'].writer.create
++        def wrong_reservation(*args):
++            adapters['claude'].writer._prepared_create = None
++            return original(*args)
++        with patch.object(adapters['claude'].writer, 'create', side_effect=wrong_reservation), \
++             patch.object(adapters['claude'].writer, 'take_back', side_effect=RuntimeError):
++            result = service.apply(service.plan(link))
++        self.assertFalse(result.applied)
++        self.assertTrue(result.rollback_errors)
++        self.assertTrue(store.journal_entries(pending=True))
++        Merger(store, adapters, service.clock)
++        self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
++        self.assertFalse(store.journal_entries(pending=True))
+diff --git a/baton/notes/catalogue.py b/baton/notes/catalogue.py
+--- a/baton/notes/catalogue.py
++++ b/baton/notes/catalogue.py
+@@ -1,7 +1,7 @@
+-"""CP1 user-facing wording from the feature specifications.
++"""User-facing wording from the feature specifications.
+ 
+ Templates substitute tool names and counts instead of branching on a tool.
+-E12 will complete the catalogue for the later work packages.
++E12 completes and audits the catalogue; earlier packages add their specified wording.
+ """
+ from dataclasses import dataclass
+ from string import Formatter
+@@ -166,6 +166,15 @@
+     Note("status.attached", "info", "{tool}'s agent has {n} attached turns. They are not shown as messages in this chat."),
+     Note("status.setup_ready", "ok", "Baton's hooks are installed and trusted in {tool}."),
+     Note("status.new_chat_relaunch", "info", "Relaunch {tool} to see this chat.", ("Relaunch {tool}",), "Relaunch {tool} to see this chat"),
++    Note("merge.header", "warning", "Both chats have new turns. {first_tool} has {first_count} turns {second_tool} never received, and {second_tool} has {second_count} that {first_tool} never received. Nothing has been changed yet."),
++    Note("merge.order_help", "info", "Move a turn up or down to change where it goes. Turns from the same app keep their order."),
++    Note("merge.dont_reorder", "warning", "Each chat gets the other's turns at its end. No new chat. The two chats will hold the same turns in a different order."),
++    Note("merge.same_file", "warning", "Both agents changed {file}, in turns {turns}. Baton does not merge files. Check that file."),
++    Note("merge.large_copy", "info", "This merged copy is about {tokens} tokens. A brief in a new chat is available instead."),
++    Note("merge.keeps_chat", "info", "{tool} keeps its chat. {other_tool}'s {turns} turns are added at the end."),
++    Note("merge.merged_copy", "info", "{tool} gets a merged copy as a new chat. The old chat stays as it is."),
++    Note("merge.keep", "warning", "Only {tool}'s turns are sent across. {other_tool}'s unsynced turns stay where they were written and are marked skipped."),
++    Note("merge.split", "warning", "The link is removed and the two chats continue separately."),
+ )}
+ 
+ 
+diff --git a/docs/plan/track-e-core.md b/docs/plan/track-e-core.md
+--- a/docs/plan/track-e-core.md
++++ b/docs/plan/track-e-core.md
+@@ -99,10 +99,10 @@
+ **Goal.** Apply a decision when both sides have new turns.
+ **From.** merge.md M1 to M12; U1 to U9.
+ **Depends on.** E5.
+-**Files.** `baton/services/merger.py`, small additions to `planner.py`.
++**Files.** `baton/services/merger.py`, small additions to `planner.py`, `status.py`, `preview.py`, `applier.py` (recognize an exact approved merge until new completed turns invalidate it), additive `baton/ports/store.py`, `baton/ledger/links.py`, `baton/ledger/sqlite_store.py` for atomic merge completion; `tests/scenarios/test_merge.py` and related unit tests; `baton/adapters/fake/tool.py` (JSON-portable receipt comparison needed by recovery fault regression); `baton/notes/catalogue.py` for specified merge wording.
+ **Steps.** 1. `show(link)`: last shared turn, unsynced turns, default order, outcome per side, overlaps, same-file list. 2. Same-file detection: files changed per turn from the readers' tool calls (adapter gives `files_changed(turn)`). 3. `plan(link, order|preset|keep|split)`: `keeps_chat` side → `add` the other's turns; `merged_copy` side → `create` a new chat in merged order and `move_link`; `dont_reorder` → `add` both ways; `keep` → `skip` then sync; `split` → `unlink`. 4. Large merged copy offers a brief (E10). 5. "Always by time" setting, except when same-file applies.
+ **Tests.** `tests/scenarios/test_merge.py` U1 to U9.
+-**Done when.** U1 to U9 pass.
++**Done when.** U1 to U8 pass, including atomic recoverable merge history. U9 runs when E8 supplies undo; CP2 requires U1 to U9. E7 cannot prove an undo operation before E8 exists. M12 uses the usage/brief offer supplied by E9/E10 and must be completed by that boundary.
+ 
+ ## E8. Undo and restore
+ 
+diff --git a/docs/plan/ARCHITECTURE.md b/docs/plan/ARCHITECTURE.md
+--- a/docs/plan/ARCHITECTURE.md
++++ b/docs/plan/ARCHITECTURE.md
+@@ -240,3 +240,7 @@
+ ### R10 responsibility boundaries (Reviewer)
+ 
+ Ledger combines internal links, turns, history and journal method groups behind the existing RecordStore interface. All groups share the connection owned by Ledger; they do not open their own connections or introduce extra commits. Atomic delivery/history/journal completion and atomic creation/replacement retain their original transaction boundaries. Applier delegates confirmation construction to PreviewBuilder and reconciliation to ChatRefresh. ApplyStep and PreparedPlan remain importable from applier for compatibility. This extraction changes ownership only, not delivery decisions or recovery behavior.
++
++### E7 merge transaction and follow-on dependencies (Orchestrator; separate reviewer checked)
++
++A confirmed merge completes linked chat replacements, canonical order, per-side delivery/skips and begun journal receipts in one store transaction, with one merge history event. The history retains pre-merge link/turn/receipt data for E8 undo. An approved merge resolves only its exact pending turns on its resulting chat identities; a newly completed conflicting turn must require a new decision. U9 is an E8 integration check; M12 depends on E9/E10 rather than a pretend brief implementation in E7.

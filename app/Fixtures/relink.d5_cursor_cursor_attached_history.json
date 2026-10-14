@@ -1,0 +1,105 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Create linked chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_link",
+    "status_line": null,
+    "text": "Create the linked chat described above.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.attached_history",
+      "status_line": "Agent has 4 turns the chat does not show",
+      "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+      "tone": "info",
+      "values": {
+        "n": 4
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "relink",
+          "label": "Change the link",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Keep the current link",
+          "primary": false
+        }
+      ],
+      "id": "link.change",
+      "status_line": null,
+      "text": "Link \"Imaginary orchard\" to \"Existing Cursor\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+      "tone": "warning",
+      "values": {
+        "name": "Imaginary orchard",
+        "new_name": "Existing Cursor",
+        "other_name": "Existing Codex"
+      }
+    }
+  ],
+  "plan_id": "p_533eec9e924db70da35b60be556026759efe9967bff07472e9d1df5a2658d656",
+  "steps": [
+    {
+      "action": "attach",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.attached_history",
+          "status_line": "Agent has 4 turns the chat does not show",
+          "text": "The agent gets the history with your first message. The chat will never show it as separate messages.",
+          "tone": "info",
+          "values": {
+            "n": 4
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "relink",
+              "label": "Change the link",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Keep the current link",
+              "primary": false
+            }
+          ],
+          "id": "link.change",
+          "status_line": null,
+          "text": "Link \"Imaginary orchard\" to \"Existing Cursor\" instead? The link to \"Existing Codex\" is removed first. That chat stays exactly as it is and is no longer synced.",
+          "tone": "warning",
+          "values": {
+            "name": "Imaginary orchard",
+            "new_name": "Existing Cursor",
+            "other_name": "Existing Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ]
+}

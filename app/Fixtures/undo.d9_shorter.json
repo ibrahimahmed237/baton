@@ -1,0 +1,268 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": {
+    "ended_at": "2026-10-05T12:01:00Z",
+    "first_line": "Orchard task 1",
+    "id": 41,
+    "origin": "claude",
+    "pinned": false,
+    "seq": 1,
+    "started_at": "2026-10-05T12:01:00Z",
+    "states": {
+      "claude": "written_here",
+      "codex": "shown"
+    },
+    "tokens": 9
+  },
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "undo",
+          "label": "Create the shorter Codex chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.shorter",
+      "status_line": "Earlier chat kept",
+      "text": "Codex can't make a chat shorter, so Baton creates a shorter chat and links it. Your current chat stays as it is.",
+      "tone": "warning",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 4,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "undo.only_here",
+      "status_line": null,
+      "text": "Those 2 exist only in Codex.",
+      "tone": "warning",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 2,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "undo.ends_at",
+      "status_line": null,
+      "text": "Afterwards the Codex chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T12:01:00Z",
+        "days": 30,
+        "first_line": "Orchard task 1",
+        "n": 4,
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_0a592945d8adb1e3c8549392b3b6703ca82d85726510cc0dbae2da1463cee4df",
+  "removal_groups": [
+    {
+      "category": "added",
+      "heading": {
+        "buttons": [],
+        "id": "undo.group_added",
+        "status_line": null,
+        "text": "Baton added in Codex",
+        "tone": "info",
+        "values": {
+          "tool": "Codex"
+        }
+      },
+      "removes": [
+        {
+          "only_here": false,
+          "tool": "codex",
+          "turn": {
+            "ended_at": "2026-10-05T12:02:00Z",
+            "first_line": "Orchard task 2",
+            "id": 42,
+            "origin": "claude",
+            "pinned": false,
+            "seq": 2,
+            "started_at": "2026-10-05T12:02:00Z",
+            "states": {
+              "claude": "written_here",
+              "codex": "shown"
+            },
+            "tokens": 9
+          }
+        },
+        {
+          "only_here": false,
+          "tool": "codex",
+          "turn": {
+            "ended_at": "2026-10-05T12:03:00Z",
+            "first_line": "Orchard task 3",
+            "id": 43,
+            "origin": "claude",
+            "pinned": false,
+            "seq": 3,
+            "started_at": "2026-10-05T12:03:00Z",
+            "states": {
+              "claude": "written_here",
+              "codex": "shown"
+            },
+            "tokens": 9
+          }
+        }
+      ],
+      "tool": "codex"
+    },
+    {
+      "category": "written",
+      "heading": {
+        "buttons": [],
+        "id": "undo.group_written",
+        "status_line": null,
+        "text": "Written afterwards in Codex",
+        "tone": "info",
+        "values": {
+          "tool": "Codex"
+        }
+      },
+      "removes": [
+        {
+          "only_here": true,
+          "tool": "codex",
+          "turn": {
+            "ended_at": "2026-10-05T12:04:00Z",
+            "first_line": "Orchard task 4",
+            "id": 44,
+            "origin": "codex",
+            "pinned": false,
+            "seq": 4,
+            "started_at": "2026-10-05T12:04:00Z",
+            "states": {
+              "claude": "waiting",
+              "codex": "written_here"
+            },
+            "tokens": 9
+          }
+        },
+        {
+          "only_here": true,
+          "tool": "codex",
+          "turn": {
+            "ended_at": "2026-10-05T12:05:00Z",
+            "first_line": "Orchard task 5",
+            "id": 45,
+            "origin": "codex",
+            "pinned": false,
+            "seq": 5,
+            "started_at": "2026-10-05T12:05:00Z",
+            "states": {
+              "claude": "waiting",
+              "codex": "written_here"
+            },
+            "tokens": 9
+          }
+        }
+      ],
+      "tool": "codex"
+    }
+  ],
+  "removes": [
+    {
+      "only_here": false,
+      "tool": "codex",
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "shown"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "tool": "codex",
+      "turn": {
+        "ended_at": "2026-10-05T12:03:00Z",
+        "first_line": "Orchard task 3",
+        "id": 43,
+        "origin": "claude",
+        "pinned": false,
+        "seq": 3,
+        "started_at": "2026-10-05T12:03:00Z",
+        "states": {
+          "claude": "written_here",
+          "codex": "shown"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": true,
+      "tool": "codex",
+      "turn": {
+        "ended_at": "2026-10-05T12:04:00Z",
+        "first_line": "Orchard task 4",
+        "id": 44,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 4,
+        "started_at": "2026-10-05T12:04:00Z",
+        "states": {
+          "claude": "waiting",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": true,
+      "tool": "codex",
+      "turn": {
+        "ended_at": "2026-10-05T12:05:00Z",
+        "first_line": "Orchard task 5",
+        "id": 45,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 5,
+        "started_at": "2026-10-05T12:05:00Z",
+        "states": {
+          "claude": "waiting",
+          "codex": "written_here"
+        },
+        "tokens": 9
+      }
+    }
+  ],
+  "steps": [
+    {
+      "action": "create_shorter",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "error": {
+    "kind": "not_available",
+    "note": {
+      "buttons": [],
+      "id": "setup.adapter_unavailable",
+      "status_line": null,
+      "text": "Baton cannot use Cursor yet.",
+      "tone": "warning",
+      "values": {
+        "tool": "Cursor"
+      }
+    }
+  }
+}

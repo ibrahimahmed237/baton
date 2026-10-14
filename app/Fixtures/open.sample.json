@@ -1,0 +1,19 @@
+{
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "note": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "opened": "unavailable"
+}

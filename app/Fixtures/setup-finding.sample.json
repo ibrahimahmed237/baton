@@ -1,0 +1,12 @@
+{
+  "id": "format",
+  "note": {
+    "buttons": [],
+    "id": "nothing_unusual",
+    "status_line": null,
+    "text": "Nothing unusual.",
+    "tone": "info",
+    "values": {}
+  },
+  "ok": true
+}

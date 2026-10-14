@@ -1,0 +1,80 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "undo",
+          "label": "Close Cursor, create the shorter chat, reopen",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.shorter_closed",
+      "status_line": "Earlier chat kept",
+      "text": "Cursor's agent would keep turns that are only hidden, so Baton creates a shorter Cursor chat and links it. Cursor is closed while it is created. Your current chat stays as it is.",
+      "tone": "warning",
+      "values": {
+        "tool": "Cursor"
+      }
+    }
+  ],
+  "plan_id": "p_f422c02202a833ed917df8f33b35b282e07d76002e9b7ade2244acde8c2b9b88",
+  "removes": [
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:01:00Z",
+        "first_line": "Orchard task 1",
+        "id": 41,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 1,
+        "started_at": "2026-10-05T12:01:00Z",
+        "states": {
+          "codex": "written_here",
+          "cursor": "added"
+        },
+        "tokens": 9
+      }
+    },
+    {
+      "only_here": false,
+      "turn": {
+        "ended_at": "2026-10-05T12:02:00Z",
+        "first_line": "Orchard task 2",
+        "id": 42,
+        "origin": "codex",
+        "pinned": false,
+        "seq": 2,
+        "started_at": "2026-10-05T12:02:00Z",
+        "states": {
+          "codex": "written_here",
+          "cursor": "added"
+        },
+        "tokens": 9
+      }
+    }
+  ],
+  "steps": [
+    {
+      "action": "create_shorter",
+      "needs": [
+        "app_closed",
+        "relaunch_to_see"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ]
+}

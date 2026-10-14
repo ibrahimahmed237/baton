@@ -1,0 +1,424 @@
+diff --git a/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift b/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
+--- a/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
++++ b/app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift
+@@ -55,7 +55,7 @@
+                 if let note = model.note("screen.sync_status") { Text(note.text).font(.caption).foregroundStyle(theme.secondaryText) }
+                 HStack(spacing: 12) {
+                     ForEach(model.tools, id: \.self) { tool in
+-                        if tool != model.tools.first { Image(systemName: "arrow.left.arrow.right").font(.caption).foregroundStyle(theme.secondaryText).accessibilityHidden(true) }
++                        if tool != model.tools.first { linkBridge }
+                         if let side = status.sides[tool] {
+                             VStack(alignment: .leading, spacing: 4) {
+                                 Text(side.chat.name).font(.system(size: 17, weight: .semibold))
+@@ -74,6 +74,20 @@
+                 labelButton("screen.refresh") { Task { await model.load(link: status.linkID) } }
+             }.font(.caption).buttonStyle(.plain)
+         }
++    }
++
++    private var linkBridge: some View {
++        HStack(spacing: 0) {
++            Capsule().fill(theme.hairline).frame(width: 10, height: 1)
++            Image(systemName: "arrow.left.arrow.right")
++                .font(.system(size: 12, weight: .bold))
++                .foregroundStyle(theme.colour(for: .action))
++                .padding(8)
++                .background(theme.sidebar.opacity(0.72), in: Circle())
++                .overlay(Circle().strokeBorder(theme.hairline, lineWidth: 1))
++            Capsule().fill(theme.hairline).frame(width: 10, height: 1)
++        }
++        .accessibilityHidden(true)
+     }
+ 
+     private func sideCard(_ side: Side) -> some View {
+@@ -170,35 +184,44 @@
+         VStack(alignment: .leading, spacing: 16) {
+             if model.foldedCount > 0, let folded = model.note("screen.earlier_turns") {
+                 Button(folded.text) { model.unfold() }.buttonStyle(.plain)
+-                ForEach(model.tools, id: \.self) { tool in
+-                    if let reached = model.status?.sides[tool]?.syncedUpTo,
+-                       !model.displayedTurns.contains(where: { $0.id == reached.id }),
+-                       let note = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
+-                        Text(note.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
+-                    }
++            }
++            if !model.displayedTurns.isEmpty {
++                let hiddenTurnNotes = model.tools.compactMap { tool -> Note? in
++                    guard let reached = model.status?.sides[tool]?.syncedUpTo,
++                          !model.displayedTurns.contains(where: { $0.id == reached.id }) else { return nil }
++                    return model.status?.notes.first(where: {
++                        $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
++                    })
++                }
++                if !hiddenTurnNotes.isEmpty {
++                    reachedBoundaryGroup(hiddenTurnNotes)
+                 }
+             }
+             ForEach(model.displayedTurns, id: \.id) { turn in
+                 turnView(turn).id(turn.id)
+-                ForEach(model.tools, id: \.self) { tool in
+-                    if model.status?.sides[tool]?.syncedUpTo?.id == turn.id,
+-                       let reached = model.status?.notes.first(where: { $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool)) }) {
+-                        Text(reached.text).font(.caption.weight(.semibold)).foregroundStyle(theme.colour(for: .added))
+-                    }
+-                }
+             }
+         }
+     }
+     private func turnView(_ turn: Turn) -> some View {
+         VStack(alignment: .leading, spacing: 10) {
+-            HStack(alignment: .top) {
+-                HStack { ToolDot(tool: turn.origin, label: model.toolLabel(turn.origin)); Text(DisplayTime.string(turn.startedAt)).font(.caption).foregroundStyle(theme.secondaryText) }
+-                Spacer(minLength: 12)
+-                HStack { ForEach(model.tools, id: \.self) { tool in
+-                if let state = turn.states[tool], let label = model.stateLabel(state) {
+-                    VStack(alignment: .leading, spacing: 4) { ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption); StateChip(state: state, label: label) }
+-                }
+-                } }
++            HStack(alignment: .center, spacing: 8) {
++                Text("Turn \(turn.seq)")
++                    .font(.caption.weight(.semibold).monospacedDigit())
++                    .padding(.horizontal, 8).padding(.vertical, 4)
++                    .background(theme.sidebar, in: Capsule())
++                ToolDot(tool: turn.origin, label: model.toolLabel(turn.origin)).font(.caption.weight(.medium))
++                Text(DisplayTime.string(turn.startedAt)).font(.caption).foregroundStyle(theme.secondaryText)
++                Spacer(minLength: 8)
++            }
++            HStack(alignment: .center, spacing: 8) {
++                ForEach(model.tools, id: \.self) { tool in
++                    if let state = turn.states[tool], let label = model.stateLabel(state) {
++                        HStack(spacing: 6) {
++                            ToolDot(tool: tool, label: model.toolLabel(tool)).font(.caption)
++                            StateChip(state: state, label: label)
++                        }
++                    }
++                }
+             }
+             ForEach(Array(model.messages(for: turn).enumerated()), id: \.offset) { _, message in
+                 messageView(message, expanded: model.expandedReplies.contains(turn.id))
+@@ -215,7 +238,38 @@
+                     ForEach(Array(model.toolMessages(for: turn).enumerated()), id: \.offset) { _, message in messageView(message, expanded: true) }
+                 }
+             }
++            let reachedNotes = model.tools.compactMap { tool -> Note? in
++                guard model.status?.sides[tool]?.syncedUpTo?.id == turn.id else { return nil }
++                return model.status?.notes.first(where: {
++                    $0.id == "status.reached" && $0.values["tool"] == .string(model.toolLabel(tool))
++                })
++            }
++            if !reachedNotes.isEmpty {
++                reachedBoundaryGroup(reachedNotes).padding(.top, 2)
++            }
+         }.padding(12).background(theme.sidebar.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
++    }
++    private func reachedBoundaryGroup(_ notes: [Note]) -> some View {
++        VStack(alignment: .leading, spacing: 6) {
++            ForEach(Array(notes.enumerated()), id: \.offset) { _, note in
++                reachedBoundary(note)
++            }
++        }
++        .padding(.leading, 10)
++        .overlay(alignment: .leading) {
++            Capsule().fill(theme.colour(for: .added).opacity(0.65)).frame(width: 2)
++        }
++        .accessibilityElement(children: .contain)
++    }
++    private func reachedBoundary(_ note: Note) -> some View {
++        HStack(alignment: .center, spacing: 7) {
++            Image(systemName: "arrow.turn.down.right")
++                .font(.caption2.weight(.semibold))
++                .accessibilityHidden(true)
++            Text(note.text).font(.caption.weight(.semibold))
++        }
++        .foregroundStyle(theme.colour(for: .added))
++        .accessibilityElement(children: .combine)
+     }
+     private func messageView(_ message: TurnMessage, expanded: Bool) -> some View {
+         HStack {
+diff --git a/app/Sources/BatonUI/Screens/Window/WindowView.swift b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+--- a/app/Sources/BatonUI/Screens/Window/WindowView.swift
++++ b/app/Sources/BatonUI/Screens/Window/WindowView.swift
+@@ -169,7 +169,7 @@
+         VStack(alignment: .leading, spacing: 4) {
+             ToolDot(tool: chat.tool, label: chat.displayLabel).font(.caption)
+             Text(chat.name).font(.headline)
+-            Text(chat.folder).font(.caption).foregroundStyle(theme.secondaryText)
++            FolderPathLabel(path: chat.folder)
+         }
+     }
+ 
+@@ -188,3 +188,33 @@
+     let model: LinkDialogViewModel
+     var id: ObjectIdentifier { ObjectIdentifier(model) }
+ }
++
++private struct FolderPathLabel: View {
++    @Environment(\.batonTheme) private var theme
++    let path: String
++
++    var body: some View {
++        HStack(spacing: 6) {
++            Image(systemName: "folder")
++                .font(.system(size: 10, weight: .medium))
++                .accessibilityHidden(true)
++            Text(path)
++                .font(.system(size: 10, weight: .medium, design: .monospaced))
++                .lineLimit(1)
++                .truncationMode(.middle)
++                .frame(maxWidth: .infinity, alignment: .leading)
++        }
++        .foregroundStyle(theme.secondaryText)
++        .padding(.horizontal, 8)
++        .padding(.vertical, 5)
++        .frame(maxWidth: .infinity, alignment: .leading)
++        .background(theme.sidebar.opacity(0.72), in: RoundedRectangle(cornerRadius: 7))
++        .overlay {
++            RoundedRectangle(cornerRadius: 7)
++                .stroke(theme.hairline.opacity(0.75), lineWidth: 0.7)
++        }
++        .help(path)
++        .accessibilityElement(children: .ignore)
++        .accessibilityLabel(path)
++    }
++}
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,6 +24,7 @@
+ 
+ ## Now
+ 
++- UI4 follow-up in progress: reached notes sit inside their reached turn cards, directly below the messages, with a short inset rail instead of the long divider. If filtering/folding hides that turn, the note uses the same rail treatment above the visible subset; empty filters still suppress it. Rebuilt and reopened `/private/tmp/BatonUIReview.app`; both inline notes are visible in the running fixture. Independent review's fallback-style finding is closed. App tests remain unrun; see reports/UI4-2026-10-06.md.
+ - UI3 complete, independently reviewed and native fixture checked: ordinary launch opens the main window, standard controls work, native fullscreen entry/Escape exit and sidebar response pass. Ibrahim confirms the window and red/yellow/green controls are visible. Root 377 engine / 74 app / Swift build pass with installed SDK26.5 and TestingMacros command flags. Ready-to-commit patch follows E8; no real chats or Git writes.
+ 
+ - UI2 title-bar glass complete and independently reviewed. 71 app tests/build pass; isolated pre-E8 engine boundary remains 334 tests. Fixture relaunched successfully; CUA now captures it, native light title bar and full-screen entry verified. E8 is complete and independently reviewed in its fixture scope, with approved capability-based undo and additive recovery/store scope.
+@@ -37,6 +38,8 @@
+ ## Next
+ 
+ UI3 is complete after native checks and Ibrahim’s confirmation of visible controls. Its patch applies after E8; continue E9/D6. Ctrl-Command-F did not trigger exit; Escape did. Keyboard command wiring remains tracked for later polish. The earlier UI2 full-screen observation covered only the manual review window; ordinary routing was not verified. New Swift6.4/macOS27 default build/test macro resolution fails independently of this fix; the explicit installed SDK26.5/TestingMacros command flags pass.
++
++Run app tests when explicitly requested/permitted, then close UI4. After UI4 closes, continue E9/E10 and D6/D7 in parallel as previously listed.
+ 
+ UI1/UI2 are ready to commit after CP2-record, in order. Rebuilt fixture chrome and actual full-screen entry were checked with CUA; Ibrahim may review its light glass appearance. Prioritize loading/error feedback and keyboard navigation before final app acceptance; details are in the UI1 report.
+ 
+@@ -635,6 +638,8 @@
+ 
+ - 2026-10-06 — UI2 title bar completed, independently reviewed; 71 app tests and isolated 334 engine tests. Hosted minimum-size test passed. Rebuilt fixture launch and native CUA light chrome/full-screen entry observed; no real coding app touched. E8 continues.
+ 
++- 2026-10-06 — UI4 latest build passes with installed SDK26.5/TestingMacros flags. CUA verified path chips and conversation in a fresh review bundle; Attached showed no turns or boundary elements. Independent reviewer confirmed removing text selection closes conflict with row navigation. The replaced bundle failed to reopen, so a fresh temporary review bundle was built and launched successfully. App tests remain unrun; no system setting changed. See reports/UI4-2026-10-06.md.
++
+ - 2026-10-06 — Ibrahim requested a UI bug/enhancement audit. UI1 fixes independently reviewed; all three reviewer findings closed. 334 engine / 68 app / build pass; click-shape mutation fails as expected. Existing package patches preserved, UI1 ready after CP2-record.
+ 
+ - 2026-10-05 — CP0 passed. Contract frozen. See [CHECKPOINTS.md](CHECKPOINTS.md).
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -180,3 +180,17 @@
+ UI3 continuation (Ibrahim, 2026-10-06): main window opens on Finder launch and reopen, with close/minimize/full-screen controls; menu icon remains. Scope also includes app/Sources/Baton/BatonApp.swift and a shared main-window controller in WindowPresentation.swift. A single window/model is reused, rather than separate review and ordinary windows. Tests cover native style/control presence and close/reopen identity.
+ 
+ UI3 accepted 2026-10-06: 377 engine/74 app/build pass with installed SDK flags; separate code review no blocker; ordinary fixture launch plus native full-screen/Escape/sidebar verified; Ibrahim confirms visible controls. Ctrl-Command-F wiring remains in keyboard polish, not claimed fixed.
++
++## UI4 — orient the conversation timeline
++
++**Goal.** Make it immediately clear which turn a message belongs to, which app produced it, what each app has received, where the reached boundary sits, and which folder a linked chat belongs to.
++
++**From.** Ibrahim's 2026-10-06 report that the Attention conversation's messages and “has everything above this line” notes are difficult to interpret; sync-status R9, R10, R11 and R13.
++
++**Files.** `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`; `app/Sources/BatonUI/Screens/Window/WindowView.swift`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI4-2026-10-06.md`; `docs/plan/reports/patches/UI4.patch`.
++
++**Steps.** Label each conversation card with its turn sequence, source app and time; group the per-app state with each app identity; place each existing reached note inside its reached turn card, directly below its messages, with an inset connector rail instead of a full-width divider. If filtering or folding hides that reached turn, show its note above the visible subset; suppress it when no turns remain visible. Show chat folders as compact path chips with middle truncation and the full path available on hover and to accessibility tools. Keep engine wording, ordering, filtering, folding, jump behavior, and the existing palette.
++
++**Checks.** Challenge the diff against S1–S12 and R9–R13; run the repository's app build and tests when permitted; inspect the actual fixture rendering before closing visual acceptance. Do not infer the display copy from tool names or create user-facing sentences in the view.
++
++**Done when.** Each visible card is self-identifying, both sides' state is adjacent to its tool identity, reached notes appear only when there are visible turns and their “above this line” wording matches their position, and folder paths read as intentional location labels. No message or state ordering changes.
+diff --git a/docs/plan/reports/UI4-2026-10-06.md b/docs/plan/reports/UI4-2026-10-06.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI4-2026-10-06.md
+@@ -0,0 +1,186 @@
++# UI4 — orient the conversation timeline
++
++Date: 2026-10-06  
++Status: implementation and independent review complete; supported app build passes; fresh review bundle launched and inspected. App tests not run.
++
++## What changed
++
++Conversation cards identify their sequence as “Turn N”, show the originating tool and time, and pair each tool's identity with its state. Reached notes use the existing engine text and sit inside their reached turn card directly below its messages, attached by a short inset rail. If a filter hides that turn, its note remains above the visible conversation; if the filter leaves no visible turns, the note is suppressed. Linked chat folders use compact path chips with middle truncation, a folder icon and the full path on hover and to accessibility tools. Message content, order, filters, fold controls, jumps, paths and palette values are unchanged.
++
++Files changed for UI4:
++
++- `app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift`
++- `app/Sources/BatonUI/Screens/Window/WindowView.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI4-2026-10-06.md`
++- `docs/plan/reports/patches/UI4.patch`
++
++No tests were added or run. The current developer instruction says not to run tests unless the user asks for testing or verification. The default `swift build` was attempted but fails before compiling this change because the machine's macOS 27 SDK/Swift compiler versions do not match and the default module cache is not writable. The repository's recorded installed-SDK command succeeds; output is pasted below. The first fixture relaunch still showed the old screen because `/private/tmp/BatonFixture.app/Contents/MacOS/Baton` was an older binary (15:29) than `app/.build/debug/Baton` (15:48). I copied the built executable into the already-approved temporary fixture bundle, quit and relaunched it, then opened the fixture link and selected All in Conversation. The refreshed screen shows Turn 3, Codex as its source, Claude Waiting / Codex Written here, the user/reply bubbles, the visible reached divider beneath it, and Turn 4 beginning below.
++
++## Challenge and independent review
++
++I challenged the view against the ordering and boundary rules in sync-status R9–R13. The visible card structure does not alter the model's ordering or message presentation. The existing boundary wording remains catalogue-provided; “Turn N” is a structural sequence label, not a new sentence.
++
++The separate reviewer agent found that the reached boundary vanished whenever a non-All filter hid its turn, because the pre-list marker was nested under the earlier-turn fold control. I moved the marker outside that conditional. Ibrahim then reported that filters with no visible messages still showed the boundary. The current follow-up suppresses it when `displayedTurns` is empty. This follow-up also restyles the plain folder path with a themed chip while preserving the actual path string. The second review confirmed the empty-filter guard. It noted that selectable text inside the enclosing link-row button could conflict with row navigation; I removed text selection and kept the full path available via hover and accessibility instead. The reviewer confirmed this closes the concern and found no further issues.
++
++## Checks
++
++`swift build` (default environment): **failed before compiling the target**. Relevant actual output:
++
++```text
++error: unable to open output file '/Users/ibrahimahmed/.cache/clang/ModuleCache/2IGBZH9CRVPOD/SwiftShims-1WSVJG4746Q51.pcm': 'Operation not permitted'
++error: failed to build module 'Swift'; this SDK is not supported by the compiler (the SDK is built with 'Apple Swift version 6.4 effective-5.10 (swiftlang-6.4.0.31.4 clang-2100.3.31.1)', while this compiler is 'Apple Swift version 6.4 effective-5.10 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)')
++```
++
++`CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache swift build --disable-sandbox --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib`:
++
++```text
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[3 / 10] BatonUI
++[5 / 12] BatonUI
++[10 / 16] Baton-product
++[12 / 17] Baton-product
++[13 / 17] BatonUI
++[14 / 18] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[18 / 19] Baton-product
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++Build complete! (2.89 secs)
++```
++
++Exit: 0.
++
++`git diff --check -- app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift docs/plan/STATUS.md docs/plan/track-d-app.md docs/plan/reports/UI4-2026-10-06.md`:
++
++```text
++(no output; exit 0)
++```
++
++### Follow-up after Ibrahim's feedback
++
++The same installed SDK26.5/TestingMacros `swift build` command was rerun after the empty-filter and path-chip changes:
++
++```text
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[3 / 13] BatonKit
++[13 / 23] BatonKit
++[17 / 27] BatonUI
++[26 / 38] BatonUI
++[27 / 38] BatonUI
++[28 / 38] BatonUI
++[29 / 38] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonKit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[36 / 42] BatonUI
++[39 / 45] BatonUI
++[41 / 45] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[45 / 46] Baton-product
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++Build complete! (3.00 secs)
++```
++
++Exit: 0. The refreshed fixture shows `/tmp/baton-sample` in the new folder chip in both linked-chat rows. Selecting **Attached** produced no conversation turn or reached-note elements in the accessibility tree; **All** restores the turns and their markers.
++
++After removing path text selection, the installed SDK26.5/TestingMacros build was rerun:
++
++```text
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[2 / 8] BatonUI
++[4 / 10] BatonUI
++[7 / 11] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[11 / 12] Baton-product
++Build complete! (1.90 secs)
++```
++
++Exit: 0. I copied this binary into the temporary fixture bundle; its hash matched. The prior screenshot and empty Attached-filter accessibility check were made immediately before the path-selection-only change. Replacing an executable in the old review bundle made LaunchServices return `kLSNoExecutableErr`; ad-hoc re-signing did not repair that bundle. I created a fresh temporary review bundle at `/private/tmp/BatonUIReview.app`, with the rebuilt executable, SPM fixture resources, and a new bundle identifier. Computer Use opened that bundle successfully. The current screen shows the linked fixture details, both folder chips and status cards; its conversation tree exposes the new turn labels and reached dividers. No OS setting was changed. App tests remain unrun, so UI4 stays open for that gate.
++
++### Turn-attached reached notes follow-up
++
++Ibrahim said the arrow and long line looked detached from the conversation. I moved the reached note into the matching turn card, after the user/reply messages, and replaced the full-width divider with a small inset vertical rail. The existing note text and arrow glyph are preserved; no new user-facing sentence or catalogue entry was added. When the reached turn is hidden by folding/filtering, the existing note remains above the visible subset; no note appears when the filtered list is empty.
++
++Rebuilt with the same installed SDK26.5/TestingMacros command:
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[2 / 9] BatonUI
++[4 / 11] BatonUI
++[7 / 11] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[11 / 12] Baton-product
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++Build complete! (2.14 secs)
++```
++
++Exit: 0. `git diff --check -- app/Sources/BatonUI/Screens/SyncStatus/SyncStatusView.swift` passed with no output. The binary was copied to `/private/tmp/BatonUIReview.app/Contents/MacOS/Baton`; its SHA-256 matched the build product (`7e43580b77f271ba3842c9e234905a703d72834476b426e6654117d06cb7ab86`). I reopened the fixture, opened the existing “Imaginary orchard / Orchard tests” sample, and visually inspected the conversation. The Codex reached note appears inside Turn 3 below its reply; the Claude reached note appears inside Turn 4 below its reply. Both are connected by the short inset rail and there is no full-width cutoff line. No real coding app or chat was opened. The app test suite was not run.
++
++## Decisions and remaining limits
++
++No spec or engine-wording decision was needed. When the reached turn is filtered out, its marker is placed before the visible subset because the filter intentionally omits turns; the model and delivery state remain unchanged. The filtered list can contain turns from different positions relative to the marker, so the marker describes the side's reached position, not a claim that every visible filtered turn follows it chronologically.
++
++The independent follow-up review found the hidden-turn fallback lacked the same visual connector. I extracted a shared reached-note group, so both inline markers and markers above a filtered/folded-out turn use the short inset rail; it remains above the visible subset rather than being assigned to a different turn. Review follow-up found no remaining concern in the marker placement or accessibility structure.
++
++After that review fix, the installed SDK build completed successfully (exit 0):
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[2 / 9] BatonUI
++[4 / 11] BatonUI
++[9 / 15] Baton-product
++[11 / 16] Baton-product
++[12 / 16] BatonUI
++[13 / 17] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[17 / 18] Baton-product
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++Build complete! (3.32 secs)
++```
++
++I copied the binary into the fixture app and confirmed its SHA-256 matched `app/.build/debug/Baton` (`406e530000564e928cdfba6e97e65f1e0b472afd5274936e91178894eb12ccd4`). Reopening the fixture and its “Imaginary orchard / Orchard tests” link shows both notes within their own turn cards, under the reply, joined by the short rail. The changed source and report pass `git diff --check`. Tests remain unrun.
++
++### Linked-chat header indicator follow-up
++
++Ibrahim said the arrow between the linked chat names felt too small and dated. I enlarged it into a semibold bidirectional arrow inside a subtle circular glass treatment, with short hairlines extending toward each chat name and the existing action accent color. The icon stays decorative for accessibility. The installed SDK26.5/TestingMacros `swift build` passed (exit 0):
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[3 / 13] BatonKit
++[13 / 23] BatonKit
++[17 / 27] BatonUI
++[26 / 38] BatonUI
++[27 / 38] BatonUI
++[29 / 38] BatonKit
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonKit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[36 / 42] BatonUI
++[39 / 45] Baton-product
++[41 / 45] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[45 / 46] Baton-product
++Build complete! (3.28 secs)
++```
++
++I copied the executable into `/private/tmp/BatonUIReview.app` and confirmed matching SHA-256 (`412a64aabc4138e76b35559922cd1d4f76146620e12998693bb295bd85503b00`). The reopened fixture visibly shows the new bridge between “Imaginary orchard” and “Orchard tests”. `git diff --check` passes for the source file. App tests remain unrun.

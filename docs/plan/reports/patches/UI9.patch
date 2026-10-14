@@ -1,0 +1,501 @@
+diff --git a/app/Sources/BatonUI/Theme/Theme.swift b/app/Sources/BatonUI/Theme/Theme.swift
+--- a/app/Sources/BatonUI/Theme/Theme.swift
++++ b/app/Sources/BatonUI/Theme/Theme.swift
+@@ -4,14 +4,16 @@
+ public enum Theme: String, CaseIterable, Sendable {
+     case light, graphite
+ 
+-    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x242126) }
+-    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x302b31) }
++    public var background: Color { self == .light ? colour(0xdfe6ee) : colour(0x45484e) }
++    public var sidebar: Color { self == .light ? colour(0xffffff) : colour(0x3c3f45) }
+     public var text: Color { self == .light ? colour(0x20242d) : colour(0xffffff) }
+-    public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xd5d8e0) }
++    public var secondaryText: Color { self == .light ? colour(0x535967) : colour(0xe0e1e4) }
+     public var hairline: Color { text.opacity(0.1) }
+     /// Decorative brand accents, independent of semantic state and tool colours.
+-    public var backdropAccent: Color { self == .graphite ? colour(0x6b1935) : colour(0x9c5268) }
+-    public var backdropInk: Color { self == .graphite ? colour(0x100e12) : colour(0x8d8591) }
++    public var backdropAccent: Color { self == .graphite ? colour(0x784552) : colour(0x9c5268) }
++    public var backdropInk: Color { self == .graphite ? colour(0x7c8086) : colour(0x8d8591) }
++    /// Neutral silhouette edge that reads on the menu bar without adding a white tile.
++    public var menuOutline: Color { self == .graphite ? colour(0xe8e9eb) : colour(0x55585e) }
+     public var scheme: ColorScheme { self == .light ? .light : .dark }
+ 
+     /// Returns a colour for a meaning, rather than for a particular screen.
+@@ -117,7 +119,7 @@
+     }
+ }
+ 
+-/// Subtle burgundy and ink pools behind the system material surfaces.
++/// Restrained graphite, gray, and distant burgundy behind system material surfaces.
+ public struct GlassBackdrop: View {
+     @Environment(\.batonTheme) private var theme
+     @Environment(\.batonGlass) private var glass
+@@ -127,12 +129,12 @@
+         GeometryReader { geometry in
+             ZStack {
+                 theme.background.opacity(reduceTransparency ? 1 : glass / 100)
+-                Circle().fill(theme.backdropAccent.opacity(0.28))
+-                    .frame(width: 360, height: 360).blur(radius: 90).offset(x: -geometry.size.width * 0.35, y: -180)
+-                Circle().fill(theme.backdropInk.opacity(0.25))
+-                    .frame(width: 420, height: 420).blur(radius: 110).offset(x: geometry.size.width * 0.3, y: 160)
+-                Circle().fill(theme.backdropAccent.opacity(0.08))
+-                    .frame(width: 320, height: 320).blur(radius: 90).offset(x: 80, y: -180)
++                Circle().fill(theme.backdropAccent.opacity(theme == .graphite ? 0.18 : 0.18))
++                    .frame(width: 330, height: 330).blur(radius: 110).offset(x: -geometry.size.width * 0.42, y: -210)
++                Circle().fill(theme.backdropInk.opacity(theme == .graphite ? 0.10 : 0.14))
++                    .frame(width: 390, height: 390).blur(radius: 125).offset(x: geometry.size.width * 0.34, y: 180)
++                Circle().fill(theme.backdropAccent.opacity(theme == .graphite ? 0.045 : 0.07))
++                    .frame(width: 280, height: 280).blur(radius: 105).offset(x: 100, y: -220)
+             }.frame(width: geometry.size.width, height: geometry.size.height).background(.regularMaterial).clipped()
+         }.accessibilityHidden(true)
+     }
+diff --git a/app/Sources/BatonUI/Components/BrandMark.swift b/app/Sources/BatonUI/Components/BrandMark.swift
+--- a/app/Sources/BatonUI/Components/BrandMark.swift
++++ b/app/Sources/BatonUI/Components/BrandMark.swift
+@@ -40,9 +40,9 @@
+                         // Outline the silhouette behind the original pixels, not the artwork itself.
+                         ForEach(0..<8) { step in
+                             Image(nsImage: icon).resizable().renderingMode(.template).scaledToFit()
+-                                .foregroundStyle(.white)
+-                                .offset(x: cos(Double(step) * .pi / 4) * 0.6,
+-                                        y: sin(Double(step) * .pi / 4) * 0.6)
++                                .foregroundStyle(theme.menuOutline)
++                                .offset(x: cos(Double(step) * .pi / 4) * 0.72,
++                                        y: sin(Double(step) * .pi / 4) * 0.72)
+                         }
+                     }
+                     Image(nsImage: icon).resizable().interpolation(.high).scaledToFit()
+diff --git a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+--- a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++++ b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+@@ -21,7 +21,7 @@
+     public var body: some View {
+         VStack(spacing: 0) {
+         WindowScrollArea(snapshotClips: false) {
+-        VStack(alignment: .leading, spacing: 14) {
++        VStack(alignment: .leading, spacing: 10) {
+             if let note = model.errorNote { NoteView(note: note) }
+             if model.loading, model.links.isEmpty { ProgressView().frame(maxWidth: .infinity).padding() }
+             if let content = model.emptyContent { EmptyStateView(content: content, compact: true) }
+@@ -30,15 +30,15 @@
+                     HStack(alignment: .top, spacing: 10) {
+                         Circle().fill(theme.colour(for: rowMeaning(link)))
+                             .frame(width: 7, height: 7).padding(.top, 5).accessibilityHidden(true)
+-                        VStack(alignment: .leading, spacing: 6) {
++                        VStack(alignment: .leading, spacing: 7) {
+                             HStack {
+                                 ForEach(link.sides.keys.sorted(), id: \.self) { tool in ToolDot(tool: tool, label: link.sides[tool]?.displayLabel) }
+-                            }.font(.caption)
++                            }.font(.caption.weight(.medium))
+                             ForEach(Array(Set(link.sides.values.map(\.name))).sorted(), id: \.self) { name in
+-                                Text(name).font(.headline)
++                                Text(name).font(.headline.weight(.semibold)).lineLimit(1)
+                             }
+                             Text(link.headline.statusLine ?? link.headline.text)
+-                                .font(.callout).foregroundStyle(theme.colour(for: rowMeaning(link)))
++                                .font(.subheadline).foregroundStyle(theme.colour(for: rowMeaning(link)))
+                         }
+                         Spacer(minLength: 0)
+                         if link.decisionNeeded {
+@@ -46,9 +46,16 @@
+                                 .foregroundStyle(theme.colour(for: .danger))
+                                 .accessibilityLabel(link.headline.text)
+                         }
+-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10).contentShape(Rectangle())
+-                        .background(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.1 : 0),
+-                                    in: RoundedRectangle(cornerRadius: 9))
++                    }.frame(maxWidth: .infinity, alignment: .leading).padding(12).contentShape(Rectangle())
++                        .background {
++                            RoundedRectangle(cornerRadius: 13).fill(.regularMaterial)
++                                .overlay(RoundedRectangle(cornerRadius: 13).fill(theme.sidebar.opacity(0.24)))
++                                .overlay(RoundedRectangle(cornerRadius: 13)
++                                    .fill(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.085 : 0)))
++                                .overlay(RoundedRectangle(cornerRadius: 13)
++                                    .stroke(model.selectedLinkID == link.linkID ? theme.colour(for: .action).opacity(0.34) : theme.hairline,
++                                            lineWidth: model.selectedLinkID == link.linkID ? 1 : 0.7))
++                        }
+                 }.buttonStyle(.plain)
+             }
+             if let selected = model.selectedLink {
+@@ -70,18 +77,18 @@
+                 ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
+                 PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
+             }
+-        }.padding(16)
++        }.padding(13)
+         }
+         Divider()
+         HStack {
+             if let note = model.applicationNote("screen.open_window", fallback: applicationNotes) {
+-                Button(note.text, action: openWindow).buttonStyle(.plain)
++                Button(note.text, action: openWindow).buttonStyle(PopoverFooterStyle())
+             }
+             Spacer()
+             if let note = model.applicationNote("screen.quit", fallback: applicationNotes) {
+-                Button(note.text, action: quit).buttonStyle(.plain)
++                Button(note.text, action: quit).buttonStyle(PopoverFooterStyle(quiet: true))
+             }
+-        }.font(.caption.weight(.medium)).padding(12)
++        }.font(.caption.weight(.medium)).padding(.horizontal, 13).padding(.vertical, 10)
+         }.frame(width: 340, height: snapshot ? nil : 340).background { GlassBackdrop() }.environment(\.colorScheme, theme.scheme).preferredColorScheme(theme.scheme)
+     }
+ 
+@@ -132,9 +139,25 @@
+     @Environment(\.batonTheme) private var theme
+     func makeBody(configuration: Configuration) -> some View {
+         configuration.label.font(.callout.weight(.semibold))
+-            .padding(.horizontal, 10).padding(.vertical, 8)
++            .padding(.horizontal, 12).padding(.vertical, 9)
+             .foregroundStyle(theme.colour(for: .action))
+-            .background(theme.colour(for: .action).opacity(configuration.isPressed ? 0.2 : 0.1),
+-                        in: RoundedRectangle(cornerRadius: 8))
++            .background(theme.colour(for: .action).opacity(configuration.isPressed ? 0.20 : 0.11),
++                        in: Capsule())
++            .overlay(Capsule().stroke(theme.colour(for: .action).opacity(0.22), lineWidth: 0.7))
++            .scaleEffect(configuration.isPressed ? 0.98 : 1)
++            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+     }
+ }
++
++private struct PopoverFooterStyle: ButtonStyle {
++    @Environment(\.batonTheme) private var theme
++    var quiet = false
++    func makeBody(configuration: Configuration) -> some View {
++        configuration.label.font(.caption.weight(.semibold))
++            .foregroundStyle(quiet ? theme.secondaryText : theme.text)
++            .padding(.horizontal, 10).padding(.vertical, 7)
++            .background(theme.sidebar.opacity(configuration.isPressed ? 0.58 : 0.38), in: Capsule())
++            .overlay(Capsule().stroke(theme.hairline, lineWidth: 0.65))
++            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
++    }
++}
+diff --git a/app/Tests/BatonUITests/BrandTests.swift b/app/Tests/BatonUITests/BrandTests.swift
+--- a/app/Tests/BatonUITests/BrandTests.swift
++++ b/app/Tests/BatonUITests/BrandTests.swift
+@@ -75,7 +75,29 @@
+         let light = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .light))
+         let dark = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+         #expect(!light.isTemplate && !dark.isTemplate)
+-        #expect(light.tiffRepresentation == dark.tiffRepresentation)
++        #expect(light.tiffRepresentation != dark.tiffRepresentation)
++        #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
++        let lightTIFF = try #require(light.tiffRepresentation)
++        let darkTIFF = try #require(dark.tiffRepresentation)
++        let lightPixels = try #require(NSBitmapImageRep(data: lightTIFF))
++        let darkPixels = try #require(NSBitmapImageRep(data: darkTIFF))
++        var outlinePixels = 0
++        for y in 0..<min(lightPixels.pixelsHigh, darkPixels.pixelsHigh) {
++            for x in 0..<min(lightPixels.pixelsWide, darkPixels.pixelsWide) {
++                guard let lightColor = lightPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
++                      let darkColor = darkPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB),
++                      lightColor.alphaComponent > 0.2, darkColor.alphaComponent > 0.2 else { continue }
++                let lightSpread = max(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
++                    - min(lightColor.redComponent, lightColor.greenComponent, lightColor.blueComponent)
++                let darkSpread = max(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
++                    - min(darkColor.redComponent, darkColor.greenComponent, darkColor.blueComponent)
++                let lightBrightness = (lightColor.redComponent + lightColor.greenComponent + lightColor.blueComponent) / 3
++                let darkBrightness = (darkColor.redComponent + darkColor.greenComponent + darkColor.blueComponent) / 3
++                if lightSpread < 0.025, darkSpread < 0.025, lightBrightness < 0.5, darkBrightness > 0.82,
++                   abs(lightBrightness - darkBrightness) > 0.3 { outlinePixels += 1 }
++            }
++        }
++        #expect(outlinePixels > 2)
+     }
+     @MainActor @Test func dockMarkUsesMoreOfItsTileAndMenuOutlineStaysTransparentOutside() throws {
+         let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+@@ -94,14 +116,14 @@
+         let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+         let data = try #require(menu.tiffRepresentation)
+         let tiny = try #require(NSBitmapImageRep(data: data))
+-        var whiteEdge = 0
++        var lightNeutralEdge = 0
+         for y in 0..<tiny.pixelsHigh {
+             for x in 0..<tiny.pixelsWide {
+                 let c = try #require(tiny.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+-                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.85 { whiteEdge += 1 }
++                if c.alphaComponent > 0.2 && min(c.redComponent, c.greenComponent, c.blueComponent) > 0.82 { lightNeutralEdge += 1 }
+             }
+         }
+-        #expect(whiteEdge > 15)
++        #expect(lightNeutralEdge > 15)
+         #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
+     }
+     private func requireData(_ value: Data?) throws -> Data { try #require(value) }
+diff --git a/app/Tests/BatonUITests/PopoverTests.swift b/app/Tests/BatonUITests/PopoverTests.swift
+--- a/app/Tests/BatonUITests/PopoverTests.swift
++++ b/app/Tests/BatonUITests/PopoverTests.swift
+@@ -83,6 +83,29 @@
+     }
+ 
+     @MainActor @Test
++    func compactPopoverSnapshotsItsContentInBothThemes() async throws {
++        let output = ComponentTests.root.appendingPathComponent("Snapshots")
++        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++        let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_waiting"))
++        await model.refresh()
++        #expect(model.selectedLink != nil)
++        for theme in Theme.allCases {
++            let renderer = ImageRenderer(content: PopoverView(model: model)
++                .environment(\.batonSnapshotPresentation, true)
++                .batonTheme(theme))
++            renderer.scale = 2
++            let image = try #require(renderer.nsImage)
++            #expect(image.size.width == 340)
++            #expect(image.size.height > 200 && image.size.height < 340)
++            let tiff = try #require(image.tiffRepresentation)
++            let bitmap = try #require(NSBitmapImageRep(data: tiff))
++            let png = try #require(bitmap.representation(using: .png, properties: [:]))
++            #expect(!png.isEmpty)
++            try png.write(to: output.appendingPathComponent("UI9-popover-compact-\(theme.rawValue).png"))
++        }
++    }
++
++    @MainActor @Test
+     func continuePreviewRendersInBothThemes() async throws {
+         try FileManager.default.createDirectory(at: ComponentTests.root.appendingPathComponent("Snapshots"), withIntermediateDirectories: true)
+         let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_waiting"))
+diff --git a/docs/plan/STATUS.md b/docs/plan/STATUS.md
+--- a/docs/plan/STATUS.md
++++ b/docs/plan/STATUS.md
+@@ -24,13 +24,13 @@
+ 
+ ## Now
+ 
+-- UI8 complete and independently reviewed: high-contrast grouped receipts, contiguous fixture boundaries, white menu silhouette edge, tighter white Dock margins, burgundy/ink backdrop, ten Settings choices/defaults with saved preview configuration, compact popover and confirmed Quit. Original burgundy/black B and I.A artwork is unchanged. Settings and Quit/cancel were checked in the running fixture; final refreshed app is open on Settings with Ibrahim's current System appearance preserved.
+-- Current shared tree: **379 engine tests / 94 app tests (76 BatonUI + 18 BatonKit)** and Swift build pass with the recorded installed SDK26.5/TestingMacros flags. Git remains read-only; ordered patches through UI8 are the commit route. No push, Git writes, real chats or real coding-app runs.
+-- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI8 implementation records are ready to commit as listed below. B1 live acceptance is pending. CP2 is incomplete. The early Settings portion of D11 is fixture-only; full setup boards and D12 engine wiring are not claimed.
++- UI9 complete at the checked package boundary: a medium graphite gray base, remote muted-burgundy tint, neutral light/dark menu silhouette edges, and clearer compact popover cards, actions and footer. Engine-provided status copy now wraps fully. The signed B/I.A artwork is unchanged. The refreshed fixture is open on a linked-chat screen in Dark mode; both compact popover themes and badge/no-badge menu images have rendered snapshots.
++- Current shared tree: **379 engine tests / 95 app tests (77 BatonUI + 18 BatonKit)**; `swift build` passes with installed SDK26.5/TestingMacros flags. Git is read-only; ordered patches through UI9 are the commit route. No push, real chats or real coding-app runs.
++- CP1 remains approved. R10/D4b/E7/D5/B1/E8 and UI1–UI9 implementation records are ready to commit as listed below. B1 live acceptance is pending. CP2 is incomplete. The early Settings portion of D11 is fixture-only; full setup boards and D12 engine wiring are not claimed. The native status-item popover was not directly captured; ImageRenderer snapshots and the running main fixture were inspected.
+ 
+ ## Next
+ 
+-Review/commit the ordered patches through UI8. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
++Review/commit the ordered patches through UI9. Continue E9/E10 and D6/D7, with B2/C1/C2 still pending. C2 must generate the new receipt/settings/action notes and authoritative settings responses; D12 must wire live configuration in place of the clearly labelled preview. Complete the rest of D11's setup states in its planned phase. B1's live run still requires Ibrahim's specific approval after listing throwaway writes and close/reopen actions. Do not push.
+ 
+ ## Done
+ 
+@@ -53,6 +53,7 @@
+ | R10 storage and delivery extraction | 2026-10-05 | Ready to commit — separate reviewer agent checked | 270 engine / 47 app |
+ | E7 merge implementation | 2026-10-05 | Ready to commit — separate reviewer checked; U9/E8 and M12/E9–E10 integrations pending | 295 engine / 49 app on its ordered patch boundary |
+ | D5 link/copy dialogs | 2026-10-05 | Ready to commit — separate reviewer checked | 295 engine / 60 app on its ordered patch boundary |
++| UI9 calmer graphite and compact popover | 2026-10-06 | Ready to commit — independent review findings closed; refreshed dark fixture inspected | 379 engine / 95 app |
+ | UI8 receipts, configuration and Quit | 2026-10-06 | Ready to commit — separate review findings fixed; native Settings/receipt/Quit inspected | 379 engine / 94 app |
+ | UI7 logo surroundings and appearance selector | 2026-10-06 | Ready to commit — independent review finding fixed; native selector/Light/Dark inspected | 377 engine /83 app |
+ | UI6 transparent logo and dark glass | 2026-10-06 | Ready to commit — separate review fixes confirmed; native graphite preview inspected | 377 engine / 81 app |
+@@ -66,6 +67,29 @@
+ ## Ready to commit
+ 
+ Historical CP1 patches have been committed; do not reapply them.
++
++### UI9 — calm graphite and a refined menu popover
++
++Patch: `docs/plan/reports/patches/UI9.patch`, applies after UI8 on HEAD `4546808`. Report: `docs/plan/reports/UI9-2026-10-06.md`.
++
++Exact paths:
++
++- `app/Sources/BatonUI/Theme/Theme.swift`
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `app/Tests/BatonUITests/PopoverTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI9-2026-10-06.md`
++
++Commit message:
++
++```text
++Make the compact menu surface easier to read
++
++Use a softer graphite foundation with a restrained burgundy haze, neutral theme-aware silhouette edges, and distinct compact row and action treatments. Keep engine copy fully visible and test both compact themes.
++```
+ 
+ ### R10 — storage and delivery responsibilities
+ 
+@@ -1030,3 +1054,5 @@
+ - 2026-10-05 — B1 independent review closed hidden-target format bypass and intent recovery before project directory creation. 37 native adapter tests pass; working engine334/app60/build pass. Implementation is ready to commit, with live acceptance pending. Shared suite reversal was approved by Ibrahim; native call/result ID pairing fixed. Hooks/real release/runner/visibility remain explicitly unverified as recorded above.
+ 
+ - 2026-10-06 — UI8 completed at a green boundary: 379 engine / 94 app / Swift build pass. Separate review found and closed dependency of Quit on initial refresh, false receipt boundaries in three fixtures, and reset failure detection tied to optional notes. Regressions cover all three, saved-preview reopen, unchanged fixture files, all ten choices/defaults and preserved artwork. Native Settings save, shared receipt contrast and Cmd-Q/Return cancellation passed; final wrapper refreshed and reopened on Settings, retaining System appearance. Exact ordered patch and report recorded. CP2 and remaining D11/D12 work are still pending.
++
++- 2026-10-06 — UI9 complete: 379 engine / 95 app, build pass. Removed status truncation; snapshots cover compact popover in both themes; existing component snapshots cover badge/no-badge menu marks in both themes. Independent review findings closed, original mark preserved. Final app bundle reopened on the Dark palette; running fixture and rendered PNGs inspected. UI9 patch/report and ready-to-commit entry recorded.
+diff --git a/docs/plan/track-d-app.md b/docs/plan/track-d-app.md
+--- a/docs/plan/track-d-app.md
++++ b/docs/plan/track-d-app.md
+@@ -253,3 +253,17 @@
+ **Steps.** Preserve burgundy/black B and I.A; outline menu silhouette, never recolor content artwork. Group receipt boundaries by their actual turn, explain hidden boundaries separately and suppress when no displayed messages. Build the settings portion of D11 early, with all ten contract keys, choices, defaults and saved fixture-only configuration. Apply appearance/glass immediately across window/popover. Confirm every user Quit request; keep compact popover footer accessible while long content scrolls.
+ **Tests.** Receipt grouping/filtering; Settings choices, defaults, validation, persistence, failed save; native CLI settings arguments; Quit cancel/confirm; brand pixels and light/graphite PNGs.
+ **Done when.** Shared tests/build pass; separate review is resolved; rendered views and refreshed fixture are inspected. Full D11 setup boards and D12 real-engine connection are not claimed.
++
++## UI9 — calm graphite and a refined menu popover
++
++**Goal.** Make the compact menu surface feel current and readable, replace the near-black dark backdrop with softer gray and a very restrained burgundy tint, and use a neutral theme-aware outline around the menu mark. Preserve the signed B/I.A artwork.
++
++**From.** Ibrahim's 2026-10-06 request for a black/white/gray-only menu-icon surround, a gray dark theme with distant calm burgundy, and modernization of the small window.
++
++**Files.** `app/Sources/BatonUI/Theme/Theme.swift`; `Components/BrandMark.swift`; `Screens/Popover/PopoverView.swift`; focused `app/Tests/BatonUITests/`; `docs/plan/STATUS.md`; this track; `docs/plan/reports/UI9-2026-10-06.md`; `docs/plan/reports/patches/UI9.patch`.
++
++**Steps.** Raise dark surface luminance into graphite gray; use layered neutral gray surfaces and a low-intensity burgundy accent set back from content. Choose the menu silhouette edge from neutral grayscale according to appearance, without changing the source image. Tighten popover hierarchy, row surfaces, action pills, and footer spacing within its existing compact footprint; preserve all engine-provided sentences, controls, actions and accessibility behavior.
++
++**Checks.** Assert the neutral outline palette and preserve source-image pixels; render menu mark with/without badge in both themes; snapshot the compact popover in both themes; run app build/tests and engine suite per the package loop. Inspect the refreshed fixture in dark appearance and compare its gray/burgundy balance to the previous version. Independently challenge the scoped diff.
++
++**Done when.** The popover is visually coherent at its compact size, the menu mark has contrast on both light and dark surfaces without a white tile, the dark palette reads as gray with a quiet remote burgundy cast, behavior and copy are unchanged, checks/review pass, and Ibrahim can inspect the running fixture.
+diff --git a/docs/plan/reports/UI9-2026-10-06.md b/docs/plan/reports/UI9-2026-10-06.md
+new file mode 100644
+--- /dev/null
++++ b/docs/plan/reports/UI9-2026-10-06.md
+@@ -0,0 +1,152 @@
++# UI9 hand-back — 2026-10-06
++
++UI9 refines the 340-point menu popover with layered link cards, compact pill actions, and a quieter footer. It moves the dark surface from near-black to graphite gray, with a subtle remote burgundy haze, and changes the menu mark's edge to a theme-aware neutral gray while preserving the signed B/I.A pixels. Longer engine status lines wrap without an artificial cutoff.
++
++Baseline was 379 engine / 94 app tests. Final is **379 engine / 95 app tests (77 BatonUI + 18 BatonKit)**; `swift build` passes. The fixture bundle was refreshed and relaunched with its saved Dark selection. Native window inspection shows the gray palette; ImageRenderer snapshots show the compact popover and both menu-outline appearances. The system menu-bar popover itself was not directly captured.
++
++## Exact paths
++
++- `app/Sources/BatonUI/Theme/Theme.swift`
++- `app/Sources/BatonUI/Components/BrandMark.swift`
++- `app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++- `app/Tests/BatonUITests/BrandTests.swift`
++- `app/Tests/BatonUITests/PopoverTests.swift`
++- `docs/plan/STATUS.md`
++- `docs/plan/track-d-app.md`
++- `docs/plan/reports/UI9-2026-10-06.md`
++
++## Challenge and independent review
++
++Root's challenge found that the first ImageRenderer attempt omitted SwiftUI's native scrolling subtree and produced a footer-only image. The compact preview now uses the existing snapshot-presentation path, and the inspected PNG contains the link card, Continue actions, recent-chat action, and footer. Content is still engine-provided; no static user-facing copy was introduced.
++
++The separate reviewer initially found:
++
++1. `.lineLimit(2)` could hide longer status text. Removed the limit; status wraps in the scrollable row.
++2. No compact popover render test existed in the scoped diff. Added a 340-point compact-content render written in both themes.
++3. The badge-state concern was already covered in `ComponentTests.nativeMenuBarImagesIncludeTheDecisionBadgeInBothThemes`: it loops through both themes and renders plain and badged variants. The reviewer rechecked this and closed the warning.
++4. The first neutral-pixel assertion counted arbitrary pixels. Tightened it to compare corresponding light/dark grayscale pixels, where the unchanged artwork cancels and only the theme-dependent silhouette edge differs.
++
++Final reviewer recheck found no critical issue and confirmed the warnings are closed. The original PNG's B/I.A color pixels remain unchanged across the theme snapshots.
++
++## Checks — real output
++
++### Engine — PASS
++
++Command: `python3 -m unittest discover -s tests -t .`
++
++```text
++...........................................................................................................................................................................................................................................................................................................................................................................................
++----------------------------------------------------------------------
++Ran 379 tests in 2.520s
++
++OK
++```
++
++### Layer rule — PASS, no output (grep exit 1 means no imports matched)
++
++Command: `grep -rnE '^(from|import) .*(adapters|ledger)' baton/domain baton/ports baton/services`
++
++```text
++[no matches; exit status 1]
++```
++
++### Tool names in the core — PASS, no output (grep exit 1 means no matches)
++
++Command: `grep -rniE 'claude|codex|opencode|cursor' baton/ports baton/services tests/adapters/suite.py`
++
++```text
++[no matches; exit status 1]
++```
++
++### User-facing literals in the changed popover — PASS, no output (rg exit 1 means no matches)
++
++Command: `rg -n 'Text\("[A-Za-z]|Button\("[A-Za-z]|Label\("[A-Za-z]|accessibilityLabel\("[A-Za-z]' app/Sources/BatonUI/Screens/Popover/PopoverView.swift`
++
++```text
++[no matches; exit status 1]
++```
++
++### App build — PASS
++
++Command: `cd app && CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache swift build --disable-sandbox --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib`
++
++```text
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/configuration is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/org.swift.swiftpm/security is not accessible or not writable, disabling user-level cache features.
++warning: /Users/ibrahimahmed/Library/Caches/org.swift.swiftpm is not accessible or not writable, disabling user-level cache features.
++warning: 'app': failed storing manifest for 'app' in cache: attempt to write a readonly database
++Building for debugging...
++[4 / 14] BatonKit
++[15 / 25] BatonKit
++[16 / 25] BatonKit
++[19 / 29] BatonUI
++[28 / 40] BatonUI
++[29 / 40] BatonUI
++[30 / 40] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonKit: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[34 / 41] BatonUI
++[37 / 43] BatonUI
++[40 / 46] Baton-product
++[41 / 46] Baton-product
++[42 / 46] BatonUI
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: BatonUI: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/usr/lib' not found
++/Users/ibrahimahmed/Desktop/projects/baton/app/Package.swift: Baton-product: ld: warning: search path '/Library/Developer/CommandLineTools/Developer/Library/Frameworks' not found
++[46 / 47] Baton-product
++Build complete! (4.04 secs)
++```
++
++### App tests — PASS
++
++Command: `cd app && CLANG_MODULE_CACHE_PATH=/tmp/baton-clang-cache SWIFT_MODULECACHE_PATH=/tmp/baton-swift-cache swift test --disable-sandbox --sdk /Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk -Xswiftc -load-plugin-library -Xswiftc /Library/Developer/CommandLineTools/usr/lib/swift/host/plugins/testing/libTestingMacros.dylib`
++
++```text
++✔ Test run with 77 tests in 11 suites passed after 8.675 seconds.
++✔ Test run with 18 tests in 5 suites passed after 0.498 seconds.
++```
++
++### Package condition — PASS
++
++The rendered compact popover contains a link card, actions, and fixed footer at the compact width. Theme-specific grayscale edges distinguish the icon from light and dark menu bars without recoloring its artwork. The running fixture is open with Dark selected; its window uses the gray palette. Full user-supplied status text remains readable through wrapping.
++
++### Whitespace and status scope — PASS with prior work preserved
++
++`git diff --check` passed for the tracked UI9 source/test and plan files. The two untracked source/test files were separately passed through `git diff --no-index --check` against `/dev/null`; both returned 1 because they are new files, with no whitespace diagnostics. The shared status includes prior uncommitted Baton packages; the scoped status was:
++
++```text
++ M app/Sources/BatonUI/Screens/Popover/PopoverView.swift
++ M app/Sources/BatonUI/Theme/Theme.swift
++ M app/Tests/BatonUITests/PopoverTests.swift
++ M docs/plan/STATUS.md
++ M docs/plan/track-d-app.md
++?? app/Sources/BatonUI/Components/BrandMark.swift
++?? app/Tests/BatonUITests/BrandTests.swift
++?? docs/plan/reports/UI9-2026-10-06.md
++?? docs/plan/reports/patches/UI9.patch
++```
++
++UI9's ordered patch contains only its eight package paths above. The report, plan and code paths are inside the announced folders. Snapshots are git-ignored. Git is read-only; no commit or push was attempted.
++
++## Decisions and limits
++
++Ibrahim asked for the grayscale outline and a gray dark theme with a distant quiet burgundy accent, and for a modern compact popover. The implementation uses a neutral outline that changes by appearance; the signed mark's original pixels remain exact. The app retains Dark in its fixture-only local preview so Ibrahim can inspect the updated palette. No real app, chat, or operating-system setting was changed.
++
++The direct system status-item popover could not be captured through the available UI target. Its both-theme content snapshots passed and are under the ignored `app/Snapshots/` directory. The refreshed main fixture is open; Ibrahim can inspect the menu popover from the menu-bar icon.
++
++## Ordered patch validation — PASS
++
++Applied the committed package patches in order through UI8 in a temporary validation directory, then applied UI9. The resulting eight UI9 package paths matched the working files byte-for-byte. Existing whitespace warnings came from earlier patches; UI9's scoped `git diff --check` is clean.
++
++```text
++PASS: UI9 patch applies after UI8 and reproduces all 8 package paths byte-for-byte.
++```
++
++## Commit preparation
++
++```text
++Make the compact menu surface easier to read
++
++Use a softer graphite foundation with a restrained burgundy haze, neutral theme-aware silhouette edges, and distinct compact row and action treatments. Keep engine copy fully visible and test both compact themes.
++```
++
++Patch: `docs/plan/reports/patches/UI9.patch`, to apply after UI8 on HEAD `4546808`. Ready-to-commit paths and message are listed in STATUS.md.

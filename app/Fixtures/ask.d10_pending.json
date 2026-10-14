@@ -1,0 +1,16 @@
+{
+  "applied": false,
+  "deadline_at": "2026-10-05T14:02:00+00:00",
+  "notes": [
+    {
+      "buttons": [],
+      "id": "background.pending",
+      "status_line": null,
+      "text": "The read-only run is waiting to start.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "request_id": "j_00000000000000000000000000000047",
+  "state": "pending"
+}

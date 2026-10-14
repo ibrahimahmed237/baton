@@ -1,0 +1,1640 @@
+diff --git a/app/Sources/Baton/BatonApp.swift b/app/Sources/Baton/BatonApp.swift
+--- a/app/Sources/Baton/BatonApp.swift
++++ b/app/Sources/Baton/BatonApp.swift
+@@ -1,36 +1,11 @@
+ import AppKit
+ import SwiftUI
+ import BatonKit
+-
+-/// Holds only the engine's list response and any engine-supplied error note.
+-@MainActor
+-final class AppState: ObservableObject {
+-    @Published private(set) var links: [LinkSummary] = []
+-    @Published private(set) var errorNote: Note?
+-    private let engine: any EngineClient
+-
+-    /// Injects the same client into the menu and window.
+-    init(engine: any EngineClient) {
+-        self.engine = engine
+-    }
+-
+-    /// Refreshes the list using engine data without synthesizing display sentences.
+-    func refresh() async {
+-        do {
+-            links = try await engine.links().links
+-            errorNote = nil
+-        } catch let error as EngineCommandError {
+-            errorNote = error.note
+-        } catch {
+-            // Transport errors have no catalogue sentence; D13 adds their presentation.
+-            errorNote = nil
+-        }
+-    }
+-}
++import BatonUI
+ 
+ /// The D0 list shared by the menu-bar extra and the main window.
+ struct LinkList: View {
+-    @ObservedObject var state: AppState
++    @ObservedObject var state: PopoverViewModel
+ 
+     var body: some View {
+         List {
+@@ -55,17 +30,20 @@
+ /// A fixture-backed menu-bar app and window, built directly by Swift Package Manager.
+ @main
+ struct BatonApp: App {
+-    @StateObject private var state: AppState
++    @StateObject private var state: PopoverViewModel
++    @Environment(\.openWindow) private var openWindow
+ 
+     init() {
+         NSApplication.shared.setActivationPolicy(.accessory)
+         let fixtures = Bundle.module.resourceURL!.appendingPathComponent("Fixtures", isDirectory: true)
+-        _state = StateObject(wrappedValue: AppState(engine: FixtureEngine(directory: fixtures)))
++        _state = StateObject(wrappedValue: PopoverViewModel(engine: FixtureEngine(directory: fixtures, states: ["links": "d2_in_sync", "suggestions": "d2_in_sync", "continue": "d2_in_sync"])))
+     }
+ 
+     var body: some Scene {
+-        MenuBarExtra("Baton", systemImage: "link") {
+-            LinkList(state: state)
++        MenuBarExtra {
++            PopoverView(model: state, linkRecent: { openWindow(id: "links") }).task { await state.refresh() }
++        } label: {
++            BatonMenuIcon(needsDecision: state.needsDecision)
+         }
+         .menuBarExtraStyle(.window)
+         Window("Baton", id: "links") {
+diff --git a/app/Sources/BatonKit/Models/Results.swift b/app/Sources/BatonKit/Models/Results.swift
+--- a/app/Sources/BatonKit/Models/Results.swift
++++ b/app/Sources/BatonKit/Models/Results.swift
+@@ -59,14 +59,24 @@
+ /// Result of the Links command.
+ public struct LinksResult: Codable, Equatable, Sendable {
+     public var links: [LinkSummary]
+-
+-    /// Creates a contract value without requiring JSON.
+-    public init(links: [LinkSummary]) {
++    public var notes: [Note]
++
++    /// Creates a contract value without requiring JSON.
++    public init(links: [LinkSummary], notes: [Note] = []) {
+         self.links = links
++        self.notes = notes
++    }
++
++    /// Older engines may omit the additive presentation notes.
++    public init(from decoder: Decoder) throws {
++        let values = try decoder.container(keyedBy: CodingKeys.self)
++        links = try values.decode([LinkSummary].self, forKey: .links)
++        notes = try values.decodeIfPresent([Note].self, forKey: .notes) ?? []
+     }
+ 
+     private enum CodingKeys: String, CodingKey {
+         case links
++        case notes
+     }
+ }
+ 
+diff --git a/app/Sources/BatonUI/Components/Components.swift b/app/Sources/BatonUI/Components/Components.swift
+--- a/app/Sources/BatonUI/Components/Components.swift
++++ b/app/Sources/BatonUI/Components/Components.swift
+@@ -101,8 +101,15 @@
+ public struct PlanSteps: View {
+     @Environment(\.batonTheme) private var theme
+     public let steps: [Step]
++    public let excludingNotes: [Note]
+     /// Presents steps in the order returned by the engine.
+-    public init(steps: [Step]) { self.steps = steps }
++    public init(steps: [Step], excludingNotes: [Note] = []) {
++        self.steps = steps; self.excludingNotes = excludingNotes
++    }
++    /// Omits exact notes already displayed at the plan level while retaining changed notes.
++    public func displayedNotes(for step: Step) -> [Note] {
++        step.notes.filter { !excludingNotes.contains($0) }
++    }
+     public var body: some View {
+         VStack(alignment: .leading, spacing: 12) {
+             ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+@@ -111,7 +118,7 @@
+                         .foregroundStyle(theme.colour(for: StateColour.step(step.action)))
+                     VStack(alignment: .leading, spacing: 8) {
+                         HStack { ToolDot(tool: step.tool); Text(step.action).font(.caption) }
+-                        ForEach(Array(step.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
++                        ForEach(Array(displayedNotes(for: step).enumerated()), id: \.offset) { _, note in NoteView(note: note) }
+                     }
+                 }
+             }
+diff --git a/app/Sources/BatonUI/Screens/Popover/PopoverView.swift b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Screens/Popover/PopoverView.swift
+@@ -0,0 +1,103 @@
++import SwiftUI
++import BatonKit
++
++/// A fixture-ready menu-bar popover; every label comes from engine data.
++public struct PopoverView: View {
++    @Environment(\.batonTheme) private var theme
++    @ObservedObject private var model: PopoverViewModel
++    private let linkRecent: () -> Void
++
++    /// Shows an injected model and delegates opening the suggestion screen.
++    public init(model: PopoverViewModel, linkRecent: @escaping () -> Void = {}) {
++        self.model = model; self.linkRecent = linkRecent
++    }
++
++    public var body: some View {
++        VStack(alignment: .leading, spacing: 14) {
++            if let note = model.errorNote { NoteView(note: note) }
++            if model.links.isEmpty, let empty = model.notes.first(where: { $0.id == "screen.empty" }) {
++                NoteView(note: empty)
++            }
++            ForEach(model.links, id: \.linkID) { link in
++                Button { model.select(linkID: link.linkID) } label: {
++                    HStack(alignment: .top, spacing: 10) {
++                        Circle().fill(theme.colour(for: rowMeaning(link)))
++                            .frame(width: 7, height: 7).padding(.top, 5).accessibilityHidden(true)
++                        VStack(alignment: .leading, spacing: 6) {
++                            HStack {
++                                ForEach(link.sides.keys.sorted(), id: \.self) { tool in ToolDot(tool: tool) }
++                            }.font(.caption)
++                            ForEach(Array(Set(link.sides.values.map(\.name))).sorted(), id: \.self) { name in
++                                Text(name).font(.headline)
++                            }
++                            Text(link.headline.statusLine ?? link.headline.text)
++                                .font(.callout).foregroundStyle(theme.secondaryText)
++                        }
++                        Spacer(minLength: 0)
++                        if link.decisionNeeded {
++                            Image(systemName: "exclamationmark.circle.fill")
++                                .foregroundStyle(theme.colour(for: .danger))
++                                .accessibilityLabel(link.headline.text)
++                        }
++                    }.frame(maxWidth: .infinity, alignment: .leading).padding(10)
++                        .background(theme.colour(for: .action).opacity(model.selectedLinkID == link.linkID ? 0.1 : 0),
++                                    in: RoundedRectangle(cornerRadius: 9))
++                }.buttonStyle(.plain)
++            }
++            if let selected = model.selectedLink {
++                HStack {
++                    ForEach(selected.sides.keys.sorted(), id: \.self) { tool in
++                        if let note = model.notes.first(where: { $0.id == "screen.continue" && $0.values["tool"] == .string(tool) }) {
++                            Button(note.text) { Task { await model.continueIn(tool: tool) } }
++                                .buttonStyle(PopoverActionStyle())
++                        }
++                    }
++                }
++            }
++            if let note = model.notes.first(where: { $0.id == "screen.link_recent" }) {
++                Button(action: linkRecent) {
++                    HStack { Text(note.text); Spacer(); Text(model.suggestions.count, format: .number) }
++                }.buttonStyle(PopoverActionStyle())
++            }
++            if let plan = model.plan {
++                ForEach(Array(plan.notes.enumerated()), id: \.offset) { _, note in NoteView(note: note) }
++                PlanSteps(steps: plan.steps, excludingNotes: plan.notes)
++            }
++        }.padding(16).frame(width: 380).background(theme.background)
++    }
++
++    private func rowMeaning(_ link: LinkSummary) -> StateColour {
++        if link.decisionNeeded { return .danger }
++        if link.paused { return .waiting }
++        if link.inSync { return .added }
++        switch link.headline.id {
++        case "turn.waiting", "write.chat_open", "relaunch_to_see", "reopen_chat_to_see": return .waiting
++        default: return StateColour.tone(link.headline.tone)
++        }
++    }
++}
++
++/// The menu-bar icon carries an engine-derived decision badge.
++public struct BatonMenuIcon: View {
++    @Environment(\.batonTheme) private var theme
++    public let needsDecision: Bool
++    /// Receives the badge state without calculating sync behaviour.
++    public init(needsDecision: Bool) { self.needsDecision = needsDecision }
++    public var body: some View {
++        Image(systemName: "link")
++            .overlay(alignment: .topTrailing) {
++                if needsDecision { Circle().fill(theme.colour(for: .danger)).frame(width: 5, height: 5) }
++            }
++    }
++}
++
++private struct PopoverActionStyle: ButtonStyle {
++    @Environment(\.batonTheme) private var theme
++    func makeBody(configuration: Configuration) -> some View {
++        configuration.label.font(.callout.weight(.semibold))
++            .padding(.horizontal, 10).padding(.vertical, 8)
++            .foregroundStyle(theme.colour(for: .action))
++            .background(theme.colour(for: .action).opacity(configuration.isPressed ? 0.2 : 0.1),
++                        in: RoundedRectangle(cornerRadius: 8))
++    }
++}
+diff --git a/app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift b/app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Sources/BatonUI/Screens/Popover/PopoverViewModel.swift
+@@ -0,0 +1,83 @@
++import Foundation
++import Combine
++import BatonKit
++
++/// Holds the popover's engine responses, selection and Continue preview.
++@MainActor
++public final class PopoverViewModel: ObservableObject {
++    @Published public private(set) var links: [LinkSummary] = []
++    @Published public private(set) var notes: [Note] = []
++    @Published public private(set) var suggestions: [Suggestion] = []
++    @Published public private(set) var selectedLinkID: Int?
++    @Published public private(set) var plan: ContinueResult?
++    @Published public private(set) var errorNote: Note?
++    @Published public private(set) var loading = false
++    private let engine: any EngineClient
++    private var requestNumber = 0
++    private var refreshNumber = 0
++
++    /// Receives the only source of data and user-facing wording.
++    public init(engine: any EngineClient) { self.engine = engine }
++
++    public var selectedLink: LinkSummary? { links.first { $0.linkID == selectedLinkID } }
++    public var needsDecision: Bool { links.contains { $0.decisionNeeded } }
++
++    /// Refreshes links and suggestions while retaining a valid selection.
++    public func refresh() async {
++        loading = true
++        requestNumber += 1
++        refreshNumber += 1
++        let refresh = refreshNumber
++        plan = nil
++        defer { if refreshNumber == refresh { loading = false } }
++        do {
++            let response = try await engine.links()
++            let suggested = try await engine.suggestions()
++            guard refreshNumber == refresh else { return }
++            links = response.links
++            notes = response.notes
++            suggestions = suggested.suggestions
++            if !links.contains(where: { $0.linkID == selectedLinkID }) {
++                selectedLinkID = links.first?.linkID
++                plan = nil
++            }
++            errorNote = nil
++        } catch let error as EngineCommandError {
++            guard refreshNumber == refresh else { return }
++            errorNote = error.note
++        } catch {
++            guard refreshNumber == refresh else { return }
++            errorNote = nil
++        }
++    }
++
++    /// Selects an existing link and clears the preceding preview.
++    public func select(linkID: Int) {
++        guard links.contains(where: { $0.linkID == linkID }) else { return }
++        selectedLinkID = linkID
++        plan = nil
++        requestNumber += 1
++    }
++
++    /// Asks for exactly the selected link and target without performing a write.
++    public func continueIn(tool: String) async {
++        guard !loading, let link = selectedLink, link.sides[tool] != nil else { return }
++        let selectedID = link.linkID
++        requestNumber += 1
++        let request = requestNumber
++        plan = nil
++        do {
++            let result = try await engine.continueIn(link: selectedID, inTool: tool, mutation: .preview)
++            guard selectedLinkID == selectedID, requestNumber == request,
++                  selectedLink?.sides[tool] != nil else { return }
++            plan = result
++            errorNote = nil
++        } catch let error as EngineCommandError {
++            guard requestNumber == request else { return }
++            errorNote = error.note
++        } catch {
++            guard requestNumber == request else { return }
++            errorNote = nil
++        }
++    }
++}
+diff --git a/app/Tests/BatonUITests/PopoverTests.swift b/app/Tests/BatonUITests/PopoverTests.swift
+new file mode 100644
+--- /dev/null
++++ b/app/Tests/BatonUITests/PopoverTests.swift
+@@ -0,0 +1,147 @@
++import AppKit
++import SwiftUI
++import Testing
++import BatonKit
++@testable import BatonUI
++
++private actor RecordingPopoverEngine: EngineTransport {
++    let fixture: FixtureEngine
++    var calls: [(String, [String])] = []
++    init(state: String) { fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: state) }
++    func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
++        calls.append((command, arguments))
++        return try await fixture.response(command: command, arguments: arguments, as: type)
++    }
++}
++
++private actor DeferredContinueEngine: EngineTransport {
++    let fixture = FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_in_sync")
++    var blocked: CheckedContinuation<Void, Never>?
++    var waiting: CheckedContinuation<Void, Never>?
++    func waitUntilBlocked() async {
++        if blocked == nil { await withCheckedContinuation { waiting = $0 } }
++    }
++    func release() { blocked?.resume(); blocked = nil }
++    func response<Result: Decodable & Sendable>(command: String, arguments: [String], as type: Result.Type) async throws -> Result {
++        if command == "continue", arguments.contains("codex") {
++            await withCheckedContinuation { continuation in
++                blocked = continuation
++                waiting?.resume(); waiting = nil
++            }
++        }
++        return try await fixture.response(command: command, arguments: arguments, as: type)
++    }
++}
++
++@Suite(.serialized)
++struct PopoverTests {
++    static let states = ["no_links", "in_sync", "one_side_ahead", "waiting", "relaunch_needed", "decision_needed", "paused", "setup_incomplete"]
++
++    @MainActor @Test
++    func selectionContinueAndDecisionBadgeUseEngineData() async throws {
++        let engine = RecordingPopoverEngine(state: "d2_decision_needed")
++        let model = PopoverViewModel(engine: engine)
++        await model.refresh()
++        #expect(model.selectedLinkID == 3)
++        #expect(model.needsDecision)
++        model.select(linkID: 999)
++        #expect(model.selectedLinkID == 3)
++        await model.continueIn(tool: "unknown")
++        #expect(model.plan == nil)
++        await model.continueIn(tool: "codex")
++        let calls = await engine.calls
++        #expect(calls.map(\.0) == ["links", "suggestions", "continue"])
++        #expect(calls.last?.1 == ["--link", "3", "--in", "codex", "--dry-run"])
++        #expect(model.plan?.planID == "p_d2_decision_needed")
++        #expect(model.plan?.applied == false)
++        #expect(model.plan?.notes.first?.id == "merge.decision_needed")
++        #expect(model.plan?.steps.first?.action == "hold")
++        model.select(linkID: 3)
++        #expect(model.plan == nil)
++    }
++
++    @Test
++    func omittedPresentationNotesRemainCompatible() throws {
++        let original = try Data(contentsOf: ComponentTests.root.appendingPathComponent("Fixtures/links.sample.json"))
++        #expect(try JSONDecoder().decode(LinksResult.self, from: original).notes.isEmpty)
++    }
++
++    @MainActor @Test
++    func refreshingInvalidatesAnInFlightPreview() async {
++        let engine = DeferredContinueEngine()
++        let model = PopoverViewModel(engine: engine)
++        await model.refresh()
++        let slow = Task { await model.continueIn(tool: "codex") }
++        await engine.waitUntilBlocked()
++        await model.refresh()
++        await engine.release()
++        await slow.value
++        #expect(model.plan == nil)
++    }
++
++    @MainActor @Test
++    func continuePreviewRendersInBothThemes() async throws {
++        try FileManager.default.createDirectory(at: ComponentTests.root.appendingPathComponent("Snapshots"), withIntermediateDirectories: true)
++        let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_waiting"))
++        await model.refresh()
++        await model.continueIn(tool: "codex")
++        #expect(model.plan?.steps.count == 1)
++        #expect(model.plan?.notes.first?.id == "write.chat_open")
++        let plan = try #require(model.plan)
++        let step = try #require(plan.steps.first)
++        #expect(PlanSteps(steps: plan.steps, excludingNotes: plan.notes).displayedNotes(for: step).isEmpty)
++        var changedStep = step
++        changedStep.notes[0].text += "!"
++        #expect(PlanSteps(steps: plan.steps, excludingNotes: plan.notes).displayedNotes(for: changedStep) == changedStep.notes)
++        for theme in Theme.allCases {
++            let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme))
++            renderer.scale = 2
++            let image = try #require(renderer.nsImage)
++            let tiff = try #require(image.tiffRepresentation)
++            let bitmap = try #require(NSBitmapImageRep(data: tiff))
++            let png = try #require(bitmap.representation(using: .png, properties: [:]))
++            #expect(!png.isEmpty)
++            try png.write(to: ComponentTests.root.appendingPathComponent("Snapshots/D2-continue_preview-\(theme.rawValue).png"))
++        }
++    }
++
++    @MainActor @Test
++    func snapshotsAllEightStatesInBothThemes() async throws {
++        let output = ComponentTests.root.appendingPathComponent("Snapshots")
++        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
++        for state in Self.states {
++            let model = PopoverViewModel(engine: FixtureEngine(directory: ComponentTests.root.appendingPathComponent("Fixtures"), state: "d2_" + state))
++            await model.refresh()
++            #expect(model.links.isEmpty == (state == "no_links"))
++            #expect(model.needsDecision == (state == "decision_needed"))
++            #expect(model.suggestions.count == (state == "no_links" ? 0 : 1))
++            #expect(!model.notes.isEmpty)
++            await model.continueIn(tool: "codex")
++            switch state {
++            case "no_links": #expect(model.plan == nil)
++            case "in_sync", "one_side_ahead":
++                #expect(model.plan?.steps.isEmpty == true)
++                #expect(model.plan?.notes.first?.id == "nothing_unusual")
++            case "paused", "decision_needed", "setup_incomplete":
++                #expect(model.plan?.steps.first?.action == "hold")
++            case "waiting": #expect(model.plan?.steps.first?.action == "attach")
++            case "relaunch_needed":
++                #expect(model.plan?.steps.isEmpty == true)
++                #expect(model.plan?.notes.first?.id == "relaunch_to_see")
++            default: Issue.record("Unregistered fixture state")
++            }
++            if let id = model.selectedLinkID { model.select(linkID: id) }
++            for theme in Theme.allCases {
++                let renderer = ImageRenderer(content: PopoverView(model: model).batonTheme(theme))
++                renderer.scale = 2
++                let image = try #require(renderer.nsImage)
++                #expect(image.size.width > 0 && image.size.height > 0)
++                let tiff = try #require(image.tiffRepresentation)
++                let bitmap = try #require(NSBitmapImageRep(data: tiff))
++                let png = try #require(bitmap.representation(using: .png, properties: [:]))
++                #expect(!png.isEmpty)
++                try png.write(to: output.appendingPathComponent("D2-\(state)-\(theme.rawValue).png"))
++            }
++        }
++    }
++}
+diff --git a/app/Fixtures/continue.d2_decision_needed.json b/app/Fixtures/continue.d2_decision_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_decision_needed.json
+@@ -0,0 +1,51 @@
++{
++  "plan_id": "p_d2_decision_needed",
++  "applied": false,
++  "link_id": 3,
++  "steps": [
++    {
++      "tool": "codex",
++      "action": "hold",
++      "turns": [
++        41,
++        42
++      ],
++      "reason": "decision_needed",
++      "needs": [],
++      "notes": [
++        {
++          "id": "merge.decision_needed",
++          "tone": "warning",
++          "values": {},
++          "text": "Both sides have turns the other never received. A decision is needed.",
++          "buttons": [
++            {
++              "id": "merge_show",
++              "label": "Decide",
++              "primary": true
++            }
++          ],
++          "status_line": "A decision is needed"
++        }
++      ]
++    }
++  ],
++  "decision_needed": true,
++  "notes": [
++    {
++      "id": "merge.decision_needed",
++      "tone": "warning",
++      "values": {},
++      "text": "Both sides have turns the other never received. A decision is needed.",
++      "buttons": [
++        {
++          "id": "merge_show",
++          "label": "Decide",
++          "primary": true
++        }
++      ],
++      "status_line": "A decision is needed"
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_in_sync.json b/app/Fixtures/continue.d2_in_sync.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_in_sync.json
+@@ -0,0 +1,18 @@
++{
++  "plan_id": "p_d2_in_sync",
++  "applied": false,
++  "link_id": 3,
++  "steps": [],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "nothing_unusual",
++      "tone": "info",
++      "values": {},
++      "text": "Nothing unusual.",
++      "buttons": [],
++      "status_line": null
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_no_links.json b/app/Fixtures/continue.d2_no_links.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_no_links.json
+@@ -0,0 +1,18 @@
++{
++  "plan_id": "p_d2_no_links",
++  "applied": false,
++  "link_id": null,
++  "steps": [],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_one_side_ahead.json b/app/Fixtures/continue.d2_one_side_ahead.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_one_side_ahead.json
+@@ -0,0 +1,18 @@
++{
++  "plan_id": "p_d2_one_side_ahead",
++  "applied": false,
++  "link_id": 3,
++  "steps": [],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "nothing_unusual",
++      "tone": "info",
++      "values": {},
++      "text": "Nothing unusual.",
++      "buttons": [],
++      "status_line": null
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_paused.json b/app/Fixtures/continue.d2_paused.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_paused.json
+@@ -0,0 +1,55 @@
++{
++  "plan_id": "p_d2_paused",
++  "applied": false,
++  "link_id": 3,
++  "steps": [
++    {
++      "tool": "codex",
++      "action": "hold",
++      "turns": [
++        41,
++        42
++      ],
++      "reason": "paused",
++      "needs": [],
++      "notes": [
++        {
++          "id": "link.paused",
++          "tone": "info",
++          "values": {
++            "n": 2
++          },
++          "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
++          "buttons": [
++            {
++              "id": "resume",
++              "label": "Resume",
++              "primary": true
++            }
++          ],
++          "status_line": "Paused, 2 waiting"
++        }
++      ]
++    }
++  ],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "link.paused",
++      "tone": "info",
++      "values": {
++        "n": 2
++      },
++      "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
++      "buttons": [
++        {
++          "id": "resume",
++          "label": "Resume",
++          "primary": true
++        }
++      ],
++      "status_line": "Paused, 2 waiting"
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_relaunch_needed.json b/app/Fixtures/continue.d2_relaunch_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_relaunch_needed.json
+@@ -0,0 +1,27 @@
++{
++  "plan_id": "p_d2_relaunch_needed",
++  "applied": false,
++  "link_id": 3,
++  "steps": [],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "relaunch_to_see",
++      "tone": "info",
++      "values": {
++        "tool": "claude",
++        "n": 2
++      },
++      "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
++      "buttons": [
++        {
++          "id": "relaunch",
++          "label": "Relaunch claude",
++          "primary": true
++        }
++      ],
++      "status_line": "Relaunch claude to see 2 new turns"
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_setup_incomplete.json b/app/Fixtures/continue.d2_setup_incomplete.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_setup_incomplete.json
+@@ -0,0 +1,43 @@
++{
++  "plan_id": "p_d2_setup_incomplete",
++  "applied": false,
++  "link_id": 3,
++  "steps": [
++    {
++      "tool": "codex",
++      "action": "hold",
++      "turns": [
++        41,
++        42
++      ],
++      "reason": "hooks_not_ready",
++      "needs": [],
++      "notes": [
++        {
++          "id": "setup.trust_once",
++          "tone": "info",
++          "values": {
++            "tool": "codex"
++          },
++          "text": "In codex, type /hooks and trust Baton's two entries.",
++          "buttons": [],
++          "status_line": "Setup: 1 step left"
++        }
++      ]
++    }
++  ],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "setup.trust_once",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "In codex, type /hooks and trust Baton's two entries.",
++      "buttons": [],
++      "status_line": "Setup: 1 step left"
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/continue.d2_waiting.json b/app/Fixtures/continue.d2_waiting.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/continue.d2_waiting.json
+@@ -0,0 +1,57 @@
++{
++  "plan_id": "p_d2_waiting",
++  "applied": false,
++  "link_id": 3,
++  "steps": [
++    {
++      "tool": "codex",
++      "action": "attach",
++      "turns": [
++        41,
++        42
++      ],
++      "reason": "chat_open",
++      "needs": [],
++      "notes": [
++        {
++          "id": "write.chat_open",
++          "tone": "info",
++          "values": {
++            "tool": "codex",
++            "n": 2
++          },
++          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
++          "buttons": [
++            {
++              "id": "close_sync_reopen",
++              "label": "Close codex, sync, reopen",
++              "primary": true
++            }
++          ],
++          "status_line": "2 turns waiting, attached on next message"
++        }
++      ]
++    }
++  ],
++  "decision_needed": false,
++  "notes": [
++    {
++      "id": "write.chat_open",
++      "tone": "info",
++      "values": {
++        "tool": "codex",
++        "n": 2
++      },
++      "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch codex.",
++      "buttons": [
++        {
++          "id": "close_sync_reopen",
++          "label": "Close codex, sync, reopen",
++          "primary": true
++        }
++      ],
++      "status_line": "2 turns waiting, attached on next message"
++    }
++  ],
++  "opened": false
++}
+diff --git a/app/Fixtures/links.d2_decision_needed.json b/app/Fixtures/links.d2_decision_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_decision_needed.json
+@@ -0,0 +1,81 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "merge.decision_needed",
++        "tone": "warning",
++        "values": {},
++        "text": "Both sides have turns the other never received. A decision is needed.",
++        "buttons": [
++          {
++            "id": "merge_show",
++            "label": "Decide",
++            "primary": true
++          }
++        ],
++        "status_line": "A decision is needed"
++      },
++      "in_sync": false,
++      "decision_needed": true
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_in_sync.json b/app/Fixtures/links.d2_in_sync.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_in_sync.json
+@@ -0,0 +1,75 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "status.in_sync",
++        "tone": "ok",
++        "values": {},
++        "text": "In sync",
++        "buttons": [],
++        "status_line": null
++      },
++      "in_sync": true,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_no_links.json b/app/Fixtures/links.d2_no_links.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_no_links.json
+@@ -0,0 +1,41 @@
++{
++  "links": [],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_one_side_ahead.json b/app/Fixtures/links.d2_one_side_ahead.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_one_side_ahead.json
+@@ -0,0 +1,78 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Orchard tests",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "status.ahead",
++        "tone": "info",
++        "values": {
++          "tool": "codex",
++          "n": 2
++        },
++        "text": "codex is 2 turns ahead",
++        "buttons": [],
++        "status_line": null
++      },
++      "in_sync": false,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_paused.json b/app/Fixtures/links.d2_paused.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_paused.json
+@@ -0,0 +1,83 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": true,
++      "headline": {
++        "id": "link.paused",
++        "tone": "info",
++        "values": {
++          "n": 2
++        },
++        "text": "Syncing is paused for this chat. Nothing is sent either way until you resume. 2 turns are waiting.",
++        "buttons": [
++          {
++            "id": "resume",
++            "label": "Resume",
++            "primary": true
++          }
++        ],
++        "status_line": "Paused, 2 waiting"
++      },
++      "in_sync": false,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_relaunch_needed.json b/app/Fixtures/links.d2_relaunch_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_relaunch_needed.json
+@@ -0,0 +1,84 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "relaunch_to_see",
++        "tone": "info",
++        "values": {
++          "tool": "claude",
++          "n": 2
++        },
++        "text": "The agent has these 2 turns. Relaunch claude to see them as normal messages.",
++        "buttons": [
++          {
++            "id": "relaunch",
++            "label": "Relaunch claude",
++            "primary": true
++          }
++        ],
++        "status_line": "Relaunch claude to see 2 new turns"
++      },
++      "in_sync": false,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_setup_incomplete.json b/app/Fixtures/links.d2_setup_incomplete.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_setup_incomplete.json
+@@ -0,0 +1,77 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "setup.trust_once",
++        "tone": "info",
++        "values": {
++          "tool": "codex"
++        },
++        "text": "In codex, type /hooks and trust Baton's two entries.",
++        "buttons": [],
++        "status_line": "Setup: 1 step left"
++      },
++      "in_sync": false,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/links.d2_waiting.json b/app/Fixtures/links.d2_waiting.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/links.d2_waiting.json
+@@ -0,0 +1,75 @@
++{
++  "links": [
++    {
++      "link_id": 3,
++      "sides": {
++        "claude": {
++          "tool": "claude",
++          "id": "sample-a",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        },
++        "codex": {
++          "tool": "codex",
++          "id": "sample-b",
++          "name": "Imaginary orchard",
++          "folder": "/tmp/baton-sample",
++          "updated_at": "2026-10-04T14:05:00Z",
++          "linked": true
++        }
++      },
++      "mode": "full_copy",
++      "paused": false,
++      "headline": {
++        "id": "turn.waiting",
++        "tone": "info",
++        "values": {},
++        "text": "Waiting",
++        "buttons": [],
++        "status_line": null
++      },
++      "in_sync": false,
++      "decision_needed": false
++    }
++  ],
++  "notes": [
++    {
++      "id": "screen.empty",
++      "tone": "info",
++      "values": {},
++      "text": "No linked chats yet",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.link_recent",
++      "tone": "info",
++      "values": {},
++      "text": "Link a recent chat",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "claude"
++      },
++      "text": "Continue in claude",
++      "buttons": [],
++      "status_line": null
++    },
++    {
++      "id": "screen.continue",
++      "tone": "info",
++      "values": {
++        "tool": "codex"
++      },
++      "text": "Continue in codex",
++      "buttons": [],
++      "status_line": null
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_decision_needed.json b/app/Fixtures/suggestions.d2_decision_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_decision_needed.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_in_sync.json b/app/Fixtures/suggestions.d2_in_sync.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_in_sync.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_no_links.json b/app/Fixtures/suggestions.d2_no_links.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_no_links.json
+@@ -0,0 +1,3 @@
++{
++  "suggestions": []
++}
+diff --git a/app/Fixtures/suggestions.d2_one_side_ahead.json b/app/Fixtures/suggestions.d2_one_side_ahead.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_one_side_ahead.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_paused.json b/app/Fixtures/suggestions.d2_paused.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_paused.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_relaunch_needed.json b/app/Fixtures/suggestions.d2_relaunch_needed.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_relaunch_needed.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_setup_incomplete.json b/app/Fixtures/suggestions.d2_setup_incomplete.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_setup_incomplete.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}
+diff --git a/app/Fixtures/suggestions.d2_waiting.json b/app/Fixtures/suggestions.d2_waiting.json
+new file mode 100644
+--- /dev/null
++++ b/app/Fixtures/suggestions.d2_waiting.json
+@@ -0,0 +1,23 @@
++{
++  "suggestions": [
++    {
++      "a": {
++        "tool": "claude",
++        "id": "sample-a",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "b": {
++        "tool": "codex",
++        "id": "sample-b",
++        "name": "Imaginary orchard",
++        "folder": "/tmp/baton-sample",
++        "updated_at": "2026-10-04T14:05:00Z",
++        "linked": true
++      },
++      "matched_turns": 1
++    }
++  ]
++}

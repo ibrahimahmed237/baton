@@ -1,0 +1,1270 @@
+{
+  "notes": [
+    {
+      "buttons": [],
+      "id": "dialog.link",
+      "status_line": null,
+      "text": "Link a chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.target",
+      "status_line": null,
+      "text": "Tool",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.target_chat",
+      "status_line": null,
+      "text": "Chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.new_chat",
+      "status_line": null,
+      "text": "New chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.retained_side",
+      "status_line": null,
+      "text": "Keep this side",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.ways",
+      "status_line": null,
+      "text": "Ways to link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "dialog.what_will_happen",
+      "status_line": null,
+      "text": "What will happen",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "create",
+          "label": "Create",
+          "primary": true
+        },
+        {
+          "id": "copy_without_linking",
+          "label": "Copy without linking",
+          "primary": false
+        },
+        {
+          "id": "copy_and_link",
+          "label": "Copy and link",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        },
+        {
+          "id": "change_link",
+          "label": "Change the link",
+          "primary": false
+        },
+        {
+          "id": "full_copy",
+          "label": "Create a full copy",
+          "primary": false
+        }
+      ],
+      "id": "dialog.actions",
+      "status_line": null,
+      "text": "Link a chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "choose_chat",
+          "label": "Choose chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.choose_counterpart",
+      "status_line": null,
+      "text": "Choose the other chat before continuing.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.settings",
+      "status_line": null,
+      "text": "Settings",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.open_window",
+      "status_line": null,
+      "text": "Open Baton",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.quit",
+      "status_line": null,
+      "text": "Quit Baton…",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "quit.title",
+      "status_line": null,
+      "text": "Quit Baton?",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "quit.confirm",
+      "status_line": null,
+      "text": "Baton will close. Your saved settings will be kept.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_here",
+      "status_line": null,
+      "text": "Position in this conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_both",
+      "status_line": null,
+      "text": "Both agents reached this turn.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_hidden",
+      "status_line": null,
+      "text": "Position outside this view",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Keep Baton open",
+          "primary": true
+        },
+        {
+          "id": "quit",
+          "label": "Quit Baton",
+          "primary": false
+        }
+      ],
+      "id": "quit.actions",
+      "status_line": null,
+      "text": "Quit Baton?",
+      "tone": "warning",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme",
+      "status_line": null,
+      "text": "Appearance",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.light",
+      "status_line": null,
+      "text": "Light",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.graphite",
+      "status_line": null,
+      "text": "Dark",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.theme.system",
+      "status_line": null,
+      "text": "System",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.chats",
+      "status_line": null,
+      "text": "Chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.links",
+      "status_line": null,
+      "text": "Links",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.sync_status",
+      "status_line": null,
+      "text": "Sync status",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.turn_by_turn",
+      "status_line": null,
+      "text": "Turn by turn",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.conversation",
+      "status_line": null,
+      "text": "Conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.conversation_guide",
+      "status_line": null,
+      "text": "An agent may have a turn even when its chat does not show it.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.empty",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.list_empty",
+      "status_line": null,
+      "text": "No items yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.popover.title",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.popover.body",
+      "status_line": null,
+      "text": "Choose Link a recent chat to find a conversation to link.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.linked.title",
+      "status_line": null,
+      "text": "No linked chats yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.linked.body",
+      "status_line": null,
+      "text": "Choose a chat from the sidebar to link it with another coding agent.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.attention.title",
+      "status_line": null,
+      "text": "Nothing needs your attention",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.attention.body",
+      "status_line": null,
+      "text": "Chats that need a decision or another step appear here.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.suggestions.title",
+      "status_line": null,
+      "text": "No suggested links yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.suggestions.body",
+      "status_line": null,
+      "text": "Choose a chat from the sidebar to make a link yourself.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.chats.title",
+      "status_line": null,
+      "text": "No chats found",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.chats.body",
+      "status_line": null,
+      "text": "Start a chat in this app, then refresh Baton.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.activity.title",
+      "status_line": null,
+      "text": "No activity yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.activity.body",
+      "status_line": null,
+      "text": "Syncs and changes to your links appear here.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_link.title",
+      "status_line": null,
+      "text": "Choose a linked conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_link.body",
+      "status_line": null,
+      "text": "Select a pair from the sidebar to see what each agent has received and what is waiting.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_chat.title",
+      "status_line": null,
+      "text": "Choose a chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_chat.body",
+      "status_line": null,
+      "text": "Select a chat to link it with another agent or copy its history.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_suggestion.title",
+      "status_line": null,
+      "text": "Choose a suggested link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_suggestion.body",
+      "status_line": null,
+      "text": "Select a pair to see the two conversations.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_activity.title",
+      "status_line": null,
+      "text": "Choose an activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.select_activity.body",
+      "status_line": null,
+      "text": "Select an entry to see its linked conversation and what changed.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.conversation.title",
+      "status_line": null,
+      "text": "No conversation turns yet",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.conversation.body",
+      "status_line": null,
+      "text": "Turns appear here after a conversation has been recorded.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.filtered.title",
+      "status_line": null,
+      "text": "No turns match this filter",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "empty.filtered.body",
+      "status_line": null,
+      "text": "The conversation is still here. Show all turns to see it.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_all_turns",
+      "status_line": null,
+      "text": "Show all turns",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.search",
+      "status_line": null,
+      "text": "Search chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.link",
+      "status_line": null,
+      "text": "Link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.link_recent",
+      "status_line": null,
+      "text": "Link a recent chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.linked",
+      "status_line": null,
+      "text": "Linked",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.attention",
+      "status_line": null,
+      "text": "Needs attention",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.suggestions",
+      "status_line": null,
+      "text": "Suggestions",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.activity",
+      "status_line": null,
+      "text": "Activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.history",
+      "status_line": null,
+      "text": "History",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.remove",
+      "status_line": null,
+      "text": "Remove link",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.setup",
+      "status_line": null,
+      "text": "Setup",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.copy",
+      "status_line": null,
+      "text": "Copy to…",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.resume",
+      "status_line": null,
+      "text": "Resume sync",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.pause",
+      "status_line": null,
+      "text": "Pause",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.refresh",
+      "status_line": null,
+      "text": "Refresh",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.decide",
+      "status_line": null,
+      "text": "Decide",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_reply",
+      "status_line": null,
+      "text": "Show full reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.all",
+      "status_line": null,
+      "text": "All",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.waiting",
+      "status_line": null,
+      "text": "Waiting",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.attached",
+      "status_line": null,
+      "text": "Attached",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.kept",
+      "status_line": null,
+      "text": "Kept back",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "filter.pinned",
+      "status_line": null,
+      "text": "Pinned",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.show_tools",
+      "status_line": null,
+      "text": "Show tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.hide_tools",
+      "status_line": null,
+      "text": "Hide tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.hide_reply",
+      "status_line": null,
+      "text": "Hide full reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.prompt",
+      "status_line": null,
+      "text": "User",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.reply",
+      "status_line": null,
+      "text": "Reply",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_call",
+      "status_line": null,
+      "text": "Tool call",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_result",
+      "status_line": null,
+      "text": "Tool result",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "message.tool_text",
+      "status_line": null,
+      "text": "Tool activity",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.title",
+      "status_line": null,
+      "text": "Continue the conversation",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.sides",
+      "status_line": null,
+      "text": "Both chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.mode",
+      "status_line": null,
+      "text": "What to send",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.full",
+      "status_line": null,
+      "text": "Full history",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.full_help",
+      "status_line": null,
+      "text": "Send the original turns that are waiting.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.brief",
+      "status_line": null,
+      "text": "Brief in a new chat",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.brief_help",
+      "status_line": null,
+      "text": "Start a fresh chat with a summary, important turns and saved history.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.writer",
+      "status_line": null,
+      "text": "Who writes the brief",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "automatic",
+          "label": "Automatic",
+          "primary": true
+        },
+        {
+          "id": "offline",
+          "label": "Offline",
+          "primary": false
+        }
+      ],
+      "id": "handoff.writer_choices",
+      "status_line": null,
+      "text": "Choose how to write the brief.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "handoff.preview",
+      "status_line": null,
+      "text": "Review before continuing",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "review",
+          "label": "Review",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "handoff.actions",
+      "status_line": null,
+      "text": "Review your choice.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in Claude",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All Claude chats",
+      "tone": "info",
+      "values": {
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in Codex",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All Codex chats",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.continue",
+      "status_line": null,
+      "text": "Continue in OpenCode",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.all_chats",
+      "status_line": null,
+      "text": "All OpenCode chats",
+      "tone": "info",
+      "values": {
+        "tool": "OpenCode"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "facts": {
+        "added_turn_visible": "after_relaunch",
+        "can_cut": true,
+        "can_place": false,
+        "can_release_chat": true,
+        "checked_versions": [
+          "fake-1"
+        ],
+        "context_size_known": true,
+        "hooks_need": "none",
+        "limit_has_reset_time": true,
+        "new_chat_visible": "after_relaunch",
+        "opens_at_chat": true,
+        "replays_tool_calls": true,
+        "write_window": "closed_or_released"
+      },
+      "findings": [
+        {
+          "id": "format",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {}
+          },
+          "ok": true
+        },
+        {
+          "id": "hooks",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "need": "none",
+              "tool": "Claude"
+            }
+          },
+          "ok": true
+        },
+        {
+          "id": "runner",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "tool": "Claude"
+            }
+          },
+          "ok": true
+        }
+      ],
+      "installed": true,
+      "link_modes": [
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.full_copy",
+            "status_line": null,
+            "text": "Copy the full history",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "full_copy",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.attached_history",
+            "status_line": null,
+            "text": "Start now, history attached",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "attached_history",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.brief",
+            "status_line": null,
+            "text": "Brief in a new chat",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "brief",
+          "reason": null,
+          "tag": null
+        }
+      ],
+      "ready": true,
+      "tool": "claude",
+      "tool_label": "Claude",
+      "version": "fake-1"
+    },
+    {
+      "facts": {
+        "added_turn_visible": "at_once",
+        "can_cut": false,
+        "can_place": false,
+        "can_release_chat": false,
+        "checked_versions": [
+          "fake-1"
+        ],
+        "context_size_known": true,
+        "hooks_need": "trust_once",
+        "limit_has_reset_time": true,
+        "new_chat_visible": "at_once",
+        "opens_at_chat": true,
+        "replays_tool_calls": false,
+        "write_window": "not_held"
+      },
+      "findings": [
+        {
+          "id": "format",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {}
+          },
+          "ok": true
+        },
+        {
+          "id": "hooks",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "need": "trust_once",
+              "tool": "Codex"
+            }
+          },
+          "ok": true
+        },
+        {
+          "id": "runner",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "tool": "Codex"
+            }
+          },
+          "ok": true
+        }
+      ],
+      "installed": true,
+      "link_modes": [
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.full_copy",
+            "status_line": null,
+            "text": "Copy the full history",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "full_copy",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.attached_history",
+            "status_line": null,
+            "text": "Start now, history attached",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "attached_history",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.brief",
+            "status_line": null,
+            "text": "Brief in a new chat",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "brief",
+          "reason": null,
+          "tag": null
+        }
+      ],
+      "ready": true,
+      "tool": "codex",
+      "tool_label": "Codex",
+      "version": "fake-1"
+    },
+    {
+      "facts": {
+        "added_turn_visible": "on_reopen_chat",
+        "can_cut": true,
+        "can_place": true,
+        "can_release_chat": false,
+        "checked_versions": [
+          "fake-1"
+        ],
+        "context_size_known": false,
+        "hooks_need": "restart_once",
+        "limit_has_reset_time": false,
+        "new_chat_visible": "at_once",
+        "opens_at_chat": false,
+        "replays_tool_calls": true,
+        "write_window": "any_time"
+      },
+      "findings": [
+        {
+          "id": "format",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {}
+          },
+          "ok": true
+        },
+        {
+          "id": "hooks",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "need": "restart_once",
+              "tool": "OpenCode"
+            }
+          },
+          "ok": true
+        },
+        {
+          "id": "runner",
+          "note": {
+            "buttons": [],
+            "id": "nothing_unusual",
+            "status_line": null,
+            "text": "Nothing unusual.",
+            "tone": "info",
+            "values": {
+              "tool": "OpenCode"
+            }
+          },
+          "ok": true
+        }
+      ],
+      "installed": true,
+      "link_modes": [
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.full_copy",
+            "status_line": null,
+            "text": "Copy the full history",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "full_copy",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.attached_history",
+            "status_line": null,
+            "text": "Start now, history attached",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "attached_history",
+          "reason": null,
+          "tag": null
+        },
+        {
+          "available": true,
+          "label": {
+            "buttons": [],
+            "id": "mode.brief",
+            "status_line": null,
+            "text": "Brief in a new chat",
+            "tone": "info",
+            "values": {}
+          },
+          "mode": "brief",
+          "reason": null,
+          "tag": null
+        }
+      ],
+      "ready": true,
+      "tool": "opencode",
+      "tool_label": "OpenCode",
+      "version": "fake-1"
+    },
+    {
+      "facts": {},
+      "findings": [
+        {
+          "id": "adapter",
+          "note": {
+            "buttons": [],
+            "id": "setup.adapter_unavailable",
+            "status_line": null,
+            "text": "Baton cannot use Cursor yet.",
+            "tone": "warning",
+            "values": {
+              "tool": "Cursor"
+            }
+          },
+          "ok": false
+        }
+      ],
+      "installed": false,
+      "link_modes": [],
+      "ready": false,
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "version": null
+    }
+  ]
+}

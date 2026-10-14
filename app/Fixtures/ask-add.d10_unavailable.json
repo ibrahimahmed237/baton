@@ -1,0 +1,44 @@
+{
+  "answer": "Preserve the orchard decisions and finish the tests.",
+  "answer_id": "j_00000000000000000000000000000047",
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": true,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "ask.add_unavailable",
+      "status_line": null,
+      "text": "This chat cannot receive the second opinion yet. Close it and review a new add request.",
+      "tone": "warning",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_759e5374112e59e1d7810a1c395bbcc5",
+  "stage": "add",
+  "steps": [
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

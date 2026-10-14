@@ -1,0 +1,110 @@
+{
+  "facts": {
+    "added_turn_visible": "after_relaunch",
+    "can_cut": true,
+    "can_place": false,
+    "can_release_chat": true,
+    "checked_versions": [
+      "fake-1"
+    ],
+    "context_size_known": true,
+    "hooks_need": "none",
+    "limit_has_reset_time": true,
+    "new_chat_visible": "after_relaunch",
+    "opens_at_chat": true,
+    "replays_tool_calls": true,
+    "write_window": "closed_or_released"
+  },
+  "findings": [
+    {
+      "id": "format",
+      "note": {
+        "buttons": [],
+        "id": "nothing_unusual",
+        "status_line": null,
+        "text": "Nothing unusual.",
+        "tone": "info",
+        "values": {}
+      },
+      "ok": true
+    },
+    {
+      "id": "hooks",
+      "note": {
+        "buttons": [],
+        "id": "nothing_unusual",
+        "status_line": null,
+        "text": "Nothing unusual.",
+        "tone": "info",
+        "values": {
+          "need": "none",
+          "tool": "Claude"
+        }
+      },
+      "ok": true
+    },
+    {
+      "id": "runner",
+      "note": {
+        "buttons": [],
+        "id": "nothing_unusual",
+        "status_line": null,
+        "text": "Nothing unusual.",
+        "tone": "info",
+        "values": {
+          "tool": "Claude"
+        }
+      },
+      "ok": true
+    }
+  ],
+  "installed": true,
+  "link_modes": [
+    {
+      "available": true,
+      "label": {
+        "buttons": [],
+        "id": "mode.full_copy",
+        "status_line": null,
+        "text": "Copy the full history",
+        "tone": "info",
+        "values": {}
+      },
+      "mode": "full_copy",
+      "reason": null,
+      "tag": null
+    },
+    {
+      "available": true,
+      "label": {
+        "buttons": [],
+        "id": "mode.attached_history",
+        "status_line": null,
+        "text": "Start now, history attached",
+        "tone": "info",
+        "values": {}
+      },
+      "mode": "attached_history",
+      "reason": null,
+      "tag": null
+    },
+    {
+      "available": true,
+      "label": {
+        "buttons": [],
+        "id": "mode.brief",
+        "status_line": null,
+        "text": "Brief in a new chat",
+        "tone": "info",
+        "values": {}
+      },
+      "mode": "brief",
+      "reason": null,
+      "tag": null
+    }
+  ],
+  "ready": true,
+  "tool": "claude",
+  "tool_label": "Claude",
+  "version": "fake-1"
+}

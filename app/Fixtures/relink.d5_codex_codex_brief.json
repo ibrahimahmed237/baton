@@ -1,0 +1,100 @@
+{
+  "applied": false,
+  "brief": {
+    "artifact_id": "",
+    "candidate_estimates": [
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "codex"
+      },
+      {
+        "input_fingerprint": "b6e807092555dce64f85982f99dcfba042302ab7f19e18c572795e222b85e165",
+        "tokens": 156,
+        "writer": "claude"
+      }
+    ],
+    "estimated_tokens": 312,
+    "pinned": [],
+    "pinned_tokens": 0,
+    "summary": "",
+    "text": "",
+    "tokens": 0,
+    "writer": "codex"
+  },
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Generate brief",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_brief_generation",
+    "status_line": null,
+    "text": "Generate a read-only brief using the writers and estimated costs above. Review the result before creating a chat.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Codex can write this brief and can read the project folder. It cannot change anything. About 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "Codex",
+        "writer_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.cost",
+      "status_line": null,
+      "text": "Claude can write this brief and can read the project folder. It cannot change anything. About 156 tokens.",
+      "tone": "info",
+      "values": {
+        "tokens": 156,
+        "tool": "Claude",
+        "writer_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "brief.total_cost",
+      "status_line": null,
+      "text": "If fallback is needed, the listed requests total about 312 tokens. Each writer is tried at most once.",
+      "tone": "info",
+      "values": {
+        "tokens": 312
+      }
+    }
+  ],
+  "plan_id": "p_b221ab3721ef113f551eda362f134e3f",
+  "stage": "generate",
+  "steps": [
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": [
+        41,
+        42,
+        43,
+        44
+      ]
+    }
+  ]
+}

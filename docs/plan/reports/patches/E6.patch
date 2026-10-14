@@ -1,0 +1,1081 @@
+diff --git a/baton/services/linker.py b/baton/services/linker.py
+new file mode 100644
+--- /dev/null
++++ b/baton/services/linker.py
+@@ -0,0 +1,387 @@
++"""Confirmed linking and copying without changing either existing chat."""
++from __future__ import annotations
++
++from copy import deepcopy
++from dataclasses import asdict, dataclass, replace
++from datetime import datetime
++from difflib import SequenceMatcher
++from hashlib import sha256
++import json
++from itertools import combinations
++from typing import Mapping
++
++from ..domain.capabilities import Visibility, WriteWindow
++from ..domain.errors import AlreadyLinked, ChatChanged, NotAvailable
++from ..domain.link import ADDED, SHOWN, WAITING, WRITTEN_HERE, KEPT_BACK, SKIPPED
++from ..domain.model import Message, Turn
++from ..ports.clock import Clock
++from ..ports.store import RecordStore
++from ..ports.tool import ToolAdapter
++from ..notes.catalogue import get
++from .journal import Guard, Journal
++from .mapping import content_key, for_created_chat, title
++
++
++@dataclass(frozen=True)
++class LinkPlan:
++    """A fingerprinted link action with complete observations and creation payload."""
++    plan_id: str
++    action: str
++    source: str
++    target: str
++    mode: str
++    observations: dict
++    records: list
++    turns: tuple = ()
++    name: str = ''
++    folder: str = ''
++    needs: tuple[str, ...] = ()
++    old_link_id: int | None = None
++    and_link: bool = True
++    turn_ids: tuple[int, ...] = ()
++
++
++@dataclass(frozen=True)
++class LinkResult:
++    """A completed metadata change or an explicit failed creation outcome."""
++    plan_id: str
++    applied: bool
++    chat_id: str = ''
++    link_id: int | None = None
++    needs: tuple[str, ...] = ()
++    error: str = ''
++    rollback_error: str = ''
++    pending_entry: int | None = None
++
++
++def _fingerprint(data: dict) -> str:
++    return 'p_' + sha256(json.dumps(data,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
++
++
++class Linker:
++    """Preview, confirm and atomically record link changes and new copies."""
++    def __init__(self, store: RecordStore, adapters: Mapping[str, ToolAdapter], clock: Clock):
++        self.store, self.adapters, self.clock = store, adapters, clock
++        self.guard = Guard(store)
++        self.journal = Journal(store,adapters,clock)
++        self.recovery = self.journal.recover()
++
++    def _records(self) -> list:
++        return [{'link':asdict(link),'turns':[asdict(t) for t in self.store.turns(link.id)]}
++                for link in self.store.links()]
++
++    def _observe(self, side: str, chat_id: str | None, allow_missing: bool = False,
++                 metadata_only: bool = False) -> dict:
++        adapter = self.adapters[side]
++        facts = {k:getattr(v,'value',v) for k,v in asdict(adapter.facts).items()}
++        base = {'facts':facts,'format':asdict(adapter.state.format_version()),'running':adapter.app.running()}
++        if chat_id is None:
++            return base
++        try:
++            ref = adapter.locator.resolve(chat_id)
++        except KeyError:
++            if not allow_missing:
++                raise
++            condition = asdict(adapter.state.condition(chat_id))
++            condition['exists'] = False
++            return dict(base,missing_chat_id=chat_id,condition=condition,metadata_only=metadata_only)
++        observed = dict(base,ref=asdict(ref),condition=asdict(adapter.state.condition(ref.id)))
++        if metadata_only:
++            return dict(observed,metadata_only=True)
++        return dict(observed,turns=[asdict(t) for t in adapter.reader.read(ref.id)])
++
++    def _free(self, side: str, chat: str, replacing: int | None = None) -> None:
++        linked = self.store.link_for(side,chat)
++        if linked is not None and linked.id != replacing:
++            raise AlreadyLinked(side,linked)
++
++    def _plan(self, record_snapshot: dict | None = None, **values) -> LinkPlan:
++        values['records'] = self._records()
++        if record_snapshot is not None:
++            current = next((r for r in values['records'] if r['link']['id'] == record_snapshot['link']['id']),None)
++            if current != record_snapshot:
++                raise ChatChanged()
++            # The payload's exact record snapshot, rather than a newer read, is confirmed.
++            values['records'] = [record_snapshot if r['link']['id']==record_snapshot['link']['id'] else r
++                                 for r in values['records']]
++        plan = LinkPlan('',**deepcopy(values))
++        data = asdict(plan)
++        data.pop('plan_id')
++        return replace(plan,plan_id=_fingerprint(data))
++
++    def plan_link(self, from_side: str, from_chat: str, to_tool: str,
++                  to_chat: str | None = None, mode: str = 'full_copy',
++                  title_tag: bool = True) -> LinkPlan:
++        """Preview an existing-pair link or a newly created full-history twin."""
++        return self._link_plan(from_side,from_chat,to_tool,to_chat,mode,title_tag)
++
++    def _link_plan(self, source: str, chat: str, target: str, target_chat: str | None,
++                   mode: str, title_tag: bool, old_link_id: int | None = None,
++                   and_link: bool = True) -> LinkPlan:
++        if source == target or source not in self.adapters or target not in self.adapters:
++            raise NotAvailable()
++        if mode not in ('full_copy','attached_history'):
++            raise NotAvailable()
++        if target_chat is None and mode == 'attached_history':
++            raise NotAvailable()
++        try:
++            observations = {source:self._observe(source,chat),target:self._observe(target,target_chat)}
++        except KeyError:
++            raise NotAvailable() from None
++        source_ref = observations[source]['ref']
++        if and_link:
++            self._free(source,source_ref['id'],old_link_id)
++            if target_chat is not None:
++                self._free(target,observations[target]['ref']['id'],old_link_id)
++        source_condition = observations[source]['condition']
++        if not source_condition['exists'] or source_condition['replying']:
++            raise NotAvailable()
++        created = target_chat is None
++        needs = ()
++        payload = ()
++        if created:
++            facts = self.adapters[target].facts
++            needs = ('app_closed',) if facts.write_window == WriteWindow.APP_CLOSED else ()
++            if facts.new_chat_visible == Visibility.AFTER_RELAUNCH:
++                needs += ('relaunch_to_see',)
++            payload = tuple(for_created_chat(self._turns(observations[source]['turns']),facts))
++        elif not observations[target]['condition']['exists']:
++            raise NotAvailable()
++        return self._plan(action='create' if created else 'link',source=source,target=target,mode=mode,
++                          observations=observations,turns=payload,
++                          name=title(source_ref['name'],source,title_tag) if created else '',
++                          folder=source_ref['folder'] if created else '',needs=needs,
++                          old_link_id=old_link_id,and_link=and_link)
++
++    def already_linked_note(self, error: AlreadyLinked) -> dict:
++        """Name the existing partner and expose the catalogue's change-link actions."""
++        other = error.link.others(error.side)[0]
++        values = {'name':self.adapters[error.side].locator.name(error.link.chat(error.side)),
++                  'other_name':self.adapters[other].locator.name(error.link.chat(other)),
++                  'tool':other}
++        return get(error.note_id).to_dict(values)
++
++    def plan_copy(self, from_side: str, from_chat: str, to_tool: str,
++                  and_link: bool = False, title_tag: bool = True) -> LinkPlan:
++        """Preview a complete new copy, optionally linked to its source."""
++        plan = self._link_plan(from_side,from_chat,to_tool,None,'full_copy',title_tag,and_link=and_link)
++        linked = self.store.link_for(from_side,plan.observations[from_side]['ref']['id'])
++        if linked is not None and not and_link:
++            observations,payload,_,record_snapshot = self._conversation(linked.id,from_side)
++            data = asdict(plan)
++            data.pop('plan_id')
++            data['observations'].update(observations)
++            data['turns'] = tuple(for_created_chat(payload,self.adapters[to_tool].facts))
++            data['records'] = self._records()
++            return self._plan(record_snapshot=record_snapshot,**data)
++        return plan
++
++    @staticmethod
++    def _turns(values) -> list[Turn]:
++        return [Turn(Message(**t['prompt']),tuple(Message(**m) for m in t['messages'])) for t in values]
++
++    def _conversation(self, link_id: int, side: str):
++        link = self.store.get_link(link_id)
++        try:
++            observations = {s:self._observe(s,c) for s,c in link.chats.items()}
++        except KeyError:
++            raise NotAvailable() from None
++        if any(o['condition']['replying'] or not o['condition']['exists'] for o in observations.values()):
++            raise NotAvailable()
++        all_recorded = self.store.turns(link_id)
++        for origin,observed in observations.items():
++            known = set(self.store.local_ids(link_id,origin).values())
++            known.update(t.origin_id for t in all_recorded if t.origin == origin)
++            if any(t['prompt']['id'] not in known for t in observed['turns']):
++                # Refresh records new completed turns; read-only previews must not omit them.
++                raise ChatChanged()
++        recorded = [t for t in all_recorded if t.states[side] not in (KEPT_BACK,SKIPPED)]
++        originals = {s:{t.id:t for t in self._turns(o['turns'])} for s,o in observations.items()}
++        try:
++            payload = [originals[t.origin][t.origin_id] for t in recorded]
++        except KeyError:
++            raise ChatChanged() from None
++        from .applier import Applier
++        payload = [Applier._local_turn(turn,link_id,record.id) for turn,record in zip(payload,recorded)]
++        record_snapshot = {'link':asdict(link),'turns':[asdict(t) for t in all_recorded]}
++        return observations,payload,tuple(t.id for t in recorded),record_snapshot
++
++    def plan_full_copy(self, link_id: int, side: str, title_tag: bool = True) -> LinkPlan:
++        """Preview a full visible twin from both origins, moving the existing link."""
++        link = self.store.get_link(link_id)
++        if link.removed_at or side not in link.sides:
++            raise NotAvailable()
++        observations,payload,turn_ids,record_snapshot = self._conversation(link_id,side)
++        facts = self.adapters[side].facts
++        needs = ('app_closed',) if facts.write_window == WriteWindow.APP_CLOSED else ()
++        if facts.new_chat_visible == Visibility.AFTER_RELAUNCH:
++            needs += ('relaunch_to_see',)
++        mapped = tuple(for_created_chat(payload,facts))
++        other = link.others(side)[0]
++        ref = observations[side]['ref']
++        return self._plan(record_snapshot=record_snapshot,action='full_copy',source=other,target=side,mode='full_copy',
++                          observations=observations,turns=mapped,name=title(ref['name'],other,title_tag),
++                          folder=ref['folder'],needs=needs,old_link_id=link_id,
++                          turn_ids=turn_ids)
++
++    def plan_relink(self, link_id: int, to_tool: str, to_chat: str | None = None,
++                    mode: str = 'full_copy', from_side: str | None = None,
++                    title_tag: bool = True) -> LinkPlan:
++        """Preview replacing one partner while keeping both old chats intact."""
++        link = self.store.get_link(link_id)
++        if link.removed_at:
++            raise NotAvailable()
++        if from_side is None:
++            remaining = [side for side in link.sides if side != to_tool]
++            if len(remaining) != 1:
++                raise NotAvailable()
++            from_side = remaining[0]
++        if from_side not in link.sides or from_side == to_tool:
++            raise NotAvailable()
++        return self._link_plan(from_side,link.chat(from_side),to_tool,to_chat,mode,title_tag,link_id)
++
++    def plan_unlink(self, link_id: int) -> LinkPlan:
++        """Preview removal of a live link while leaving its chats intact."""
++        link = self.store.get_link(link_id)
++        if link.removed_at:
++            raise NotAvailable()
++        observations = {s:self._observe(s,c,allow_missing=True,metadata_only=True) for s,c in link.chats.items()}
++        return self._plan(action='unlink',source=link.sides[0],target=link.sides[1],mode=link.mode,
++                          observations=observations,old_link_id=link_id)
++
++    def _validate(self, plan: LinkPlan) -> None:
++        data = asdict(plan)
++        data.pop('plan_id')
++        if _fingerprint(data) != plan.plan_id or self._records() != plan.records:
++            raise ChatChanged()
++        if self.store.journal_entries(pending=True):
++            raise NotAvailable()
++        self._check_observations(plan)
++
++    def _check_observations(self, plan: LinkPlan) -> None:
++        for side,observed in plan.observations.items():
++            try:
++                missing = observed.get('missing_chat_id')
++                current = self._observe(side,missing or observed.get('ref',{}).get('id'),
++                                        allow_missing=plan.action == 'unlink',
++                                        metadata_only=bool(observed.get('metadata_only')))
++            except KeyError:
++                raise ChatChanged() from None
++            if current != observed:
++                raise ChatChanged()
++
++    @staticmethod
++    def _rows(source: str, target: str, source_turns, target_turns,
++              shared_state: str = SHOWN) -> list[dict]:
++        # Ordered matching keeps duplicate occurrences distinct and both local orders intact.
++        matcher = SequenceMatcher(None,[content_key(t) for t in source_turns],
++                                  [content_key(t) for t in target_turns],autojunk=False)
++        rows = []
++        a = b = 0
++        def row(side,turn,other_id=None):
++            local = {side:turn.id}
++            states = {side:WRITTEN_HERE,(target if side == source else source):WAITING}
++            if other_id is not None:
++                local[target] = other_id
++                states[target] = shared_state
++            rows.append({'origin':side,'turn':turn,'local_ids':local,'states':states})
++        for block in matcher.get_matching_blocks():
++            for turn in source_turns[a:block.a]: row(source,turn)
++            for turn in target_turns[b:block.b]: row(target,turn)
++            for offset in range(block.size):
++                row(source,source_turns[block.a+offset],target_turns[block.b+offset].id)
++            a,b = block.a+block.size,block.b+block.size
++        return rows
++
++    def apply(self, plan: LinkPlan, plan_id: str | None = None) -> LinkResult:
++        """Apply only a still-current preview, rolling back an uncommitted creation."""
++        self._validate(plan)
++        if plan_id is not None and plan_id != plan.plan_id:
++            raise ChatChanged()
++        if plan.action == 'unlink':
++            self.store.remove_link(plan.old_link_id,self.clock.now())
++            return LinkResult(plan.plan_id,True,link_id=plan.old_link_id)
++        source_turns = self._turns(plan.observations[plan.source]['turns'])
++        source_chat = plan.observations[plan.source]['ref']['id']
++        entry = None
++        try:
++            if plan.action in ('create','full_copy'):
++                adapter = self.adapters[plan.target]
++                self.guard.check_write(adapter,None,action='create')
++                entry = self.journal.begin(plan.old_link_id if plan.action == 'full_copy' else None,plan.target,None,'create')
++                result = adapter.writer.create(plan.turns,plan.name,plan.folder)
++                actual = adapter.reader.read(result.chat_id)
++                if (result.receipt.tool,result.receipt.chat_id,result.receipt.kind) != (plan.target,result.chat_id,'create'):
++                    raise ChatChanged()
++                if ([content_key(t) for t in actual] != [content_key(t) for t in plan.turns] or
++                        tuple(t.id for t in actual) != result.local_ids or
++                        len(set(result.local_ids)) != len(result.local_ids)):
++                    raise ChatChanged()
++                self._check_observations(plan)
++                if self._records() != plan.records:
++                    raise ChatChanged()
++                target_chat,target_turns = result.chat_id,actual
++                state = SHOWN if adapter.facts.new_chat_visible == Visibility.AT_ONCE else ADDED
++                receipt = asdict(result.receipt)
++            else:
++                target_chat = plan.observations[plan.target]['ref']['id']
++                target_turns = self._turns(plan.observations[plan.target]['turns'])
++                state,receipt = SHOWN,None
++            rows = self._rows(plan.source,plan.target,source_turns,target_turns,state)
++            if plan.action == 'full_copy':
++                link = self.store.complete_link_copy(plan.old_link_id,plan.target,target_chat,
++                                                     plan.turn_ids,result.local_ids,state,
++                                                     self.clock.now(),entry,receipt)
++                link_id = link.id
++            elif plan.and_link:
++                link = self.store.complete_link({plan.source:source_chat,plan.target:target_chat},
++                                                 plan.mode,rows,self.clock.now(),entry,receipt,plan.old_link_id)
++                link_id = link.id
++            else:
++                self.store.complete_copy(entry,receipt,self.clock.now())
++                link_id = None
++            return LinkResult(plan.plan_id,True,target_chat,link_id,plan.needs)
++        except Exception as error:
++            rollback_error,pending = '',None
++            if entry is not None:
++                self.journal.fail(entry,error)
++                try:
++                    self.journal.take_back(entry)
++                except Exception as rollback:
++                    rollback_error,pending = type(rollback).__name__,entry
++            return LinkResult(plan.plan_id,False,error=type(error).__name__,
++                              rollback_error=rollback_error,pending_entry=pending)
++
++    def copy_status(self, tool: str, chat_id: str) -> dict:
++        """Keep a deferred copy visibility instruction until a later app start."""
++        adapter = self.adapters[tool]
++        ref = adapter.locator.resolve(chat_id)
++        info = self.store.copy_info(tool,chat_id) or self.store.copy_info(tool,ref.id)
++        if info is None:
++            raise NotAvailable()
++        shown = bool(info['shown']) or adapter.facts.new_chat_visible == Visibility.AT_ONCE
++        if not shown:
++            try:
++                started = datetime.fromisoformat(adapter.state.condition(ref.id).app_started_at)
++                delivered = datetime.fromisoformat(info['delivered_at'])
++                shown = bool(started.tzinfo and delivered.tzinfo) and started > delivered
++            except (ValueError,TypeError):
++                pass
++        if shown:
++            self.store.mark_copy_shown(tool,info['chat_id'],self.clock.now())
++        return {'chat':ref,'shown':shown,'needs':() if shown else ('relaunch_to_see',)}
++
++    def suggestions(self) -> list[dict]:
++        """Suggest unlinked pairs by ordered public-content matches, never counts alone."""
++        result = []
++        for (a,first),(b,second) in combinations(self.adapters.items(),2):
++            for left in first.locator.chats():
++                if self.store.link_for(a,left.id): continue
++                one = [content_key(t) for t in first.reader.read(left.id)]
++                for right in second.locator.chats():
++                    if self.store.link_for(b,right.id): continue
++                    two = [content_key(t) for t in second.reader.read(right.id)]
++                    matched = sum(block.size for block in SequenceMatcher(None,one,two,autojunk=False).get_matching_blocks())
++                    if matched:
++                        result.append({'a':(a,left),'b':(b,right),'matched_turns':matched})
++        return result
+diff --git a/baton/domain/link.py b/baton/domain/link.py
+--- a/baton/domain/link.py
++++ b/baton/domain/link.py
+@@ -6,7 +6,9 @@
+ 
+ CLAUDE = "claude"
+ CODEX = "codex"
+-TOOLS = (CLAUDE, CODEX)
++OPENCODE = "opencode"
++CURSOR = "cursor"
++TOOLS = (CLAUDE, CODEX, OPENCODE, CURSOR)
+ 
+ # How a link was made (DESIGN.md, section 4).
+ FULL_COPY = "full_copy"
+diff --git a/baton/ports/store.py b/baton/ports/store.py
+--- a/baton/ports/store.py
++++ b/baton/ports/store.py
+@@ -106,3 +106,27 @@
+                        kind: str, local_ids: Sequence[str], detail: dict[str, Any] | None = None) -> int | None:
+         """Commit verified delivery metadata and the journal in one transaction."""
+         ...
++
++    def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
++                      entry_id: int | None = None, receipt: dict | None = None,
++                      replace_link_id: int | None = None) -> Link:
++        """Atomically align a new link, replace its predecessor and commit any creation."""
++        ...
++
++    def complete_link_copy(self, link_id: int, side: str, chat_id: str,
++                           turn_ids: Sequence[int], local_ids: Sequence[str], state: str,
++                           at: str, entry_id: int, receipt: dict) -> Link:
++        """Atomically move a full-copy twin while preserving conversation identity."""
++        ...
++
++    def copy_info(self, tool: str, chat_id: str) -> dict | None:
++        """Read durable creation time and visibility independently of rollback receipts."""
++        ...
++
++    def mark_copy_shown(self, tool: str, chat_id: str, at: str) -> None:
++        """Persist confirmed copy visibility without changing writer receipts."""
++        ...
++
++    def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
++        """Commit an unlinked creation and durable visibility metadata atomically."""
++        ...
+diff --git a/baton/ledger/sqlite_store.py b/baton/ledger/sqlite_store.py
+--- a/baton/ledger/sqlite_store.py
++++ b/baton/ledger/sqlite_store.py
+@@ -91,6 +91,7 @@
+         self.db.execute("pragma foreign_keys = on")
+         self.db.executescript(_SCHEMA)
+         self.db.executescript(JOURNAL_SCHEMA)
++        self.db.execute("create table if not exists created_copies(tool text not null, chat_id text not null, delivered_at text not null, shown integer not null default 0, seen_at text, primary key(tool,chat_id))")
+         self.db.execute("pragma user_version = 1")
+         self.db.commit()
+ 
+@@ -198,6 +199,106 @@
+                             (at, json.dumps(receipt), entry_id))
+         return event_id
+ 
++    def copy_info(self, tool: str, chat_id: str) -> dict | None:
++        """Read copy creation and visibility independently of rollback retention."""
++        row = self.db.execute('select * from created_copies where tool=? and chat_id=?',(tool,chat_id)).fetchone()
++        return dict(row) if row else None
++
++    def mark_copy_shown(self, tool: str, chat_id: str, at: str) -> None:
++        """Monotonically persist confirmed copy visibility by durable chat identity."""
++        with self.db:
++            self.db.execute('update created_copies set shown=1,seen_at=? where tool=? and chat_id=?',(at,tool,chat_id))
++
++    def _record_copy(self, receipt, at):
++        self.db.execute('insert into created_copies(tool,chat_id,delivered_at) values(?,?,?)',
++                        (receipt['tool'],receipt['chat_id'],at))
++
++    def complete_copy(self, entry_id: int, receipt: dict, at: str) -> None:
++        """Commit an unlinked creation with durable visibility metadata atomically."""
++        self._creation_entry(entry_id,receipt)
++        with self.db:
++            self._record_copy(receipt,at)
++            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",(at,json.dumps(receipt),entry_id))
++
++    def _creation_entry(self, entry_id, receipt, link_id=None):
++        entry = self.journal_entry(entry_id)
++        if (entry['state'] != 'begun' or entry['link_id'] != link_id or
++                (entry['tool'],entry['chat_id'],entry['action']) !=
++                (receipt['tool'],receipt['chat_id'],receipt['kind']) or receipt['kind'] != 'create'):
++            raise ValueError('receipt_identity_mismatch')
++
++    def complete_link(self, chats: Mapping[str, str], mode: str, rows: Sequence[dict], at: str,
++                      entry_id: int | None = None, receipt: dict | None = None,
++                      replace_link_id: int | None = None) -> Link:
++        """Commit aligned link records and any verified creation as one transaction."""
++        if len(chats) != 2 or mode not in MODES:
++            raise ValueError('link_shape')
++        for side,chat in chats.items():
++            linked = self.link_for(_tool(side),chat)
++            if linked and linked.id != replace_link_id:
++                raise AlreadyLinked(side,linked)
++        if replace_link_id is not None and self.get_link(replace_link_id).removed_at:
++            raise ValueError('link_removed')
++        if entry_id is not None:
++            self._creation_entry(entry_id,receipt)
++            if chats.get(receipt['tool']) != receipt['chat_id']:
++                raise ValueError('chat_identity_mismatch')
++        for row in rows:
++            if (row['origin'] not in chats or set(row['states']) != set(chats) or
++                    row['states'][row['origin']] != WRITTEN_HERE or
++                    any(state not in (WRITTEN_HERE,SHOWN,ADDED,WAITING) for state in row['states'].values())):
++                raise ValueError('turn_shape')
++        with self.db:
++            if replace_link_id is not None:
++                self.db.execute('update links set removed_at=? where id=?',(at,replace_link_id))
++                self.db.execute('update link_chats set active=0 where link_id=?',(replace_link_id,))
++                self._event(replace_link_id,at,'link_removed')
++            cur = self.db.execute('insert into links(mode,created_at) values(?,?)',(mode,at))
++            link_id = cur.lastrowid
++            self.db.executemany('insert into link_chats(link_id,tool,chat) values(?,?,?)',
++                                [(link_id,side,chat) for side,chat in chats.items()])
++            self._event(link_id,at,'linked',detail={'mode':mode})
++            for seq,row in enumerate(rows,1):
++                turn = row['turn']
++                cur = self.db.execute('insert into turns(link_id,seq,origin,origin_id,started_at,ended_at,first_line,size) values(?,?,?,?,?,?,?,?)',
++                    (link_id,seq,row['origin'],turn.id,turn.started_at,turn.ended_at,
++                     turn.prompt.text.strip()[:_FIRST_LINE_CHARS],_size(turn)))
++                turn_id = cur.lastrowid
++                for side,state in row['states'].items():
++                    event_id = self._event(link_id,at,'create' if entry_id else 'aligned',side,turn_ids=(turn_id,)) if state in (SHOWN,ADDED) else None
++                    self.db.execute('insert into turn_states(turn_id,side,state,local_id,event_id) values(?,?,?,?,?)',
++                                    (turn_id,side,state,row['local_ids'].get(side,''),event_id))
++            if entry_id is not None:
++                self._record_copy(receipt,at)
++                self.db.execute("update journal set state='committed',link_id=?,ended_at=?,post_receipt=? where id=?",
++                                (link_id,at,json.dumps(receipt),entry_id))
++        return self.get_link(link_id)
++
++    def complete_link_copy(self, link_id: int, side: str, chat_id: str,
++                           turn_ids: Sequence[int], local_ids: Sequence[str], state: str,
++                           at: str, entry_id: int, receipt: dict) -> Link:
++        """Move a verified twin and its local identities without replacing turn records."""
++        self._creation_entry(entry_id,receipt,link_id)
++        link = self.get_link(link_id)
++        if (link.removed_at or side not in link.sides or state not in (SHOWN,ADDED) or
++                len(turn_ids) != len(local_ids) or len(set(local_ids)) != len(local_ids) or
++                receipt['tool'] != side or receipt['chat_id'] != chat_id):
++            raise ValueError('copy_identity_mismatch')
++        for turn_id in turn_ids: self._origin(link_id,turn_id)
++        if self.link_for(side,chat_id):
++            raise AlreadyLinked(side,self.link_for(side,chat_id))
++        with self.db:
++            self.db.execute('update link_chats set chat=? where link_id=? and tool=?',(chat_id,link_id,side))
++            self.db.execute("update links set mode='full_copy' where id=?",(link_id,))
++            event_id = self._event(link_id,at,'create',side,{'from':link.chat(side),'to':chat_id},turn_ids)
++            for turn_id,local_id in zip(turn_ids,local_ids):
++                self.db.execute('update turn_states set state=?,local_id=?,event_id=? where turn_id=? and side=?',
++                                (state,local_id,event_id,turn_id,side))
++                self.db.execute('update turns set origin_id=? where id=? and origin=?',(local_id,turn_id,side))
++            self._record_copy(receipt,at)
++            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",(at,json.dumps(receipt),entry_id))
++        return self.get_link(link_id)
++
+     # Links
+ 
+     def link(self, chats: Mapping[str, str], mode: str, at: str = "") -> Link:
+diff --git a/tests/unit/test_linker.py b/tests/unit/test_linker.py
+new file mode 100644
+--- /dev/null
++++ b/tests/unit/test_linker.py
+@@ -0,0 +1,369 @@
++"""Confirmed link metadata, ordered identity alignment and creation rollback."""
++from dataclasses import asdict, replace
++from copy import deepcopy
++import unittest
++from contextlib import ExitStack
++from unittest.mock import patch
++
++from baton.adapters.fake import FakeAdapter
++from baton.adapters.fake.facts import CLAUDE_LIKE, CODEX_LIKE, OPENCODE_LIKE, CURSOR_LIKE
++from baton.domain.capabilities import Visibility, WriteWindow
++from baton.domain.errors import ChatChanged, NotAvailable, AlreadyLinked
++from baton.domain.model import Message, Turn, PROMPT, REPLY
++from baton.ledger.sqlite_store import Ledger
++from baton.ports.clock import FixedClock
++from baton.services.applier import Applier
++from baton.services.linker import Linker
++from tests.adapters.suite import turns
++
++FACTS = {'claude':CLAUDE_LIKE,'codex':CODEX_LIKE,'opencode':OPENCODE_LIKE,'cursor':CURSOR_LIKE}
++
++
++class LinkerTests(unittest.TestCase):
++    def setUp(self):
++        self.store = Ledger(':memory:')
++        self.clock = FixedClock('2026-10-05T00:00:00Z')
++        self.adapters = {side:FakeAdapter(facts,side) for side,facts in FACTS.items()}
++        self.source = self.adapters['claude'].build_chat(turns(),name='source',folder='/project')
++        self.linker = Linker(self.store,self.adapters,self.clock)
++
++    def tearDown(self):
++        self.store.close()
++
++    def test_all_twelve_directed_pairs_create_and_link_public_history(self):
++        for source in FACTS:
++            for target in FACTS:
++                if source == target: continue
++                with self.subTest(source=source,target=target):
++                    chat = self.adapters[source].build_chat(turns())
++                    plan = self.linker.plan_link(source,chat,target)
++                    result = self.linker.apply(plan,plan.plan_id)
++                    self.assertTrue(result.applied,result)
++                    fresh = Applier(self.store,self.adapters,self.clock).refresh(result.link_id)
++                    self.assertEqual(len(fresh['turns']),3)
++                    self.assertEqual(fresh['status'].side(target).agent_has,3)
++                    expected_shows = 3 if FACTS[target].new_chat_visible == Visibility.AT_ONCE else 0
++                    self.assertEqual(fresh['status'].side(target).chat_shows,expected_shows)
++                    self.assertEqual(len(self.adapters[target].reader.read(result.chat_id)),3)
++
++    def test_existing_alignment_counts_duplicate_occurrences_only_once(self):
++        source = self.adapters['claude']
++        duplicated = [turns()[0],replace(turns()[0],prompt=replace(turns()[0].prompt,id='repeat')),turns()[1]]
++        source.chats[self.source] = duplicated
++        target = self.adapters['codex'].build_chat([replace(turns()[0],prompt=replace(turns()[0].prompt,id='other')),turns()[1]])
++        before = deepcopy(self.adapters['codex'].reader.read(target))
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target))
++        rows = self.store.turns(result.link_id)
++        self.assertEqual(len(rows),3)
++        self.assertEqual(sum(t.states['codex']=='shown' for t in rows),2)
++        self.assertEqual(sum(t.states['codex']=='waiting' for t in rows),1)
++        self.assertEqual(self.adapters['codex'].reader.read(target),before)
++
++    def test_reordered_histories_do_not_claim_every_turn_shared(self):
++        self.adapters['claude'].chats[self.source] = turns()[:2]
++        target = self.adapters['codex'].build_chat(list(reversed(turns()[:2])))
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target))
++        rows = self.store.turns(result.link_id)
++        self.assertEqual(len(rows),3)
++        shared = [t for t in rows if t.states['codex']=='shown']
++        self.assertEqual(len(shared),1)
++        source_order = [t.origin_id if t.origin=='claude' else self.store.local_ids(result.link_id,'claude').get(t.id) for t in rows if t.states['claude']!='waiting']
++        target_ids = self.store.local_ids(result.link_id,'codex')
++        target_order = [target_ids[t.id] for t in rows if t.states['codex']!='waiting']
++        self.assertEqual(source_order,[t.id for t in turns()[:2]])
++        self.assertEqual(target_order,[t.id for t in reversed(turns()[:2])])
++        self.assertTrue(Applier(self.store,self.adapters,self.clock).refresh(result.link_id)['status'].decision_needed)
++
++    def test_brief_and_attached_history_without_existing_chat_are_unavailable(self):
++        for mode in ('brief','attached_history'):
++            with self.assertRaises(NotAvailable): self.linker.plan_link('claude',self.source,'codex',mode=mode)
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.store.journal_entries(),[])
++
++    def test_unknown_format_and_running_app_closed_target_never_write(self):
++        for target in ('codex','cursor'):
++            adapter = self.adapters[target]
++            adapter.set_format(False,'unknown')
++            result = self.linker.apply(self.linker.plan_copy('claude',self.source,target))
++            self.assertEqual(result.error,'UnknownFormat')
++            self.assertEqual(adapter.locator.chats(),[])
++        self.adapters['cursor'].set_format(True,'18')
++        self.adapters['cursor'].app_running = True
++        result = self.linker.apply(self.linker.plan_copy('claude',self.source,'cursor'))
++        self.assertEqual(result.error,'AppMustBeClosed')
++        self.assertEqual(self.store.journal_entries(),[])
++
++    def test_source_replying_refuses_incomplete_copy(self):
++        self.adapters['claude'].set_condition(self.source,replying=True)
++        with self.assertRaises(NotAvailable): self.linker.plan_copy('claude',self.source,'codex')
++
++    def test_confirmation_refuses_full_reply_name_format_and_record_changes(self):
++        for change in ('reply','name','format','records','token'):
++            with self.subTest(change=change):
++                self.setUp_fresh_source()
++                plan = self.linker.plan_copy('claude',self.source,'codex')
++                if change=='reply':
++                    self.adapters['claude'].chats[self.source][0] = replace(turns()[0],messages=(Message('r',REPLY,'changed'),))
++                if change=='name': self.adapters['claude'].writer.rename(self.source,'renamed')
++                if change=='format': self.adapters['codex'].set_format(False,'new')
++                if change=='records':
++                    self.store.link({'opencode':self.adapters['opencode'].build_chat([]),'cursor':self.adapters['cursor'].build_chat([])},'full_copy')
++                with self.assertRaises(ChatChanged): self.linker.apply(plan,'wrong' if change=='token' else plan.plan_id)
++                self.assertEqual(self.adapters['codex'].locator.chats(),[])
++
++    def setUp_fresh_source(self):
++        self.store.close()
++        self.setUp()
++
++    def test_readback_failure_rolls_back_created_chat_and_link(self):
++        adapter = self.adapters['codex']
++        create = adapter.writer.create
++        def bad(*args):
++            result = create(*args)
++            adapter.chats[result.chat_id][0] = replace(turns()[0],messages=())
++            return result
++        adapter.writer.create = bad
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(adapter.locator.chats(),[])
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.store.journal_entries()[0]['state'],'taken_back')
++
++    def test_metadata_failure_rolls_back_link_and_created_chat_atomically(self):
++        self.store.db.execute("create trigger fail_link before insert on turn_states begin select raise(abort,'fail'); end")
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        self.assertFalse(result.applied)
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.adapters['codex'].locator.chats(),[])
++        self.assertEqual(self.store.journal_entries()[0]['state'],'taken_back')
++
++    def test_relink_metadata_failure_keeps_old_link_and_chats(self):
++        created = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        before = self.store.get_link(created.link_id)
++        old_chat = deepcopy(self.adapters['codex'].reader.read(created.chat_id))
++        target = self.adapters['codex'].build_chat([])
++        self.store.db.execute("create trigger fail_link before insert on turn_states begin select raise(abort,'fail'); end")
++        result = self.linker.apply(self.linker.plan_relink(created.link_id,'codex',target))
++        self.assertFalse(result.applied)
++        self.assertEqual(self.store.get_link(created.link_id),before)
++        self.assertEqual(self.adapters['codex'].reader.read(created.chat_id),old_chat)
++        self.assertEqual(self.adapters['codex'].reader.read(target),[])
++
++    def test_copy_visibility_is_durable_monotonic_and_date_aware(self):
++        result = self.linker.apply(self.linker.plan_copy('claude',self.source,'cursor'))
++        target = self.adapters['cursor']
++        for value in ('', 'bad', '2026-10-05T00:00:01', '2026-10-05T00:00:00Z', '2026-10-04T23:59:59Z'):
++            target.set_condition(result.chat_id,app_started_at=value)
++            self.assertEqual(self.linker.copy_status('cursor',result.chat_id)['needs'],('relaunch_to_see',))
++        target.set_condition(result.chat_id,app_started_at='2026-10-05T00:00:01Z')
++        self.assertTrue(self.linker.copy_status('cursor',result.chat_id)['shown'])
++        for value in ('','2026-10-04T00:00:00Z'):
++            target.set_condition(result.chat_id,app_started_at=value)
++            restarted = Linker(self.store,self.adapters,self.clock)
++            self.assertEqual(restarted.copy_status('cursor',result.chat_id)['needs'],())
++
++    def test_full_copy_reconstructs_attached_history_preserves_turn_ids_and_future_delivery(self):
++        target = self.adapters['codex'].build_chat([])
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target,'attached_history'))
++        applier = Applier(self.store,self.adapters,self.clock)
++        ids = [t.id for t in self.store.turns(linked.link_id)]
++        applier.record_attached(linked.link_id,'codex',ids,'first-message')
++        local = Turn(Message('local',PROMPT,'local question'),(Message('r',REPLY,'local answer'),))
++        self.adapters['codex'].chats[target].append(local)
++        applier.refresh(linked.link_id)
++        recorded = self.store.turns(linked.link_id)
++        self.store.set_pinned(linked.link_id,recorded[0].id,True)
++        before_target = deepcopy(self.adapters['codex'].reader.read(target))
++        result = self.linker.apply(self.linker.plan_full_copy(linked.link_id,'codex'))
++        self.assertTrue(result.applied,result)
++        self.assertEqual(result.link_id,linked.link_id)
++        self.assertEqual(self.adapters['codex'].reader.read(target),before_target)
++        fresh = applier.refresh(linked.link_id)
++        self.assertEqual(len(fresh['turns']),4)
++        self.assertEqual([t.id for t in fresh['turns']],[t.id for t in recorded])
++        self.assertTrue(fresh['turns'][0].pinned)
++        self.assertEqual(fresh['status'].side('codex').chat_shows,4)
++        self.assertEqual(fresh['status'].side('claude').waiting,1)
++        self.assertTrue(applier.apply(applier.preview(linked.link_id)).applied)
++        self.assertEqual(len(applier.refresh(linked.link_id)['turns']),4)
++        newer = Turn(Message('newer',PROMPT,'later on twin'))
++        self.adapters['codex'].chats[result.chat_id].append(newer)
++        applier.refresh(linked.link_id)
++        self.assertTrue(applier.apply(applier.preview(linked.link_id)).applied)
++        self.assertEqual(len(applier.refresh(linked.link_id)['turns']),5)
++
++    def test_suggestions_use_content_skip_linked_and_preserve_reordered_match_count(self):
++        target = self.adapters['codex'].build_chat(list(reversed(turns())))
++        candidates = self.linker.suggestions()
++        self.assertEqual(len(candidates),1)
++        self.assertEqual(candidates[0]['matched_turns'],1)
++        self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target))
++        self.assertEqual(self.linker.suggestions(),[])
++
++    def test_pending_create_recovery_leaves_no_link_to_deleted_chat(self):
++        entry = self.linker.journal.begin(None,'codex',None,'create')
++        result = self.adapters['codex'].writer.create(turns(),'uncommitted','')
++        restarted = Linker(self.store,self.adapters,self.clock)
++        self.assertEqual(restarted.recovery[0]['id'],entry)
++        self.assertEqual(self.adapters['codex'].locator.chats(),[])
++        self.assertEqual(self.store.links(),[])
++
++    def test_plain_copy_from_linked_attached_side_has_hidden_history_and_keeps_link(self):
++        target = self.adapters['codex'].build_chat([])
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target,'attached_history'))
++        applier = Applier(self.store,self.adapters,self.clock)
++        applier.record_attached(linked.link_id,'codex',[t.id for t in self.store.turns(linked.link_id)],'first')
++        local = Turn(Message('local',PROMPT,'local question'))
++        self.adapters['codex'].chats[target].append(local)
++        applier.refresh(linked.link_id)
++        old_link = self.store.get_link(linked.link_id)
++        for destination in ('claude','opencode'):
++            plan = self.linker.plan_copy('codex',target,destination)
++            self.assertEqual(set(plan.observations),{'claude','codex',destination})
++            self.assertEqual(len(plan.turns),4)
++            copied = self.linker.apply(plan)
++            self.assertTrue(copied.applied,copied)
++            self.assertEqual(len(self.adapters[destination].reader.read(copied.chat_id)),4)
++            self.assertEqual(self.store.get_link(linked.link_id),old_link)
++            self.assertEqual(self.adapters['codex'].reader.read(target),[local])
++        stale = self.linker.plan_copy('codex',target,'opencode')
++        self.adapters['claude'].chats[self.source][0] = replace(turns()[0],messages=())
++        with self.assertRaises(ChatChanged): self.linker.apply(stale)
++
++    def test_copy_visibility_survives_receipt_pruning_and_new_creation(self):
++        first = self.linker.apply(self.linker.plan_copy('claude',self.source,'cursor'))
++        self.clock.value = '2026-11-06T00:00:00Z'
++        self.assertEqual(self.linker.journal.prune(),1)
++        self.assertEqual(Linker(self.store,self.adapters,self.clock).copy_status('cursor',first.chat_id)['needs'],('relaunch_to_see',))
++        self.adapters['cursor'].set_condition(first.chat_id,app_started_at='2026-11-06T00:00:01Z')
++        self.assertTrue(self.linker.copy_status('cursor',first.chat_id)['shown'])
++        self.linker.journal.prune()
++        self.store.db.execute('delete from journal')
++        self.store.db.commit()
++        self.adapters['cursor'].set_condition(first.chat_id,app_started_at='')
++        restarted = Linker(self.store,self.adapters,self.clock)
++        self.assertTrue(restarted.copy_status('cursor',first.chat_id)['shown'])
++        second = restarted.apply(restarted.plan_copy('claude',self.source,'cursor'))
++        self.assertTrue(second.applied,second)
++        self.assertEqual(restarted.copy_status('cursor',second.chat_id)['needs'],('relaunch_to_see',))
++
++    def test_linked_copy_refuses_unrecorded_native_turn_until_refresh(self):
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        native = Turn(Message('new-native',PROMPT,'completed after refresh'))
++        self.adapters['codex'].chats[linked.chat_id].append(native)
++        with self.assertRaises(ChatChanged):
++            self.linker.plan_copy('codex',linked.chat_id,'opencode')
++        with self.assertRaises(ChatChanged):
++            self.linker.plan_full_copy(linked.link_id,'codex')
++        Applier(self.store,self.adapters,self.clock).refresh(linked.link_id)
++        self.assertEqual(len(self.linker.plan_copy('codex',linked.chat_id,'opencode').turns),4)
++        self.assertEqual(len(self.linker.plan_full_copy(linked.link_id,'codex').turns),4)
++
++    def test_full_copy_transaction_failure_preserves_link_turns_and_old_chat(self):
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        plan = self.linker.plan_full_copy(linked.link_id,'codex')
++        before_link = self.store.get_link(linked.link_id)
++        before_turns = self.store.turns(linked.link_id)
++        before_chats = deepcopy(self.adapters['codex'].chats)
++        self.store.db.execute("create trigger fail_copy before update on turn_states begin select raise(abort,'fail'); end")
++        result = self.linker.apply(plan)
++        self.assertFalse(result.applied)
++        self.assertEqual(self.store.get_link(linked.link_id),before_link)
++        self.assertEqual(self.store.turns(linked.link_id),before_turns)
++        self.assertEqual(self.adapters['codex'].chats,before_chats)
++
++    def test_journal_commit_failure_rolls_back_new_link_metadata_and_chat(self):
++        self.store.db.execute("create trigger fail_journal before update on journal when new.state='committed' begin select raise(abort,'fail'); end")
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        self.assertFalse(result.applied)
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.adapters['codex'].locator.chats(),[])
++        self.assertEqual(self.store.journal_entries()[0]['state'],'taken_back')
++        self.assertEqual(self.store.db.execute('select count(*) from created_copies').fetchone()[0],0)
++
++    def test_source_changed_during_creation_rolls_back_before_link_commit(self):
++        adapter = self.adapters['codex']
++        create = adapter.writer.create
++        def source_changed(*args):
++            result = create(*args)
++            self.adapters['claude'].chats[self.source][0] = replace(turns()[0],messages=())
++            return result
++        adapter.writer.create = source_changed
++        result = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        self.assertEqual(result.error,'ChatChanged')
++        self.assertEqual(adapter.locator.chats(),[])
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.store.journal_entries()[0]['state'],'taken_back')
++
++    def test_canonical_copy_refuses_keep_or_skip_change_during_payload_record_read(self):
++        for action in ('keep','skip','order'):
++            with self.subTest(action=action):
++                self.setUp_fresh_source()
++                target = self.adapters['codex'].build_chat([])
++                linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex',target,'attached_history'))
++                read = self.store.turns
++                calls = [0]
++                def changing(link_id):
++                    values = read(link_id)
++                    calls[0] += 1
++                    if calls[0] == 2:
++                        if action=='keep': self.store.keep_back(link_id,values[0].id,self.clock.now())
++                        elif action=='skip': self.store.skip(link_id,values[0].id,'codex',self.clock.now())
++                        else: self.store.set_order(link_id,[t.id for t in reversed(values)])
++                    return values
++                self.store.turns = changing
++                with self.assertRaises(ChatChanged):
++                    self.linker.plan_copy('codex',target,'opencode')
++                self.store.turns = read
++                payload = self.linker.plan_copy('codex',target,'opencode').turns
++                self.assertEqual(len(payload),3 if action=='order' else 2)
++                if action=='order':
++                    self.assertEqual(payload[0].prompt.text,turns()[-1].prompt.text)
++                self.assertEqual(self.adapters['opencode'].locator.chats(),[])
++
++    def test_missing_chat_unlink_changes_only_metadata_and_never_calls_writer(self):
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        target = self.adapters['codex']
++        target.chats.pop(linked.chat_id)
++        target.refs.pop(linked.chat_id)
++        target.conditions.pop(linked.chat_id)
++        with ExitStack() as spies:
++            for adapter in self.adapters.values():
++                for method in ('prepare','create','add','place','cut','rename','take_back'):
++                    spies.enter_context(patch.object(adapter.writer,method,side_effect=AssertionError('unexpected_write')))
++            plan = self.linker.plan_unlink(linked.link_id)
++            self.assertEqual(plan.observations['codex']['missing_chat_id'],linked.chat_id)
++            self.assertTrue(self.linker.apply(plan).applied)
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.adapters['claude'].reader.read(self.source),turns())
++
++    def test_missing_chat_reappearance_refuses_old_unlink_preview(self):
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        target = self.adapters['codex']
++        target.set_condition(linked.chat_id,exists=False)
++        plan = self.linker.plan_unlink(linked.link_id)
++        target.set_condition(linked.chat_id,exists=True)
++        with self.assertRaises(ChatChanged): self.linker.apply(plan)
++        self.assertIsNotNone(self.store.link_for('codex',linked.chat_id))
++        self.assertTrue(self.linker.apply(self.linker.plan_unlink(linked.link_id)).applied)
++
++    def test_link_and_copy_still_refuse_missing_source_chat(self):
++        self.adapters['claude'].set_condition(self.source,exists=False)
++        with self.assertRaises(NotAvailable): self.linker.plan_copy('claude',self.source,'codex')
++        with self.assertRaises(NotAvailable): self.linker.plan_link('claude',self.source,'codex')
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.store.journal_entries(),[])
++
++    def test_unlink_does_not_read_chat_files_even_when_registry_refs_remain(self):
++        linked = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        before = deepcopy({side:adapter.chats for side,adapter in self.adapters.items()})
++        with ExitStack() as spies:
++            for adapter in self.adapters.values():
++                spies.enter_context(patch.object(adapter.reader,'read',side_effect=OSError('unparseable_file')))
++                for method in ('prepare','create','add','place','cut','rename','take_back'):
++                    spies.enter_context(patch.object(adapter.writer,method,side_effect=AssertionError('unexpected_write')))
++            plan = self.linker.plan_unlink(linked.link_id)
++            self.assertTrue(all(o.get('metadata_only') and 'turns' not in o for o in plan.observations.values()))
++            self.assertTrue(self.linker.apply(plan).applied)
++        self.assertEqual({side:adapter.chats for side,adapter in self.adapters.items()},before)
++        self.assertEqual(self.store.links(),[])
+diff --git a/tests/scenarios/test_link_actions.py b/tests/scenarios/test_link_actions.py
+new file mode 100644
+--- /dev/null
++++ b/tests/scenarios/test_link_actions.py
+@@ -0,0 +1,106 @@
++"""T0–T4: confirmed link changes, pause and copy visibility."""
++from copy import deepcopy
++from dataclasses import replace
++import unittest
++from contextlib import ExitStack
++from unittest.mock import patch
++
++from baton.domain.errors import AlreadyLinked, NotAvailable
++from baton.domain.model import Message, Turn, PROMPT
++from baton.services.applier import Applier
++from tests.unit import test_linker as fixtures
++from tests.unit.test_linker import FACTS
++from tests.adapters.suite import turns
++
++
++class LinkActionScenarios(unittest.TestCase):
++    setUp = fixtures.LinkerTests.setUp
++    tearDown = fixtures.LinkerTests.tearDown
++
++    def test_T0_already_linked_names_existing_partner_and_confirmed_change_keeps_old_chat(self):
++        for target in FACTS:
++            source = 'codex' if target=='claude' else 'claude'
++            with self.subTest(target=target):
++                source_chat = self.adapters[source].build_chat(turns())
++                first = self.linker.apply(self.linker.plan_link(source,source_chat,target))
++                old = deepcopy(self.adapters[target].reader.read(first.chat_id))
++                replacement = self.adapters[target].build_chat([])
++                with self.assertRaises(AlreadyLinked) as refusal:
++                    self.linker.plan_link(source,source_chat,target,replacement)
++                self.assertEqual(refusal.exception.link.id,first.link_id)
++                note = self.linker.already_linked_note(refusal.exception)
++                self.assertEqual(note['values']['other_name'],self.adapters[target].locator.name(first.chat_id))
++                self.assertIn(note['values']['other_name'],note['text'])
++                self.assertEqual([button['id'] for button in note['buttons']],['relink','cancel'])
++                changed = self.linker.apply(self.linker.plan_relink(first.link_id,target,replacement))
++                self.assertTrue(changed.applied,changed)
++                self.assertEqual(self.store.get_link(changed.link_id).chat(source),source_chat)
++                self.assertEqual(self.store.get_link(changed.link_id).chat(target),replacement)
++                self.assertIsNone(self.store.link_for(target,first.chat_id))
++                self.assertEqual(self.adapters[target].reader.read(first.chat_id),old)
++
++    def test_T1_paused_link_counts_new_finished_reply_without_delivering_or_attaching(self):
++        for target in FACTS:
++            source = 'codex' if target=='claude' else 'claude'
++            with self.subTest(target=target):
++                source_chat = self.adapters[source].build_chat(turns()[:2])
++                target_chat = self.adapters[target].build_chat([])
++                linked = self.linker.apply(self.linker.plan_link(source,source_chat,target,target_chat))
++                self.store.set_paused(linked.link_id,True,self.clock.now())
++                self.adapters[source].chats[source_chat].append(turns()[2])
++                applier = Applier(self.store,self.adapters,self.clock)
++                fresh = applier.refresh(linked.link_id)
++                self.assertEqual((fresh['status'].side(target).waiting,fresh['status'].side(target).waiting_reason),(3,'paused'))
++                plan = applier.preview(linked.link_id)
++                self.assertEqual(plan.steps[0].action,'hold')
++                self.assertTrue(applier.apply(plan).applied)
++                with self.assertRaises(NotAvailable):
++                    applier.record_attached(linked.link_id,target,[t.id for t in fresh['turns']],'message')
++                self.assertEqual(self.adapters[target].reader.read(target_chat),[])
++
++    def test_T2_remove_link_leaves_both_chats_exactly_unchanged(self):
++        for target in FACTS:
++            source = 'codex' if target=='claude' else 'claude'
++            with self.subTest(target=target):
++                source_chat = self.adapters[source].build_chat(turns())
++                linked = self.linker.apply(self.linker.plan_link(source,source_chat,target))
++                before = {source:deepcopy(self.adapters[source].reader.read(source_chat)),
++                          target:deepcopy(self.adapters[target].reader.read(linked.chat_id))}
++                with ExitStack() as spies:
++                    for side in (source,target):
++                        for method in ('prepare','create','add','place','cut','rename','take_back'):
++                            spies.enter_context(patch.object(self.adapters[side].writer,method,
++                                                             side_effect=AssertionError('unexpected_write')))
++                    self.assertTrue(self.linker.apply(self.linker.plan_unlink(linked.link_id)).applied)
++                self.assertIsNone(self.store.link_for(source,source_chat))
++                self.assertIsNone(self.store.link_for(target,linked.chat_id))
++                self.assertEqual(self.adapters[source].reader.read(source_chat),before[source])
++                self.assertEqual(self.adapters[target].reader.read(linked.chat_id),before[target])
++
++    def test_T3_unlinked_copy_has_every_turn_and_immediate_visibility(self):
++        # AT_ONCE creation applies to both immediate-visibility tools.
++        for target in ('codex','opencode'):
++            with self.subTest(target=target):
++                values = [replace(turns()[0],prompt=replace(turns()[0].prompt,id=f'p{i}')) for i in range(16)]
++                self.adapters['claude'].chats[self.source] = values
++                plan = self.linker.plan_copy('claude',self.source,target)
++                self.assertEqual(plan.needs,())
++                result = self.linker.apply(plan)
++                self.assertTrue(result.applied,result)
++                self.assertEqual(len(self.adapters[target].reader.read(result.chat_id)),16)
++                self.assertEqual(self.store.links(),[])
++                self.assertEqual(self.linker.copy_status(target,result.chat_id)['needs'],())
++
++    def test_T4_unlinked_deferred_copy_remains_marked_until_later_app_start(self):
++        for target in ('claude','cursor'):
++            with self.subTest(target=target):
++                source = self.adapters['codex'].build_chat(turns())
++                plan = self.linker.plan_copy('codex',source,target)
++                self.assertIn('relaunch_to_see',plan.needs)
++                result = self.linker.apply(plan)
++                self.assertTrue(result.applied,result)
++                self.assertEqual(len(self.adapters[target].reader.read(result.chat_id)),3)
++                self.assertEqual(self.store.links(),[])
++                self.assertEqual(self.linker.copy_status(target,result.chat_id)['needs'],('relaunch_to_see',))
++                self.adapters[target].set_condition(result.chat_id,app_started_at='2026-10-05T00:00:01Z')
++                self.assertEqual(self.linker.copy_status(target,result.chat_id)['needs'],())
+diff --git a/tests/scenarios/test_more_tools.py b/tests/scenarios/test_more_tools.py
+new file mode 100644
+--- /dev/null
++++ b/tests/scenarios/test_more_tools.py
+@@ -0,0 +1,36 @@
++"""X1/X2: any-tool partner limits and fact-driven copy visibility."""
++import unittest
++
++from baton.domain.errors import AlreadyLinked
++from tests.unit import test_linker as fixtures
++from tests.adapters.suite import turns
++
++
++class MoreToolsScenarios(unittest.TestCase):
++    setUp = fixtures.LinkerTests.setUp
++    tearDown = fixtures.LinkerTests.tearDown
++
++    def test_X1_third_tool_cannot_create_second_link_for_same_chat(self):
++        first = self.linker.apply(self.linker.plan_link('claude',self.source,'codex'))
++        target = self.adapters['opencode'].build_chat([])
++        with self.assertRaises(AlreadyLinked) as refusal:
++            self.linker.plan_link('claude',self.source,'opencode',target)
++        self.assertEqual(refusal.exception.link.id,first.link_id)
++        note = self.linker.already_linked_note(refusal.exception)
++        self.assertEqual(note['values']['other_name'],self.adapters['codex'].locator.name(first.chat_id))
++        self.assertIn(note['values']['other_name'],note['text'])
++        self.assertEqual([button['id'] for button in note['buttons']],['relink','cancel'])
++        self.assertEqual(self.store.get_link(first.link_id).chat('codex'),first.chat_id)
++        self.assertEqual(len(self.store.links()),1)
++        self.assertEqual(self.adapters['opencode'].reader.read(target),[])
++
++    def test_X2_copy_to_other_tool_uses_its_known_visibility_facts(self):
++        source = self.adapters['codex'].build_chat(turns())
++        self.adapters['opencode'].app_running = True
++        plan = self.linker.plan_copy('codex',source,'opencode')
++        self.assertEqual(plan.needs,())
++        result = self.linker.apply(plan)
++        self.assertTrue(result.applied,result)
++        self.assertEqual(len(self.adapters['opencode'].reader.read(result.chat_id)),3)
++        self.assertEqual(self.store.links(),[])
++        self.assertEqual(self.linker.copy_status('opencode',result.chat_id)['needs'],())

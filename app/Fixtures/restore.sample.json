@@ -1,0 +1,40 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "restore",
+          "label": "Restore",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.restore",
+      "status_line": null,
+      "text": "Restore",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_55382963b16f4ce91282ce9abc9231dd96cba34b78375976614edd2bd33f9fe9",
+  "removes": [],
+  "steps": [
+    {
+      "action": "restore",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

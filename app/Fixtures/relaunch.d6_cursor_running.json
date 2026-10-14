@@ -1,0 +1,128 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "execution": "unavailable",
+  "fixture_provider": "future_contract",
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "write.app_must_close",
+      "status_line": "2 turns waiting until Cursor is closed",
+      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+      "tone": "warning",
+      "values": {
+        "n": 2,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.unavailable",
+      "status_line": null,
+      "text": "This action is not available yet. Your current choice is kept.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_future_d6_cursor_running",
+  "replying": [],
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "2 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "add",
+      "needs": [
+        "app_closed"
+      ],
+      "notes": [],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": [
+        43,
+        44
+      ]
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ]
+}

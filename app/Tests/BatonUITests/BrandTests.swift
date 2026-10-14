@@ -1,0 +1,195 @@
+import AppKit
+import SwiftUI
+import Testing
+@testable import BatonUI
+
+@Suite(.serialized)
+struct BrandTests {
+    @MainActor @Test
+    func bundledMarkHasTransparentMarginsAndNoWhiteTile() throws {
+        let image = try #require(BatonBrand.nativeIcon())
+        let tiff = try #require(image.tiffRepresentation)
+        let bitmap = try #require(NSBitmapImageRep(data: tiff))
+        var solid = 0
+        var white = 0
+        var transparent = 0
+        for y in stride(from: 0, to: bitmap.pixelsHigh, by: 4) {
+            for x in stride(from: 0, to: bitmap.pixelsWide, by: 4) {
+                let color = try #require(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
+                if color.alphaComponent < 0.1 { transparent += 1 }
+                if color.alphaComponent > 0.9 {
+                    solid += 1
+                    if min(color.redComponent, color.greenComponent, color.blueComponent) > 0.9 { white += 1 }
+                }
+            }
+        }
+        #expect(solid > 1000)
+        #expect(transparent > solid / 2)
+        #expect(white < solid / 100)
+        #expect(try #require(bitmap.colorAt(x: 0, y: 0)).alphaComponent < 0.1)
+    }
+
+    @MainActor @Test
+    func contentHasNoTileAndDockStaysWhiteWithoutChangingArtwork() throws {
+        let directory = ComponentTests.root.appendingPathComponent("Snapshots")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var data: [Theme: Data] = [:]
+        for theme in Theme.allCases {
+            let renderer = ImageRenderer(content: BrandMark(size: 92).batonTheme(theme))
+            renderer.scale = 2
+            let image = try #require(renderer.nsImage)
+            let tiff = try #require(image.tiffRepresentation)
+            let bitmap = try #require(NSBitmapImageRep(data: tiff))
+            let png = try #require(bitmap.representation(using: .png, properties: [:]))
+            data[theme] = png
+            #expect(image.size == NSSize(width: 92, height: 92))
+            try png.write(to: directory.appendingPathComponent("UI8-brand-\(theme.rawValue).png"))
+        }
+        for theme in Theme.allCases {
+            let content = ImageRenderer(content: BrandMark(size: 92).batonTheme(theme))
+            content.scale = 2
+            let image = try #require(content.nsImage)
+            let tiff = try #require(image.tiffRepresentation)
+            let pixels = try #require(NSBitmapImageRep(data: tiff))
+            #expect(try #require(pixels.colorAt(x: 2, y: pixels.pixelsHigh / 2)).alphaComponent < 0.1)
+            #expect(try #require(pixels.colorAt(x: pixels.pixelsWide / 2, y: 2)).alphaComponent < 0.1)
+            let dock = try #require(BatonBrand.applicationIcon(theme: theme))
+            let dockTiff = try #require(dock.tiffRepresentation)
+            let dockPixels = try #require(NSBitmapImageRep(data: dockTiff))
+            let outside = try #require(dockPixels.colorAt(x: 12, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+            #expect(outside.alphaComponent < 0.1)
+            let tile = try #require(dockPixels.colorAt(x: 40, y: dockPixels.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
+            #expect(tile.alphaComponent > 0.99)
+            #expect(min(tile.redComponent, tile.greenComponent, tile.blueComponent) > 0.99)
+            let png = try #require(dockPixels.representation(using: .png, properties: [:]))
+            try png.write(to: directory.appendingPathComponent("UI12-dock-\(theme.rawValue).png"))
+        }
+        let lightMark = try #require(NSBitmapImageRep(data: try requireData(data[.light])))
+        let darkMark = try #require(NSBitmapImageRep(data: try requireData(data[.graphite])))
+        for y in stride(from: 0, to: lightMark.pixelsHigh, by: 5) {
+            for x in stride(from: 0, to: lightMark.pixelsWide, by: 5) {
+                #expect(lightMark.colorAt(x: x, y: y) == darkMark.colorAt(x: x, y: y))
+            }
+        }
+        let opaqueMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: true))
+        let translucentMenu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite, reduceTransparency: false))
+        #expect(opaqueMenu.tiffRepresentation == translucentMenu.tiffRepresentation)
+        let light = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .light))
+        let dark = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+        #expect(!light.isTemplate && !dark.isTemplate)
+        #expect(light.tiffRepresentation != dark.tiffRepresentation)
+        #expect(Theme.light.menuOutline != Theme.graphite.menuOutline)
+    }
+    @MainActor @Test func dockTileIsCompactAndKeepsSignature() throws {
+        let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+        let dockData = try #require(dock.tiffRepresentation)
+        let pixels = try #require(NSBitmapImageRep(data: dockData))
+        var left = pixels.pixelsWide; var right = 0
+        for y in stride(from: 0, to: pixels.pixelsHigh, by: 2) {
+            for x in stride(from: 0, to: pixels.pixelsWide, by: 2) {
+                guard let color = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB) else { continue }
+                if color.alphaComponent > 0.9 && max(color.redComponent, color.greenComponent, color.blueComponent) < 0.7 {
+                    left = min(left, x); right = max(right, x)
+                }
+            }
+        }
+        #expect(Double(right - left) > Double(pixels.pixelsWide) * 0.66)
+        #expect(Double(right - left) < Double(pixels.pixelsWide) * 0.75)
+        var signaturePixels = 0
+        for y in Int(Double(pixels.pixelsHigh) * 0.80)..<pixels.pixelsHigh {
+            for x in Int(Double(pixels.pixelsWide) * 0.76)..<pixels.pixelsWide {
+                guard let color = pixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), color.alphaComponent > 0.9 else { continue }
+                if max(color.redComponent, color.greenComponent, color.blueComponent) < 0.25 { signaturePixels += 1 }
+            }
+        }
+        #expect(signaturePixels > 100)
+        let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+        let data = try #require(menu.tiffRepresentation)
+        let tiny = try #require(NSBitmapImageRep(data: data))
+        #expect(try #require(tiny.colorAt(x: 0, y: tiny.pixelsHigh / 2)).alphaComponent < 0.1)
+    }
+    @MainActor @Test func menuUsesTheSignedGrayscaleMarkWhileDockKeepsBrandColors() throws {
+        let directory = ComponentTests.root.appendingPathComponent("Snapshots")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: false, theme: .graphite))
+        let menuData = try #require(menu.tiffRepresentation)
+        let silhouette = try #require(NSBitmapImageRep(data: menuData))
+        #expect(silhouette.pixelsWide == 78 && silhouette.pixelsHigh == 66)
+        #expect(try #require(silhouette.colorAt(x: 30, y: 9)).alphaComponent > 0.6)
+        #expect(try #require(silhouette.colorAt(x: 24, y: 24)).alphaComponent < 0.1)
+        #expect(try #require(silhouette.colorAt(x: 24, y: 48)).alphaComponent > 0.6)
+        var signaturePixels = 0
+        for y in 50..<60 {
+            for x in 48..<59 {
+                if try #require(silhouette.colorAt(x: x, y: y)).alphaComponent > 0.35 { signaturePixels += 1 }
+            }
+        }
+        #expect(signaturePixels > 3, "the detached I.A signature must remain in the menu mark")
+        for theme in Theme.allCases {
+            for needsDecision in [false, true] {
+                let menu = try #require(BatonMenuIcon.nativeImage(needsDecision: needsDecision, theme: theme))
+                let imageData = try #require(menu.tiffRepresentation)
+                let pixels = try #require(NSBitmapImageRep(data: imageData))
+                // Sample the sRGB bytes that the menu bar receives. Reading them back through
+                // NSBitmapImageRep.colorAt(...).usingColorSpace(.deviceRGB) goes through an
+                // untagged "calibrated RGB" conversion on macOS 27 that stretches the mark's
+                // deliberate 12/255 cool tint to 15/255 (see G3 in the report).
+                let rendered = try Self.srgbBytes(of: menu)
+                var shadedPixels = 0
+                for y in 0..<rendered.height {
+                    for x in 0..<rendered.width {
+                        let offset = (y * rendered.width + x) * 4
+                        let alpha = Double(rendered.bytes[offset + 3]) / 255
+                        // Premultiplied 8-bit bytes lose up to half a step per channel when the alpha is
+                        // divided back out; at 0.95 and above that error stays well below the limit.
+                        guard alpha >= 0.95 else { continue }
+                        let channels = (0..<3).map { min(1, Double(rendered.bytes[offset + $0]) / 255 / alpha) }
+                        let spread = channels.max()! - channels.min()!
+                        #expect(spread <= Self.menuTintLimit, "menu mark is not grayscale at (\(x), \(y)); RGB \(channels), theme \(theme.rawValue)")
+                        if spread < 0.05 { shadedPixels += 1 }
+                    }
+                }
+                #expect(shadedPixels > 80)
+                let png = try #require(pixels.representation(using: .png, properties: [:]))
+                try png.write(to: directory.appendingPathComponent("UI12-menu-\(theme.rawValue)-\(needsDecision ? "badge" : "plain").png"))
+            }
+        }
+        let dock = try #require(BatonBrand.applicationIcon(theme: .light))
+        let dockData = try #require(dock.tiffRepresentation)
+        let dockPixels = try #require(NSBitmapImageRep(data: dockData))
+        var burgundyPixels = 0
+        for y in stride(from: 0, to: dockPixels.pixelsHigh, by: 3) {
+            for x in stride(from: 0, to: dockPixels.pixelsWide, by: 3) {
+                guard let color = dockPixels.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB), color.alphaComponent > 0.9 else { continue }
+                if color.redComponent > color.blueComponent * 1.2 { burgundyPixels += 1 }
+            }
+        }
+        #expect(burgundyPixels > 100)
+    }
+    private func requireData(_ value: Data?) throws -> Data { try #require(value) }
+
+    /// Largest allowed gap between a menu pixel's brightest and dimmest channel, in 8-bit steps.
+    /// Theme.menuGlass is a cool gray whose stops differ by at most 12 steps (0x777c83 is the
+    /// widest); the rest is rounding when premultiplied bytes are divided by their alpha.
+    private static let menuTintLimit = 15.0 / 255
+
+    /// Draws an image into an 8-bit premultiplied sRGB bitmap and returns its bytes unchanged,
+    /// so tests measure the pixels that are displayed instead of a colour-managed re-reading.
+    private static func srgbBytes(of image: NSImage) throws -> (width: Int, height: Int, bytes: [UInt8]) {
+        var rect = CGRect(origin: .zero, size: image.size)
+        let source = try #require(image.cgImage(forProposedRect: &rect, context: nil, hints: nil))
+        let width = source.width, height = source.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
+        let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        #expect(drawn)
+        return (width, height, bytes)
+    }
+
+}
