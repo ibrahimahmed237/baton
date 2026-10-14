@@ -60,7 +60,7 @@ def permission_mode(descriptor, name, info):
     if info is None: return 0o600
     handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor)
     try:
-        # Refuse ACL-bearing files; copy ordinary extended attributes when staging.
+        # Refuse ACL-bearing files; extended attributes are copied and verified.
         if sys.platform == 'darwin':
             import ctypes
             libc = ctypes.CDLL(None, use_errno=True)
@@ -71,11 +71,34 @@ def permission_mode(descriptor, name, info):
             else:
                 libc.acl_free(ctypes.c_void_p(acl))
                 raise InstallRefused()
-        elif not hasattr(os, 'listxattr'):
-            raise InstallRefused()
+        if sys.platform != 'darwin' and not hasattr(os, 'listxattr'): raise InstallRefused()
         if info.st_uid != os.getuid() or info.st_gid not in os.getgroups() + [os.getgid()]:
             raise InstallRefused()
         return stat.S_IMODE(info.st_mode)
+    finally: os.close(handle)
+
+
+def attributes(descriptor, name):
+    handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor)
+    try:
+        if sys.platform != 'darwin':
+            return tuple(sorted((n, os.getxattr(handle, n)) for n in os.listxattr(handle)))
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.flistxattr.restype = libc.fgetxattr.restype = ctypes.c_ssize_t
+        size = libc.flistxattr(handle, None, 0, 0)
+        if size < 0: raise InstallRefused()
+        names = ctypes.create_string_buffer(size)
+        if libc.flistxattr(handle, names, size, 0) != size: raise InstallRefused()
+        result = []
+        for n in names.raw.split(b'\0'):
+            if not n: continue
+            length = libc.fgetxattr(handle, n, None, 0, 0, 0)
+            if length < 0: raise InstallRefused()
+            value = ctypes.create_string_buffer(length)
+            if libc.fgetxattr(handle, n, value, length, 0, 0) != length: raise InstallRefused()
+            result.append((n, value.raw))
+        return tuple(sorted(result))
     finally: os.close(handle)
 
 
@@ -111,6 +134,13 @@ def stage(descriptor, text, mode=0o600, info=None, source=None):
         with os.fdopen(os.dup(handle), 'wb') as stream:
             stream.write(text.encode()); stream.flush(); os.fsync(stream.fileno())
         os.fchmod(handle, mode)
+        staged = os.fstat(handle)
+        if stat.S_IMODE(staged.st_mode) != mode or (info is not None and
+                (staged.st_uid, staged.st_gid) != (info.st_uid, info.st_gid)):
+            raise InstallRefused()
+        permission_mode(descriptor, name, staged)
+        if info is not None and attributes(descriptor, name) != attributes(descriptor, source):
+            raise InstallRefused()
         os.fsync(handle)
         return name
     except BaseException:
@@ -288,11 +318,13 @@ class SetupFiles:
                 stack.callback(os.close, handle)
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
             publications = []
+            permission_attributes = {}
             for location, descriptor, name, before, after, metadata in (
                 (path, target_fd, path.name, old, change.after, info),
                 (record, record_fd, record.name, old_record, record_text, record_info)):
                 if before == (after.encode() if after is not None else None): continue
                 mode = permission_mode(descriptor, name, metadata)
+                permission_attributes[location] = attributes(descriptor, name) if metadata is not None else None
                 replacement = stage(descriptor, after, mode, metadata, name) if after is not None else None
                 rollback = stage(descriptor, before.decode(), mode, metadata, name) if before is not None else None
                 for temporary in (replacement, rollback):
@@ -318,9 +350,13 @@ class SetupFiles:
                         if os.fstat(fresh).st_ino != os.fstat(descriptor).st_ino or os.fstat(fresh).st_dev != os.fstat(descriptor).st_dev:
                             raise ChatChanged()
                     data, current = snapshot(descriptor, name)
+                    if current is not None:
+                        permission_mode(descriptor, name, current)
+                        if attributes(descriptor, name) != permission_attributes[location]: raise ChatChanged()
+                    if (current is None) != (metadata is None): raise ChatChanged()
                     if data != before or (current is not None and metadata is not None and
-                            (current.st_ino, current.st_mode, current.st_uid, current.st_gid) !=
-                            (metadata.st_ino, metadata.st_mode, metadata.st_uid, metadata.st_gid)):
+                            (current.st_dev, current.st_ino, current.st_mode, current.st_uid, current.st_gid) !=
+                            (metadata.st_dev, metadata.st_ino, metadata.st_mode, metadata.st_uid, metadata.st_gid)):
                         raise ChatChanged()
             revalidate(publications)
             # Publish durable ownership first: interruption can leave a harmless
@@ -332,14 +368,20 @@ class SetupFiles:
                     if before_write is not None: before_write()
                     revalidate([item])
                     _, descriptor, name, _, after, _, replacement, _ = item
+                    published = snapshot(descriptor, replacement)[1] if replacement is not None else None
+                    published_attributes = attributes(descriptor, replacement) if replacement is not None else None
                     if after is None: os.unlink(name, dir_fd=descriptor)
                     else: os.replace(replacement, name, src_dir_fd=descriptor, dst_dir_fd=descriptor)
-                    completed.append(item)
+                    completed.append((item, published, published_attributes))
                     os.fsync(descriptor)
             except BaseException:
-                for _, descriptor, name, _, after, _, _, rollback in reversed(completed):
-                    data, _ = snapshot(descriptor, name)
-                    if data != (after.encode() if after is not None else None): raise ChatChanged()
+                for item, published, published_attributes in reversed(completed):
+                    location, descriptor, name, _, after, _, _, rollback = item
+                    if before_write is not None: before_write()
+                    permission_attributes[location] = published_attributes
+                    revalidate([(location, descriptor, name,
+                                 after.encode() if after is not None else None,
+                                 None, published, None, None)])
                     if rollback is None: os.unlink(name, dir_fd=descriptor)
                     else: os.replace(rollback, name, src_dir_fd=descriptor, dst_dir_fd=descriptor)
                     os.fsync(descriptor)

@@ -391,7 +391,7 @@ class SetupInstallation(unittest.TestCase):
         with self.assertRaises(ChatChanged): self.service.apply('claude', preview=reviewed)
         self.assertEqual(record.read_text(), source)
 
-    def test_review_special_permissions_are_preserved(self):
+    def test_review_dropped_special_permissions_refused(self):
         from baton.adapters import setup_files
         path = self.home / '.claude/settings.local.json'; path.parent.mkdir(parents=True)
         path.write_text('{}'); path.chmod(0o750)
@@ -403,14 +403,32 @@ class SetupInstallation(unittest.TestCase):
                 info = os.stat_result(fields)
             return data, info
         before = path.stat()
-        # This Mac's managed filesystem strips setuid/setgid on chmod. Inject
-        # their stat evidence and assert the complete mode passed to fchmod.
-        with patch.object(setup_files, 'snapshot', special_metadata), patch.object(os, 'fchmod', wraps=os.fchmod) as chmod:
-            self.service.apply('claude')
-            self.assertIn(0o6750, [call.args[1] for call in chmod.call_args_list])
+        # Model a filesystem dropping requested set-id bits after fchmod.
+        actual_chmod = os.fchmod
+        def dropping(handle, mode): actual_chmod(handle, mode & ~0o6000)
+        with patch.object(setup_files, 'snapshot', special_metadata), patch.object(os, 'fchmod', side_effect=dropping):
+            with self.assertRaises(InstallRefused): self.service.apply('claude')
+        self.assertEqual(path.read_text(), '{}')
         after = path.stat()
         self.assertEqual(after.st_mode & 0o777, before.st_mode & 0o777)
         self.assertEqual((after.st_uid, after.st_gid), (before.st_uid, before.st_gid))
+
+    def test_review_staged_attribute_loss_refused(self):
+        import ctypes
+        import sys
+        path = self.home / '.claude/settings.local.json'; path.parent.mkdir(parents=True)
+        path.write_text('{}')
+        name = b'user.baton-test' if sys.platform != 'darwin' else b'com.baton.test'
+        if sys.platform == 'darwin':
+            libc = ctypes.CDLL(None, use_errno=True)
+            handle = os.open(path, os.O_RDONLY)
+            try: self.assertEqual(libc.fsetxattr(handle, name, b'exact value', 11, 0, 0), 0)
+            finally: os.close(handle)
+        else: os.setxattr(path, name, b'exact value')
+        with patch('baton.adapters.setup_files.copy_attributes', lambda source, destination: None):
+            with self.assertRaises(InstallRefused): self.service.apply('claude')
+        self.assertEqual(path.read_text(), '{}')
+        self.assertFalse(self.service.files.record_path('claude').exists())
 
     def test_review_extended_attributes_survive_replacement(self):
         import ctypes
@@ -425,14 +443,78 @@ class SetupInstallation(unittest.TestCase):
             finally: os.close(handle)
         else: os.setxattr(path, name, b'exact value')
         self.service.apply('claude')
-        if sys.platform == 'darwin':
-            handle = os.open(path, os.O_RDONLY)
-            try:
-                value = ctypes.create_string_buffer(11)
-                self.assertEqual(libc.fgetxattr(handle, name, value, 11, 0, 0), 11)
-                self.assertEqual(value.raw, b'exact value')
-            finally: os.close(handle)
-        else: self.assertEqual(os.getxattr(path, name), b'exact value')
+        from baton.adapters.setup_files import directory, attributes
+        with directory(path.parent) as descriptor:
+            self.assertIn((name if sys.platform == 'darwin' else name.decode(), b'exact value'), attributes(descriptor, path.name))
+
+    def test_review_permission_metadata_added_during_backup_refused(self):
+        from baton.adapters import setup_files
+        for kind in ('acl', 'xattr'):
+            with self.subTest(kind=kind):
+                path = self.home / '.claude/settings.local.json'
+                path.parent.mkdir(exist_ok=True); before = json.dumps({'kind': kind}); path.write_text(before)
+                preview = self.service.preview('claude')
+                original = setup_files.atomic
+                added = False
+                def backup(*args, **kwargs):
+                    nonlocal added
+                    original(*args, **kwargs); added = True
+                original_mode = setup_files.permission_mode
+                original_names = setup_files.attributes
+                def permission(descriptor, name, info):
+                    if added and name == path.name and kind == 'acl': raise InstallRefused()
+                    return original_mode(descriptor, name, info)
+                def attributes(descriptor, name):
+                    result = original_names(descriptor, name)
+                    if added and name == path.name and kind == 'xattr':
+                        return (*result, ('outside.attribute', b'changed'))
+                    return result
+                with patch.object(setup_files, 'atomic', backup), patch.object(setup_files, 'permission_mode', permission), patch.object(setup_files, 'attributes', attributes):
+                    with self.assertRaises((InstallRefused, ChatChanged)): self.service.apply('claude', preview=preview)
+                self.assertEqual(path.read_text(), before)
+                self.assertFalse(self.service.files.record_path('claude').exists())
+
+    def test_review_recovery_refuses_outside_identity_permissions_ancestors_and_app(self):
+        from baton.ports.setup_install import InstallAppRunning
+        for kind in ('inode', 'mode', 'parent', 'app'):
+            with self.subTest(kind=kind):
+                path = self.home / '.claude/settings.local.json'
+                path.parent.mkdir(exist_ok=True); path.write_text('{}')
+                self.service.apply('claude')
+                change = self.service.files.prepare(self.engine.adapters['claude'].hooks, str(self.command), True)
+                record = self.service.files.record_path('claude')
+                record_source = record.read_text()
+                original = os.unlink
+                late = False
+                moved = self.home / ('moved-' + kind)
+                def unlink(destination, **kwargs):
+                    nonlocal late
+                    if destination == record.name:
+                        late = True
+                        if kind == 'inode':
+                            outside = path.with_name('outside')
+                            outside.write_bytes(path.read_bytes()); outside.replace(path)
+                        elif kind == 'mode': path.chmod(0o640)
+                        elif kind == 'parent':
+                            path.parent.rename(moved); path.parent.mkdir()
+                            path.write_text('outside')
+                        raise OSError('fail ownership publication')
+                    return original(destination, **kwargs)
+                def guard():
+                    if late and kind == 'app': raise InstallAppRunning()
+                with patch.object(os, 'unlink', unlink):
+                    with self.assertRaises((ChatChanged, InstallAppRunning, InstallRefused)):
+                        self.service.files.apply('claude', str(self.command), change, True,
+                                                 json.loads(record_source), record_source, guard)
+                surviving = moved / path.name if kind == 'parent' else path
+                self.assertEqual(surviving.read_text(), change.after)
+                self.assertEqual(record.read_text(), record_source)
+                if kind == 'mode': self.assertEqual(path.stat().st_mode & 0o777, 0o640)
+                if kind == 'parent':
+                    self.assertEqual(path.read_text(), 'outside')
+                    path.unlink(); path.parent.rmdir(); moved.rename(path.parent)
+                # Restore fixture ownership for the next subcase using its own bytes.
+                record.unlink()
 
     def test_review_acl_refuses_before_writes(self):
         import ctypes
@@ -599,6 +681,45 @@ class SetupInstallation(unittest.TestCase):
 
 
 class LauncherInstallation(unittest.TestCase):
+    def test_installer_and_launcher_never_create_repository_bytecode(self):
+        import shutil
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve(); repo = root / 'repo'; home = root / 'home'; home.mkdir()
+            shutil.copytree(REPO / 'baton', repo / 'baton', ignore=shutil.ignore_patterns('__pycache__'))
+            script = repo / 'tools/install/install-baton.sh'; script.parent.mkdir(parents=True)
+            shutil.copyfile(REPO / 'tools/install/install-baton.sh', script)
+            env = {**os.environ, 'HOME': str(home), 'BATON_HOME': str(home / 'store'), 'BATON_TOOLS_HOME': str(home / 'tools')}
+            env.pop('PYTHONDONTWRITEBYTECODE', None)
+            env.pop('PYTHONPYCACHEPREFIX', None)
+            installed = subprocess.run(['/bin/sh', str(script)], env=env, capture_output=True, text=True)
+            self.assertEqual(installed.returncode, 0, installed.stderr)
+            self.assertEqual(list(repo.rglob('__pycache__')), [])
+            command = home / '.local/bin/baton'
+            self.assertIn('export PYTHONDONTWRITEBYTECODE=1', command.read_text())
+            preview = subprocess.run([str(command), 'setup', 'install', '--tool', 'codex'], cwd=home, env=env, capture_output=True, text=True)
+            self.assertEqual(preview.returncode, 0, preview.stderr)
+            self.assertEqual(list(repo.rglob('__pycache__')), [])
+
+    def test_installer_chmod_cannot_follow_swapped_launcher_or_parent(self):
+        script = (REPO / 'tools/install/install-baton.sh').read_text().split("<<'PY'\n", 1)[1].rsplit('\nPY', 1)[0]
+        for kind in ('launcher', 'parent'):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as folder:
+                home = Path(folder).resolve(); command = home / '.local/bin/baton'
+                foreign = home / 'foreign'; foreign.mkdir()
+                victim = foreign / 'baton'; victim.write_text('outside'); victim.chmod(0o600)
+                original = os.fdopen
+                @contextmanager
+                def swapping(*args, **kwargs):
+                    with original(*args, **kwargs) as stream: yield stream
+                    if kind == 'launcher': command.unlink(); command.symlink_to(victim)
+                    else:
+                        command.parent.rename(home / 'moved')
+                        command.parent.symlink_to(foreign, target_is_directory=True)
+                with patch.object(Path, 'home', return_value=home), patch.dict(os.environ, {'BATON_REPO': str(REPO), 'BATON_PYTHON': 'python3'}), patch.object(os, 'fdopen', swapping), patch('sys.stdout', io.StringIO()):
+                    with self.assertRaises(SystemExit): exec(compile(script, '<installer>', 'exec'), {})
+                self.assertEqual(victim.read_text(), 'outside')
+                self.assertEqual(victim.stat().st_mode & 0o777, 0o600)
+
     def test_script_installs_launcher_runs_empty_links_and_refuses_other_command(self):
         with tempfile.TemporaryDirectory(prefix='baton launcher ') as folder:
             home = Path(folder).resolve()

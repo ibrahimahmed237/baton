@@ -200,3 +200,41 @@ They gain the bookkeeping note and `can_confirm`; their facts replace the prior 
 Propose contract documentation for the app-closed configuration rule, failure-as-running, OpenCode's owned-file exception, refused previews' null plan ID and false `can_confirm`, the two fact fields, and the explicit preview bookkeeping allowance. These supersede the earlier proposed mandatory native-coordination refusal gate. CONTRACT.md remains frozen and unchanged.
 
 Both assigned findings are closed. No open implementation question remains for SI-fix2. Native/global loading verification, live app checks, app routing/model integration, published fixture regeneration and the existing one-location ownership policy remain outside this task. No native installation or process behavior was claimed from these fixture tests.
+
+## Review round 3 — SI-fix3
+
+### Built
+
+All four assigned findings are closed on temporary fixtures.
+
+1. Recovery now reuses publication validation before each restore: the app-closed callback, a fresh no-follow parent walk and pinned parent device/inode comparison, exact bytes, existence, published file device/inode, mode, owner/group, ACL refusal and extended-attribute equality. The expected inode and attributes come from the replacement stage before publication. An outside replacement with identical bytes, permission change, parent swap or late app start refuses recovery instead of restoring hooks over it. A refused recovery deliberately leaves the ownership record and backup available; it does not guess that restoring is safe.
+2. Extended attributes are fingerprinted as sorted name/value pairs through no-follow descriptors, including macOS descriptor-based libc calls. Final publication validation compares them against the pre-staging snapshot; a new ACL is checked again and refused through the existing `setup.install_refused` note. Staging verifies complete `S_IMODE` bits after `fchmod`, owner/group, absence of ACLs, and exact attribute equality with its source. Attribute enumeration/copy/verification failures refuse. Existing attribute-bearing files remain supported when every attribute can be copied and verified; a plain ordinary-mode file still installs. This Mac supplies an inherited extended attribute even on ordinary temporary files, so a blanket attribute refusal would unnecessarily prevent those installations.
+3. The installer uses its discovered `python3` with `-B`. The launcher uses the same Python with `-B` and exports `PYTHONDONTWRITEBYTECODE=1`. A regression installs from a temporary cache-free repository copy and runs a setup preview with temporary HOME/tool/store roots, checking that neither invocation creates repository `__pycache__` directories.
+4. Launcher installation walks and creates directories through pinned no-follow descriptors, opens the launcher with `O_NOFOLLOW` (exclusive creation or descriptor-based existing-content validation), checks regular/single-link identity, and calls `fchmod` on its descriptor. Parent and file identity are checked again before reporting success. Tests swap either the launcher to a symlink or its parent to a symlink after content handling and before chmod; the outside target's bytes and mode stay exact and installation refuses.
+
+### Verification
+
+- Focused SI unit/recipe tests: **41 pass**, 3.305 seconds (`python3 -B -m unittest tests.unit.test_setup_install tests.contract.test_setup_install_recipes`). Log: `/tmp/baton-si-fix3-focused.log`.
+- Full engine suite: **1,378 pass**, 43.793 seconds (`python3 -B -m unittest discover -s tests -t .`). Log: `/tmp/baton-si-fix3-engine-final.log`. The recovery regression was subsequently strengthened to assert exact post-uninstall bytes; the final focused run verifies that assertion.
+- `app/scripts/check.sh`: **passes**, build, **206 app tests** (185 + 21), **26 fixture-gate tests**. Log: `/tmp/baton-si-fix3-app.log`.
+- **Eleven reverse-check variants** in separate temporary repository copies fail with assertion failures when their protection is removed: combined recovery validation, recovery app guard, parent identity, inode/mode identity, final attribute comparison, final ACL check, staged full mode verification, staged attribute verification, installer `-B`, launcher bytecode suppression, and descriptor chmod. Script/log: `/tmp/baton-si-fix3-reverse.py`, `/tmp/baton-si-fix3-reverse.log`. Reverse checks never edited the working repository.
+- `git diff --check` passes. No unowned test failure was encountered. The existing untracked `docs/plan/reports/E9-E10.md` was preserved.
+
+### Exact files changed
+
+- `baton/adapters/setup_files.py`
+- `tools/install/install-baton.sh`
+- `tests/unit/test_setup_install.py` (also contains the installer tests)
+- `docs/plan/reports/setup-install-2026-10-15.md` (this appended section)
+
+No shared-file edits, new catalogue wording, dependency additions, Git state changes, worktrees, real chat/tool-data reads, real app/coding-tool control, spike execution or live scripts were used.
+
+### Decisions, contract, fixtures and remaining scope
+
+Where the plan was silent, existing `setup.install_refused`/`setup.launcher_conflict` catalogue notes cover unpreservable metadata and launcher races; attribute preservation remains supported with exact verification, and ACL-bearing files remain refused. Special bits that the filesystem silently drops now cause refusal instead of a successful install. Installer conflict detection still requires exact current launcher content; migration from a differing older launcher is outside this round.
+
+Proposed additive contract clarification: setup refuses recovery after changed app/file/parent/permission observations; successful replacements preserve verified full mode, owner/group and extended attributes, and ACL-bearing or unpreservable metadata refuses; the launcher/installer suppress repository bytecode writes. No JSON field/signature change is needed, and the frozen contract was not edited.
+
+**Fixtures:** no generated `app/Fixtures` output changes because these protections alter internal validation and launcher bytes, not the successful ordinary-file recipe responses. No fixture was regenerated.
+
+No open implementation question remains for these four findings. Real-Mac installation, native/global hook loading, live app observations, app integration and existing ownership-location/migration policy remain outside this task. This fixture verification does not claim those live checks are done.
