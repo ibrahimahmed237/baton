@@ -400,6 +400,9 @@ def action_receipt(value, result):
     receipt = result
     while receipt is not None:
         lifecycle_notes.extend(note_list(getattr(receipt, 'notes', ())))
+        if getattr(receipt, 'reopen_error', ''):
+            value['opened'] = False
+            value['reopen_error'] = receipt.reopen_error
         receipt = getattr(receipt, 'write_result', None)
     value['notes'] = [*value.get('notes', ()), *[n for n in lifecycle_notes if n not in value.get('notes', ())]]
     if getattr(result, 'error', ''):

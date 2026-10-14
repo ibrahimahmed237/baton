@@ -7,7 +7,7 @@ import json
 from time import monotonic, sleep
 
 from ..domain.capabilities import Visibility, WriteWindow
-from ..domain.errors import ChatChanged, DecisionNeeded, NotAvailable
+from ..domain.errors import ChatChanged, ChatReplying, DecisionNeeded, NotAvailable
 from ..ports.clock import Clock
 from ..ports.store import RecordStore
 from .applier import Applier
@@ -57,6 +57,26 @@ class RelaunchResult:
         if name in ('chat_id', 'link_id', 'event_id', 'needs', 'rollback_error', 'pending_entry'):
             return getattr(self.write_result, name)
         raise AttributeError(name)
+
+
+class _ReplyRefusal(ChatReplying):
+    def __init__(self, notes, write_result=None):
+        self.notes, self.write_result = notes, write_result
+
+
+class _IdleWriter:
+    """Guard every native mutation, including rollback."""
+    def __init__(self, writer, guard):
+        self.writer, self.guard = writer, guard
+
+    def __getattr__(self, name):
+        method = getattr(self.writer, name)
+        if name not in ('create', 'add', 'place', 'cut', 'restore', 'rename', 'take_back'):
+            return method
+        def write(*args, **kwargs):
+            self.guard()
+            return method(*args, **kwargs)
+        return write
 
 
 class Relaunch:
@@ -265,7 +285,7 @@ class Relaunch:
             if unsafe:
                 return self._reopen(plan, False, 'ChatReplying', None, notes=unsafe)
             if write is not None:
-                write_result = write()
+                write_result = self._write_idle((plan.tool,), write)
                 return self._reopen(plan, write_result.applied, getattr(write_result, 'error', ''), write_result)
             fresh_plans = tuple(self.preview.prepare(item.link_id, item.steps,
                                     {s: snap['chat_id'] for s, snap in item.snapshots.items()})
@@ -276,18 +296,59 @@ class Relaunch:
                     if unsafe:
                         return self._reopen(plan, False, 'ChatReplying', write_result, tuple(completed), notes=unsafe)
                     if all(s.action == 'rename' for s in fresh.steps):
-                        Names(self.store, self.adapters, self.clock).apply(fresh)
+                        self._write_idle((plan.tool,), lambda: Names(self.store, self.adapters, self.clock).apply(fresh))
                     else:
-                        write_result = Applier(self.store, self.adapters, self.clock,
-                                               self.elapsed, self.wait).apply(fresh)
+                        write_result = self._write_idle((plan.tool,), lambda: Applier(
+                            self.store, self.adapters, self.clock, self.elapsed, self.wait).apply(fresh))
                         if not write_result.applied:
                             return self._reopen(plan, False, write_result.error, write_result, tuple(completed))
                     completed.append(fresh.link_id)
             return self._reopen(plan, True, '', write_result, tuple(completed))
+        except _ReplyRefusal as error:
+            receipt = error.write_result if error.write_result is not None else write_result
+            return self._reopen(plan, False, 'ChatReplying', receipt,
+                                tuple(completed), notes=error.notes)
         except Exception as error:
             if write_started or closed or (close_started and not adapter.app.running()):
                 return self._reopen(plan, False, type(error).__name__, write_result, tuple(completed))
             raise
+
+    def _guard_idle(self, tools):
+        """The single positive-idle gate, including every chat in affected apps."""
+        notes = tuple(note for tool in dict.fromkeys(tools)
+                      for note in self._reply_refusals(tool, {
+                          ref.id: {'ref': asdict(ref), 'condition': asdict(
+                              self.adapters[tool].state.condition(ref.id))}
+                          for ref in self.adapters[tool].locator.chats()}))
+        if notes:
+            raise _ReplyRefusal(notes)
+
+    def _write_idle(self, tools, action):
+        """Check after rebasing and again immediately before each native write.
+
+        Some write services catch exceptions for rollback. Retain the named
+        refusal here too so their generic failure receipts cannot hide it.
+        """
+        tools = tuple(dict.fromkeys(tools))
+        self._guard_idle(tools)
+        refused = []
+        def guard():
+            try:
+                self._guard_idle(tools)
+            except _ReplyRefusal as error:
+                refused.extend(n for n in error.notes if n not in refused)
+                raise
+        writers = {tool: self.adapters[tool].writer for tool in tools}
+        try:
+            for tool, writer in writers.items():
+                self.adapters[tool].writer = _IdleWriter(writer, guard)
+            result = action()
+            if refused:
+                raise _ReplyRefusal(tuple(refused), result)
+            return result
+        finally:
+            for tool, writer in writers.items():
+                self.adapters[tool].writer = writer
 
     def _reply_refusals(self, tool, chats):
         """Require positive idle evidence and name every unsafe chat."""
@@ -296,11 +357,15 @@ class Relaunch:
                      for value in chats.values() if value['condition']['replying'] is not False)
 
     def _reopen(self, plan, applied, error, write_result, completed=(), notes=()):
+        if isinstance(write_result, RelaunchResult):
+            notes += tuple(n for n in write_result.notes if n not in notes)
         notes = notes + ((NoteRef('relaunch.partial', {'tool': plan.tool, 'n': len(completed)}),) if completed and not applied else ())
         if error and not applied and not any(n.id in ('relaunch.close_failed', 'relaunch.close_timeout', 'relaunch.replying_unknown', 'relaunch.replying_safe') for n in notes):
             notes += (NoteRef('relaunch.write_failed', {'tool': plan.tool}),)
         if not any(s.action == 'reopen' for s in plan.steps):
-            return RelaunchResult(plan.plan_id, applied, error=error, notes=notes, write_result=write_result, completed_links=completed)
+            return RelaunchResult(plan.plan_id, applied, error=error, notes=notes, write_result=write_result,
+                                  completed_links=completed,
+                                  reopen_error=getattr(write_result, 'reopen_error', ''))
         adapter = self.adapters[plan.tool]
         try:
             receipt = write_result
@@ -316,8 +381,10 @@ class Relaunch:
                 notes=notes + (NoteRef('relaunch.reopen_failed_partial' if completed and not applied else
                                       'relaunch.reopen_failed' if applied else 'relaunch.reopen_failed_no_write',
                                {'tool': plan.tool}),), write_result=write_result, completed_links=completed, reopen_error='ReopenFailed')
-        return RelaunchResult(plan.plan_id, applied, opened=True, error=error, notes=notes,
-                              write_result=write_result, completed_links=completed)
+        inner_failed = isinstance(write_result, RelaunchResult) and bool(write_result.reopen_error)
+        return RelaunchResult(plan.plan_id, applied, opened=not inner_failed, error=error, notes=notes,
+                              write_result=write_result, completed_links=completed,
+                              reopen_error=write_result.reopen_error if inner_failed else '')
 
 
     def plan_brief_creation(self, briefs, token):
@@ -484,7 +551,10 @@ class RelaunchActions(Relaunch):
                 return RelaunchResult(wrapped.plan_id, False, error='ChatReplying', notes=lifecycle.notes)
         def perform(index):
             if index == len(wrapped.lifecycles):
-                return apply(self._after_close(wrapped))
+                fresh = self._after_close(wrapped)
+                tools = ((fresh.target,) if wrapped.kind == 'link' else
+                         tuple(s.side for s in fresh.steps if s.action != 'move_link'))
+                return self._write_idle(tools, lambda: apply(fresh))
             return self.apply(wrapped.lifecycles[index], write=lambda: perform(index + 1))
         result = perform(0)
         return replace(result, plan_id=wrapped.plan_id)

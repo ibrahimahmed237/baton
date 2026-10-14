@@ -66,6 +66,73 @@ class ClosureSafetyTests(unittest.TestCase):
 
 
 class ReviewCommandTests(unittest.TestCase):
+    def test_wrapped_rebase_requires_positive_idle_for_sync_undo_and_creation(self):
+        from baton.services.relaunch import RelaunchActions
+        for kind in ('sync', 'undo', 'link'):
+            for replying in (None, True):
+                with self.subTest(kind=kind, replying=replying), world_for('review-rebase') as w:
+                    w.pair(('claude', 'cursor'), shared=1)
+                    w.seed('claude', [original(2), original(3)])
+                    if kind == 'undo':
+                        w.sync()
+                        event = next(e.id for e in w.store.history(3)
+                                     if e.kind == 'add' and e.side == 'cursor')
+                        command, options = 'undo', {'event': event}
+                    elif kind == 'sync':
+                        command, options = 'sync', {'to': 'cursor'}
+                    else:
+                        command, options = 'copy', {'source': 'claude:' + w.chats['claude'], 'to': 'cursor'}
+                    target = w.adapters['cursor']
+                    w.condition('cursor', app_running=True, open=True)
+                    review = run(w, command, **options)
+                    after_close = RelaunchActions._after_close
+                    def rebase(service, wrapped):
+                        # Change before rebasing: closure normalization must not
+                        # turn an unknown/busy state into fresh write consent.
+                        if not target.app.running():
+                            target.set_condition(w.chats['cursor'], replying=replying)
+                        return after_close(service, wrapped)
+                    method = 'add' if kind == 'sync' else 'create'
+                    writer = target.writer
+                    with patch.object(RelaunchActions, '_after_close', rebase), patch.object(writer, method, wraps=getattr(writer, method)) as write:
+                        try:
+                            receipt = run(w, command, confirm=review['plan_id'])
+                        except Exception as error:
+                            self.fail('Expected a named refusal receipt, got ' + repr(error))
+                    write.assert_not_called()
+                    self.assertIs(target.writer, writer)
+                    self.assertFalse(receipt['applied'])
+                    self.assertTrue(receipt['opened'])
+                    self.assertEqual(receipt['error']['kind'], 'chat_replying')
+                    ident = 'relaunch.replying_unknown' if replying is None else 'relaunch.replying_safe'
+                    self.assertIn(ident, [n['id'] for n in receipt['notes']])
+                    refusal = next(n for n in receipt['notes'] if n['id'] == ident)
+                    self.assertEqual(refusal['values']['title'], target.locator.resolve(w.chats['cursor']).name)
+
+    def test_brief_creation_checks_idle_immediately_before_native_write(self):
+        with world_for('review-brief-last-guard') as w:
+            w.pair(shared=1)
+            w.condition('claude', app_running=True, open=True)
+            review = background(w, 'brief', link=3, to='claude', writer='offline')
+            briefs = w.engine.briefs
+            plan_object = briefs._plan_object
+            def planning(*args, **kwargs):
+                planned = plan_object(*args, **kwargs)
+                # _create builds its final name after its last validation.
+                if w.store.journal_entries(pending=True):
+                    w.adapters['claude'].set_condition(w.chats['claude'], replying=None)
+                return planned
+            writer = w.adapters['claude'].writer
+            with patch.object(briefs, '_plan_object', planning), patch.object(writer, 'create') as create:
+                receipt = background(w, 'brief', confirm=review['plan_id'])
+            create.assert_not_called()
+            self.assertIs(w.adapters['claude'].writer, writer)
+            self.assertFalse(receipt['applied'])
+            self.assertTrue(receipt['opened'])
+            self.assertEqual(receipt['error']['kind'], 'chat_replying')
+            refusal = next(n for n in receipt['notes'] if n['id'] == 'relaunch.replying_unknown')
+            self.assertEqual(refusal['values']['title'], w.adapters['claude'].locator.resolve(w.chats['claude']).name)
+
     def test_copy_failure_keeps_lifecycle_note_and_open_outcome(self):
         with world_for('review-failure') as w:
             source = w.chat('claude', 'source', [original(1)])

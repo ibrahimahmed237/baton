@@ -453,3 +453,68 @@ class RelaunchTests(unittest.TestCase):
                 self.assertEqual(result.opened, not reopen_fails)
                 self.assertIn('relaunch.write_failed', [n.id for n in result.notes])
                 self.assertEqual(result.reopen_error, 'ReopenFailed' if reopen_fails else '')
+
+    def test_direct_write_checks_idle_after_the_native_service_validates(self):
+        planned = self.plan()
+        from baton.services.journal import Guard
+        check = Guard.check_write
+        def checking(guard, *args, **kwargs):
+            check(guard, *args, **kwargs)
+            self.target.set_condition(self.chats['codex'], replying=None)
+        writer = self.target.writer
+        with patch.object(Guard, 'check_write', checking), patch.object(writer, 'add') as add:
+            result = self.service.apply(planned)
+        add.assert_not_called()
+        self.assertIs(self.target.writer, writer)
+        self.assertFalse(result.applied)
+        self.assertTrue(result.opened)
+        self.assertEqual(result.error, 'ChatReplying')
+        self.assertEqual(result.notes[0].id, 'relaunch.replying_unknown')
+        self.assertEqual(result.notes[0].values['title'], 'destination')
+
+    def test_nested_lifecycle_preserves_inner_reopen_failure(self):
+        from baton.cli import output
+        outer = self.service.plan_relaunch('claude', _lifecycle_only=True)
+        inner = self.plan()
+        with patch.object(self.target.app, 'open', side_effect=OSError()):
+            result = self.service.apply(outer, write=lambda: self.service.apply(inner))
+        self.assertTrue(result.applied)
+        self.assertTrue(self.source.app.running())
+        self.assertFalse(self.target.app.running())
+        self.assertFalse(result.opened)
+        self.assertEqual(result.reopen_error, 'ReopenFailed')
+        self.assertEqual(result.error, 'ReopenFailed')
+        receipt = output.action_receipt({'notes': []}, result)
+        self.assertFalse(receipt['opened'])
+        self.assertEqual(receipt['reopen_error'], 'ReopenFailed')
+        self.assertIn('relaunch.reopen_failed', [n['id'] for n in receipt['notes']])
+
+    def test_serialization_preserves_inner_reopen_failure(self):
+        from baton.cli import output
+        from baton.services.relaunch import RelaunchResult
+        from baton.services.noteformat import NoteRef
+        inner = RelaunchResult('inner', True, error='ReopenFailed',
+                               reopen_error='ReopenFailed',
+                               notes=(NoteRef('relaunch.reopen_failed', {'tool': 'codex'}),))
+        legacy = RelaunchResult('outer', True, opened=True, write_result=inner)
+        receipt = output.action_receipt({'notes': []}, legacy)
+        self.assertFalse(receipt['opened'])
+        self.assertEqual(receipt['reopen_error'], 'ReopenFailed')
+
+    def test_every_native_mutation_is_guarded_and_writer_is_restored(self):
+        for method in ('create', 'add', 'place', 'cut', 'restore', 'rename', 'take_back'):
+            with self.subTest(method=method):
+                self.build()
+                planned = self.plan()
+                writer = self.target.writer
+                def action():
+                    self.target.set_condition(self.chats['codex'], replying=None)
+                    return getattr(self.target.writer, method)()
+                with patch.object(writer, method) as native:
+                    result = self.service.apply(planned, write=action)
+                native.assert_not_called()
+                self.assertIs(self.target.writer, writer)
+                self.assertFalse(result.applied)
+                self.assertTrue(result.opened)
+                self.assertEqual(result.error, 'ChatReplying')
+                self.assertEqual(result.notes[0].values['title'], 'destination')
