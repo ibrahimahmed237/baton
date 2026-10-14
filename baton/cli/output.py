@@ -384,3 +384,123 @@ def undo_plan(value):
                 removes=[{'turn': turn(LedgerTurn(**r['turn'])), 'only_here': r['only_here'], 'tool': r['side']}
                          for r in value.removes], removal_groups=groups,
                 ends_at=turn(rows[end_id]) if end_id in rows and value.ends_at else None)
+
+
+def action_receipt(value, result):
+    """Add service result fields without interpreting a write outcome."""
+    for key in ('link_id', 'chat_id', 'needs', 'rollback_error', 'pending_entry'):
+        if hasattr(result, key):
+            item = getattr(result, key)
+            value[key] = list(item) if key == 'needs' else item
+    if getattr(result, 'error', ''):
+        value['error'] = {'kind': snake_case(result.error), 'note': note('error.unexpected')}
+    return value
+
+
+def unlink_action_plan(value):
+    """Render removal notes solely from the immutable metadata plan."""
+    refs = [value.observations[s].get('ref', {}) for s in (value.source, value.target)]
+    record = next(r for r in value.records if r['link']['id'] == value.old_link_id)
+    notes = []
+    for side in record['link']['chats']:
+        waiting = sum(t['states'].get(side) in ('waiting', 'attach_pending') for t in record['turns'])
+        notes.append(note('link.remove', {'name': refs[0].get('name', ''),
+                         'other_name': refs[1].get('name', ''), 'tool': side, 'n': waiting}))
+    return plan(value.plan_id, value.old_link_id, [], notes=notes,
+                confirmation=note('plan.confirm_unlink'))
+
+
+def sync_action_plan(value, status):
+    """Serialize chosen delivery steps and the status service's explanations."""
+    notes = read_status(status)['notes']
+    notes.append(note('plan.confirm_sync'))
+    steps = []
+    for item in value.steps:
+        rendered = note_list(status['side_notes'][item.side])
+        steps.append(step(item.side, item.action, item.turn_ids, reason=item.reason,
+                          needs=item.needs, notes=rendered))
+        for entry in rendered:
+            if entry not in notes:
+                notes.append(entry)
+    return plan(value.plan_id, value.link_id, steps, notes=notes,
+                decision_needed=value.decision_needed,
+                confirmation=note('plan.unavailable' if value.decision_needed else 'plan.confirm_sync'))
+
+
+def background_brief_plan(value):
+    """Keep E10's exact staged approval and review text."""
+    return plan(value.plan_id, value.link_id,
+                [step(s.side, s.action, s.turn_ids, needs=s.needs) for s in value.steps],
+                notes=note_list(value.notes), stage=value.stage, brief=value.as_contract(),
+                confirmation=note(*value.confirmation))
+
+
+def background_status(value):
+    """Pending/running states and completed immutable results share a poll envelope."""
+    value = dict(value)
+    if value.get('result', {}).get('error') and 'note' not in value['result']['error']:
+        failure = value['result']['error']
+        value['result'] = {**value['result'], 'error': {**failure,
+            'kind': snake_case(failure['kind']), 'note': note('background.failed')}}
+    return {**value, 'applied': False,
+            'notes': [note('background.' + value['state'])]}
+
+
+def background_relaunch_plan(value, ident=None):
+    """Name every chat written and every app lifecycle operation."""
+    steps = []
+    for delivery in value.deliveries:
+        for item in delivery.steps:
+            data = step(item.side, item.action, item.turn_ids, needs=item.needs)
+            chat_id = delivery.snapshots[item.side]['chat_id']
+            ref = value.chats[chat_id]['ref']
+            data['chat'] = chat(item.side, chat_id, ref['name'], ref['folder'], ref['updated_at'])
+            steps.append(data)
+    lifecycle = [step(s.side, s.action, s.turn_ids) for s in value.steps
+                 if s.action in ('close', 'wait_until_still', 'reopen')]
+    return plan(ident or value.plan_id, value.link_id, [*lifecycle[:2], *steps, *lifecycle[2:]]
+                if value.running else [*steps, *lifecycle],
+                decision_needed=value.decision_needed, notes=note_list(value.notes),
+                replying=[chat_from_ref(value.tool, ref) for ref in value.replying],
+                expires_at=value.expires_at, when_idle=value.when_idle)
+
+
+def link_action_plan(value, service):
+    """Render the service-owned link/copy policy."""
+    notes = note_list(service.notes(value))
+    created = value.action in ('create', 'full_copy')
+    return plan(value.plan_id, value.old_link_id,
+                [step(value.target, 'create' if created else 'attach' if value.mode == 'attached_history' else 'add',
+                      value.turn_ids, needs=value.needs, notes=notes)], notes=notes,
+                confirmation=note('plan.unavailable' if not service.confirmation_available(value) else
+                                  'plan.confirm_link' if value.and_link else 'plan.confirm_copy'))
+
+
+def rename_action_plan(value, service):
+    """Render the immutable rename actions and notes."""
+    return plan(value.plan_id, value.link_id,
+                [step(s.side, s.action, (), needs=s.needs) for s in service.action_steps(value)],
+                notes=note_list(service.action_notes(value)) or [note('cli.rename_summary')],
+                confirmation=note('plan.confirm_rename'))
+
+
+def continue_action_plan(value, status):
+    """Render sync and opening together before either is performed."""
+    result = sync_action_plan(value.delivery, status)
+    result.update(plan_id=value.plan_id, opened=False,
+                  confirmation=note('plan.confirm_continue', {'tool': value.destination}))
+    result['notes'].append(note(*value.opening['note']))
+    return result
+
+
+def open_action_result(value):
+    """The contract's chat/folder receipt and preselected note."""
+    return {'opened': value['opened'], 'note': note(*value['note'])}
+
+
+def display_open_note(value, stream=None):
+    """Flush the pre-action note on stderr; stdout retains its single receipt."""
+    import sys
+    stream = stream if stream is not None else sys.stderr
+    stream.write(note(*value['note'])['text'] + "\n")
+    stream.flush()

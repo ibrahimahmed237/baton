@@ -65,9 +65,13 @@ def notify(engine, tool, call):
                          if e.side == step.side and e.kind in ('busy', 'idle', 'turn_end')), None)
             if last is not None and last.kind == 'busy':
                 continue
-            selected = applier.prepare(link.id, [step], link.chats)
-            applied = applier.apply(selected)
-            if not applied.applied:
+            try:
+                selected = applier.prepare(link.id, [step], link.chats)
+                applied = applier.apply(selected)
+                delivered = applied.applied
+            except Exception:
+                delivered = False
+            if not delivered:
                 from ..cli.output import note
                 result['offers'].append(note('hook.delivery_failed', {'tool': step.side}))
                 result['queued'].append(link.id)

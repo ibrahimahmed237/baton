@@ -62,7 +62,13 @@ def invoke(args, *, prompt, engine_factory=None, stdin=None, seconds=2.0, locked
                     observe = getattr(engine.adapter(args.tool).state, 'observe', None)
                     if observe is not None:
                         observe({**raw, 'chat_id': call.chat, 'event': call.event})
-                    value = (delivery.catch_up if prompt else delivery.notify)(engine, args.tool, call)
+                    if prompt:
+                        from .prompt import reviewed_reply
+                        value = reviewed_reply(engine, args.tool, call)
+                        if not value:
+                            value = delivery.catch_up(engine, args.tool, call)
+                    else:
+                        value = delivery.notify(engine, args.tool, call)
                     result = (json.dumps(value) + '\n' if contract else native.nothing(False)) if not prompt else value or empty
             except Exception:
                 logger.warning('hook_failed', exc_info=True)

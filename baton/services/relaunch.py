@@ -213,6 +213,7 @@ class Relaunch:
         self._validate(plan)
         closed = False
         close_started = False
+        write_started = False
         write_result = None
         completed = []
         try:
@@ -247,6 +248,7 @@ class Relaunch:
                     if not adapter.app.running():
                         return self._reopen(plan, False, 'CloseTimeout', None, notes=notes)
                     return RelaunchResult(plan.plan_id, False, error='CloseTimeout', notes=notes)
+            write_started = True
             self._validate(plan, closed=closed)
             fresh_plans = tuple(self.preview.prepare(item.link_id, item.steps,
                                     {s: snap['chat_id'] for s, snap in item.snapshots.items()})
@@ -263,10 +265,8 @@ class Relaunch:
                     completed.append(fresh.link_id)
             return self._reopen(plan, True, '', write_result, tuple(completed))
         except Exception as error:
-            if completed:
+            if write_started or closed or (close_started and not adapter.app.running()):
                 return self._reopen(plan, False, type(error).__name__, write_result, tuple(completed))
-            if closed or (close_started and not adapter.app.running()):
-                return self._reopen(plan, False, type(error).__name__, write_result)
             raise
 
     def _reopen(self, plan, applied, error, write_result, completed=(), notes=()):

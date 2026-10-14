@@ -66,6 +66,7 @@ class NamesTests(unittest.TestCase):
     def test_changed_name_content_record_or_facts_refuses_confirmation(self):
         for mutation in ('name', 'record', 'facts'):
             with self.subTest(mutation=mutation):
+                self.store.set_paused(self.link.id, False)
                 plan = self.service.plan_rename(self.link.id, 'same')
                 a = self.adapters['codex']
                 if mutation == 'name':

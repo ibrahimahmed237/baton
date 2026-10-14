@@ -475,3 +475,86 @@ CATALOGUE.update({note.id: note for note in (
     Note('merge.completed', 'ok', 'The merge decision was applied. Both sides will sync in the chosen order; their delivery status is shown below.'),
     Note('merge.completed_side', 'ok', '{tool} keeps its current chat. Its missing turns are delivered or queued as shown below.'),
 )})
+
+
+CATALOGUE.update({note.id: note for note in (
+    Note('cli.brief_summary', 'info', 'Create a brief in a new chat'),
+    Note('cli.ask_summary', 'info', 'Ask for a second opinion'),
+    Note('cli.ask_add_summary', 'info', 'Add a reviewed second opinion'),
+    Note('cli.relaunch_summary', 'info', 'Close, sync, and reopen'),
+    Note('background.pending', 'info', 'The read-only run is waiting to start.'),
+    Note('background.running', 'info', 'The agent is generating a read-only answer. No chat is changed.'),
+    Note('background.completed', 'ok', 'Review the result before creating a chat or adding the answer.'),
+    Note('background.cancelled', 'info', 'The run was cancelled. No answer will be added.'),
+    Note('background.deadline', 'warning', 'The run reached its deadline. No answer will be added.'),
+    Note('background.stopped', 'warning', 'The run was cancelled or reached its deadline.'),
+    Note('background.failed', 'warning', 'The background run could not finish. No answer was added.'),
+    Note('relaunch.replying_unknown', 'warning', 'Baton cannot tell whether {tool} is replying in "{title}". Nothing will be closed or written.'),
+    Note('ask.preview', 'info', '{tool} gets a brief of the chat and can read the project folder. It cannot change anything. About {tokens} tokens.',
+         (Button('confirm', 'Ask {tool}', True), Button('cancel', 'Cancel'))),
+    Note('ask.prompt', 'info', 'Review the conversation and answer the question. Only read: do not change files or run commands that change anything.\n\nConversation:\n{conversation}\n\nQuestion:\n{question}'),
+    Note('ask.answer_turn', 'info', 'Second opinion from {tool}\n\nQuestion: {question}\n\n{answer}'),
+    Note('ask.add_preview', 'info', 'Add this reviewed second opinion to the chat.',
+         (Button('confirm', 'Add to this chat', True), Button('cancel', 'Cancel'))),
+    Note('ask.add_unavailable', 'warning', 'This chat cannot receive the second opinion yet. Close it and review a new add request.'),
+    Note('ask.writer_reason', 'info', '{tool} is the other agent for this chat.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('cli.unlink_summary', 'info', 'Remove a link'),
+    Note('cli.sync_summary', 'info', 'Sync waiting turns'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('ask.added', 'ok', 'The reviewed second opinion was added to this chat.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('brief.writer_order', 'info', 'Automatic asks {tool} first, then the other agent if it can run and has room, then uses Offline.'),
+    Note('brief.writer_requested', 'info', '{writer_tool} is the writer you selected.'),
+    Note('brief.writer_offline', 'info', 'Offline is free and instant. No agent is asked.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('link.existing', 'info', 'The two chats are linked. Future turns are kept in sync.'),
+    Note('resume.unchanged', 'info', 'Syncing resumes under the normal delivery and merge rules. No chat is changed.'),
+    Note('send.unchanged', 'info', 'This turn will be sent under the normal delivery rules. No chat is changed.'),
+    Note('unpin.unchanged', 'info', 'This turn is no longer pinned. No chat is changed.'),
+    Note('open.chat', 'info', 'Baton opens {tool} at "{title}".'),
+    Note('open.folder', 'info', '{tool} cannot be opened at a chat. Baton opens the folder; pick "{title}" in the list.'),
+    Note('continue.waiting', 'warning', 'Turns are still waiting for delivery. Baton has not opened the destination chat.'),
+    Note('continue.failed', 'warning', 'The sync failed. Baton has not opened the destination chat.'),
+    Note('settings.invalid_value', 'warning', 'This setting or value is not supported. Your previous choice is still in use.'),
+    Note('cli.link_summary', 'info', 'Link chats'),
+    Note('cli.copy_summary', 'info', 'Copy a chat'),
+    Note('cli.relink_summary', 'info', 'Change a link'),
+    Note('cli.rename_summary', 'info', 'Use one name on both sides'),
+    Note('cli.continue_summary', 'info', 'Sync and open the destination chat'),
+    Note('cli.open_summary', 'info', 'Open a chat'),
+    Note('cli.settings_set_summary', 'info', 'Save a setting'),
+    Note('cli.pause_summary', 'info', 'Pause syncing'),
+    Note('cli.resume_summary', 'info', 'Resume syncing'),
+    Note('cli.keep_summary', 'info', 'Keep a turn here'),
+    Note('cli.send_summary', 'info', 'Send a kept turn'),
+    Note('cli.pin_summary', 'info', 'Pin a turn'),
+    Note('cli.unpin_summary', 'info', 'Unpin a turn'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('action.paused', 'warning', 'This link is paused. Resume syncing before changing its chats or its link.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('plan.confirm_rename', 'info', 'Use the selected name on these chats.', (Button('confirm', 'Rename chats', True), Button('cancel', 'Cancel'))),
+    Note('rename.partial', 'warning', 'Some chat names were changed. Check the remaining names before trying again.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('ask.attach_preview', 'info', 'The second opinion will be attached to your next message in this chat.',
+         (Button('confirm', 'Add to this chat', True), Button('cancel', 'Cancel'))),
+    Note('ask.queued', 'info', 'The second opinion is queued for your next message in this chat.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('create.close_manually', 'warning', 'Close {tool} before creating this chat. Baton will not close or reopen the app for this action.'),
+)})

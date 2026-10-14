@@ -209,3 +209,23 @@ class RecordStore(Protocol):
                             entry_id: int, receipt: dict, at: str, after_snapshot: dict) -> tuple[int, int]:
         """Atomically create or relink source-scoped brief coverage and its receipt."""
         ...
+
+    def own_background_resources(self, job: str, resources: Sequence[tuple[str, str]]) -> None:
+        """Associate newly created records with a retained background job."""
+        ...
+    def cleanup_background(self, at: str) -> None:
+        """Delete expired background-owned payloads, retaining referenced artifacts."""
+        ...
+    def queue_reviewed_answer(self, ident: str, tool: str, chat: str, expires_at: str, payload: dict) -> None:
+        """Queue a confirmed answer for the addressed chat's next prompt."""
+        ...
+    def reviewed_answers(self, tool: str, chat: str) -> list[dict]:
+        """Read pending confirmed answers for exactly this native destination."""
+        ...
+    def consume_reviewed_answers(self, idents: Sequence[str], message_id: str) -> None:
+        """Persist prompt delivery receipts without retaining delivered answer text."""
+        ...
+
+    def set_background_owner(self, job: str | None) -> None:
+        """Associate resource writes on this connection with their retained job."""
+        ...

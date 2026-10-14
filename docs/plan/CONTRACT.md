@@ -187,3 +187,14 @@ BriefDetails additionally carries optional `text`, `summary`, and `pinned_tokens
 ## C2a history bookkeeping — Ibrahim Q8, 2026-10-10
 
 History includes completed actions and internal bookkeeping. `aligned` means existing native turns were recognized; `attach_pending` means attachment is queued, not delivered; `not_confirmed` means an earlier delivery is no longer verified; `undo_shown` records the user's explicit confirmation that removed turns are no longer visible. Each has a distinct catalogue label. Existing event IDs, raw kinds, times, tool/turn identities and eligibility fields keep their meanings; bookkeeping does not acquire Undo or Restore eligibility. Unknown future kinds remain present with a neutral catalogue label and conservative eligibility, without exposing private event details.
+
+## Additions 2026-10-15
+
+Step action values additionally include:
+
+- `rename`: apply the selected name to this side's chat.
+- `wait_until_still`: wait for the app's replies to finish before closing or writing; it does not stop a reply.
+
+Link and relink in brief mode retain every required Plan field (`plan_id`, `applied`, `link_id`, `steps`, `decision_needed`, `notes`) through generation acceptance, polling and creation receipts. Generation and creation reviews retain their distinct plan IDs and `stage`. Generation acceptance is unapplied and adds `request_id` and `state`; generation does not create a chat. Confirmation is disabled when the preview cannot currently execute. Creation receipts retain the reviewed steps and decision flag, and add the resulting `chat_id` and `link_id`.
+
+`link --status REQUEST_ID` and `relink --status REQUEST_ID` poll the generation job. `--cancel REQUEST_ID` cancels it. These responses retain the accepted generation Plan fields and add `request_id`, `state` (`pending`, `running`, `completed`, `cancelled`, or `deadline`), optional UTC `deadline_at` and `expires_at`, and optional `result`. A completed `result` is the separately confirmable creation Plan or an error object. Cancelled/deadline jobs have no confirmable creation result. Polling does not consume a creation plan or execute chat writes.

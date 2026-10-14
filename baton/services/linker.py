@@ -11,7 +11,7 @@ import json
 from typing import Mapping
 
 from ..domain.capabilities import Visibility, WriteWindow
-from ..domain.errors import AlreadyLinked, ChatChanged, NotAvailable
+from ..domain.errors import AlreadyLinked, ChatChanged, NotAvailable, LinkPaused
 from ..domain.link import ADDED, SHOWN, WAITING, WRITTEN_HERE, KEPT_BACK, SKIPPED
 from ..domain.model import Message, Turn
 from ..ports.clock import Clock
@@ -22,6 +22,11 @@ from .journal import Guard, Journal
 from .mapping import content_key, for_created_chat, title
 
 from .observations import canonical_sources
+
+
+class PausedAction(LinkPaused):
+    """A paused link must be resumed before this mutation."""
+    note_id = 'action.paused'
 
 @dataclass(frozen=True)
 class LinkPlan:
@@ -67,6 +72,47 @@ class Linker:
         self.guard = Guard(store)
         self.journal = Journal(store,adapters,clock)
         self.recovery = self.journal.recover()
+
+    def _active(self, link_id):
+        if link_id is not None:
+            link = self.store.get_link(link_id)
+            if link.removed_at:
+                raise NotAvailable()
+            if link.paused:
+                raise PausedAction()
+
+    def _check_pause(self, plan):
+        if plan.action == 'unlink':
+            return
+        self._active(plan.old_link_id)
+        if plan.and_link:
+            for side, observed in plan.observations.items():
+                ref = observed.get('ref')
+                linked = self.store.link_for(side, ref['id']) if ref else None
+                if linked is not None:
+                    self._active(linked.id)
+
+    def notes(self, plan):
+        """Explain the exact creation, delivery and retained-side choice."""
+        from .noteformat import NoteRef
+        n = len(plan.turns) if plan.turns else len(plan.observations[plan.source].get('turns', ()))
+        notes = [NoteRef('link.attached_history', {'n': n})] if plan.mode == 'attached_history' else [
+            NoteRef('link.copy' if not plan.and_link else 'link.full_copy' if plan.action in ('create', 'full_copy') else 'link.existing',
+                    {'tool': plan.target, 'n': n})]
+        if plan.action in ('create', 'full_copy'):
+            notes.append(NoteRef('status.new_chat_relaunch' if 'relaunch_to_see' in plan.needs else 'new_chat.at_once', {'tool': plan.target}))
+        if 'app_closed' in plan.needs:
+            notes.append(NoteRef('create.close_manually', {'tool': plan.target}))
+        if plan.old_link_id and plan.action != 'full_copy':
+            old = self.store.get_link(plan.old_link_id)
+            other = old.others(plan.source)[0]
+            notes.append(NoteRef('link.change', {'name': plan.observations[plan.source]['ref']['name'],
+                'new_name': plan.observations[plan.target].get('ref', {}).get('name', plan.name),
+                'other_name': self.adapters[other].locator.name(old.chat(other))}))
+        return tuple(notes)
+
+    def confirmation_available(self, plan):
+        return not ('app_closed' in plan.needs and plan.observations[plan.target]['running'])
 
     def _records(self) -> list:
         return [{'link':asdict(link),'turns':[asdict(t) for t in self.store.turns(link.id)]}
@@ -120,6 +166,12 @@ class Linker:
     def _link_plan(self, source: str, chat: str, target: str, target_chat: str | None,
                    mode: str, title_tag: bool, old_link_id: int | None = None,
                    and_link: bool = True) -> LinkPlan:
+        self._active(old_link_id)
+        if and_link:
+            for side, ident in ((source, chat), (target, target_chat)):
+                linked = self.store.link_for(side, ident) if ident else None
+                if linked is not None:
+                    self._active(linked.id)
         if source == target or source not in self.adapters or target not in self.adapters:
             raise NotAvailable()
         if mode == 'brief':
@@ -137,6 +189,11 @@ class Linker:
             raise NotAvailable() from None
         source_ref = observations[source]['ref']
         if and_link:
+            for side, observed in observations.items():
+                ref = observed.get('ref')
+                owner = self.store.link_for(side, ref['id']) if ref else None
+                if owner is not None:
+                    self._active(owner.id)
             self._free(source,source_ref['id'],old_link_id)
             if target_chat is not None:
                 self._free(target,observations[target]['ref']['id'],old_link_id)
@@ -219,6 +276,7 @@ class Linker:
 
     def plan_full_copy(self, link_id: int, side: str, title_tag: bool = True) -> LinkPlan:
         """Preview a full visible twin from both origins, moving the existing link."""
+        self._active(link_id)
         link = self.store.get_link(link_id)
         if link.removed_at or side not in link.sides:
             raise NotAvailable()
@@ -239,6 +297,7 @@ class Linker:
                     mode: str = 'full_copy', from_side: str | None = None,
                     title_tag: bool = True) -> LinkPlan:
         """Preview replacing one partner while keeping both old chats intact."""
+        self._active(link_id)
         link = self.store.get_link(link_id)
         if link.removed_at:
             raise NotAvailable()
@@ -311,6 +370,7 @@ class Linker:
             if self.brief_service is None:
                 raise NotAvailable()
             return self.brief_service.confirm(plan, plan_id)
+        self._check_pause(plan)
         self._validate(plan)
         if plan_id is not None and plan_id != plan.plan_id:
             raise ChatChanged()
@@ -325,6 +385,7 @@ class Linker:
                 adapter = self.adapters[plan.target]
                 self.guard.check_write(adapter,None,action='create')
                 entry = self.journal.begin(plan.old_link_id if plan.action == 'full_copy' else None,plan.target,None,'create')
+                self._check_pause(plan)
                 result = adapter.writer.create(plan.turns,plan.name,plan.folder)
                 actual = adapter.reader.read(result.chat_id)
                 if (result.receipt.tool,result.receipt.chat_id,result.receipt.kind) != (plan.target,result.chat_id,'create'):
@@ -343,7 +404,9 @@ class Linker:
                 target_chat = plan.observations[plan.target]['ref']['id']
                 target_turns = self._turns(plan.observations[plan.target]['turns'])
                 state,receipt = SHOWN,None
-            self.store.remember_chat(plan.source, source_chat, plan.observations[plan.source]['ref'])
+            self._check_pause(plan)
+            if plan.and_link:
+                self.store.remember_chat(plan.source, source_chat, plan.observations[plan.source]['ref'])
             target_ref = asdict(self.adapters[plan.target].locator.resolve(target_chat))
             self.store.remember_chat(plan.target, target_chat, target_ref)
             rows = self._rows(plan.source,plan.target,source_turns,target_turns,state)
@@ -351,6 +414,7 @@ class Linker:
                 for row in rows:
                     if row['origin'] == plan.target and row['turn'].id == target_turns[-1].id:
                         row['complete'] = False
+            self._check_pause(plan)
             if plan.action == 'full_copy':
                 link = self.store.complete_link_copy(plan.old_link_id,plan.target,target_chat,
                                                      plan.turn_ids,result.local_ids,state,
