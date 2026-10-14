@@ -54,14 +54,13 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **Open findings closed 2026-10-15:** items 1, 2, 3, 5 `0feeab5` (brief confirm disabled when it would be refused, background replies keep notes, `mark-seen` command, merge preview shown again after a new turn); item 4 verified by Codex Sol and its one remaining finding fixed `d922ce8` (the no-process guard now fails a test on exit even when the code swallowed the refusal). 1249 engine tests, app check passes.
 
-**CP3 batch 3 running** (Codex Sol builders):
+**CP3 batch 3 committed 2026-10-15:** E12 notes audit parts 1 and 2 with close-sync-reopen made real (`a5e86fa`), D10 second opinion + D11 setup and settings screens + relaunch offers routed in the app (`dd4e5cd`). 1331 engine tests, 206 app tests, fixture gate. Each was returned once by Codex Sol review and fixed (the worst: an unknown reply state was treated as idle while an app was being closed). A verification review of `a5e86fa` is running.
 
-| Builder | Work | Files |
-|---|---|---|
-| D | D10 second opinion screen, D11 setup and settings screens | `app/Sources/BatonUI/Screens/{SecondOpinion,Setup,Settings}`, tests, new recipes in the fixture generator |
-| N | E12 part 1, notes audit: table of every notes-table row → id → emitter → test; adds missing notes only (no wording changes while D generates fixtures) | `baton/notes/catalogue.py` (additive), emitting services where missing, `tests/unit/test_notes.py` |
+**Orchestrator decision changed 2026-10-15:** command-line help and summaries also come from the catalogue (reviewer's point: no English shown to anyone comes from outside it).
 
-Then: E12 part 2 (wording changes from the audit, fixtures regenerated), then the CP3 live check.
+**Now building:** `baton setup install/uninstall --tool T` (preview lists every file, backup first, only Baton's own entries, never writes trust), hook commands call the installed `baton`, and `tools/install/install-baton.sh` (a launcher in ~/.local/bin, written not run). Report `reports/setup-install-2026-10-15.md`.
+
+**Then the CP3 live check** (needs Ibrahim): install `baton`, install hooks in the four tools (he approves Codex trust himself), one throwaway chat each in OpenCode and Cursor (plus the two kept ones), then: catch-up at send and sync at turn end in all four; relaunch for Claude and Cursor; create and cut through the adapters.
 
 **Orchestrator decision 2026-10-15:** a standalone copy from a paused link's side is allowed (it only reads the source and makes a new unlinked chat).
 
