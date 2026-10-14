@@ -17,8 +17,9 @@ from .brief_types import BriefResult
 
 class BriefCreation:
     """Create a chat from the exact reviewed artifact and journal it."""
-    def _create(self, ident, artifact):
+    def _create(self, ident, artifact, *, validate=None):
         request = artifact['request']
+        validate = validate or self._validate_request
         side, link_id = request['to'], request.get('link_id')
         adapter = self.adapters[side]
         guard, journal = Guard(self.store), Journal(self.store, self.adapters, self.clock)
@@ -30,7 +31,7 @@ class BriefCreation:
             guard.check_write(adapter, None, action='create')
             entry = journal.begin(link_id, side, None, 'create')
             entries.append(entry)
-            self._validate_request(request)
+            validate(request)
             self._check_pause(request)
             self.transcripts.verify(artifact['transcript_path'], artifact['transcript_digest'])
             guard.check_write(adapter, None, action='create')
@@ -52,7 +53,7 @@ class BriefCreation:
                     or len(set(result.local_ids)) != len(turns)
                     or [content_key(t) for t in actual] != [content_key(t) for t in turns]):
                 raise ChatChanged()
-            self._validate_request(request)
+            validate(request)
             from ..domain.capabilities import Visibility
             state = SHOWN if adapter.facts.new_chat_visible == Visibility.AT_ONCE else ADDED
             if request['kind'] == 'existing':

@@ -1,0 +1,60 @@
+{
+  "answer": "Preserve the orchard decisions and finish the tests.",
+  "answer_id": "j_00000000000000000000000000000047",
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Add to this chat",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "ask.add_preview",
+    "status_line": null,
+    "text": "Add this reviewed second opinion to the chat.",
+    "tone": "info",
+    "values": {}
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "confirm",
+          "label": "Add to this chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "ask.add_preview",
+      "status_line": null,
+      "text": "Add this reviewed second opinion to the chat.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "plan_id": "p_0eced073ea3efa2efead3ab998bd1c16",
+  "stage": "add",
+  "steps": [
+    {
+      "action": "add",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

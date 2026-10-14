@@ -1,0 +1,71 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Ask Codex",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "ask.preview",
+    "status_line": null,
+    "text": "Ask Codex about this turn? Codex gets a brief of the chat, this turn in full, and can read the project folder. It cannot change anything. About 82 tokens.",
+    "tone": "info",
+    "values": {
+      "selected_turn": true,
+      "tokens": 82,
+      "tool": "Codex"
+    }
+  },
+  "decision_needed": false,
+  "estimated_tokens": 82,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "ask.writer_reason",
+      "status_line": null,
+      "text": "Codex is the other agent for this chat.",
+      "tone": "info",
+      "values": {
+        "selected_turn": true,
+        "tokens": 82,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "confirm",
+          "label": "Ask Codex",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "ask.preview",
+      "status_line": null,
+      "text": "Ask Codex about this turn? Codex gets a brief of the chat, this turn in full, and can read the project folder. It cannot change anything. About 82 tokens.",
+      "tone": "info",
+      "values": {
+        "selected_turn": true,
+        "tokens": 82,
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_be87eb3b89beb579753b620882716084",
+  "read_only": true,
+  "stage": "generate",
+  "steps": [],
+  "writer": "codex"
+}

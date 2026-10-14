@@ -8,7 +8,7 @@ def arguments(parser):
     parser.add_argument('--event', type=int)
 
 
-@command('restore', 'Restore a change', arguments=arguments, plan=True)
+@command('restore', output.note('cli.restore_summary')['text'], arguments=arguments, plan=True)
 def restore(ctx, args):
     service = ctx.engine.undo
     return action_plan(ctx, {'event_id': args.event}, lambda r: service.restore(r['event_id']),

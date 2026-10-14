@@ -340,7 +340,8 @@ class ActionBoundaryTests(unittest.TestCase):
                     self.assertEqual(receipt['error']['kind'], 'o_s_error')
                     self.assertTrue(receipt['error']['note']['text'])
                 else:
-                    self.assertTrue(run(w, 'sync', confirm=value['plan_id'])['applied'])
+                    attach = next(n['values']['attach_plan_id'] for n in value['notes'] if 'attach_plan_id' in n['values'])
+                    self.assertTrue(run(w, 'sync', confirm=attach)['applied'])
                     self.assertEqual(w.store.turns(3)[-1].states['codex'], 'waiting')
                     self.assertTrue(any(e.kind == 'attach_pending' for e in w.store.history(3)))
                 self.assertEqual(before, {s: a.chats for s, a in w.adapters.items()})
@@ -765,26 +766,19 @@ class C3ReviewRoundOneTests(unittest.TestCase):
                 self.assertEqual(planned.stage, 'generate')
                 self.assertIs(w.adapters['codex'].runner, runner)
 
-    def test_running_creation_discloses_manual_closure_and_disables_confirmation(self):
+    def test_running_creation_offers_executable_close_create_reopen(self):
         with world_for('c3-review-create') as w:
             source = w.chat('claude', 'source', [original(1)])
             w.adapters['cursor'].app_running = True
             preview = run(w, 'copy', source='claude:' + source, to='cursor')
             self.assert_plan_schema(preview)
-            self.assertIn('create.close_manually', [n['id'] for n in preview['notes']])
-            self.assertNotIn('write.app_must_close', [n['id'] for n in preview['notes']])
-            self.assertNotIn('new_chat.relaunch', [n['id'] for n in preview['notes']])
-            self.assertEqual(preview['confirmation']['id'], 'plan.unavailable')
-            self.assertFalse(any(b.get('primary') and b['id'] == 'confirm' for b in preview['confirmation']['buttons']))
+            self.assertIn('new_chat.relaunch', [n['id'] for n in preview['notes']])
+            self.assertNotIn('create.close_manually', [n['id'] for n in preview['notes']])
             before = deepcopy(w.adapters['cursor'].chats)
-            receipt = run(w, 'copy', confirm=preview['plan_id'])
-            self.assertFalse(receipt['applied'])
             self.assertEqual(w.adapters['cursor'].chats, before)
-            self.assertFalse(any(c[0] in ('open', 'close') for c in w.adapters['cursor'].app.calls))
-            w.adapters['cursor'].app_running = False
-            fresh = run(w, 'copy', source='claude:' + source, to='cursor')
-            self.assertEqual(fresh['confirmation']['id'], 'plan.confirm_copy')
-            self.assertTrue(run(w, 'copy', confirm=fresh['plan_id'])['applied'])
+            self.assertFalse(any(c[0] in ('close', 'open') for c in w.adapters['cursor'].app.calls))
+            self.assertTrue(run(w, 'copy', confirm=preview['plan_id'])['applied'])
+            self.assertEqual([c[0] for c in w.adapters['cursor'].app.calls if c[0] in ('close', 'open')], ['close', 'open'])
 
     def test_rename_actions_are_documented_and_complete_in_preview_and_receipt(self):
         from pathlib import Path
@@ -853,7 +847,7 @@ class C3ReviewRoundOneTests(unittest.TestCase):
 
 
 class ReviewRoundTwoTests(unittest.TestCase):
-    def test_brief_creation_running_destination_disables_link_and_relink(self):
+    def test_brief_creation_running_destination_relaunches_link_and_relink(self):
         for command in ('link', 'relink'):
             with self.subTest(command=command), world_for('round2-' + command) as w:
                 if command == 'link':
@@ -870,21 +864,17 @@ class ReviewRoundTwoTests(unittest.TestCase):
                 tasks.pop()()
                 review = run(w, command, status=accepted['request_id'])['result']
                 self.assertEqual(review['stage'], 'create')
-                self.assertIn('create.close_manually', [n['id'] for n in review['notes']])
-                self.assertEqual(review['confirmation']['id'], 'plan.unavailable')
-                self.assertFalse(any(b.get('primary') and b['id'] == 'confirm' for b in review['confirmation']['buttons']))
+                self.assertIn('new_chat.relaunch', [n['id'] for n in review['notes']])
+                self.assertEqual(review['confirmation']['id'], 'plan.confirm_brief_creation')
                 before = deepcopy(w.adapters['cursor'].chats)
-                self.assertFalse(run(w, command, confirm=review['plan_id'])['applied'])
-                self.assertEqual(before, w.adapters['cursor'].chats)
+                artifact = deepcopy(w.store.brief_artifact(review['brief']['artifact_id']))
                 self.assertFalse(any(c[0] in ('open', 'close') for c in w.adapters['cursor'].app.calls))
-                w.adapters['cursor'].app_running = False
-                fresh = run(w, command, **args)
-                # Cached artifacts can go directly to creation review.
-                if fresh['stage'] == 'generate':
-                    accepted = run(w, command, confirm=fresh['plan_id']); tasks.pop()()
-                    fresh = run(w, command, status=accepted['request_id'])['result']
-                self.assertEqual(fresh['confirmation']['id'], 'plan.confirm_brief_creation')
-                self.assertTrue(run(w, command, confirm=fresh['plan_id'])['applied'])
+                receipt = run(w, command, confirm=review['plan_id'])
+                self.assertTrue(receipt['applied'], receipt)
+                self.assertEqual(w.store.brief_artifact(review['brief']['artifact_id']), artifact)
+                self.assertEqual([c[0] for c in w.adapters['cursor'].app.calls if c[0] in ('close', 'open')], ['close', 'open'])
+                for chat, content in before.items():
+                    self.assertEqual(w.adapters['cursor'].chats[chat], content)
 
     def test_offline_brief_creation_review_also_checks_running_destination(self):
         for command in ('link', 'relink'):
@@ -898,9 +888,10 @@ class ReviewRoundTwoTests(unittest.TestCase):
                 w.adapters['cursor'].app_running = True
                 review = run(w, command, **args)
                 self.assertEqual(review['stage'], 'create')
-                self.assertIn('create.close_manually', [n['id'] for n in review['notes']])
-                self.assertEqual(review['confirmation']['id'], 'plan.unavailable')
-                self.assertFalse(run(w, command, confirm=review['plan_id'])['applied'])
+                self.assertIn('new_chat.relaunch', [n['id'] for n in review['notes']])
+                self.assertEqual(review['confirmation']['id'], 'plan.confirm_brief_creation')
+                alias = next(n['values']['relaunch_plan_id'] for n in review['notes'] if 'relaunch_plan_id' in n['values'])
+                self.assertTrue(run(w, 'relaunch', confirm=alias)['applied'])
 
     def test_background_preserves_accepted_notes_on_accept_poll_complete_and_cancel(self):
         for command in ('link', 'relink'):

@@ -114,6 +114,21 @@ def _routes():
         yield f'restore.d9_{state}_applied.json'
     for state in ('t10b', 't11', 'u9'):
         yield f'undo.d9_{state}.json'
+    for state in ('before', 'pending', 'answer', 'cancelled', 'deadline', 'limit', 'command_missing', 'signed_out'):
+        yield f'ask.d10_{state}.json'
+    for state in ('review', 'applied', 'attached', 'unavailable'):
+        yield f'ask-add.d10_{state}.json'
+    for state in ('ready', 'codex_trust', 'opencode_damaged', 'cursor_signed_out', 'not_installed', 'unknown_format', 'missing_hooks', 'empty', 'error'):
+        yield f'setup.d11_{state}.json'
+    yield 'settings-get.d11_loaded.json'
+    yield 'settings-set.d11_saved.json'
+    for tool in ('claude', 'cursor', 'codex'):
+        for command in ('link', 'sync'):
+            for condition in ('idle', 'replying', 'unknown'):
+                yield f'{command}.dfix_{tool}_{condition}.json'
+    for tool in ('claude', 'cursor', 'codex'):
+        for action in ('link', 'sync'):
+            yield f'relaunch.dfix_{tool}_{action}_applied.json'
     yield 'link.service_full_copy_applied.json'
 
 def _entry(filename):
@@ -168,7 +183,19 @@ def _entry(filename):
                      'output serializers (non-executable ' + command + ')')
     if state.startswith(('d8_', 'd9_')):
         callable_name = 'baton.cli.commands.' + ('merge.merge' if command == 'merge-show' else command + '.' + command)
-    return Fixture(filename, command, state, provider, requirement, provider == 'real_read', recipe, callable_name)
+    if state.startswith(('d10_', 'd11_')):
+        provider = 'real_read' if command in READS else 'real_service_receipt' if state in ('d10_applied', 'd11_saved') else 'real_service_plan'
+        requirement = ('D10 / W9–W11 / V9,V10' if state.startswith('d10_') else 'D11 / G7,X5 / DESIGN6,7') + ' / ' + state
+        recipe = 'opinion_setup_provider:' + state
+        callable_name = {'ask': 'baton.cli.commands.ask.ask', 'ask-add': 'baton.cli.commands.ask.ask_add',
+                         'setup': 'baton.cli.commands.setup.setup', 'settings-get': 'baton.cli.commands.settings.get',
+                         'settings-set': 'baton.cli.commands.settings_set.settings_set'}[command]
+    if state.startswith('dfix_'):
+        provider = 'real_service_receipt' if state.endswith('_applied') else 'real_service_plan'
+        requirement = 'D-fix / E12 relaunch / Q13 / ' + state
+        recipe = 'relaunch_review_provider:' + state
+        callable_name = 'baton.cli.commands.' + command + '.' + command
+    return Fixture(filename, command, state, provider, requirement, provider == 'real_read' or state.startswith(('d10_', 'd11_', 'dfix_')), recipe, callable_name)
 
 MANIFEST = tuple(_entry(filename) for filename in sorted(set(_routes())))
 BY_NAME = {item.filename: item for item in MANIFEST}

@@ -887,7 +887,6 @@
           "text": "Claude was updated and saves chats differently (version future-99). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated.",
           "tone": "warning",
           "values": {
-            "n": 2,
             "tool": "Claude",
             "version": "future-99"
           }

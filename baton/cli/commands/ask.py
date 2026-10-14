@@ -80,6 +80,8 @@ def ask(ctx, args):
                 'request_id': ident, 'state': value['state']}
     token = ctx.remember(request['fingerprint'], {'stage': 'generate', 'request': request})
     values = {'tool': request['writer'], 'tokens': request['tokens']}
+    if getattr(args, 'turn', None) is not None:
+        values['selected_turn'] = True
     return output.plan(token, request['snapshot']['link_id'], (), stage='generate',
                        writer=request['writer'], estimated_tokens=request['tokens'], read_only=True,
                        notes=[output.note('ask.writer_reason', values), output.note('ask.preview', values)],

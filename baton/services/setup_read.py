@@ -36,10 +36,10 @@ class SetupRead:
                            'version': check.version or None, 'facts': facts, 'findings': findings,
                            'link_modes': [
                             {'mode': 'full_copy', 'available': installed and check.known, 'label': NoteRef('mode.full_copy', {}),
-                             'reason': None if check.known else NoteRef('format.unknown_version', {'tool': tool, 'version': check.version})},
+                             'reason': NoteRef('setup.not_installed', {'tool': tool}) if not installed else None if check.known else NoteRef('format.unknown_version', {'tool': tool, 'version': check.version})},
                             {'mode': 'attached_history', 'available': installed and hooks.ok,
                              'label': NoteRef('mode.attached_history', {}),
-                             'reason': None if hooks.ok else NoteRef('setup.hooks', {'tool': tool})},
+                             'reason': NoteRef('setup.not_installed', {'tool': tool}) if not installed else None if hooks.ok else NoteRef('setup.hooks', {'tool': tool})},
                             {'mode': 'brief', 'available': installed and check.known, 'label': NoteRef('mode.brief', {}),
-                             'reason': None if check.known else NoteRef('format.unknown_version', {'tool': tool, 'version': check.version})}]})
+                             'reason': NoteRef('setup.not_installed', {'tool': tool}) if not installed else None if check.known else NoteRef('format.unknown_version', {'tool': tool, 'version': check.version})}]})
         return result

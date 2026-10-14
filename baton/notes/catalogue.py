@@ -52,9 +52,18 @@ class Note:
     def to_dict(self, values: Mapping[str, object]) -> dict[str, object]:
         """Render the frozen contract’s Note object."""
         note = self.render(values)
+        if self.id == 'ask.preview' and values.get('selected_turn'):
+            selected = CATALOGUE['ask.preview_turn'].render(values)
+            note = Note(self.id, selected.tone, selected.template, selected.buttons, selected.status_line)
+        if self.id == 'new_chat.relaunch':
+            suffix = ('_closed' if values.get('running') is False else '') + (
+                '_at_chat' if values.get('opens_at_chat', values.get('tool') in ('claude', 'Claude')) else '')
+            if suffix:
+                variant = CATALOGUE[self.id + suffix].render(values)
+                note = Note(self.id, variant.tone, variant.template, variant.buttons, variant.status_line)
         return {"id": note.id, "tone": note.tone, "values": dict(values), "text": note.template,
                 "buttons": [{"id": item.id, "label": item.label, "primary": item.primary}
-                            for item in note.buttons], "status_line": note.status_line or None}
+                            for item in note.buttons if "button_ids" not in values or item.id in values["button_ids"]], "status_line": note.status_line or None}
 
     @property
     def fields(self) -> tuple[str, ...]:
@@ -110,14 +119,16 @@ CATALOGUE = {note.id: note for note in (
     Note("setup.runner_reinstall", "warning", "{tool}’s command-line tool is damaged or missing. Reinstall it, or use the offline brief."),
     Note("setup.runner", "warning", "{tool} cannot run a background brief. Check its command and sign in, or use the offline brief."),
     Note("nothing_unusual", "info", "Nothing unusual."),
+    Note("digest.unavailable", "warning", "Since you left is missing because Baton could not verify the chat history. It comes back after the next turn is synced with verified history."),
     Note("new_chat.at_once", "info", "The new chat appears in {tool} right away. No relaunch."),
-    Note("new_chat.relaunch", "info", "Baton closes {tool}, creates the chat, and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel"), "Relaunch {tool} to see this chat"),
+    Note("new_chat.running_relaunch", "info", "{tool} keeps recent chats loaded while it runs. Baton offers to close {tool}, create the chat, and reopen it.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel")),
+    Note("new_chat.relaunch", "info", "Baton closes {tool}, creates the chat, and opens {tool} again. {tool} lists a new chat only when it starts; you do this once for this chat.", ("Close {tool}, sync, reopen", "Sync now, I relaunch later", "Cancel"), "Relaunch {tool} to see this chat"),
     Note("write.app_must_close", "warning", "Baton closes {tool}, writes, and opens {tool} again on this folder; your windows come back. Baton never writes while {tool} runs, because {tool} would write over it.", ("Close {tool}, sync, reopen", "Attach instead", "Cancel"), "{n} turns waiting until {tool} is closed"),
     Note("relaunch.replying", "warning", '{tool} is replying in "{title}". Closing now stops that reply.', ("Wait until it has finished", "Close anyway", "Cancel"), "Will sync when {tool} is idle"),
     Note("format.unknown_version", "warning", "{tool} was updated and saves chats differently (version {version}). Baton still reads its chats and attaches turns, but will not create or add messages there until Baton is updated.", (), "{tool}: reading only"),
     Note("link.attached_history", "info", "The agent gets the history with your first message. The chat will never show it as separate messages.", (), "Agent has {n} turns the chat does not show"),
-    Note("write.chat_open", "info", "These {n} turns will be attached to your next message there. To get them as normal messages, relaunch {tool}.", ("Close {tool}, sync, reopen",), "{n} turns waiting, attached on next message"),
-    Note("write.chat_open_release", "info", "These {n} turns will be attached to your next message there. To get them as normal messages, relaunch {tool}.", ("Close {tool}, sync, reopen", "Add them now"), "{n} turns waiting, attached on next message"),
+    Note("write.chat_open", "info", "These {n} turns will be attached to your next message in {tool}. To get them as normal messages, relaunch {tool}.", ("Close {tool}, sync, reopen", "Attach instead"), "{n} turns waiting, attached on next message"),
+    Note("write.chat_open_release", "info", "These {n} turns will be attached to your next message in {tool}. To get them as normal messages, relaunch {tool}.", ("Close {tool}, sync, reopen", "Add them now"), "{n} turns waiting, attached on next message"),
     Note("write.any_time", "info", "Baton adds these {n} turns now. If the chat is on screen, open it again to see them.", (), "Open the chat again to see {n} new turns"),
     Note("reopen_chat_to_see", "info", "{tool} keeps showing the chat as it was until you open it again. The agent already has the change.", (), "Open the chat again to see the change"),
     Note("relaunch_to_see", "info", "The agent has these {n} turns. Relaunch {tool} to see them as normal messages.", ("Relaunch {tool}",), "Relaunch {tool} to see {n} new turns"),
@@ -136,7 +147,7 @@ CATALOGUE = {note.id: note for note in (
     Note("setup.restart_once", "info", "Restart {tool} once so Baton's plugin loads.", (), "Setup: 1 step left"),
     Note("merge.decision_needed", "warning", "Both sides have turns the other never received. A decision is needed.", ("Decide",), "A decision is needed"),
     Note("merge.order_not_allowed", "warning", "Turns written in one app stay in their own order; only turns from different apps can pass each other."),
-    Note("keep.too_late", "warning", "This turn has already reached the other side."),
+    Note("keep.too_late", "warning", "This turn was already sent to {other_tool} at {at}, so it can't be kept back."),
     Note("side.missing", "warning", "This chat is missing. Nothing is sent to it.", (), "Chat missing"),
     Note("history.marker", "info", "[Baton: continued from {tool}]"),
     Note("history.title_tag", "info", "[{tool}]"),
@@ -293,7 +304,7 @@ CATALOGUE = {note.id: note for note in (
     Note("merge.same_file", "warning", "Both agents changed {file}, in turns {turns}. Baton does not merge files. Check that file."),
     Note("merge.large_copy", "info", "This merged copy is about {tokens} tokens. A brief in a new chat is available instead."),
     Note("merge.keeps_chat", "info", "{tool} keeps its chat. {other_tool}'s {turns} turns are added at the end."),
-    Note("merge.merged_copy", "info", "{tool} gets a merged copy as a new chat. The old chat stays as it is."),
+    Note("merge.merged_copy", "info", "A new chat is created in {tool} with the merged order, and the link moves to it. Your current chat stays as it is."),
     Note("merge.keep", "warning", "Only {tool}'s turns are sent across. {other_tool}'s unsynced turns stay where they were written and are marked skipped."),
     Note("merge.split", "warning", "The link is removed and the two chats continue separately."),
     Note("error.unexpected", "danger", "Something unexpected went wrong in Baton. Check your chats before you try again. Baton's log has the details."),
@@ -334,7 +345,7 @@ CATALOGUE = {note.id: note for note in (
     Note("plan.unavailable", "info", "This action is not available yet. Your current choice is kept.", (Button("cancel", "Cancel"),)),
     Note("plan.choose_counterpart", "info", "Choose the other chat before continuing.", (Button("choose_chat", "Choose chat", True), Button("cancel", "Cancel"))),
     Note("brief.summary_receipt", "info", "Summarized through this turn. The original messages are in the saved history."),
-    Note("brief.cost", "info", "{tool} can write this read-only brief using about {tokens} tokens."),
+    Note("brief.cost", "info", "{tool} can write this brief and can read the project folder. It cannot change anything. About {tokens} tokens."),
     Note("brief.total_cost", "info", "If fallback is needed, the listed requests total about {tokens} tokens. Each writer is tried at most once."),
     Note("brief.pinned_size", "info", "Pinned turns add about {tokens} tokens in full."),
     Note("handoff.title", "info", "Continue the conversation"),
@@ -354,10 +365,10 @@ CATALOGUE = {note.id: note for note in (
     Note("limit.available", "ok", "{tool} is available again.", (), "{tool} is available again"),
     Note("limit.offer_linked", "warning", "{tool} has reached its usage limit. It resets at {time}. Continue this chat in {other_tool}? {other_tool} already has every turn.", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
     Note("limit.offer_linked_behind", "warning", "{tool} has reached its usage limit. It resets at {time}. Continue this chat in {other_tool}?", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
-    Note("limit.offer_linked_no_reset", "warning", "{tool} has reached its usage limit. Continue this chat in {other_tool}? {other_tool} already has every turn.", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
-    Note("limit.offer_linked_no_reset_behind", "warning", "{tool} has reached its usage limit. Continue this chat in {other_tool}?", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_linked_no_reset", "warning", "{tool} has reached its usage limit. It did not say when it resets. Continue this chat in {other_tool}? {other_tool} already has every turn.", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_linked_no_reset_behind", "warning", "{tool} has reached its usage limit. It did not say when it resets. Continue this chat in {other_tool}?", (Button("continue", "Continue in {other_tool}", True), Button("not_now", "Not now"))),
     Note("limit.offer_unlinked", "warning", "{tool} has reached its usage limit. It resets at {time}. This chat is not linked to a {other_tool} chat yet.", (Button("link_and_continue", "Link it and continue in {other_tool}", True), Button("not_now", "Not now"))),
-    Note("limit.offer_unlinked_no_reset", "warning", "{tool} has reached its usage limit. This chat is not linked to a {other_tool} chat yet.", (Button("link_and_continue", "Link it and continue in {other_tool}", True), Button("not_now", "Not now"))),
+    Note("limit.offer_unlinked_no_reset", "warning", "{tool} has reached its usage limit. It did not say when it resets. This chat is not linked to a {other_tool} chat yet.", (Button("link_and_continue", "Link it and continue in {other_tool}", True), Button("not_now", "Not now"))),
     Note("context.in_use", "info", "About {tokens} tokens in use, {percent}% of {size}."),
     Note("context.in_use_no_size", "info", "About {tokens} tokens in use."),
     Note("context.nearly_full", "warning", "{tool} will soon summarise this chat by itself. Continuing in {other_tool}, or handing off with a brief, avoids that."),
@@ -433,9 +444,9 @@ CATALOGUE.update({note.id: note for note in (
 )})
 
 CATALOGUE.update({note.id: note for note in (
-    Note('keep.missing_turns', 'warning', '{tool} is missing {n} kept turns the conversation may refer to.'),
-    Note('keep.unchanged', 'info', 'This turn stays in {tool}. No chat is changed.', (), 'Kept in {tool}'),
-    Note('pin.unchanged', 'info', 'This turn is pinned. No chat is changed.', (), 'Pinned'),
+    Note('keep.missing_turns', 'warning', '{tool} is missing {n} turns that were kept in {other_tool}. Later turns may refer to them.'),
+    Note('keep.unchanged', 'info', 'This turn stays in {tool}. It will not be sent to {other_tool}, and briefs and second opinions for {other_tool} leave it out. No chat is changed.', (), 'Kept in {tool}'),
+    Note('pin.unchanged', 'info', 'Pinned. Briefs always include this turn in full, unless it is kept on the other side. No chat is changed.', (), 'Pinned'),
     Note('pause.unchanged', 'info', 'Nothing is delivered either way while this link is paused. No chat is changed.', (), 'Paused'),
 )})
 
@@ -490,6 +501,8 @@ CATALOGUE.update({note.id: note for note in (
     Note('background.stopped', 'warning', 'The run was cancelled or reached its deadline.'),
     Note('background.failed', 'warning', 'The background run could not finish. No answer was added.'),
     Note('relaunch.replying_unknown', 'warning', 'Baton cannot tell whether {tool} is replying in "{title}". Nothing will be closed or written.'),
+    Note('ask.preview_turn', 'info', 'Ask {tool} about this turn? {tool} gets a brief of the chat, this turn in full, and can read the project folder. It cannot change anything. About {tokens} tokens.',
+         (Button('confirm', 'Ask {tool}', True), Button('cancel', 'Cancel'))),
     Note('ask.preview', 'info', '{tool} gets a brief of the chat and can read the project folder. It cannot change anything. About {tokens} tokens.',
          (Button('confirm', 'Ask {tool}', True), Button('cancel', 'Cancel'))),
     Note('ask.prompt', 'info', 'Review the conversation and answer the question. Only read: do not change files or run commands that change anything.\n\nConversation:\n{conversation}\n\nQuestion:\n{question}'),
@@ -560,5 +573,27 @@ CATALOGUE.update({note.id: note for note in (
 )})
 
 CATALOGUE.update({note.id: note for note in (
+    Note('new_chat.relaunch_at_chat', 'info', 'Baton closes {tool}, creates the chat, and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.', ('Close {tool}, sync, reopen', 'Sync now, I relaunch later', 'Cancel'), 'Relaunch {tool} to see this chat'),
+    Note('new_chat.relaunch_closed', 'info', 'Baton creates the chat and opens {tool} again. {tool} lists a new chat only when it starts; you do this once for this chat.', (Button('close_sync_reopen', 'Create chat and open {tool}', True), 'Sync now, I relaunch later', 'Cancel'), 'Relaunch {tool} to see this chat'),
+    Note('new_chat.relaunch_closed_at_chat', 'info', 'Baton creates the chat and opens {tool} again at it. {tool} lists a new chat only when it starts; you do this once for this chat.', (Button('close_sync_reopen', 'Create chat and open {tool}', True), 'Sync now, I relaunch later', 'Cancel'), 'Relaunch {tool} to see this chat'),
+    Note('cli.description', 'info', 'Keep a chat in one coding agent in sync with another.'),
+    Note('cli.help_json', 'info', 'print JSON (always on; accepted for the app)'),
+    Note('cli.help_dry_run', 'info', 'show the plan without applying it'),
+    Note('cli.help_confirm', 'info', 'carry out exactly the plan that was shown'),
+    Note('cli.help_help', 'info', 'show this help message and exit'),
+    Note('cli.help_usage', 'info', 'usage: '),
+    Note('cli.help_positionals', 'info', 'positional arguments'),
+    Note('cli.help_options', 'info', 'options'),
+    Note('cli.help_command', 'info', 'command'),
+    Note('cli.history_summary', 'info', 'Read link history'),
+    Note('cli.status_summary', 'info', 'Show sync status'),
+    Note('cli.restore_summary', 'info', 'Restore a change'),
+    Note('cli.chats_summary', 'info', 'List chats'),
+    Note('cli.settings_summary', 'info', 'Read settings'),
+    Note('cli.undo_summary', 'info', 'Undo a change'),
+    Note('cli.setup_summary', 'info', 'Check setup'),
+    Note('cli.merge_summary', 'info', 'Show merge choices'),
+    Note('cli.links_summary', 'info', 'List all links with a one-line state'),
+    Note('cli.suggestions_summary', 'info', 'Suggest matching chats'),
     Note('cli.mark_seen_summary', 'info', 'Confirm which added turns are visible in the reopened chat'),
 )})

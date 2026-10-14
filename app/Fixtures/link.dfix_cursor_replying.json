@@ -1,0 +1,334 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {
+      "tool": "Cursor"
+    }
+  },
+  "decision_needed": true,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Cursor to see this chat",
+      "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "n": 2,
+        "opens_at_chat": false,
+        "running": true,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying_safe",
+      "status_line": "Will sync when Cursor is idle",
+      "text": "Cursor is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "title": "Imaginary orchard",
+        "tool": "Cursor"
+      }
+    }
+  ],
+  "plan_id": "p_3253678df4277d4434103a65441a5a12",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Cursor is idle",
+          "text": "Cursor is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Cursor is idle",
+          "text": "Cursor is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [
+        "app_closed",
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Cursor is idle",
+          "text": "Cursor is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Cursor is idle",
+          "text": "Cursor is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ]
+}

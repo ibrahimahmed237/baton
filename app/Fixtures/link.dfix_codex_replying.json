@@ -1,0 +1,381 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {
+      "tool": "Codex"
+    }
+  },
+  "decision_needed": true,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.running_relaunch",
+      "status_line": null,
+      "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "n": 2,
+        "opens_at_chat": true,
+        "running": true,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying_safe",
+      "status_line": "Will sync when Codex is idle",
+      "text": "Codex is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "title": "Imaginary orchard",
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_a149494fd88b7eff8009814c369f78ac",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Codex is idle",
+          "text": "Codex is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Codex is idle",
+          "text": "Codex is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Codex is idle",
+          "text": "Codex is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Codex is idle",
+          "text": "Codex is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    }
+  ]
+}

@@ -1,0 +1,627 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Relaunch Cursor",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_relaunch",
+    "status_line": null,
+    "text": "Relaunch Cursor as described above.",
+    "tone": "info",
+    "values": {
+      "tool": "Cursor"
+    }
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "status.ahead",
+      "status_line": null,
+      "text": "Claude is 2 turns ahead",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.checked",
+      "status_line": null,
+      "text": "Last checked 2026-10-05T14:00:00Z",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T14:00:00Z"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Claude reached this turn.",
+      "tone": "info",
+      "values": {
+        "seq": 3,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Cursor reached this turn.",
+      "tone": "info",
+      "values": {
+        "seq": 1,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "confirm",
+          "label": "Sync",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.confirm_sync",
+      "status_line": null,
+      "text": "Sync the waiting turns.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "status.summary",
+      "status_line": null,
+      "text": "Cursor's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+      "tone": "info",
+      "values": {
+        "agent_has": 1,
+        "chat_shows": 1,
+        "tool": "Cursor",
+        "total": 3,
+        "waiting": 2
+      }
+    },
+    {
+      "buttons": [],
+      "id": "context.in_use",
+      "status_line": null,
+      "text": "About 8,000 tokens in use, 4% of 200,000.",
+      "tone": "info",
+      "values": {
+        "percent": 4,
+        "size": "200,000",
+        "tokens": "8,000"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        }
+      ],
+      "id": "write.chat_open",
+      "status_line": "2 turns waiting, attached on next message",
+      "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
+      "tone": "info",
+      "values": {
+        "attach_command": "sync",
+        "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+        "button_ids": [
+          "attach"
+        ],
+        "n": 2,
+        "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.if_send",
+      "status_line": null,
+      "text": "If you send a message now, Cursor gets 2 turns, about 18 tokens.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tokens": 18,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "write.app_must_close",
+      "status_line": "2 turns waiting until Cursor is closed",
+      "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+      "tone": "warning",
+      "values": {
+        "attach_command": "sync",
+        "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+        "button_ids": [
+          "close_sync_reopen",
+          "confirm",
+          "cancel",
+          "attach"
+        ],
+        "n": 2,
+        "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+        "tool": "Cursor"
+      }
+    }
+  ],
+  "plan_id": "p_62c98d7a69e061f77b17505302f607ff",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Cursor reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Cursor's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Cursor",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Cursor gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "2 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Cursor reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Cursor's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Cursor",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Cursor gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "2 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "add",
+      "chat": {
+        "folder": "/work/baton-fixtures",
+        "id": "sample-b",
+        "link_id": null,
+        "linked": false,
+        "name": "Imaginary orchard",
+        "tool": "cursor",
+        "tool_label": "Cursor",
+        "updated_at": "2026-10-05T12:01:00Z"
+      },
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Cursor reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Cursor's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Cursor",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Cursor gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "2 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": [
+        42,
+        43
+      ]
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Cursor reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Cursor's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Cursor",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Cursor gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "write.app_must_close",
+          "status_line": "2 turns waiting until Cursor is closed",
+          "text": "Baton closes Cursor, writes, and opens Cursor again on this folder; your windows come back. Baton never writes while Cursor runs, because Cursor would write over it.",
+          "tone": "warning",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_3037d85587f69204ab50608b116b93a0",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_52033e629d30379b99c1ea79748c86e7b0749e2ff516d658c7543562637d0cd6",
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ]
+}

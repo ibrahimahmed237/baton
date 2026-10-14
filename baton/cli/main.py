@@ -25,7 +25,22 @@ class UsageError(Exception):
     """The command line could not be understood."""
 
 
+class _HelpFormatter(argparse.HelpFormatter):
+    def _format_usage(self, usage, actions, groups, prefix):
+        return super()._format_usage(usage, actions, groups,
+            output.note('cli.help_usage')['text'] if prefix is None else prefix)
+
+
 class _Parser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        add_help = kwargs.pop('add_help', True)
+        kwargs.setdefault('formatter_class', _HelpFormatter)
+        super().__init__(*args, add_help=False, **kwargs)
+        self._positionals.title = output.note('cli.help_positionals')['text']
+        self._optionals.title = output.note('cli.help_options')['text']
+        if add_help:
+            self.add_argument('-h', '--help', action='help', help=output.note('cli.help_help')['text'])
+
     def error(self, message: str):  # type: ignore[override]
         raise UsageError("cli.usage")
 
@@ -36,18 +51,18 @@ def _flags(command: Command | None, *, base: bool) -> argparse.ArgumentParser:
     off = False if base else argparse.SUPPRESS
     none = None if base else argparse.SUPPRESS
     parser.add_argument("--json", action="store_true", default=off,
-                        help="print JSON (always on; accepted for the app)")
+                        help=output.note('cli.help_json')['text'])
     if base or (command is not None and command.plan):
         parser.add_argument("--dry-run", action="store_true", default=off,
-                            help="show the plan without applying it")
+                            help=output.note('cli.help_dry_run')['text'])
         parser.add_argument("--confirm", metavar="PLAN_ID", default=none,
-                            help="carry out exactly the plan that was shown")
+                            help=output.note('cli.help_confirm')['text'])
     return parser
 
 
 def build_parser(registry: CommandRegistry) -> argparse.ArgumentParser:
     """Build the parser from the registered commands; a name with a space is a sub-command."""
-    parser = _Parser(prog="baton", description="Keep a chat in one coding agent in sync with another.",
+    parser = _Parser(prog="baton", description=output.note('cli.description')['text'],
                      parents=[_flags(None, base=True)])
     _populate(parser, _tree(registry), 0, None)
     return parser
@@ -69,7 +84,7 @@ def _populate(parser: argparse.ArgumentParser, children: dict[str, dict[str, Any
               depth: int, own: Command | None) -> None:
     if not children:
         return
-    sub = parser.add_subparsers(dest="word%d" % depth, metavar="command", required=own is None)
+    sub = parser.add_subparsers(dest="word%d" % depth, metavar=output.note('cli.help_command')['text'], required=own is None)
     for word, node in children.items():
         command: Command | None = node["command"]
         child = sub.add_parser(word, help=command.summary if command else None,

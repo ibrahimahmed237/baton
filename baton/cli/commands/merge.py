@@ -43,7 +43,7 @@ def action_plan(ctx, request, prepare, serialize, apply):
     return serialize(planned)
 
 
-@command('merge', 'Show merge choices', arguments=arguments, plan=True)
+@command('merge', output.note('cli.merge_summary')['text'], arguments=arguments, plan=True)
 def merge(ctx, args):
     if args.link is None and not ctx.confirm:
         raise NotAvailable()

@@ -53,7 +53,7 @@ class Marks:
         rows = self.store.turns(link_id)
         gaps = [turn for turn in rows if turn.states.get(side) == KEPT_BACK and
                 any(later.seq > turn.seq and later.states.get(side) in AGENT_HAS for later in rows)]
-        return (NoteRef('keep.missing_turns', {'tool': side, 'n': len(gaps)}),) if gaps else ()
+        return (NoteRef('keep.missing_turns', {'tool': side, 'other_tool': self.store.get_link(link_id).others(side)[0], 'n': len(gaps)}),) if gaps else ()
 
     def _pause(self, link_id, paused):
         if self.store.get_link(link_id).removed_at:

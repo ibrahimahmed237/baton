@@ -1,0 +1,24 @@
+{
+  "notes": [
+    {
+      "buttons": [],
+      "id": "settings.saved",
+      "status_line": null,
+      "text": "Saved",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "settings": {
+    "add_to_idle_claude": "on_button",
+    "brief_threshold_tokens": 150000,
+    "glass": 62,
+    "hide_script_chats": true,
+    "merge": "ask",
+    "notice_on_attach": true,
+    "offer_relaunch": true,
+    "offer_switch_at_limit": true,
+    "theme": "graphite",
+    "title_tag": true
+  }
+}

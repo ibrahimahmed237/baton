@@ -175,6 +175,8 @@ def error(failure: BatonError, values: Mapping[str, Any] | None = None) -> dict[
     shown = {**getattr(failure, "values", {}), **(values or {})}
     if getattr(failure, "side", None):
         shown.setdefault("tool", failure.side)
+    if hasattr(failure, 'at') and failure.note_id == 'keep.too_late':
+        shown.update(other_tool=failure.side, at=failure.at)
     try:
         explained = note(failure.note_id, shown, lenient=True)
     except KeyError:
@@ -339,7 +341,8 @@ def merge_plan(value, service):
     for item in value.delivery.steps:
         extra = []
         if 'app_closed' in item.needs:
-            extra.append(note('write.app_must_close', {'tool': item.side}))
+            notice = note('write.app_must_close', {'tool': item.side, 'n': len(item.turn_ids), 'button_ids': []})
+            extra.append(notice)
         steps.append(step(item.side, item.action, item.turn_ids, needs=item.needs, reason=item.reason, notes=extra))
     unavailable = any(s.action == 'hold' or 'app_closed' in s.needs for s in value.delivery.steps)
     confirmation = note('plan.unavailable' if unavailable else 'plan.confirm_split' if value.split
@@ -388,12 +391,20 @@ def undo_plan(value):
 
 def action_receipt(value, result):
     """Add service result fields without interpreting a write outcome."""
-    for key in ('link_id', 'chat_id', 'needs', 'rollback_error', 'pending_entry'):
+    for key in ('link_id', 'chat_id', 'event_id', 'needs', 'rollback_error', 'pending_entry',
+                'opened', 'waiting', 'completed_links', 'reopen_error'):
         if hasattr(result, key):
             item = getattr(result, key)
-            value[key] = list(item) if key == 'needs' else item
+            value[key] = list(item) if key in ('needs', 'completed_links') else item
+    lifecycle_notes = []
+    receipt = result
+    while receipt is not None:
+        lifecycle_notes.extend(note_list(getattr(receipt, 'notes', ())))
+        receipt = getattr(receipt, 'write_result', None)
+    value['notes'] = [*value.get('notes', ()), *[n for n in lifecycle_notes if n not in value.get('notes', ())]]
     if getattr(result, 'error', ''):
-        value['error'] = {'kind': snake_case(result.error), 'note': note('error.unexpected')}
+        value['error'] = {'kind': snake_case(result.error),
+                          'note': lifecycle_notes[0] if lifecycle_notes else note('error.unexpected')}
     return value
 
 
@@ -417,6 +428,9 @@ def sync_action_plan(value, status):
     steps = []
     for item in value.steps:
         rendered = note_list(status['side_notes'][item.side])
+        for need in item.needs:
+            if need in ('reopen_chat_to_see', 'relaunch_to_see') and not any(n['id'] == need for n in rendered):
+                rendered.append(note(need, {'tool': item.side, 'n': len(item.turn_ids)}))
         steps.append(step(item.side, item.action, item.turn_ids, reason=item.reason,
                           needs=item.needs, notes=rendered))
         for entry in rendered:

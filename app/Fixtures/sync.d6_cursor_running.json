@@ -80,11 +80,16 @@
               "id": "close_sync_reopen",
               "label": "Close Cursor, sync, reopen",
               "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
             }
           ],
           "id": "write.chat_open",
           "status_line": "2 turns waiting, attached on next message",
-          "text": "These 2 turns will be attached to your next message there. To get them as normal messages, relaunch Cursor.",
+          "text": "These 2 turns will be attached to your next message in Cursor. To get them as normal messages, relaunch Cursor.",
           "tone": "info",
           "values": {
             "n": 2,

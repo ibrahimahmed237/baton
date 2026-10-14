@@ -48,7 +48,7 @@
       "buttons": [],
       "id": "brief.cost",
       "status_line": null,
-      "text": "Claude can write this read-only brief using about 155 tokens.",
+      "text": "Claude can write this brief and can read the project folder. It cannot change anything. About 155 tokens.",
       "tone": "info",
       "values": {
         "tokens": 155,
@@ -60,7 +60,7 @@
       "buttons": [],
       "id": "brief.cost",
       "status_line": null,
-      "text": "Codex can write this read-only brief using about 155 tokens.",
+      "text": "Codex can write this brief and can read the project folder. It cannot change anything. About 155 tokens.",
       "tone": "info",
       "values": {
         "tokens": 155,

@@ -87,7 +87,7 @@
       "buttons": [],
       "id": "merge.merged_copy",
       "status_line": null,
-      "text": "Claude gets a merged copy as a new chat. The old chat stays as it is.",
+      "text": "A new chat is created in Claude with the merged order, and the link moves to it. Your current chat stays as it is.",
       "tone": "info",
       "values": {
         "other_tool": "Codex",

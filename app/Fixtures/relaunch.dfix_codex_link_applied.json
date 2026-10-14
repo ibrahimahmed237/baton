@@ -1,0 +1,309 @@
+{
+  "applied": true,
+  "chat_id": "6ce10fdb4c8a47ab0591c312b0ab90cc",
+  "completed_links": [],
+  "confirmation": null,
+  "decision_needed": false,
+  "link_id": 3,
+  "needs": [],
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "new_chat.at_once",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away. No relaunch.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Codex, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.running_relaunch",
+      "status_line": null,
+      "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "close_sync_reopen",
+          "confirm",
+          "cancel"
+        ],
+        "n": 2,
+        "opens_at_chat": true,
+        "running": true,
+        "tool": "Codex"
+      }
+    }
+  ],
+  "opened": true,
+  "pending_entry": null,
+  "plan_id": "p_a1fbef2240f20b2d94701a2fab89738fc40e13093f9e51b027d25f4447f4a435",
+  "reopen_error": "",
+  "rollback_error": "",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Codex, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Codex, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Codex, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Codex chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "new_chat.at_once",
+          "status_line": null,
+          "text": "The new chat appears in Codex right away. No relaunch.",
+          "tone": "info",
+          "values": {
+            "tool": "Codex"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Codex, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.running_relaunch",
+          "status_line": null,
+          "text": "Codex keeps recent chats loaded while it runs. Baton offers to close Codex, create the chat, and reopen it.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Codex"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    }
+  ],
+  "waiting": false
+}

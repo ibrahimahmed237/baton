@@ -2,7 +2,7 @@
 from .. import output
 from ...domain.errors import NotAvailable
 from . import command
-from .unlink import confirmed_action
+from .relaunch_action import action_with_relaunch
 
 
 def arguments(parser):
@@ -27,6 +27,6 @@ def sync(ctx, args):
                                    {s: v['chat_id'] for s, v in planned.snapshots.items()},
                                    planned.decision_needed)
         return planned
-    return confirmed_action(ctx, {'link_id': args.link, 'to': getattr(args, 'to', None)}, prepare,
+    return action_with_relaunch(ctx, {'link_id': args.link, 'to': getattr(args, 'to', None)}, prepare,
                             lambda p: output.sync_action_plan(p, ctx.engine.reads.status(p.link_id)),
-                            service.apply)
+                            service.apply, 'sync')

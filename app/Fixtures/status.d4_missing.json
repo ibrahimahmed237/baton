@@ -852,6 +852,14 @@
           "text": "This chat is missing. Nothing is sent to it.",
           "tone": "warning",
           "values": {}
+        },
+        {
+          "buttons": [],
+          "id": "digest.unavailable",
+          "status_line": null,
+          "text": "Since you left is missing because Baton could not verify the chat history. It comes back after the next turn is synced with verified history.",
+          "tone": "warning",
+          "values": {}
         }
       ],
       "since_you_left": null,
@@ -937,6 +945,14 @@
             "size": "200,000",
             "tokens": "8,000"
           }
+        },
+        {
+          "buttons": [],
+          "id": "digest.unavailable",
+          "status_line": null,
+          "text": "Since you left is missing because Baton could not verify the chat history. It comes back after the next turn is synced with verified history.",
+          "tone": "warning",
+          "values": {}
         }
       ],
       "since_you_left": null,

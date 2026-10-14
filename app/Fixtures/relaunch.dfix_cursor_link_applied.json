@@ -1,0 +1,265 @@
+{
+  "applied": true,
+  "chat_id": "17f16b70e352e30ca45e0619baa4c056",
+  "completed_links": [],
+  "confirmation": null,
+  "decision_needed": false,
+  "link_id": 3,
+  "needs": [
+    "app_closed",
+    "relaunch_to_see"
+  ],
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Cursor"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Cursor, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Cursor to see this chat",
+      "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "close_sync_reopen",
+          "confirm",
+          "cancel"
+        ],
+        "n": 2,
+        "opens_at_chat": false,
+        "running": true,
+        "tool": "Cursor"
+      }
+    }
+  ],
+  "opened": true,
+  "pending_entry": null,
+  "plan_id": "p_430a52ff13ee4963e85a25291782378ed88975a864e4b9c55375ce3630a6e4b6",
+  "reopen_error": "",
+  "rollback_error": "",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [
+        "app_closed",
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Cursor chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Cursor"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Cursor, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Cursor to see this chat",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": false,
+            "running": true,
+            "tool": "Cursor"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "cursor",
+      "tool_label": "Cursor",
+      "turns": []
+    }
+  ],
+  "waiting": false
+}

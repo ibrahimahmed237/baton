@@ -81,6 +81,17 @@
           "text": "Baton adds these 2 turns now. If the chat is on screen, open it again to see them.",
           "tone": "info",
           "values": {
+            "n": 2,
+            "tool": "OpenCode"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "write.any_time",
+          "status_line": "Open the chat again to see 2 new turns",
+          "text": "Baton adds these 2 turns now. If the chat is on screen, open it again to see them.",
+          "tone": "info",
+          "values": {
             "n": 2
           }
         }

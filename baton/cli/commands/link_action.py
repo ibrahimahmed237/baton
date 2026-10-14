@@ -1,14 +1,25 @@
 """Serialize Linker plans and dispatch the public brief-link lifecycle."""
+from dataclasses import asdict
 from .. import output
 from ..plans import StoredPlan
 from .brief import dispatch_background
 from .unlink import confirmed_action
+from .relaunch_action import action_with_relaunch
 from ...services.brief_link import BriefLink
 from ...services.brief_types import BriefPlan
 
 
 def remember_brief(engine, command, planned):
     review = output.background_brief_plan(planned)
+    if planned.relaunch_plan is not None:
+        alias = next(n.values['relaunch_plan_id'] for n in planned.notes if 'relaunch_plan_id' in n.values)
+        engine.plans.store.save(StoredPlan(alias, planned.relaunch_plan.plan_id, 'relaunch',
+            {'brief_creation': planned.plan_id, 'plan': asdict(planned.relaunch_plan), 'review': review}, engine.clock.now()))
+        for note in planned.notes:
+            later = note.values.get('sync_relaunch_later_plan_id')
+            if later:
+                engine.plans.store.save(StoredPlan(later, planned.relaunch_plan.plan_id, 'relaunch',
+                    {'brief_create_only': planned.plan_id, 'plan': asdict(planned.relaunch_plan), 'review': review}, engine.clock.now()))
     engine.plans.store.save(StoredPlan(planned.plan_id, planned.plan_id, command,
         {'service_plan': planned.plan_id, 'review': review}, engine.clock.now()))
     return review
@@ -33,11 +44,10 @@ def link_action(ctx, args, request, prepare):
             return output.action_receipt({**review, 'plan_id': token,
                 'applied': result.applied, 'notes': [output.note('brief.summary_receipt')],
                 'confirmation': None}, result)
-        return confirmed_action(ctx, request, prepare,
-                                lambda p: output.link_action_plan(p, service), service.apply)
+        return action_with_relaunch(ctx, request, prepare,
+                                lambda p: output.link_action_plan(p, service), service.apply, 'link')
     planned = lifecycle.preview(prepare, request)
     if isinstance(planned, BriefPlan):
         return remember_brief(ctx.engine, ctx.command, planned)
-    value = output.link_action_plan(planned, service)
-    value['plan_id'] = ctx.remember(planned.plan_id, request)
-    return value
+    return action_with_relaunch(ctx, request, prepare,
+                                lambda p: output.link_action_plan(p, service), service.apply, 'link')

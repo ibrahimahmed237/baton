@@ -7,7 +7,7 @@ def arguments(parser):
     parser.add_argument('--link', required=True, type=int)
     parser.add_argument('--messages', action='store_true')
 
-@command('status', 'Show sync status', arguments=arguments)
+@command('status', output.note('cli.status_summary')['text'], arguments=arguments)
 def status(ctx, args):
     """Call the recovery-free projection and serialize the contract result."""
     return output.read_status(ctx.engine.reads.status(args.link, args.messages), args.messages)

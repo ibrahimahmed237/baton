@@ -1,0 +1,15 @@
+{
+  "applied": false,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "background.cancelled",
+      "status_line": null,
+      "text": "The run was cancelled. No answer will be added.",
+      "tone": "info",
+      "values": {}
+    }
+  ],
+  "request_id": "j_00000000000000000000000000000047",
+  "state": "cancelled"
+}

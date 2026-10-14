@@ -1,0 +1,55 @@
+{
+  "applied": false,
+  "expires_at": "2026-10-05T15:00:00+00:00",
+  "notes": [
+    {
+      "buttons": [],
+      "id": "background.completed",
+      "status_line": null,
+      "text": "Review the result before creating a chat or adding the answer.",
+      "tone": "ok",
+      "values": {}
+    }
+  ],
+  "request_id": "j_00000000000000000000000000000047",
+  "result": {
+    "answer": "Preserve the orchard decisions and finish the tests.",
+    "answer_id": "j_00000000000000000000000000000047",
+    "chat_id": "sample-a",
+    "privacy": {
+      "link": {
+        "chats": {
+          "claude": "sample-a",
+          "codex": "sample-b"
+        },
+        "created_at": "2026-10-05T14:00:00Z",
+        "id": 3,
+        "mode": "full_copy",
+        "paused": false,
+        "removed_at": ""
+      },
+      "turns": [
+        {
+          "id": 41,
+          "states": {
+            "claude": "written_here",
+            "codex": "shown"
+          }
+        },
+        {
+          "id": 42,
+          "states": {
+            "claude": "written_here",
+            "codex": "shown"
+          }
+        }
+      ]
+    },
+    "question": "Review this and point out problems",
+    "seconds": 0,
+    "source": "claude",
+    "tokens": 13,
+    "writer": "codex"
+  },
+  "state": "completed"
+}

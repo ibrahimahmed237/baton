@@ -112,4 +112,6 @@ class RecordActions:
             raise NotAvailable() from None
         ident = {'keep': 'keep.unchanged', 'send': 'send.unchanged',
                  'pin': 'pin.unchanged', 'unpin': 'unpin.unchanged'}[action]
-        return turn, (NoteRef(ident, {'tool': turn.origin}),)
+        link_id, _ = self.marks._find(turn_id)
+        other, = self.store.get_link(link_id).others(turn.origin)
+        return turn, (NoteRef(ident, {'tool': turn.origin, 'other_tool': other}),)

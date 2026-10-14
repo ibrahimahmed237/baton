@@ -48,6 +48,8 @@ class BriefPlan:
     turn_ids: tuple[int, ...] = ()
 
     confirmation_available: bool = True
+    lifecycle_steps: tuple[ApplyStep, ...] = ()
+    relaunch_plan: object = None
 
     def with_availability(self, running: bool):
         """Match native creation's manual-close policy at the creation review."""
@@ -61,7 +63,9 @@ class BriefPlan:
     def steps(self) -> tuple[ApplyStep, ...]:
         """The explicit destination is stable through both approval stages."""
         turns = (self.turn, *self.originals) if self.stage == 'create' else ()
-        return (ApplyStep(self.side, 'create', self.turn_ids, turns, needs=self.needs, name=self.name, folder=self.folder),)
+        create = ApplyStep(self.side, 'create', self.turn_ids, turns, needs=self.needs, name=self.name, folder=self.folder)
+        return tuple(s for s in self.lifecycle_steps if s.action != 'reopen') + (create,) + tuple(
+            s for s in self.lifecycle_steps if s.action == 'reopen')
 
     @property
     def confirmation(self):

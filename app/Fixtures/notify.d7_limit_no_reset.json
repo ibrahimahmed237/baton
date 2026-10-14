@@ -17,7 +17,7 @@
       ],
       "id": "limit.offer_linked_no_reset_behind",
       "status_line": null,
-      "text": "OpenCode has reached its usage limit. Continue this chat in Codex?",
+      "text": "OpenCode has reached its usage limit. It did not say when it resets. Continue this chat in Codex?",
       "tone": "warning",
       "values": {
         "destination_chat_id": "sample-b",

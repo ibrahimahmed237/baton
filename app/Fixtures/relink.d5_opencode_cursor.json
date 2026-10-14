@@ -52,7 +52,7 @@
       ],
       "id": "new_chat.relaunch",
       "status_line": "Relaunch Cursor to see this chat",
-      "text": "Baton closes Cursor, creates the chat, and opens Cursor again at it. Cursor lists a new chat only when it starts; you do this once for this chat.",
+      "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
       "tone": "info",
       "values": {
         "tool": "Cursor"
@@ -148,7 +148,7 @@
           ],
           "id": "new_chat.relaunch",
           "status_line": "Relaunch Cursor to see this chat",
-          "text": "Baton closes Cursor, creates the chat, and opens Cursor again at it. Cursor lists a new chat only when it starts; you do this once for this chat.",
+          "text": "Baton closes Cursor, creates the chat, and opens Cursor again. Cursor lists a new chat only when it starts; you do this once for this chat.",
           "tone": "info",
           "values": {
             "tool": "Cursor"

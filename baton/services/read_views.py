@@ -7,6 +7,7 @@ from itertools import combinations
 from typing import Mapping
 
 from ..domain.errors import BatonError, ChatChanged, ChatHeld, NotAvailable
+from ..domain.capabilities import WriteWindow
 from ..domain.link import KEPT_BACK, SKIPPED
 from ..ports.tool import ChatRef
 from . import planner, status
@@ -190,22 +191,35 @@ class ReadViews:
                      'total': state.total, 'chat_shows': state.chat_shows, 'waiting': state.waiting})]
             if side in fresh['missing']:
                 notes.append(NoteRef('side.missing', {}))
+                notes.append(NoteRef('digest.unavailable', {}))
                 fresh['usage'][side] = {'tokens': 0, 'size': None, 'percent': None, 'limit': None}
                 fresh['digests'][side] = None
             else:
                 used = usage.side(side, link.chat(side), link.others(side)[0])
                 fresh['usage'][side] = used.as_contract()
                 notes.extend(used.notes)
-                news = digest.for_side(link_id, side) if not fresh['missing'] else None
+                news = None
+                try:
+                    if fresh['missing']:
+                        raise ChatChanged()
+                    news = digest.for_side(link_id, side)
+                except (BatonError, KeyError):
+                    notes.append(NoteRef('digest.unavailable', {}))
                 fresh['digests'][side] = news.as_contract() if news else None
                 if news:
                     notes.append(digest.note(news))
+            check = self.adapters[side].state.format_version()
+            if not check.known or check.new_version:
+                notes.append(NoteRef('format.unknown_version' if not check.known else 'format.new_version',
+                                     {'tool': side, 'version': check.version}))
             if state.waiting:
                 action, reason, needs, alternatives = status.delivery_choice(
                     link, fresh['conditions'][side], self.adapters[side].facts, state.waiting_reason,
                     side in self.automatic_sides(),
                     side in fresh['initial_history'])
-                if action == 'attach':
+                if action == 'add' and self.adapters[side].facts.write_window == WriteWindow.ANY_TIME:
+                    notes.append(NoteRef('write.any_time', values))
+                elif action == 'attach':
                     key = 'status.first_message' if reason == 'initial_history' else (
                         'write.chat_open_release' if 'add_now' in alternatives else 'write.chat_open')
                     notes.append(NoteRef(key, values))
@@ -213,8 +227,6 @@ class ReadViews:
                     notes.append(NoteRef('write.release', values))
                 elif reason == 'hooks_not_ready':
                     notes.append(NoteRef('setup.hooks', values))
-                elif reason == 'format_unknown':
-                    notes.append(NoteRef('format.unknown_version', {**values, 'version': self.adapters[side].state.format_version().version}))
                 if state.attached_on_next_message:
                     notes.append(NoteRef('status.if_send', {**values, 'n': state.attached_on_next_message, 'tokens': state.attached_tokens}))
             for need in state.needs:

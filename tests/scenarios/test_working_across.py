@@ -127,7 +127,7 @@ class LimitOfferScenarios(WorkingAcrossBase):
         self.assertEqual(offer.note.id, 'limit.offer_linked_no_reset_behind')
         self.assertNotIn('time', offer.note.values)
         self.assertIsNone(offer.resets_at)
-        self.assertNotIn('resets', render(offer.note).template)
+        self.assertIn('It did not say when it resets.', render(offer.note).template)
 
     def test_V2_dismissed_offer_is_not_shown_again_but_the_status_keeps_the_reset_time(self):
         self.write('claude', make_turn('add login', at(13, 0), at(13, 5)))

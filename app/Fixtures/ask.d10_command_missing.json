@@ -1,0 +1,15 @@
+{
+  "error": {
+    "kind": "opinion_unavailable",
+    "note": {
+      "buttons": [],
+      "id": "brief.skipped_no_runner",
+      "status_line": null,
+      "text": "Codex can't run in the background, so it was not asked to write the brief.",
+      "tone": "warning",
+      "values": {
+        "tool": "Codex"
+      }
+    }
+  }
+}

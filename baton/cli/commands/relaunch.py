@@ -50,6 +50,30 @@ def relaunch(ctx, args):
         stored = ctx.engine.plans.store.load(ctx.confirm)
         if stored is None:
             raise ChatChanged()
+        if 'brief_create_only' in stored.arguments:
+            from ...services.relaunch import Relaunch
+            request = ctx.confirmed(lambda r: Relaunch(ctx.engine.store, ctx.engine.adapters, ctx.engine.clock).plan_brief_creation(
+                ctx.engine.briefs, r['brief_create_only']).plan_id)
+            result = ctx.engine.briefs.confirm(request['brief_create_only'])
+            review = {**request['review'], 'steps': [s for s in request['review']['steps'] if s['action'] == 'create']}
+            return output.action_receipt({**review, 'applied': result.applied, 'confirmation': None}, result)
+        if 'brief_creation' in stored.arguments:
+            from ...services.relaunch import Relaunch
+            request = ctx.confirmed(lambda r: restore_plan(r['plan']).plan_id)
+            planned = restore_plan(request['plan'])
+            result = Relaunch(ctx.engine.store, ctx.engine.adapters, ctx.engine.clock).apply_brief_creation(
+                planned, ctx.engine.briefs, request['brief_creation'])
+            return output.action_receipt({**request['review'], 'applied': result.applied, 'confirmation': None}, result)
+        if 'action_plan_id' in stored.arguments:
+            from types import SimpleNamespace
+            from . import Context, REGISTRY
+            target = ctx.engine.plans.store.load(stored.arguments['action_plan_id'])
+            if target is None or target.command != stored.arguments['action_command']:
+                raise ChatChanged()
+            request = ctx.confirmed(lambda r: target.fingerprint)
+            return REGISTRY.get(target.command).run(
+                Context(ctx.engine, target.command, confirm=request['action_plan_id']),
+                SimpleNamespace(link=None, event=None))
         # The exact original expiry and allowed idle transitions belong to E13.
         request = ctx.confirmed(lambda r: restore_plan(r['plan']).plan_id)
         planned = restore_plan(request['plan'])

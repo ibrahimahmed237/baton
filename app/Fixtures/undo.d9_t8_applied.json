@@ -1,5 +1,6 @@
 {
   "applied": true,
+  "confirmation": null,
   "decision_needed": false,
   "ends_at": {
     "ended_at": "2026-10-05T12:01:00Z",

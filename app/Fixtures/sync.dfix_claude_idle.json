@@ -1,0 +1,572 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "confirm",
+        "label": "Relaunch Claude",
+        "primary": true
+      },
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.confirm_relaunch",
+    "status_line": null,
+    "text": "Relaunch Claude as described above.",
+    "tone": "info",
+    "values": {
+      "tool": "Claude"
+    }
+  },
+  "decision_needed": false,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "status.ahead",
+      "status_line": null,
+      "text": "Codex is 2 turns ahead",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.checked",
+      "status_line": null,
+      "text": "Last checked 2026-10-05T14:00:00Z",
+      "tone": "info",
+      "values": {
+        "at": "2026-10-05T14:00:00Z"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Claude reached this turn.",
+      "tone": "info",
+      "values": {
+        "seq": 1,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "screen.received_one",
+      "status_line": null,
+      "text": "Codex reached this turn.",
+      "tone": "info",
+      "values": {
+        "seq": 3,
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "confirm",
+          "label": "Sync",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "plan.confirm_sync",
+      "status_line": null,
+      "text": "Sync the waiting turns.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "status.summary",
+      "status_line": null,
+      "text": "Claude's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+      "tone": "info",
+      "values": {
+        "agent_has": 1,
+        "chat_shows": 1,
+        "tool": "Claude",
+        "total": 3,
+        "waiting": 2
+      }
+    },
+    {
+      "buttons": [],
+      "id": "context.in_use",
+      "status_line": null,
+      "text": "About 8,000 tokens in use, 4% of 200,000.",
+      "tone": "info",
+      "values": {
+        "percent": 4,
+        "size": "200,000",
+        "tokens": "8,000"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "write.chat_open_release",
+      "status_line": "2 turns waiting, attached on next message",
+      "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+      "tone": "info",
+      "values": {
+        "attach_command": "sync",
+        "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+        "button_ids": [
+          "attach"
+        ],
+        "n": 2,
+        "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "status.if_send",
+      "status_line": null,
+      "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tokens": 18,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "close_sync_reopen",
+          "label": "Close Claude, sync, reopen",
+          "primary": true
+        },
+        {
+          "id": "attach",
+          "label": "Attach instead",
+          "primary": false
+        }
+      ],
+      "id": "write.chat_open",
+      "status_line": "2 turns waiting, attached on next message",
+      "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+      "tone": "info",
+      "values": {
+        "attach_command": "sync",
+        "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+        "button_ids": [
+          "close_sync_reopen",
+          "confirm",
+          "cancel",
+          "attach"
+        ],
+        "n": 2,
+        "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+        "tool": "Claude"
+      }
+    }
+  ],
+  "plan_id": "p_957c5365671e2604917b1cba7ebeab38",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Claude reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Claude",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Claude reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Claude",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "add",
+      "chat": {
+        "folder": "/work/baton-fixtures",
+        "id": "sample-b",
+        "link_id": null,
+        "linked": false,
+        "name": "Imaginary orchard",
+        "tool": "claude",
+        "tool_label": "Claude",
+        "updated_at": "2026-10-05T12:01:00Z"
+      },
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Claude reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Claude",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        42,
+        43
+      ]
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "screen.received_one",
+          "status_line": null,
+          "text": "Claude reached this turn.",
+          "tone": "info",
+          "values": {
+            "seq": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.summary",
+          "status_line": null,
+          "text": "Claude's agent has 1 of 3 turns. Its chat shows 1; 2 are waiting.",
+          "tone": "info",
+          "values": {
+            "agent_has": 1,
+            "chat_shows": 1,
+            "tool": "Claude",
+            "total": 3,
+            "waiting": 2
+          }
+        },
+        {
+          "buttons": [],
+          "id": "write.chat_open_release",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "status.if_send",
+          "status_line": null,
+          "text": "If you send a message now, Claude gets 2 turns, about 18 tokens.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tokens": 18,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "close_sync_reopen",
+              "label": "Close Claude, sync, reopen",
+              "primary": true
+            },
+            {
+              "id": "attach",
+              "label": "Attach instead",
+              "primary": false
+            }
+          ],
+          "id": "write.chat_open",
+          "status_line": "2 turns waiting, attached on next message",
+          "text": "These 2 turns will be attached to your next message in Claude. To get them as normal messages, relaunch Claude.",
+          "tone": "info",
+          "values": {
+            "attach_command": "sync",
+            "attach_plan_id": "p_fdf93e29765856efb9352b0a44647999",
+            "button_ids": [
+              "close_sync_reopen",
+              "confirm",
+              "cancel",
+              "attach"
+            ],
+            "n": 2,
+            "relaunch_plan_id": "p_944c5db88d269d4f86beda6c0c2a650e8466843fbcff56cd9566a775b6c71b4c",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

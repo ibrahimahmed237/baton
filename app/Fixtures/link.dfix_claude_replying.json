@@ -1,0 +1,333 @@
+{
+  "applied": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {
+      "tool": "Claude"
+    }
+  },
+  "decision_needed": true,
+  "link_id": null,
+  "notes": [
+    {
+      "buttons": [],
+      "id": "link.full_copy",
+      "status_line": null,
+      "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+      "tone": "info",
+      "values": {
+        "n": 2,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "new_chat.relaunch",
+      "status_line": "Relaunch Claude to see this chat",
+      "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+      "tone": "info",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "n": 2,
+        "opens_at_chat": true,
+        "running": true,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying_safe",
+      "status_line": "Will sync when Claude is idle",
+      "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "title": "Imaginary orchard",
+        "tool": "Claude"
+      }
+    }
+  ],
+  "plan_id": "p_d861a268a0c1a698c64d52fc603ff624",
+  "steps": [
+    {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "create",
+      "needs": [
+        "relaunch_to_see"
+      ],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [],
+          "id": "link.full_copy",
+          "status_line": null,
+          "text": "A new Claude chat shows the full history. The link moves to it; your current chat stays exactly as it is.",
+          "tone": "info",
+          "values": {
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "new_chat.relaunch",
+          "status_line": "Relaunch Claude to see this chat",
+          "text": "Baton closes Claude, creates the chat, and opens Claude again at it. Claude lists a new chat only when it starts; you do this once for this chat.",
+          "tone": "info",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 2,
+            "opens_at_chat": true,
+            "running": true,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

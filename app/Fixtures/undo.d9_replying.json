@@ -1,6 +1,22 @@
 {
   "applied": false,
-  "decision_needed": false,
+  "confirmation": {
+    "buttons": [
+      {
+        "id": "cancel",
+        "label": "Cancel",
+        "primary": false
+      }
+    ],
+    "id": "plan.unavailable",
+    "status_line": null,
+    "text": "This action is not available yet. Your current choice is kept.",
+    "tone": "info",
+    "values": {
+      "tool": "Claude"
+    }
+  },
+  "decision_needed": true,
   "ends_at": {
     "ended_at": "2026-10-05T12:01:00Z",
     "first_line": "Orchard task 1",
@@ -94,9 +110,51 @@
         "n": 4,
         "tool": "Claude"
       }
+    },
+    {
+      "buttons": [
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.order",
+      "status_line": null,
+      "text": "Baton closes Claude, waits until its chats are still, writes, and opens Claude again.",
+      "tone": "warning",
+      "values": {
+        "button_ids": [
+          "cancel"
+        ],
+        "n": 1,
+        "tool": "Claude"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "when_idle",
+          "label": "Relaunch when idle",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "relaunch.replying_safe",
+      "status_line": "Will sync when Claude is idle",
+      "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+      "tone": "warning",
+      "values": {
+        "title": "Imaginary orchard",
+        "tool": "Claude"
+      }
     }
   ],
-  "plan_id": "p_38afa1801328076f73e27dfbd48315b211af91c3ef011d014788b5ed1d388749",
+  "plan_id": "p_730074718c547e334d8c0f91a901ed9a0b838ec9b1b6b039d4d524fa7cd1d0c7",
   "removal_groups": [
     {
       "category": "added",
@@ -279,18 +337,539 @@
   ],
   "steps": [
     {
+      "action": "close",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "undo",
+              "label": "Remove 4 turns from the Claude chat",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.cut",
+          "status_line": "Relaunch Claude to stop seeing the removed turns",
+          "text": "This removes 4 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.only_here",
+          "status_line": null,
+          "text": "Those 2 exist only in Claude.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.ends_at",
+          "status_line": null,
+          "text": "Afterwards the Claude chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+          "tone": "info",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Undo when the reply has finished",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.replying",
+          "status_line": null,
+          "text": "Claude is replying in this chat, so it can't be taken back right now. Baton can do it as soon as the reply has finished.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.order",
+          "status_line": null,
+          "text": "Baton closes Claude, waits until its chats are still, writes, and opens Claude again.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Relaunch when idle",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
+      "action": "wait_until_still",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "undo",
+              "label": "Remove 4 turns from the Claude chat",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.cut",
+          "status_line": "Relaunch Claude to stop seeing the removed turns",
+          "text": "This removes 4 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.only_here",
+          "status_line": null,
+          "text": "Those 2 exist only in Claude.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.ends_at",
+          "status_line": null,
+          "text": "Afterwards the Claude chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+          "tone": "info",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Undo when the reply has finished",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.replying",
+          "status_line": null,
+          "text": "Claude is replying in this chat, so it can't be taken back right now. Baton can do it as soon as the reply has finished.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.order",
+          "status_line": null,
+          "text": "Baton closes Claude, waits until its chats are still, writes, and opens Claude again.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Relaunch when idle",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    },
+    {
       "action": "cut",
+      "chat": {
+        "folder": "/work/baton-fixtures",
+        "id": "sample-a",
+        "link_id": null,
+        "linked": false,
+        "name": "Imaginary orchard",
+        "tool": "claude",
+        "tool_label": "Claude",
+        "updated_at": "2026-10-05T12:05:00Z"
+      },
       "needs": [
         "release_chat",
         "relaunch_to_see"
       ],
-      "notes": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "undo",
+              "label": "Remove 4 turns from the Claude chat",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.cut",
+          "status_line": "Relaunch Claude to stop seeing the removed turns",
+          "text": "This removes 4 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.only_here",
+          "status_line": null,
+          "text": "Those 2 exist only in Claude.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.ends_at",
+          "status_line": null,
+          "text": "Afterwards the Claude chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+          "tone": "info",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Undo when the reply has finished",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.replying",
+          "status_line": null,
+          "text": "Claude is replying in this chat, so it can't be taken back right now. Baton can do it as soon as the reply has finished.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.order",
+          "status_line": null,
+          "text": "Baton closes Claude, waits until its chats are still, writes, and opens Claude again.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Relaunch when idle",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
       "reason": "",
       "tool": "claude",
       "tool_label": "Claude",
       "turns": [
         41
       ]
+    },
+    {
+      "action": "reopen",
+      "needs": [],
+      "notes": [
+        {
+          "buttons": [
+            {
+              "id": "undo",
+              "label": "Remove 4 turns from the Claude chat",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.cut",
+          "status_line": "Relaunch Claude to stop seeing the removed turns",
+          "text": "This removes 4 turns from the Claude chat, listed below. Claude's agent stops having them right away; the chat still displays them until you relaunch Claude. A copy is kept for 30 days.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.only_here",
+          "status_line": null,
+          "text": "Those 2 exist only in Claude.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 2,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [],
+          "id": "undo.ends_at",
+          "status_line": null,
+          "text": "Afterwards the Claude chat ends at \"Orchard task 1\", 2026-10-05T12:01:00Z.",
+          "tone": "info",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Undo when the reply has finished",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "undo.replying",
+          "status_line": null,
+          "text": "Claude is replying in this chat, so it can't be taken back right now. Baton can do it as soon as the reply has finished.",
+          "tone": "warning",
+          "values": {
+            "at": "2026-10-05T12:01:00Z",
+            "days": 30,
+            "first_line": "Orchard task 1",
+            "n": 4,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.order",
+          "status_line": null,
+          "text": "Baton closes Claude, waits until its chats are still, writes, and opens Claude again.",
+          "tone": "warning",
+          "values": {
+            "button_ids": [
+              "cancel"
+            ],
+            "n": 1,
+            "tool": "Claude"
+          }
+        },
+        {
+          "buttons": [
+            {
+              "id": "when_idle",
+              "label": "Relaunch when idle",
+              "primary": true
+            },
+            {
+              "id": "cancel",
+              "label": "Cancel",
+              "primary": false
+            }
+          ],
+          "id": "relaunch.replying_safe",
+          "status_line": "Will sync when Claude is idle",
+          "text": "Claude is replying in \"Imaginary orchard\". Closing now stops that reply.",
+          "tone": "warning",
+          "values": {
+            "title": "Imaginary orchard",
+            "tool": "Claude"
+          }
+        }
+      ],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
     }
   ]
 }

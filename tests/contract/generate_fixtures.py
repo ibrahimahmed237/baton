@@ -508,6 +508,8 @@ def provider(item, world):
     requested_tool = None
     if command == 'chats' and state.count('_') >= 2 and state.rsplit('_', 1)[-1] in FACTS:
         state, requested_tool = state.rsplit('_', 1)
+    if state.startswith('dfix_'): return relaunch_review_provider(item, world)
+    if state.startswith(('d10_', 'd11_')): return opinion_setup_provider(item, world)
     if state.startswith('d8_'): return merge_screen_provider(item, world)
     if state.startswith('d9_'): return history_screen_provider(item, world)
     if command == 'setup': return setup_state(world, state)
@@ -913,6 +915,120 @@ def audit_notes(value):
 def encoded(value):
     """Stable bytes preserve the contents sealed by the services."""
     return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode()
+
+
+def opinion_setup_provider(item, world):
+    """Run D10/D11 commands on temporary fakes, without composing presentation."""
+    from tests.unit.test_background import ImmediateProcess
+    from baton.services.background import Background
+    original_init = Background.__init__
+    def deterministic_background(self, *args, **kwargs):
+        original_init(self, *args, **{**kwargs, 'elapsed': lambda: 0.0})
+    from tests.fixtures.no_processes import no_processes
+    command, state = item.command, item.state
+    plan_sequence = count(1)
+    world.engine.plans.new_id = lambda: 'p_' + sha256(f'{item.filename}:{next(plan_sequence)}'.encode()).hexdigest()[:32]
+    def run(name, confirm=None, **kwargs):
+        args = SimpleNamespace(chat=None, source=None, tool=None, question=None, turn=None,
+                               status=None, cancel=None, answer=None, add_to_chat=False, background=True)
+        for key, value in kwargs.items(): setattr(args, key, value)
+        return REGISTRY.get(name).run(Context(world.engine, name, dry_run=confirm is None,
+                                             confirm=confirm), args)
+    if command.startswith('settings-'):
+        if command == 'settings-get': return world.read(command)
+        return run('settings set', key='theme', value='graphite')
+    if command == 'setup':
+        if state == 'd11_empty': world.engine.setup_read.tool_ids = ()
+        if state == 'd11_error':
+            from contextlib import nullcontext
+            from io import StringIO
+            from baton.cli.main import main
+            stream = StringIO()
+            with patch.object(world.engine.setup_read, 'tools', side_effect=RuntimeError('fake setup read failure')), \
+                 patch.object(world.engine, 'command_lock', return_value=nullcontext()), patch.object(world.engine, 'close'), \
+                 patch('baton.cli.main.logger.exception'):
+                assert main(['setup', '--json'], registry=REGISTRY, engine_factory=lambda: world.engine, stdout=stream) == 1
+            return json.loads(stream.getvalue())
+        if state == 'd11_codex_trust':
+            world.adapters['codex'].hooks.ready = False
+            with patch.object(world.adapters['codex'].hooks, 'check', return_value=SetupFinding('hooks', False, 'setup.trust_once', {})):
+                return world.read('setup')
+        if state == 'd11_opencode_damaged':
+            world.adapters['opencode'].runner.finding = SetupFinding('runner', False, 'setup.runner_reinstall', {})
+        if state == 'd11_cursor_signed_out':
+            world.adapters['cursor'].runner.finding = SetupFinding('runner', False, 'setup.runner', {})
+        if state == 'd11_not_installed':
+            world.engine.setup_read.installation_probe = lambda tool: tool != 'cursor'
+            with patch.object(world.adapters['cursor'].hooks, 'check', return_value=SetupFinding('installed', False, 'setup.not_installed', {})):
+                return world.read('setup')
+        if state == 'd11_unknown_format': world.adapters['codex'].set_format(False, 'new')
+        if state == 'd11_missing_hooks': world.adapters['claude'].hooks.installed = False
+        return world.read('setup')
+    world.pair()
+    if state == 'd10_limit':
+        world.adapters['codex'].usage_values[world.chats['codex']] = Usage(8000, 200000, True, None)
+    if state == 'd10_command_missing': world.adapters['codex'].runner = None
+    if state == 'd10_signed_out':
+        world.adapters['codex'].runner.finding = SetupFinding('runner', False, 'setup.runner', {})
+    tasks = []
+    world.engine.background_dispatch = tasks.append
+    # Scoped IDs and a synchronous fake supervisor make separate roots reproducible.
+    with fixed_ids(item.filename), patch('baton.services.background.uuid4', side_effect=lambda: UUID(int=71)), no_processes(), \
+         patch('baton.services.background.RunnerProcess', ImmediateProcess), patch.object(Background, '__init__', deterministic_background):
+        try:
+            preview = run('ask', chat='claude:' + world.chats['claude'], tool='codex', question='Review this and point out problems', turn=41)
+        except BatonError as failure:
+            return output.error(failure)
+        if state == 'd10_before': return preview
+        pending = run('ask', confirm=preview['plan_id'])
+        if state == 'd10_pending': return pending
+        if state == 'd10_cancelled': return run('ask', cancel=pending['request_id'])
+        if state == 'd10_deadline':
+            world.clock.value = '2026-10-05T14:10:00Z'
+            return run('ask', status=pending['request_id'])
+        tasks.pop()()
+        answer = run('ask', status=pending['request_id'])
+        if command == 'ask': return answer
+        if state == 'd10_attached': world.condition('claude', open=True)
+        if state == 'd10_unavailable': world.condition('claude', replying=True)
+        addition = run('ask add', answer=answer['result']['answer_id'])
+        if state == 'd10_applied': return run('ask add', confirm=addition['plan_id'])
+        return addition
+
+
+def relaunch_review_provider(item, world):
+    """Production executable/refused lifecycle previews for the app review gate."""
+    from types import SimpleNamespace
+    from baton.cli.commands import Context, REGISTRY
+    from baton.domain.errors import BatonError
+    sequence = count(1)
+    world.engine.plans.new_id = lambda: 'p_' + sha256(f'{item.filename}:{next(sequence)}'.encode()).hexdigest()[:32]
+    parts = item.state.split('_')
+    target = parts[1]
+    command = parts[2] if item.command == 'relaunch' else item.command
+    condition = 'idle' if item.command == 'relaunch' else parts[2]
+    source = 'codex' if target == 'claude' else 'claude'
+    if command == 'link':
+        chat = world.chat(source, 'review-source', [original(1), original(2)])
+        world.chat(target, 'other-chat', [original(1)])
+        args = SimpleNamespace(source=source + ':' + chat, to=target, mode='full_copy')
+    else:
+        world.pair((source, target), shared=1)
+        world.seed(source, [original(2), original(3)])
+        args = SimpleNamespace(link=3, to=target)
+    world.adapters[target].app_running = True
+    for chat in list(world.adapters[target].conditions):
+        current = world.adapters[target].conditions[chat]
+        world.adapters[target].conditions[chat] = replace(current, app_running=True, open=True,
+            replying=None if condition == 'unknown' else condition == 'replying')
+    try:
+        preview = REGISTRY.get(command).run(Context(world.engine, command, dry_run=True), args)
+        if item.command == 'relaunch':
+            offer = next(n for n in preview['notes'] if n['values'].get('relaunch_plan_id'))
+            return REGISTRY.get('relaunch').run(Context(world.engine, 'relaunch', confirm=offer['values']['relaunch_plan_id']), SimpleNamespace())
+        return preview
+    except BatonError as failure:
+        return output.error(failure)
 
 
 def generate(output_directory, *, state_root=None):

@@ -5,7 +5,6 @@ from . import Context
 
 from . import command
 from .. import output
-from ..plans import StoredPlan
 from ..wiring import build
 from ...domain.errors import NotAvailable
 from ...services.background import Background
@@ -26,11 +25,12 @@ def dispatch_background(engine, work):
 
 
 def remember_brief(ctx, planned, job=None):
-    review = output.background_brief_plan(planned)
+    """Register standalone creation through the shared brief lifecycle."""
+    from .link_action import remember_brief as register
+    from ...services.brief_link import BriefLink
+    review = register(ctx.engine, ctx.command, BriefLink(ctx.engine).creation_review(planned))
     if job:
         ctx.engine.store.own_background_resources(job, [('cli_plan', planned.plan_id)])
-    ctx.engine.plans.store.save(StoredPlan(planned.plan_id, planned.plan_id, ctx.command,
-        {'service_plan': planned.plan_id, 'review': review}, ctx.engine.clock.now()))
     return review
 
 
@@ -61,11 +61,12 @@ def brief(ctx, args):
             value = background.status(ident)
             rendered = output.background_status(value)
             return {**rendered.get('result', rendered), 'request_id': ident, 'state': value['state']}
-        result = ctx.engine.briefs.confirm(token)
-        return {**stored.get('review', {}), 'plan_id': token, 'applied': result.applied, 'chat_id': result.chat_id,
-                'link_id': result.link_id, 'event_id': result.event_id,
-                'notes': [output.note('brief.summary_receipt')],
-                **({'error': {'kind': output.snake_case(result.error), 'note': output.note('background.failed')}} if result.error else {})}
+        from ...services.brief_link import BriefLink
+        _, result = BriefLink(ctx.engine).confirm(token, stored['review'], dispatch_background,
+            lambda engine, planned: remember_brief(Context(engine, 'brief'), planned))
+        return output.action_receipt({**stored.get('review', {}), 'plan_id': token,
+            'applied': result.applied, 'notes': [output.note('brief.summary_receipt')] if result.applied else [],
+            'confirmation': None}, result)
     link_id = getattr(args, 'link', None)
     if link_id is None:
         raise NotAvailable()

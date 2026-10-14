@@ -109,10 +109,16 @@ class Linker:
             notes.append(NoteRef('link.change', {'name': plan.observations[plan.source]['ref']['name'],
                 'new_name': plan.observations[plan.target].get('ref', {}).get('name', plan.name),
                 'other_name': self.adapters[other].locator.name(old.chat(other))}))
+        for side, observed in plan.observations.items():
+            check = observed.get('format', {})
+            if not check.get('known', True):
+                notes.append(NoteRef('format.unknown_version', {'tool': side, 'version': check['version']}))
+            elif self.adapters[side].state.format_version().new_version:
+                notes.append(NoteRef('format.new_version', {'tool': side, 'version': check['version']}))
         return tuple(notes)
 
     def confirmation_available(self, plan):
-        return not ('app_closed' in plan.needs and plan.observations[plan.target]['running'])
+        return all(v.get('format', {}).get('known', True) for v in plan.observations.values()) and not ('app_closed' in plan.needs and plan.observations[plan.target]['running'])
 
     def _records(self) -> list:
         return [{'link':asdict(link),'turns':[asdict(t) for t in self.store.turns(link.id)]}

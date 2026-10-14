@@ -2,7 +2,7 @@
 from .. import output
 from ...domain.errors import NotAvailable
 from . import command
-from .merge import action_plan
+from .relaunch_action import action_with_relaunch
 
 
 def arguments(parser):
@@ -10,7 +10,7 @@ def arguments(parser):
     parser.add_argument('--to', '--event', dest='event', type=int)
 
 
-@command('undo', 'Undo a change', arguments=arguments, plan=True)
+@command('undo', output.note('cli.undo_summary')['text'], arguments=arguments, plan=True)
 def undo(ctx, args):
     service = ctx.engine.undo
     def prepare(request):
@@ -22,5 +22,5 @@ def undo(ctx, args):
                 raise NotAvailable()
             link = owners[0]
         return service.plan(link, request['event_id'])
-    return action_plan(ctx, {'link_id': args.link, 'event_id': args.event}, prepare,
-                       output.undo_plan, service.apply)
+    return action_with_relaunch(ctx, {'link_id': args.link, 'event_id': args.event}, prepare,
+                       output.undo_plan, service.apply, 'undo')
