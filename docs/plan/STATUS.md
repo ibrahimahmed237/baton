@@ -50,14 +50,20 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **CP3 batch 2a committed 2026-10-15** after three review rounds by Codex Sol (read-only): E11 + E13 `70a21d1`, C4 hooks `16a9243`, C3 part 1 (merge, undo, restore commands) + D8 + D9 `2388d5a`. Measured: 1165 engine tests, app check passes (187 app tests + fixture gate). Three non-safety findings were left open by the orchestrator (decision: they change messages, not writes) and go first in batch 2b: (1) relaunch.py, a rename write failure when the app was already closed raises instead of returning its note; (2) hooks/delivery.py, a delivery that raises (chat changed after preparation) returns no queued receipt; (3) MergeViewModel.swift, a preset response that legitimately differs after a new turn leaves the screen blank.
 
-**CP3 batch 2b running** (Codex Sol builders):
+**CP3 batch 2b committed 2026-10-15:** C5 relaunch + C6 background runs `e8d9ad4`, C3 remaining action commands `db100f1`. 1245 engine tests, app check passes. Committed by the orchestrator before a final review accepted them, to protect the work at a usage limit; open findings below are owed FIRST in the next session.
 
-| Builder | Work | Files |
-|---|---|---|
-| C | Carry-over (1) and (2); C3 rest: link, copy, relink (R9), unlink, pause, resume, sync, continue, keep, send, pin, unpin, rename, open, settings set | `baton/cli/commands/<one per command>.py`, `baton/services/relaunch.py`, `baton/hooks/delivery.py`, additions at the end of `cli/output.py`, `tests/contract/test_action_commands.py` |
-| R | C5 relaunch command, C6 background runs (agent brief, second opinion) | `baton/cli/commands/{relaunch,brief,ask}.py`, `baton/services/background.py` (new), additions at the end of `cli/output.py`, their tests |
+**Open findings (fix, then have Codex Sol verify, before anything else):**
+1. C3: brief creation offers an enabled confirm even when the destination must be closed and is running (`baton/services/brief_types.py` ~57); apply the availability check and the manual-close note; test link and relink.
+2. C3: background serialisation replaces a plan's notes with one status note (`baton/cli/output.py` ~445); keep the notes and append.
+3. C3 "Done when": selective visibility acknowledgement (`applier.mark_seen`) has no command; `tests/scenarios/test_sync_status.py` ~277 cannot run through commands.
+4. C5/C6 round-2 fixes (privacy intersection in opinions, killpg failure, cleanup of review payloads and snapshots, no real fork in tests, worker orchestration in a service) are built and tested but NOT yet verified by a reviewer.
+5. Merge screen carry-over: a preset response that differs after a new turn leaves the screen blank (`MergeViewModel.swift`).
 
-After them, batch 3: E12 notes audit, D10 second opinion, D11 setup and settings, the merge-screen carry-over (3), then the CP3 live check.
+**Then batch 3:** E12 notes audit, D10 second-opinion screen, D11 setup and settings screens (their engine routes now exist), then the CP3 live check (hooks in all four tools, relaunch for Claude and Cursor, create and cut through the adapters; needs one throwaway chat each in OpenCode and Cursor and Ibrahim's go).
+
+**Orchestrator decision 2026-10-15:** a standalone copy from a paused link's side is allowed (it only reads the source and makes a new unlinked chat).
+
+**How this session worked:** Claude orchestrates; builders are `codex exec -s workspace-write -m gpt-6.1-sol -c model_reasoning_effort=medium`, reviewers the same with `-s read-only` and `high`; prompts kept in the session scratchpad. Every package was returned at least once by review; keep that loop.
 
 **Q15, decided by Ibrahim 2026-10-14:** OpenCode is written in any state, replying included, as the specs say (he tested it). The refusal a reviewer had asked for is removed; the risk behind it is closed in the reader instead (parts grouped by message, Baton's rows marked finished). Take-back, cut, place, rename and restore still wait while replying. Commit after `e724450`.
 
