@@ -118,6 +118,7 @@ public enum ScreenAction: Equatable, Sendable {
         return result
     }
     private func offered(_ button: NoteButton, by note: Note) -> Bool {
+        if BoundPlanOffer.offered(by: note, button: button) != nil { return true }
         if button.id == "cancel" { return true }
         switch action {
         case .undo: return (button.id == "undo" && ["plan.confirm_undo", "undo.cut", "undo.cut_reopen", "undo.shorter", "undo.shorter_closed"].contains(note.id)) || (button.id == "when_idle" && note.id == "undo.replying")
@@ -165,7 +166,11 @@ public enum ScreenAction: Equatable, Sendable {
         attempted.insert(plan.planID); busy = true; confirming = true; gate = ConfirmationGate()
         defer { busy = false; confirming = false }
         do {
-            let result = try await action.run(engine, mutation: .confirm(plan.planID))
+            let result: (Plan, [RemovedTurn], Turn?, [RemovalGroup])
+            if let note = notes.first(where: { BoundPlanOffer.offered(by: $0, button: button) != nil }),
+               let offer = BoundPlanOffer.offered(by: note, button: button) {
+                result = (try await offer.run(engine), removes, endsAt, removalGroups)
+            } else { result = try await action.run(engine, mutation: .confirm(plan.planID)) }
             guard result.0.linkID == action.link else { self.plan = nil; removes = []; removalGroups = []; endsAt = nil; return }
             revision += 1; self.plan = result.0; removes = result.1; endsAt = result.2; removalGroups = result.3
             if result.0.applied { await onApplied?() }

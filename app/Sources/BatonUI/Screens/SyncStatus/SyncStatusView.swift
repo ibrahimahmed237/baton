@@ -48,7 +48,7 @@ public struct SyncStatusView: View {
                         ConfirmBar(notes: receipt.notes, buttons: model.confirmationButtons, revision: receipt.identity,
                                    enabled: { _, button in button.id == "cancel" || model.canConfirmPlan }) { _, button in
                             if button.id == "cancel" { model.cancelPlan() }
-                            else { Task { await model.confirmPlan() } }
+                            else { Task { await model.confirmPlan(button) } }
                         }.id(receipt.identity).onAppear { model.didDisplay(receipt) }.disabled(model.isConfirming)
                     }
                 }

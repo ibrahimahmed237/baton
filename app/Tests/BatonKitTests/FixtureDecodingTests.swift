@@ -93,6 +93,13 @@ struct FixtureDecodingTests {
                 let object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
                 if let refusal = object["error"] {
                     try decoder(for: EngineCommandError.self)(JSONSerialization.data(withJSONObject: refusal))
+                } else if command == "ask", file.lastPathComponent.hasPrefix("ask.d10_") {
+                    let value = try JSONDecoder().decode(OpinionResponse.self, from: data)
+                    var extended = object
+                    extended["future_contract_field"] = true
+                    let next = try JSONDecoder().decode(OpinionResponse.self, from: JSONSerialization.data(withJSONObject: extended))
+                    #expect(value.plan == next.plan && value.answer == next.answer && value.state == next.state && value.notes == next.notes)
+                    covered.insert(command)
                 } else {
                     try decode(data)
                     covered.insert(command)

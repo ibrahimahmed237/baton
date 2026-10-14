@@ -34,8 +34,19 @@ public final class LinkDialogViewModel: ObservableObject {
     public var selectedTool: SetupTool? { tools.first { $0.tool == target } }
     public var modes: [LinkModeOption] { selectedTool?.linkModes ?? [] }
     public var canConfirm: Bool {
-        guard !busy, !finished, let plan, !plan.applied, !plan.decisionNeeded, let receipt = displayReceipt else { return false }
+        guard !busy, !finished, let plan, !plan.applied, !plan.decisionNeeded, let receipt = displayReceipt, !planNotes.contains(where: { $0.id == "plan.unavailable" }) else { return false }
         return gate.permits(receipt.notes, identity: receipt.identity)
+    }
+    public var boundButtons: [NoteButton] {
+        planNotes.flatMap { note in note.buttons.filter { BoundPlanOffer.offered(by: note, button: $0) != nil } }.reduce(into: []) { if !$0.contains($1) { $0.append($1) } }
+    }
+    public func chooseBound(_ button: NoteButton) async {
+        guard canConfirm, let note = planNotes.first(where: { BoundPlanOffer.offered(by: $0, button: button) != nil }),
+              let offer = BoundPlanOffer.offered(by: note, button: button) else { return }
+        generation += 1; let request = generation; busy = true; isApplying = true; gate = ConfirmationGate()
+        defer { busy = false; isApplying = false }
+        do { let result = try await offer.run(engine); self.plan = result; finished = result.applied }
+        catch { finishError(error, request: request) }
     }
     public var planNotes: [Note] { plan.map(displayedPlanNotes) ?? [] }
     public var displayReceipt: PlanDisplayReceipt? {

@@ -690,20 +690,31 @@ public struct BriefResult: Codable, Equatable, Sendable {
 
 /// Result of the Ask command.
 public struct AskResult: Codable, Equatable, Sendable {
+    public var answerID: String?
     public var answer: String
     public var tokens: Int
     public var seconds: Double
     public var notes: [Note]
 
     /// Creates a contract value without requiring JSON.
-    public init(answer: String, tokens: Int, seconds: Double, notes: [Note]) {
+    public init(answer: String, tokens: Int, seconds: Double, notes: [Note] = [], answerID: String? = nil) {
+        self.answerID = answerID
         self.answer = answer
         self.tokens = tokens
         self.seconds = seconds
         self.notes = notes
     }
 
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        answerID = try c.decodeIfPresent(String.self, forKey: .answerID)
+        answer = try c.decode(String.self, forKey: .answer)
+        tokens = try c.decode(Int.self, forKey: .tokens)
+        seconds = try c.decode(Double.self, forKey: .seconds)
+        notes = try c.decodeIfPresent([Note].self, forKey: .notes) ?? []
+    }
     private enum CodingKeys: String, CodingKey {
+        case answerID = "answer_id"
         case answer
         case tokens
         case seconds
@@ -734,6 +745,16 @@ public struct RelaunchResult: Codable, Equatable, Sendable {
         self.confirmation = confirmation
         self.stage = stage
         self.replying = replying
+    }
+
+    /// Bound action relaunch receipts use the original command's ordinary Plan shape.
+    public init(from decoder: Decoder) throws {
+        let plan = try Plan(from: decoder)
+        let fields = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(planID: plan.planID, applied: plan.applied, linkID: plan.linkID,
+                  steps: plan.steps, decisionNeeded: plan.decisionNeeded, notes: plan.notes,
+                  replying: try fields.decodeIfPresent([Chat].self, forKey: .replying) ?? [],
+                  confirmation: plan.confirmation, stage: plan.stage)
     }
 
     private enum CodingKeys: String, CodingKey {

@@ -4,31 +4,37 @@ import BatonKit
 /// Groups settings with their choices, defaults and preview boundary clearly visible.
 public struct SettingsView: View {
     @Environment(\.batonSnapshotPresentation) private var snapshot
-    @Environment(\.batonTheme) private var theme
+    private var theme: Theme { model.engineTheme }
     @ObservedObject private var model: SettingsViewModel
     @ObservedObject private var appearance: ThemePreference
     private let fallbackNotes: [Note]
+    @StateObject private var setupModel: SetupViewModel
+    @State private var showingSetup = false
     @State private var tokenDraft = ""
     @State private var opacityDraft = 62.0
     public init(model: SettingsViewModel, appearance: ThemePreference, fallbackNotes: [Note] = []) {
+        _setupModel = StateObject(wrappedValue: model.makeSetupModel())
         self.model = model; self.appearance = appearance; self.fallbackNotes = fallbackNotes
         _tokenDraft = State(initialValue: model.value("brief_threshold_tokens"))
-        _opacityDraft = State(initialValue: appearance.glass)
+        _opacityDraft = State(initialValue: model.engineGlass)
     }
     private func note(_ id: String) -> Note? { model.note(id) ?? fallbackNotes.first { $0.id == id } }
     public var body: some View {
+        let receipt = model.displayReceipt
         VStack(alignment: .leading, spacing: 22) {
             HStack(spacing: 12) {
                 Image(systemName: "slider.horizontal.3").font(.title2).foregroundStyle(theme.secondaryText)
                 if let title = note("screen.settings") { Text(title.text).font(.largeTitle.weight(.semibold)) }
                 Spacer()
+                if let label = note("screen.setup") { Button(label.text) { showingSetup = true } }
                 if let label = note("settings.reset") {
                     Button(label.text) { Task { await model.restoreDefaults(); resetDrafts() } }
-                        .disabled(model.settings == nil || model.loading || model.saving)
+                        .disabled(!model.canSet || model.restoringDefaults)
                 }
             }
             if let preview = note("settings.preview") { NoteView(note: preview) }
             if model.loading { ProgressView() }
+            if model.settings == nil, model.errorNote == nil, let empty = model.emptyNote { NoteView(note: empty) }
             if let error = model.errorNote ?? ((model.saveFailed || model.loadFailed) && !model.loading ? note("settings.error") : nil) {
                 NoteView(note: error)
                 if model.settings == nil, let label = note("screen.refresh") { Button(label.text) { Task { await model.load(); resetDrafts() } } }
@@ -38,12 +44,23 @@ public struct SettingsView: View {
                 group("settings.appearance", keys: ["theme", "glass"])
                 group("settings.sync", keys: ["notice_on_attach", "offer_relaunch", "add_to_idle_claude", "offer_switch_at_limit", "merge"])
                 group("settings.chats", keys: ["brief_threshold_tokens", "hide_script_chats", "title_tag"])
+                ForEach(Array(model.disclosureNotes.enumerated()), id: \.offset) { _, note in NoteView(note: note, enabled: { _ in false }) }
             }
-        }.frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
+        }.id(receipt.identity).onAppear(perform: appearanceCallback(for: receipt))
+            .batonTheme(model.engineTheme, glass: model.engineGlass)
+            .frame(maxWidth: 760, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
             .task { if model.settings == nil, !snapshot { await model.load(); resetDrafts() } }
-            .onChange(of: appearance.glass) { _, value in opacityDraft = value }
+            .sheet(isPresented: $showingSetup) { ScrollView { SetupView(model: setupModel) }.frame(width: 760, height: 650) }
+            .onChange(of: model.engineGlass) { _, value in opacityDraft = value }
     }
-    private func resetDrafts() { tokenDraft = model.value("brief_threshold_tokens"); opacityDraft = appearance.glass }
+    /// The callback belongs to the mounted content, even when SwiftUI invokes it later.
+    func appearanceCallback(for receipt: PlanDisplayReceipt) -> () -> Void {
+        return {
+            model.didDisplay(receipt)
+            if model.restoringDefaults { Task { await model.continueRestoringDefaults() } }
+        }
+    }
+    private func resetDrafts() { tokenDraft = model.value("brief_threshold_tokens"); opacityDraft = model.engineGlass }
     private func group(_ id: String, keys: [String]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             if let title = note(id) { Text(title.text).font(.headline) }
@@ -57,7 +74,7 @@ public struct SettingsView: View {
                     }
                 }
             }
-        }.disabled(model.loading || model.saving)
+        }.disabled(!model.canSet || model.restoringDefaults)
     }
     private func row(_ choice: SettingsChoice, label: Note) -> some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -99,7 +116,7 @@ public struct SettingsView: View {
         case .opacity:
             HStack(spacing: 8) {
                 Slider(value: $opacityDraft, in: 40...95, onEditingChanged: { editing in
-                    if !editing { Task { await model.set(choice.key, value: String(opacityDraft)); opacityDraft = appearance.glass } }
+                    if !editing { Task { await model.set(choice.key, value: String(opacityDraft)); opacityDraft = model.engineGlass } }
                 }).frame(width: 155).accessibilityLabel(label.text)
                 Text(opacityDraft / 100, format: .percent.precision(.fractionLength(0))).font(.caption.monospacedDigit()).frame(width: 34)
             }

@@ -81,8 +81,8 @@ public struct LinkDialogView: View {
                 PlanSteps(steps: plan.steps, excludingNotes: model.planNotes)
                 if let receipt = model.displayReceipt {
                     ConfirmBar(notes: receipt.notes, buttons: confirmationButtons, revision: receipt.identity,
-                               enabled: { _, _ in model.canConfirm }) { _, _ in
-                        Task { await model.confirm() }
+                               enabled: { _, _ in model.canConfirm }) { _, button in
+                        Task { if model.boundButtons.contains(button) { await model.chooseBound(button) } else { await model.confirm() } }
                     }.id(receipt.identity).onAppear { model.didDisplay(receipt) }
                 }
             }
@@ -107,6 +107,6 @@ public struct LinkDialogView: View {
     }
     private var confirmationButtons: [NoteButton] {
         guard !model.busy, model.plan?.decisionNeeded == false else { return [] }
-        return model.buttons.filter { $0.id == confirmationID }
+        return model.boundButtons + model.buttons.filter { $0.id == confirmationID }
     }
 }

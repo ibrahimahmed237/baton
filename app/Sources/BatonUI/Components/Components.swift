@@ -148,6 +148,13 @@ func displayedPlanNotes(_ plan: Plan) -> [Note] {
     }
     func append(_ note: Note) {
         if let index = result.firstIndex(where: { sameSentence($0, note) || filledSentence($0) == filledSentence(note) }) {
+            // Prefer the engine's executable offer when legacy step prose repeats it.
+            let keys = ["relaunch_plan_id", "attach_plan_id", "sync_relaunch_later_plan_id"]
+            if keys.contains(where: { note.values[$0] != nil && (result[index].values[$0] == nil || (result[index].buttons.isEmpty && !note.buttons.isEmpty)) }) {
+                let tone = result[index].tone
+                result[index] = note
+                if strength(tone) > strength(note.tone) { result[index].tone = tone }
+            }
             // Keep the first occurrence's identity/values as provenance, but never hide a stronger warning.
             if strength(note.tone) > strength(result[index].tone) { result[index].tone = note.tone }
         } else { result.append(note) }

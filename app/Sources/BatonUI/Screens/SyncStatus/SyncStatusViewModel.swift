@@ -206,16 +206,16 @@ public final class SyncStatusViewModel: ObservableObject {
     }
     public func cancelPlan() { actionRequest += 1; plan = nil; pending = nil }
     public var confirmationButtons: [NoteButton] {
-        guard let plan, let pending else { return [] }
+        guard plan != nil, let pending else { return [] }
         let permitted: Set<String>
         switch pending {
         case .unlink: permitted = ["unlink", "cancel"]
         case .copy: permitted = ["copy", "cancel"]
-        case .sync: permitted = ["add_now", "cancel"]
-        case .relaunch: permitted = ["close_sync_reopen", "relaunch", "cancel"]
+        case .sync: permitted = ["confirm", "add_now", "close_sync_reopen", "attach", "cancel"]
+        case .relaunch: permitted = ["confirm", "close_sync_reopen", "relaunch", "cancel"]
         }
         var seen: Set<String> = []
-        return plan.notes.flatMap(\.buttons).filter { permitted.contains($0.id) && seen.insert($0.id).inserted }
+        return planNotes.flatMap(\.buttons).filter { permitted.contains($0.id) && seen.insert($0.id).inserted }
     }
     public var planNotes: [Note] { plan.map(displayedPlanNotes) ?? [] }
     public var displayReceipt: PlanDisplayReceipt? {
@@ -227,17 +227,31 @@ public final class SyncStatusViewModel: ObservableObject {
         gate.markDisplayed(receipt.notes, identity: receipt.identity)
     }
     public var canConfirmPlan: Bool {
-        if case .relaunch = pending { return false } // Execution belongs to C5, as in plan review.
         guard !loading, !isConfirming, pending != nil, let plan, !plan.applied, !plan.decisionNeeded,
+              !planNotes.contains(where: { $0.id == "plan.unavailable" }),
               let receipt = displayReceipt, confirmationButtons.contains(where: { $0.id != "cancel" }) else { return false }
         return gate.permits(receipt.notes, identity: receipt.identity)
     }
-    public func confirmPlan() async {
+    public func confirmPlan(_ button: NoteButton? = nil) async {
+        if let button, !confirmationButtons.contains(button) { return }
         guard canConfirmPlan, let plan, let pending else { return }
         gate = ConfirmationGate()
         isConfirming = true
         defer { isConfirming = false }
-        await execute(pending, mutation: .confirm(plan.planID))
+        if let button, let note = planNotes.first(where: { BoundPlanOffer.offered(by: $0, button: button) != nil }),
+           let offer = BoundPlanOffer.offered(by: note, button: button) {
+            let generation = actionRequest
+            let linkID = status?.linkID
+            do {
+                let result = try await offer.run(engine)
+                guard generation == actionRequest, status?.linkID == linkID, result.linkID == linkID else { return }
+                self.plan = result
+                if result.applied { cancelPlan(); if let linkID { await load(link: linkID) } }
+            } catch {
+                guard generation == actionRequest, status?.linkID == linkID else { return }
+                errorNote = (error as? EngineCommandError)?.note
+            }
+        } else { await execute(pending, mutation: .confirm(plan.planID)) }
     }
     private func preview(_ action: PendingAction) async { actionRequest += 1; plan = nil; pending = action; await execute(action, mutation: .preview) }
     private func execute(_ action: PendingAction, mutation: MutationOptions) async {
@@ -248,16 +262,16 @@ public final class SyncStatusViewModel: ObservableObject {
             switch action {
             case .unlink:
                 let result = try await engine.unlink(link: status.linkID, mutation: mutation)
-                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes)
+                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes, confirmation: result.confirmation)
             case .copy(let source, let target):
                 let result = try await engine.copy(from: source, to: target, andLink: false, mutation: mutation)
-                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes)
+                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes, confirmation: result.confirmation)
             case .sync(let tool):
                 let result = try await engine.sync(link: status.linkID, to: tool, mutation: mutation)
-                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes)
+                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes, confirmation: result.confirmation)
             case .relaunch(let tool):
                 let result = try await engine.relaunch(tool: tool, whenIdle: false, thenSync: status.linkID, mutation: mutation)
-                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes)
+                returned = Plan(planID: result.planID, applied: result.applied, linkID: status.linkID, steps: result.steps, decisionNeeded: result.decisionNeeded, notes: result.notes, confirmation: result.confirmation)
             }
             guard generation == actionRequest, self.status?.linkID == status.linkID else { return }
             gate = ConfirmationGate(); plan = returned

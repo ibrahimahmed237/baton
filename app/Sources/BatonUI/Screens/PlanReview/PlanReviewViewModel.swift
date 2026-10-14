@@ -118,7 +118,7 @@ public struct PlanAction: Identifiable, Equatable, Sendable {
     public let offeringTool: String?
     fileprivate let route: Route
     fileprivate enum Route: Equatable, Sendable {
-        case cancel, confirm, preview(PlanRequest), unavailable, chooseCounterpart, ignored
+        case cancel, confirm, preview(PlanRequest), bound(BoundPlanOffer), unavailable, chooseCounterpart, ignored
     }
 }
 
@@ -188,6 +188,20 @@ public final class PlanReviewViewModel: ObservableObject {
             }
         }
         if let note = plan.confirmation { append(note, path: "confirmation", tool: request.targetTool, isConfirmation: true) }
+        // Lifecycle serializers also repeat legacy step offers. Keep the bound offer
+        // once per side, rather than presenting stale unbound versions beside it.
+        result = result.filter { candidate in
+            if case .bound = candidate.route { return true }
+            return !result.contains { other in
+                guard case .bound = other.route else { return false }
+                return other.button == candidate.button && other.noteID == candidate.noteID && other.offeringTool == candidate.offeringTool
+            }
+        }
+        var boundSeen: Set<String> = []
+        result = result.filter { action in
+            guard case .bound(let offer) = action.route else { return true }
+            return boundSeen.insert("\(action.offeringTool ?? ""):\(action.button.id):\(offer.command):\(offer.planID)").inserted
+        }
         // Cancel has no side effect or side provenance; one engine-provided Cancel suffices.
         var sawCancel = false
         result = result.filter { action in
@@ -201,8 +215,9 @@ public final class PlanReviewViewModel: ObservableObject {
         return alternative == nil ? result : result.filter { $0.route == .cancel }
     }
     public var canConfirm: Bool {
-        // Relaunch execution belongs to C5; CP2 only presents its future contract.
-        if case .relaunch = request { return false }
+        if case .relaunch = request {
+            guard replying.isEmpty, plan?.steps.contains(where: { $0.action == "reopen" }) == true else { return false }
+        }
         guard let plan, let receipt = displayReceipt, alternative == nil, outcome == nil, !busy,
               !plan.applied, !plan.decisionNeeded,
               !attemptedPlanIDs.contains(plan.planID),
@@ -222,6 +237,10 @@ public final class PlanReviewViewModel: ObservableObject {
         guard alternative == nil, let receipt = displayReceipt,
               gate.permits(receipt.notes, identity: receipt.identity) else { return false }
         if action.route == .confirm { return canConfirm }
+        if case .bound(let offer) = action.route {
+            return plan?.applied == false && plan?.decisionNeeded == false && !attemptedPlanIDs.contains(offer.planID) &&
+                !planNotes.contains { $0.id == "plan.unavailable" }
+        }
         return action.route != .ignored
     }
     public func load(_ request: PlanRequest) async { await preview(request, preserveOriginal: false, loadLabels: true) }
@@ -259,6 +278,17 @@ public final class PlanReviewViewModel: ObservableObject {
         switch action.route {
         case .confirm: await confirm()
         case .preview(let request): await preview(request, preserveOriginal: true, loadLabels: false)
+        case .bound(let offer):
+            attemptedPlanIDs.insert(offer.planID); busy = true; isConfirming = true
+            defer { busy = false; isConfirming = false; gate = ConfirmationGate() }
+            do {
+                let expectedLink = plan?.linkID
+                let result = try await offer.run(engine)
+                guard expectedLink == nil || result.linkID == expectedLink else { reviewed = nil; return }
+                reviewed = ReviewedPlan(result)
+                generation += 1
+                if result.applied { outcome = .applied }
+            } catch { errorNote = (error as? EngineCommandError)?.note }
         case .unavailable: alternative = .unavailable
         case .chooseCounterpart: alternative = .chooseCounterpart
         case .cancel, .ignored: break
@@ -308,6 +338,14 @@ public final class PlanReviewViewModel: ObservableObject {
     private func route(_ button: NoteButton, note: Note, tool: String?, request: PlanRequest,
                        isConfirmation: Bool) -> PlanAction.Route {
         if button.id == "cancel" { return .cancel }
+        if let offer = BoundPlanOffer.offered(by: note, button: button) { return .bound(offer) }
+        if let boundNote = plan?.notes.first(where: {
+            filledSentence($0) == filledSentence(note) && $0.values["tool"] == note.values["tool"] && BoundPlanOffer.offered(by: $0, button: button) != nil
+        }), let offer = BoundPlanOffer.offered(by: boundNote, button: button) { return .bound(offer) }
+        if isConfirmation, note.id == "plan.confirm_relaunch", button.id == "confirm" {
+            let offers = plan?.notes.flatMap { note in note.buttons.compactMap { BoundPlanOffer.offered(by: note, button: $0) } }.filter { $0.command == "relaunch" } ?? []
+            if let offer = offers.first, offers.allSatisfy({ $0 == offer }) { return .bound(offer) }
+        }
         if isConfirmation {
             return button.id == "confirm" && note.id == request.confirmationID(stage: plan?.stage) ? .confirm : .ignored
         }
