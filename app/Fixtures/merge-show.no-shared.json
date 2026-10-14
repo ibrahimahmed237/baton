@@ -4,18 +4,178 @@
   "last_shared": null,
   "notes": [
     {
+      "buttons": [],
+      "id": "merge.header",
+      "status_line": null,
+      "text": "Both chats have new turns. Claude has 1 turns Codex never received, and Codex has 1 that Claude never received. Nothing has been changed yet.",
+      "tone": "warning",
+      "values": {
+        "first_count": 1,
+        "first_tool": "Claude",
+        "second_count": 1,
+        "second_tool": "Codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.order_help",
+      "status_line": null,
+      "text": "Move a turn up or down to change where it goes. Turns from the same app keep their order.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "merge.keeps_chat",
+      "status_line": null,
+      "text": "Claude keeps its chat. Codex's 1 turns are added at the end.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Codex",
+        "tool": "Claude",
+        "turns": 1
+      }
+    },
+    {
       "buttons": [
         {
-          "id": "merge_show",
-          "label": "Decide",
+          "id": "keep",
+          "label": "Keep Claude's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Claude's",
+      "tone": "info",
+      "values": {
+        "tool": "Claude",
+        "tool_id": "claude"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.merged_copy",
+      "status_line": null,
+      "text": "Codex gets a merged copy as a new chat. The old chat stays as it is.",
+      "tone": "info",
+      "values": {
+        "other_tool": "Claude",
+        "tool": "Codex",
+        "turns": 1
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.copy_visible",
+      "status_line": null,
+      "text": "The new chat appears in Codex right away.",
+      "tone": "info",
+      "values": {
+        "tool": "Codex"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "keep",
+          "label": "Keep Codex's",
+          "primary": false
+        }
+      ],
+      "id": "merge.keep_choice",
+      "status_line": null,
+      "text": "Keep Codex's",
+      "tone": "info",
+      "values": {
+        "tool": "Codex",
+        "tool_id": "codex"
+      }
+    },
+    {
+      "buttons": [],
+      "id": "merge.same_file",
+      "status_line": null,
+      "text": "Both agents changed orchard.py, in turns 41, 42. Baton does not merge files. Check that file.",
+      "tone": "warning",
+      "values": {
+        "file": "orchard.py",
+        "turns": "41, 42"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "split",
+          "label": "Split into two chats",
+          "primary": false
+        }
+      ],
+      "id": "merge.split_choice",
+      "status_line": null,
+      "text": "Split into two chats",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [
+        {
+          "id": "always",
+          "label": "Always merge by time without asking",
+          "primary": false
+        }
+      ],
+      "id": "merge.always",
+      "status_line": null,
+      "text": "Always merge by time without asking",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
+      "id": "status.summary",
+      "status_line": null,
+      "text": "Claude's agent has 1 of 2 turns. Its chat shows 1; 1 are waiting.",
+      "tone": "info",
+      "values": {
+        "agent_has": 1,
+        "chat_shows": 1,
+        "tool": "Claude",
+        "total": 2,
+        "waiting": 1
+      }
+    },
+    {
+      "buttons": [],
+      "id": "context.in_use",
+      "status_line": null,
+      "text": "About 8,000 tokens in use, 4% of 200,000.",
+      "tone": "info",
+      "values": {
+        "percent": 4,
+        "size": "200,000",
+        "tokens": "8,000"
+      }
+    },
+    {
+      "buttons": [
+        {
+          "id": "show_changes",
+          "label": "Show what changed",
           "primary": true
         }
       ],
-      "id": "merge.decision_needed",
-      "status_line": "A decision is needed",
-      "text": "Both sides have turns the other never received. A decision is needed.",
-      "tone": "warning",
-      "values": {}
+      "id": "digest.since_you_left",
+      "status_line": null,
+      "text": "Since your last message here at 12:03, Codex did 1 turn, changed 1 file and ran 0 commands.",
+      "tone": "info",
+      "values": {
+        "at": "12:03",
+        "commands": "0 commands",
+        "files": "1 file",
+        "tool": "Codex",
+        "turns": "1 turn"
+      }
     }
   ],
   "offer_brief": false,
@@ -111,6 +271,7 @@
       ]
     }
   ],
+  "selected_preset": "",
   "tokens": 18,
   "unsynced": [
     {

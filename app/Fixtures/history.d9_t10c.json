@@ -1,0 +1,322 @@
+{
+  "events": [
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 6,
+      "kind": "restore",
+      "label": {
+        "buttons": [],
+        "id": "history.restored",
+        "status_line": null,
+        "text": "Restored this change",
+        "tone": "info",
+        "values": {
+          "n": 5,
+          "tool": ""
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Restored this change",
+      "tool": null,
+      "tool_label": null,
+      "turns": [
+        41,
+        42,
+        43,
+        44,
+        45
+      ],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    },
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 5,
+      "kind": "undo",
+      "label": {
+        "buttons": [],
+        "id": "history.undone",
+        "status_line": null,
+        "text": "Undid this change",
+        "tone": "info",
+        "values": {
+          "n": 4,
+          "tool": ""
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Undid this change",
+      "tool": null,
+      "tool_label": null,
+      "turns": [
+        42,
+        43,
+        44,
+        45
+      ],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    },
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 4,
+      "kind": "add",
+      "label": {
+        "buttons": [],
+        "id": "history.added",
+        "status_line": null,
+        "text": "Added 1 turns in Claude",
+        "tone": "info",
+        "values": {
+          "n": 1,
+          "tool": "Claude"
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Added 1 turns in Claude",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        43
+      ],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    },
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 3,
+      "kind": "add",
+      "label": {
+        "buttons": [],
+        "id": "history.added",
+        "status_line": null,
+        "text": "Added 1 turns in Claude",
+        "tone": "info",
+        "values": {
+          "n": 1,
+          "tool": "Claude"
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Added 1 turns in Claude",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        42
+      ],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    },
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 2,
+      "kind": "add",
+      "label": {
+        "buttons": [],
+        "id": "history.added",
+        "status_line": null,
+        "text": "Added 1 turns in Claude",
+        "tone": "info",
+        "values": {
+          "n": 1,
+          "tool": "Claude"
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Added 1 turns in Claude",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": [
+        41
+      ],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    },
+    {
+      "at": "2026-10-05T14:00:00Z",
+      "can_restore": false,
+      "can_undo": false,
+      "id": 1,
+      "kind": "linked",
+      "label": {
+        "buttons": [],
+        "id": "history.linked",
+        "status_line": null,
+        "text": "Linked chats",
+        "tone": "info",
+        "values": {
+          "n": 0,
+          "tool": ""
+        }
+      },
+      "restore_label": {
+        "buttons": [
+          {
+            "id": "restore",
+            "label": "Restore",
+            "primary": false
+          }
+        ],
+        "id": "history.restore_action",
+        "status_line": null,
+        "text": "Restore",
+        "tone": "info",
+        "values": {}
+      },
+      "text": "Linked chats",
+      "tool": null,
+      "tool_label": null,
+      "turns": [],
+      "undo_label": {
+        "buttons": [
+          {
+            "id": "undo",
+            "label": "Undo",
+            "primary": false
+          }
+        ],
+        "id": "history.undo_action",
+        "status_line": null,
+        "text": "Undo",
+        "tone": "info",
+        "values": {}
+      }
+    }
+  ],
+  "notes": []
+}

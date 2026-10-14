@@ -1,0 +1,47 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "restore",
+          "label": "Go back to the earlier chat",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.earlier_chat",
+      "status_line": null,
+      "text": "Go back to the earlier chat",
+      "tone": "info",
+      "values": {
+        "at": "",
+        "days": 30,
+        "first_line": "",
+        "n": 0,
+        "tool": "Codex"
+      }
+    }
+  ],
+  "plan_id": "p_27d37c09775bee96e8def4053dfaf3acf7a9b855691af70890723d99f27ea10d",
+  "removal_groups": [],
+  "removes": [],
+  "steps": [
+    {
+      "action": "move_link",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "codex",
+      "tool_label": "Codex",
+      "turns": []
+    }
+  ]
+}

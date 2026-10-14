@@ -92,6 +92,28 @@ def _routes():
     for state in ('limit_reset', 'limit_no_reset', 'brief_fallback', 'unlinked'):
         yield f'notify.d7_{state}.json'
     yield 'continue.d7_limit_reset.json'
+    for state in ('u1', 'u2', 'u3', 'u4', 'u5', 'u6', 'u7', 'u8', 'u9', 'split', 'large'):
+        yield f'merge-show.d8_{state}.json'
+        yield f'merge.d8_{state}.json'
+    for state in ('cut', 'shorter', 'replying', 'attached'):
+        yield f'undo.d9_{state}.json'
+    for state in ('cut', 'shorter'):
+        yield f'restore.d9_{state}.json'
+    yield 'history.d9_all_kinds.json'
+    yield 'history.d9_empty.json'
+    yield 'history.d9_error.json'
+    for state in ('u1', 'u5', 'u8', 'split'):
+        yield f'merge.d8_{state}_applied.json'
+    for state in ('t8', 't9', 't10', 't10c'):
+        yield f'history.d9_{state}.json'
+    for state in ('t8', 't10'):
+        yield f'undo.d9_{state}.json'
+        yield f'undo.d9_{state}_applied.json'
+    for state in ('t9', 't10c'):
+        yield f'restore.d9_{state}.json'
+        yield f'restore.d9_{state}_applied.json'
+    for state in ('t10b', 't11', 'u9'):
+        yield f'undo.d9_{state}.json'
     yield 'link.service_full_copy_applied.json'
 
 def _entry(filename):
@@ -121,12 +143,20 @@ def _entry(filename):
                'New chat / open chat / write window ' + state.removeprefix('d6_'))
         requirement = 'D6 / G4a,G4b notes table: ' + row + ' / A6,T5,T6'
         recipe = command + '_provider:' + state
+    elif state.startswith('d8_'):
+        requirement = 'D8 / M1–M12 / ' + state.removeprefix('d8_').upper()
+        recipe = 'merge_screen_provider:' + state
+    elif state.startswith('d9_'):
+        requirement = 'D9 / A8–A10 / T7–T11 / ' + state.removeprefix('d9_')
+        recipe = 'history_screen_provider:' + state
     elif state.startswith('d7_'):
         requirement = 'D7 ' + state.removeprefix('d7_') + ' / W1–W6,W14,W15 / V1–V6 / approved cost/generate/review/create'
         recipe = 'World.handoff:' + state
     else:
         requirement = 'D0 shared CONTRACT ' + command + ' / CP2 section6'
         recipe = 'model_provider:' + command + ':' + state
+    if state.startswith(('d8_', 'd9_')):
+        provider = 'real_read' if command in READS else 'real_service_receipt' if state.endswith('_applied') else 'real_service_plan'
     read_callable = {'merge-show': 'baton.cli.commands.merge.merge',
                      'settings-get': 'baton.cli.commands.settings.get'}
     callable_name = (read_callable.get(command, 'baton.cli.commands.' + command + '.' + command) if provider == 'real_read' else
@@ -136,6 +166,8 @@ def _entry(filename):
                      'Merger.plan/apply' if command == 'merge' else 'Undo.plan/restore/apply' if command in ('undo', 'restore') else
                      'LimitOffers.check (future notify envelope)' if command == 'notify' else
                      'output serializers (non-executable ' + command + ')')
+    if state.startswith(('d8_', 'd9_')):
+        callable_name = 'baton.cli.commands.' + ('merge.merge' if command == 'merge-show' else command + '.' + command)
     return Fixture(filename, command, state, provider, requirement, provider == 'real_read', recipe, callable_name)
 
 MANIFEST = tuple(_entry(filename) for filename in sorted(set(_routes())))

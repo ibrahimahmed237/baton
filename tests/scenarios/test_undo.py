@@ -434,6 +434,7 @@ class UndoScenarios(unittest.TestCase):
             store.mark_shown(link, target)
             first = service.apply(service.plan(link, events[1]))
             self.assertTrue(first.applied)
+            store.set_paused(link, False)
             second = service.apply(service.plan(link, events[0]))
             self.assertTrue(second.applied)
             status = service.applier.refresh(link)['status'].side(target)
@@ -525,3 +526,29 @@ class UndoScenarios(unittest.TestCase):
         with self.assertRaises(NotAvailable): service.restore(undone.event_id)
         self.assertEqual(service._record(link), record)
         self.assertEqual(chats, {s:a.chats for s,a in adapters.items()})
+
+    def test_paused_undo_refuses_before_prepare_and_after_prepare(self):
+        from baton.domain.errors import LinkPaused
+        for target in ('claude', 'codex'):
+            with self.subTest(target=target):
+                store, adapters, service, link, source, target, events = self.make(target)
+                plan = service.plan(link, events[1])
+                writer = adapters[target].writer
+                store.set_paused(link, True)
+                with patch.object(writer, 'prepare', wraps=writer.prepare) as prepare:
+                    with self.assertRaises(LinkPaused) as error: service.plan(link, events[1])
+                    self.assertEqual(error.exception.note_id, 'undo.paused')
+                    with self.assertRaises(LinkPaused): service.apply(plan)
+                    prepare.assert_not_called()
+                store.set_paused(link, False)
+                plan = service.plan(link, events[1])
+                original = writer.prepare
+                def paused(*args):
+                    receipt = original(*args)
+                    store.set_paused(link, True)
+                    return receipt
+                with patch.object(writer, 'prepare', side_effect=paused), patch.object(service.applier, '_write', wraps=service.applier._write) as write:
+                    result = service.apply(plan)
+                    self.assertFalse(result.applied)
+                    self.assertEqual(result.notes, ('undo.paused',))
+                    write.assert_not_called()

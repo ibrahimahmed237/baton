@@ -9,7 +9,7 @@ import json
 from typing import Mapping
 
 from ..domain.capabilities import Visibility, WriteWindow
-from ..domain.errors import ChatChanged, ChatHeld, ChatReplying, NotAvailable
+from ..domain.errors import ChatChanged, ChatHeld, ChatReplying, NotAvailable, LinkPaused
 from ..domain.link import ADDED, SHOWN, AGENT_HAS, WAITING
 from ..ports.clock import Clock
 from ..ports.store import RecordStore
@@ -107,6 +107,8 @@ class UndoPreview:
         """List everything removed from one side before any mutation happens."""
         record = self._record(link_id)
         link = self.store.get_link(link_id)
+        if link.paused:
+            raise LinkPaused()
         event = next((e for e in self.store.history(link_id) if e.id == event_id), None)
         if event is None:
             raise NotAvailable()
@@ -280,6 +282,9 @@ class UndoPreview:
                 side_notes[side].append('undo.ends_at')
             if any(w['side'] == side and w['action'] == 'attach' for w in event.detail['writes']):
                 side_notes[side].append('undo.attached')
+        for side in changed:
+            if snapshots[side]['condition']['replying']:
+                side_notes.setdefault(side, []).append('undo.replying')
         detail = {'merge_changes': changed, 'notes_by_side': side_notes, 'order': [r['id'] for r in prior['turns']] +
                   [r['id'] for r in record['turns'] if r['id'] not in {t['id'] for t in prior['turns']}]}
         return self._finish(UndoPlan('', link_id, event.id, 'undo', tuple(steps), snapshots,
@@ -350,6 +355,8 @@ class Undo(UndoPreview):
 
     def apply(self, plan: UndoPlan) -> UndoResult:
         """Carry out an exact preview with fresh guards and rollback on any failure."""
+        if plan.operation == 'undo' and self.store.get_link(plan.link_id).paused:
+            raise LinkPaused()
         if self.store.journal_entries(pending=True):
             raise NotAvailable()
         if self._fingerprint(plan) != plan.plan_id or self._record(plan.link_id) != plan.record:
@@ -365,6 +372,8 @@ class Undo(UndoPreview):
         working = deepcopy(plan.snapshots)
         try:
             for step in plan.steps:
+                if plan.operation == 'undo' and self.store.get_link(plan.link_id).paused:
+                    raise LinkPaused()
                 side, adapter = step.side, self.adapters[step.side]
                 chat = self.store.get_link(plan.link_id).chat(side)
                 before = decode_turns(working[side]['turns'])
@@ -386,6 +395,8 @@ class Undo(UndoPreview):
                         action='add' if action == 'restore' else action)
                     entry = self.applier.journal.begin(plan.link_id, side, None if action == 'create' else chat, action)
                     entries.append(entry)
+                    if plan.operation == 'undo' and self.store.get_link(plan.link_id).paused:
+                        raise LinkPaused()
                     self.applier.guard.check_write(adapter, None if action == 'create' else chat,
                         plan.link_id, expected=None if action == 'create' else before,
                         action='add' if action == 'restore' else action)
@@ -466,6 +477,6 @@ class Undo(UndoPreview):
                     self.applier.journal.take_back(entry)
                 except Exception as rollback:
                     failures.append({'entry_id': entry, 'error': type(rollback).__name__})
-            notes = ('undo.replying',) if isinstance(error, ChatReplying) else ()
+            notes = ('undo.paused',) if isinstance(error, LinkPaused) else ('undo.replying',) if isinstance(error, ChatReplying) else ()
             return UndoResult(plan.plan_id, False, error=type(error).__name__, notes=notes,
                               rollback_errors=tuple(failures))

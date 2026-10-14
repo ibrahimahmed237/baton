@@ -461,3 +461,27 @@ class ApplierTests(unittest.TestCase):
         with self.assertRaises(NotAvailable):
             self.applier.record_attached(self.link.id, 'codex', ids, 'message')
         self.assertFalse(any(e.kind == 'attached' for e in self.store.history(self.link.id)))
+
+    def test_pause_or_guard_change_during_preparation_prevents_native_write(self):
+        from unittest.mock import patch
+        for index, change in enumerate(('pause', 'replying', 'content')):
+            if index:
+                self.store.close()
+                self.setUp()
+            with self.subTest(change=change):
+                plan = self.applier.preview(self.link.id)
+                adapter = self.adapters['codex']
+                prepare = adapter.writer.prepare
+                def changed(*args):
+                    receipt = prepare(*args)
+                    if change == 'pause': self.store.set_paused(self.link.id, True)
+                    elif change == 'replying': adapter.set_condition(self.target, replying=True)
+                    else: adapter.chats[self.target].append(Turn(Message('outside', PROMPT, 'outside')))
+                    return receipt
+                with patch.object(adapter.writer, 'prepare', side_effect=changed), patch.object(adapter.writer, 'add', wraps=adapter.writer.add) as write:
+                    result = self.applier.apply(plan)
+                    self.assertFalse(result.applied)
+                    write.assert_not_called()
+                self.store.set_paused(self.link.id, False)
+                adapter.set_condition(self.target, replying=False)
+                adapter.chats[self.target].clear()

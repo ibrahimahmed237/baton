@@ -3,6 +3,14 @@
   "notes": [
     {
       "buttons": [],
+      "id": "history.empty",
+      "status_line": null,
+      "text": "No history yet. Syncs and changes to this link appear here.",
+      "tone": "info",
+      "values": {}
+    },
+    {
+      "buttons": [],
       "id": "screen.settings",
       "status_line": null,
       "text": "Settings",

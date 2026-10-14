@@ -278,7 +278,7 @@ def read_merge(value):
         presets.append({**preset, 'label': title['text'], 'label_note': title})
     return {**{k: v for k, v in value.items() if k not in ('last_shared', 'unsynced', 'messages', 'presets')},
             'last_shared': turn(value['last_shared']) if value['last_shared'] else None,
-            'unsynced': rows, 'presets': presets, 'notes': note_list(('merge.decision_needed',)) if value.get('decision_needed') else []}
+            'unsynced': rows, 'presets': presets, 'notes': note_list(value.get('notes', ())) if 'notes' in value else note_list(('merge.decision_needed',)) if value.get('decision_needed') else []}
 
 
 _HISTORY = {'linked': 'history.linked', 'add': 'history.added', 'added': 'history.added',
@@ -304,8 +304,10 @@ def read_history(items):
         rendered = note(ident, {'tool': event.side, 'n': len(event.turn_ids)})
         events.append({'id': event.id, 'at': event.at, 'kind': event.kind, 'tool': event.side or None,
                        'turns': list(event.turn_ids), 'text': rendered['text'],
-                       'can_undo': item['can_undo'], 'can_restore': item['can_restore']})
-    return {'events': events}
+                       'can_undo': item['can_undo'], 'can_restore': item['can_restore'],
+                       'label': rendered, 'undo_label': note('history.undo_action'),
+                       'restore_label': note('history.restore_action'), 'tool_label': label(event.side) if event.side else None})
+    return {'events': events, 'notes': [] if events else note_list(('history.empty',))}
 
 
 def read_settings(values, defaults):
@@ -328,3 +330,57 @@ def read_settings(values, defaults):
               'screen.theme.system', 'screen.theme.light', 'screen.theme.graphite', 'settings.glass_help',
               'settings.apply', 'settings.saved', 'settings.error', 'settings.invalid', 'settings.loading')))
     return {'settings': values, 'notes': notes}
+
+
+def merge_plan(value, service):
+    """Serialize the merge fingerprint, never the underlying delivery fingerprint."""
+    notes = note_list(value.notes)
+    steps = []
+    for item in value.delivery.steps:
+        extra = []
+        if 'app_closed' in item.needs:
+            extra.append(note('write.app_must_close', {'tool': item.side}))
+        steps.append(step(item.side, item.action, item.turn_ids, needs=item.needs, reason=item.reason, notes=extra))
+    unavailable = any(s.action == 'hold' or 'app_closed' in s.needs for s in value.delivery.steps)
+    confirmation = note('plan.unavailable' if unavailable else 'plan.confirm_split' if value.split
+                        else 'plan.confirm_keep' if value.keep else 'plan.confirm_merge', {'tool': value.keep})
+    return plan(value.plan_id, value.delivery.link_id, steps, notes=notes, confirmation=confirmation,
+                order=list(value.order), preset=value.preset, keep=value.keep, split=value.split,
+                mismatch_note=note('write.chat_changed'))
+
+
+def undo_plan(value):
+    """Render per-side undo notes, removals and headings from the service boundary."""
+    notes, groups = [], []
+    rows = {r['id']: LedgerTurn(**r) for r in value.record['turns']}
+    side_notes = value.detail.get('notes_by_side', {})
+    for side in dict.fromkeys(s.side for s in value.steps):
+        removed = [r for r in value.removes if r['side'] == side]
+        end = value.ends_at.get(side)
+        values = {'tool': side, 'n': len(removed), 'days': 30,
+                  'first_line': (end.get('first_line') or end.get('prompt', {}).get('text', '').split('\n')[0]) if end else '',
+                  'at': (end.get('started_at') or end.get('prompt', {}).get('at', '')) if end else ''}
+        for ident in side_notes.get(side, value.notes):
+            data = dict(values)
+            if ident == 'undo.only_here':
+                data['n'] = sum(r['only_here'] for r in removed)
+            rendered = note(ident, data, lenient=True)
+            if rendered not in notes:
+                notes.append(rendered)
+        for category, ident in (('added', 'undo.group_added'), ('written', 'undo.group_written')):
+            members = [r for r in removed if (r['turn']['origin'] == side) == (category == 'written')]
+            if members:
+                groups.append({'tool': side, 'category': category, 'heading': note(ident, {'tool': side}),
+                               'removes': [{'turn': turn(LedgerTurn(**r['turn'])), 'only_here': r['only_here'], 'tool': side}
+                                           for r in members]})
+    for ident in value.notes:
+        if ident == 'undo.merge' and not any(n['id'] == ident for n in notes):
+            notes.append(note(ident))
+    if value.operation == 'undo' and any(s.action == 'move_link' for s in value.steps):
+        notes.append(note('plan.confirm_undo'))
+    end_id = next((s.turn_ids[-1] for s in value.steps if s.turn_ids), None)
+    return plan(value.plan_id, value.link_id,
+                [step(s.side, s.action, s.turn_ids, needs=s.needs) for s in value.steps], notes=notes,
+                removes=[{'turn': turn(LedgerTurn(**r['turn'])), 'only_here': r['only_here'], 'tool': r['side']}
+                         for r in value.removes], removal_groups=groups,
+                ends_at=turn(rows[end_id]) if end_id in rows and value.ends_at else None)

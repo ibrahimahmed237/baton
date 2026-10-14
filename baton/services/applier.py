@@ -149,6 +149,12 @@ class Applier:
                 self.guard.check_write(adapter, None if action == 'create' else chat,
                                        plan.link_id, expected=expected, action=action)
                 entry = self.journal.begin(plan.link_id, step.side, None if action == 'create' else chat, action)
+                if plan.link_id is not None:
+                    current_link = self.store.get_link(plan.link_id)
+                    if current_link.paused or current_link.removed_at:
+                        raise NotAvailable()
+                self.guard.check_write(adapter, None if action == 'create' else chat,
+                                       plan.link_id, expected=expected, action=action)
                 result = self._write(step, action, chat)
                 if (result.receipt.tool, result.receipt.chat_id, result.receipt.kind) != (step.side, result.chat_id, action):
                     raise ChatChanged()

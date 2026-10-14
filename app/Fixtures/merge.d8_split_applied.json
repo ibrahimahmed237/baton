@@ -1,0 +1,35 @@
+{
+  "applied": true,
+  "confirmation": null,
+  "decision_needed": false,
+  "event_id": 3,
+  "keep": "",
+  "link_id": 3,
+  "mismatch_note": {
+    "buttons": [],
+    "id": "write.chat_changed",
+    "status_line": null,
+    "text": "The chat changed before Baton could write. Check it again.",
+    "tone": "warning",
+    "values": {}
+  },
+  "notes": [
+    {
+      "buttons": [],
+      "id": "merge.completed_split",
+      "status_line": null,
+      "text": "The link was split. Both chats keep their own turns and no longer sync with each other.",
+      "tone": "ok",
+      "values": {}
+    }
+  ],
+  "order": [
+    42,
+    44,
+    43
+  ],
+  "plan_id": "p_9d7eabcf8b46a572ca9506d5b74c3cbbd3b089a235ca15522d8441c5c2318102",
+  "preset": "",
+  "split": true,
+  "steps": []
+}

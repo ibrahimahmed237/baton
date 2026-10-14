@@ -380,3 +380,20 @@ class MergeScenarios(unittest.TestCase):
         Merger(store, adapters, service.clock)
         self.assertEqual(before, {s: a.chats for s, a in adapters.items()})
         self.assertFalse(store.journal_entries(pending=True))
+
+    def test_pause_or_guard_change_during_preparation_prevents_native_write(self):
+        for change in ('pause', 'format'):
+            with self.subTest(change=change):
+                store, adapters, service, link, ids = self.make()
+                plan = service.plan(link)
+                adapter = adapters[plan.delivery.steps[0].side]
+                prepare = adapter.writer.prepare
+                def changed(*args):
+                    receipt = prepare(*args)
+                    if change == 'pause': store.set_paused(link, True)
+                    else: adapter.set_format(False, "unknown")
+                    return receipt
+                with patch.object(adapter.writer, 'prepare', side_effect=changed), patch.object(service.applier, '_write', wraps=service.applier._write) as write:
+                    result = service.apply(plan)
+                    self.assertFalse(result.applied)
+                    write.assert_not_called()

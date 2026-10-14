@@ -1,0 +1,13 @@
+{
+  "error": {
+    "kind": "chat_changed",
+    "note": {
+      "buttons": [],
+      "id": "write.chat_changed",
+      "status_line": null,
+      "text": "The chat changed before Baton could write. Check it again.",
+      "tone": "warning",
+      "values": {}
+    }
+  }
+}

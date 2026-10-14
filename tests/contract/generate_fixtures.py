@@ -508,6 +508,8 @@ def provider(item, world):
     requested_tool = None
     if command == 'chats' and state.count('_') >= 2 and state.rsplit('_', 1)[-1] in FACTS:
         state, requested_tool = state.rsplit('_', 1)
+    if state.startswith('d8_'): return merge_screen_provider(item, world)
+    if state.startswith('d9_'): return history_screen_provider(item, world)
     if command == 'setup': return setup_state(world, state)
     if command in ('links', 'suggestions', 'chats', 'history', 'status'):
         if state.startswith('d2_'): world.popover(state)
@@ -670,6 +672,119 @@ def dialog_provider(item, world):
         assert [(t.prompt.text, t.reply_text) for t in native] == [(t.prompt.text, t.reply_text) for t in planned.turns]
         result.update(applied=receipt.applied, link_id=receipt.link_id, chat_id=receipt.chat_id)
     return result
+
+
+def merge_screen_provider(item, world):
+    """Execute real command routes for the D8 choice and refusal scenarios."""
+    world.pair(shared=1)
+    state = item.state.removesuffix('_applied')
+    times = {'d8_u2': (2, 3, 4), 'd8_u5': (2, 3, 4), 'd8_u4': (3, 4, 2)}.get(state, (2, 4, 3))
+    first, second, other = times
+    world.seed('claude', [original(first), original(second)])
+    other_turn = original(other)
+    if state == 'd8_u7':
+        other_turn = replace(other_turn, messages=(replace(other_turn.messages[0], at='2026-10-05T12:05:00Z'),))
+    world.seed('codex', [other_turn])
+    if state == 'd8_u7':
+        world.adapters['claude'].changed_files['p' + str(second)] = ['orchard.py']
+        world.adapters['codex'].changed_files['p' + str(other)] = ['orchard.py']
+        world.store.save_setting('merge', 'by_time')
+    if state == 'd8_large': world.store.save_setting('brief_threshold_tokens', 1)
+    if state == 'd8_u5': world.condition('claude', open=True, app_running=True)
+    preset = 'dont_reorder' if state == 'd8_u6' else 'by_time'
+    args = SimpleNamespace(link=3, show=item.command == 'merge-show', preset=preset,
+                           order=None, keep=None, split=False, first=None)
+    if state == 'd8_u3':
+        ids = [t.id for t in world.store.turns(3) if t.seq > 1]
+        args.preset = None; args.order = ','.join(map(str, [ids[1], ids[0], ids[2]]))
+    if state == 'd8_u8' and item.command == 'merge': args.preset = None; args.keep = 'claude'
+    if state == 'd8_split' and item.command == 'merge': args.preset = None; args.split = True
+    try:
+        result = REGISTRY.get('merge').run(Context(world.engine, 'merge', dry_run=True), args)
+        if item.state.endswith('_applied'):
+            result = REGISTRY.get('merge').run(Context(world.engine, 'merge', confirm=result['plan_id']), args)
+            assert result['applied']
+        return result
+    except BatonError as error:
+        return output.error(error)
+
+
+def history_screen_provider(item, world):
+    """History reads and undo boundaries built solely in isolated fake chats."""
+    if item.command == 'history' and item.state in ('d9_all_kinds', 'd9_empty', 'd9_error'):
+        if item.state == 'd9_empty': return world.read('history', link_id=2)
+        if item.state == 'd9_error':
+            try: return world.read('history', link_id=999)
+            except BatonError as error: return output.error(error)
+            except KeyError: return output.error(NotAvailable())
+        world.pair(shared=1)
+        # Historical input records exercise every serializer kind, including
+        # unknown future bookkeeping. They are not evidence of action execution.
+        kinds = ('add', 'attached', 'create', 'merge', 'undo', 'restore', 'paused',
+                 'resumed', 'unlinked', 'moved', 'brief', 'attach_pending',
+                 'not_confirmed', 'undo_shown', 'future_kind')
+        for kind in kinds:
+            world.store.record_event(3, kind, 'claude', NOW, (world.store.turns(3)[0].id,) if kind in ('add', 'attached', 'attach_pending', 'not_confirmed') else (), {'fixture_history_input': True})
+        return world.read('history')
+    state = item.state.removesuffix('_applied')
+    action = ('restore' if state in ('d9_t9', 'd9_t10c') else 'undo') if item.command == 'history' else item.command
+    if state == 'd9_u9':
+        world.pair(shared=1)
+        world.seed('claude', [original(2), original(4)]); world.seed('codex', [original(3)])
+        args = SimpleNamespace(link=3, show=False, preset='by_time', order=None, keep=None, split=False)
+        preview = REGISTRY.get('merge').run(Context(world.engine, 'merge', dry_run=True), args)
+        applied = REGISTRY.get('merge').run(Context(world.engine, 'merge', confirm=preview['plan_id']), args)
+        return REGISTRY.get('undo').run(Context(world.engine, 'undo', dry_run=True), SimpleNamespace(link=3, event=applied['event_id']))
+    target = 'codex' if state.endswith('shorter') or state in ('d9_t8', 'd9_t9') else 'claude'
+    source = 'claude' if target == 'codex' else 'codex'
+    world.pair((target, source), shared=0)
+    world.seed(source, [original(1)])
+    world.sync()
+    world.seed(source, [original(2)])
+    world.sync()
+    event = next(e for e in world.store.history(3) if e.kind == 'add' and e.side == target)
+    world.seed(source, [original(3)])
+    world.sync()
+    if not (state.endswith('attached') or state == 'd9_t11'): world.seed(target, [original(4), original(5)])
+    if state.endswith('attached') or state == 'd9_t11':
+        ids = world.seed(source, [original(6)])
+        world.condition(target, open=True, app_running=True)
+        world.sync()
+        # Record the actual prompt-hook receipt against the native message that
+        # received it, just as the existing S2 fixture does.
+        world.engine.applier.record_attached(3, target, ids, 'attached-message')
+        world.seed(target, [Turn(Message('attached-message', PROMPT, 'Continue the orchard work', NOW),
+                                (Message('attached-reply', REPLY, 'Finished', NOW),))])
+        world.condition(target, open=False, app_running=False)
+        event = next(e for e in world.store.history(3) if e.kind == 'attached' and e.side == target)
+    if state in ('d9_cut', 'd9_t10', 'd9_t10c'):
+        world.condition(target, open=True, app_running=True)
+    if state.endswith('replying') or state == 'd9_t10b':
+        world.condition(target, replying=True, open=True, app_running=True)
+    if action == 'restore':
+        before_source = deepcopy(world.adapters[source].chats)
+        earlier = world.chats[target]
+        before_target = deepcopy(world.adapters[target].chats[earlier])
+        args = SimpleNamespace(link=3, event=event.id)
+        preview = REGISTRY.get('undo').run(Context(world.engine, 'undo', dry_run=True), args)
+        receipt_value = REGISTRY.get('undo').run(Context(world.engine, 'undo', confirm=preview['plan_id']), args)
+        receipt = SimpleNamespace(applied=receipt_value['applied'], event_id=receipt_value['event_id'])
+        assert receipt.applied and world.store.get_link(3).paused
+        if target == 'claude': assert ('release', earlier) in world.adapters[target].app.calls
+        current = world.store.get_link(3).chat(target)
+        assert len(world.adapters[target].reader.read(current)) == 1
+        assert world.adapters[source].chats == before_source
+        if not world.adapters[target].facts.can_cut:
+            assert current != earlier and world.adapters[target].chats[earlier] == before_target
+
+    args = SimpleNamespace(link=3, event=event.id)
+    if action == 'restore':
+        args.event = receipt.event_id
+    result = REGISTRY.get(action).run(Context(world.engine, action, dry_run=True), args)
+    if item.state.endswith('_applied') or item.command == 'history':
+        result = REGISTRY.get(action).run(Context(world.engine, action, confirm=result['plan_id']), args)
+        assert result['applied']
+    return world.read('history') if item.command == 'history' else result
 
 
 def undo_provider(item, world):

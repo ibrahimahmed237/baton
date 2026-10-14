@@ -32,6 +32,7 @@ class MergePlan:
     skips: tuple[tuple[int, str], ...] = ()
     same_files: tuple[dict, ...] = ()
     automatic: bool = False
+    notes: tuple[tuple[str, dict], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,12 +79,61 @@ class Merger:
         return link, rows, observations, payload
 
     def show(self, link_id: int, *, merge_setting: str = 'ask',
-             brief_threshold_tokens: int = 150000) -> dict:
+             brief_threshold_tokens: int = 150000, order=None, preset='') -> dict:
         """Return complete unsynced messages, valid presets and fact-based outcomes."""
         link, rows, observations, payload = self._observed(link_id)
         from .read_views import merge_projection
-        return merge_projection(link, rows, payload, self.adapters,
-                                merge_setting=merge_setting, brief_threshold_tokens=brief_threshold_tokens)
+        value = merge_projection(link, rows, payload, self.adapters,
+                                 merge_setting=merge_setting, brief_threshold_tokens=brief_threshold_tokens)
+        return self.present(value, self.adapters, order=order, preset=preset)
+
+    @staticmethod
+    def present(value, adapters, *, order=None, preset=''):
+        """Choice-specific presentation, also used by recovery-free reads."""
+        value = dict(value)
+        pending = value['unsynced']
+        if order is not None:
+            by_id = {t.id: t for t in pending}
+            if any(i not in by_id for i in order):
+                raise OrderNotAllowed()
+            ordered = [by_id[i] for i in order]
+        else:
+            choice = preset.removesuffix('_first') if preset.endswith('_first') else preset
+            try:
+                ordered = planner.merge_order(pending, choice or planner.BY_TIME)
+            except ValueError:
+                raise OrderNotAllowed() from None
+        planner.check_order(pending, ordered)
+        value['order'] = [t.id for t in ordered]
+        value['selected_preset'] = preset
+        value['outcome'] = planner.outcome(ordered, preset.removesuffix('_first'))
+        sides = list(value['outcome'])
+        notes = [('merge.order_help', {})]
+        if len(sides) == 2:
+            a, b = sides
+            notes.insert(0, ('merge.header', {'first_tool': a, 'second_tool': b,
+                'first_count': sum(t.origin == a for t in pending),
+                'second_count': sum(t.origin == b for t in pending)}))
+        if preset == 'dont_reorder':
+            notes.append(('merge.dont_reorder', {}))
+        for side in sides:
+            other = next((s for s in sides if s != side), '')
+            notes.append(('merge.' + value['outcome'][side], {'tool': side, 'other_tool': other,
+                'turns': sum(t.origin != side for t in pending)}))
+            if value['outcome'][side] == 'merged_copy':
+                notes.append(('merge.copy_relaunch' if adapters[side].facts.new_chat_visible == Visibility.AFTER_RELAUNCH
+                              else 'merge.copy_visible', {'tool': side}))
+            notes.append(('merge.keep_choice', {'tool': side, 'tool_id': side}))
+        notes += [('merge.same_file', {'file': f['file'], 'turns': ', '.join(map(str, f['turns']))})
+                  for f in value['same_files']]
+        if value['overlaps']:
+            notes.append(('merge.overlap', {}))
+        if value.get('offer_brief'):
+            notes.append(('merge.large_copy', {'tokens': value['tokens']}))
+            notes.append(('merge.brief_choice', {}))
+        notes += [('merge.split_choice', {}), ('merge.always', {})]
+        value['notes'] = notes
+        return value
 
     @staticmethod
     def _fingerprint(plan: MergePlan) -> str:
@@ -113,7 +163,10 @@ class Merger:
             except StopIteration:
                 raise OrderNotAllowed() from None
         else:
-            ordered = planner.merge_order(rows, choice or planner.BY_TIME)
+            try:
+                ordered = planner.merge_order(rows, choice or planner.BY_TIME)
+            except ValueError:
+                raise OrderNotAllowed() from None
         planner.check_order(rows, ordered)
         screen = self.show(link_id)
         if automatic and (merge_setting != 'by_time' or screen['same_files'] or choice not in ('', planner.BY_TIME)
@@ -153,8 +206,20 @@ class Merger:
         delivery = self.applier.prepare(link_id, steps, link.chats)
         if delivery.snapshots != observations or delivery.record != record:
             raise ChatChanged()
+        presentation = self.show(link_id, order=None if preset else [t.id for t in ordered], preset=preset)
+        notes = presentation['notes']
+        if keep:
+            notes = [('merge.keep', {'tool': keep, 'other_tool': side}) for side in link.sides if side != keep]
+        if split:
+            notes = [('merge.split', {})]
+        for step in steps:
+            if step.action == 'attach':
+                notes += [('status.next_message', {'n': len(step.turn_ids)}),
+                          ('status.chat_held', {'tool': step.side, 'n': len(step.turn_ids)})]
+        if any(s.action == 'hold' or 'app_closed' in s.needs for s in steps):
+            notes += [('plan.unavailable', {})]
         plan = MergePlan('', delivery, tuple(t.id for t in ordered), preset, keep, split,
-                         skips, tuple(screen['same_files']), automatic)
+                         skips, tuple(screen['same_files']), automatic, tuple(notes))
         return replace(plan, plan_id=self._fingerprint(plan))
 
     def plan_brief(self, link_id: int, to: str, briefs, *, order: Sequence[int] | None = None,
@@ -228,6 +293,12 @@ class Merger:
                 entry = self.applier.journal.begin(link_id, step.side,
                                                    None if action == 'create' else chat, action)
                 entries.append(entry)
+                current = self.store.get_link(link_id)
+                if current.paused or current.removed_at:
+                    raise NotAvailable()
+                self.applier.guard.check_write(adapter, None if action == 'create' else chat,
+                                                link_id, expected=old if action != 'create' else None,
+                                                action=action)
                 result = self.applier._write(step, action, chat)
                 if (result.receipt.tool, result.receipt.chat_id, result.receipt.kind) != (step.side, result.chat_id, action):
                     raise ChatChanged()

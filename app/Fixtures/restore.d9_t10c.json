@@ -1,0 +1,47 @@
+{
+  "applied": false,
+  "decision_needed": false,
+  "ends_at": null,
+  "link_id": 3,
+  "notes": [
+    {
+      "buttons": [
+        {
+          "id": "restore",
+          "label": "Restore",
+          "primary": true
+        },
+        {
+          "id": "cancel",
+          "label": "Cancel",
+          "primary": false
+        }
+      ],
+      "id": "undo.restore",
+      "status_line": null,
+      "text": "Restore",
+      "tone": "info",
+      "values": {
+        "at": "",
+        "days": 30,
+        "first_line": "",
+        "n": 0,
+        "tool": "Claude"
+      }
+    }
+  ],
+  "plan_id": "p_b9e2586704faae15e692a56914567e1303ee0538d8cb985a92f76dd9ca7015aa",
+  "removal_groups": [],
+  "removes": [],
+  "steps": [
+    {
+      "action": "restore",
+      "needs": [],
+      "notes": [],
+      "reason": "",
+      "tool": "claude",
+      "tool_label": "Claude",
+      "turns": []
+    }
+  ]
+}

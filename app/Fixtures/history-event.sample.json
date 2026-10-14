@@ -4,9 +4,49 @@
   "can_undo": false,
   "id": 3,
   "kind": "aligned",
+  "label": {
+    "buttons": [],
+    "id": "history.aligned_one",
+    "status_line": null,
+    "text": "Recognized an existing turn in Codex",
+    "tone": "info",
+    "values": {
+      "n": 1,
+      "tool": "Codex"
+    }
+  },
+  "restore_label": {
+    "buttons": [
+      {
+        "id": "restore",
+        "label": "Restore",
+        "primary": false
+      }
+    ],
+    "id": "history.restore_action",
+    "status_line": null,
+    "text": "Restore",
+    "tone": "info",
+    "values": {}
+  },
   "text": "Recognized an existing turn in Codex",
   "tool": "codex",
+  "tool_label": "Codex",
   "turns": [
     42
-  ]
+  ],
+  "undo_label": {
+    "buttons": [
+      {
+        "id": "undo",
+        "label": "Undo",
+        "primary": false
+      }
+    ],
+    "id": "history.undo_action",
+    "status_line": null,
+    "text": "Undo",
+    "tone": "info",
+    "values": {}
+  }
 }
