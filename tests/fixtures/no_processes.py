@@ -12,19 +12,28 @@ _OS = ("system", "execv", "execve", "execvp", "execvpe", "execl", "execle", "exe
        "posix_spawn", "posix_spawnp", "kill", "killpg", "fork", "forkpty")
 
 
-def _forbidden(name: str):
+def _forbidden(name: str, attempts: list):
     def refuse(*args, **kwargs):
+        attempts.append(name)
         raise AssertionError("a test root reached the real machine: %s%r" % (name, args[:1]))
     return refuse
 
 
 @contextmanager
-def no_processes() -> Iterator[None]:
-    """Make every way of starting, replacing or signalling a process raise AssertionError."""
+def no_processes(expect_attempts: bool = False) -> Iterator[list]:
+    """Make every way of starting, replacing or signalling a process raise AssertionError.
+
+    Code under test may catch that error and carry on (a brief falls back offline, for
+    one), so every attempt is also recorded and the guard fails on exit if any was made.
+    Only a test of the guard itself passes `expect_attempts=True`.
+    """
+    attempts: list = []
     with ExitStack() as stack:
         for name in _SUBPROCESS:
-            stack.enter_context(patch.object(subprocess, name, _forbidden("subprocess." + name)))
+            stack.enter_context(patch.object(subprocess, name, _forbidden("subprocess." + name, attempts)))
         for name in _OS:
             if hasattr(os, name):
-                stack.enter_context(patch.object(os, name, _forbidden("os." + name)))
-        yield
+                stack.enter_context(patch.object(os, name, _forbidden("os." + name, attempts)))
+        yield attempts
+    if attempts and not expect_attempts:
+        raise AssertionError("a test root tried to reach the real machine: %s" % ", ".join(attempts))

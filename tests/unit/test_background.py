@@ -41,7 +41,7 @@ class WaitingProcess:
 class BackgroundTests(unittest.TestCase):
     def setUp(self):
         from tests.fixtures.no_processes import no_processes
-        self.enterContext(no_processes())
+        self.process_attempts = self.enterContext(no_processes())
         self.enterContext(patch('os.setsid', side_effect=AssertionError('real setsid')))
         controller = patch('baton.services.background.RunnerProcess', ImmediateProcess)
         controller.start()
@@ -310,3 +310,6 @@ class BackgroundTests(unittest.TestCase):
         for entry in (os.fork, os.setsid, subprocess.Popen, subprocess.run):
             with self.subTest(entry=entry), self.assertRaises(AssertionError):
                 entry()
+        # The guard records these deliberate attempts; this test alone may make them.
+        self.assertTrue(self.process_attempts)
+        self.process_attempts.clear()
