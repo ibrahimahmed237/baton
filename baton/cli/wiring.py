@@ -148,6 +148,16 @@ class Engine:
         """Independent installation and read-only setup observations."""
         return SetupRead(self.adapters, self.tool_ids, self.installation_probe)
 
+    @cached_property
+    def setup_install(self):
+        from shutil import which
+        from ..services.setup_install import SetupInstall
+        from ..adapters.setup_files import SetupFiles
+        executable = os.environ.get('BATON_COMMAND') or which('baton') or str(Path.home() / '.local/bin/baton')
+        return SetupInstall({tool: adapter.hooks for tool, adapter in self.adapters.items()},
+                            SetupFiles(self.root), str(Path(executable).absolute()),
+                            app_running={tool: adapter.process.running for tool, adapter in self.adapters.items()})
+
     # Services are built on first use: building one runs the recovery of
     # unfinished writes, which a read command has no business doing.
     @cached_property
@@ -219,7 +229,19 @@ def load_adapters(entries: Sequence[ToolEntry], tools_home: Path,
             if 'hook_entrypoints_available' in inspect.signature(factory).parameters:
                 from .tools import hook_entrypoints_available
                 options['hook_entrypoints_available'] = hook_entrypoints_available
+            if 'project_root' in inspect.signature(factory).parameters:
+                options['project_root'] = root if sandboxed else Path.cwd().resolve()
+            if 'plugin_folder' in inspect.signature(factory).parameters:
+                options['plugin_folder'] = root if sandboxed else Path.cwd().resolve()
             adapter = (factory if sandboxed else getattr(factory, "on_this_machine", factory))(root, **options)
+            from ..adapters.setup_files import SetupFiles
+            record = SetupFiles(store_root).recorded(entry.id) if store_root is not None else None
+            if record and hasattr(adapter.hooks, 'use_installed_command'):
+                if sandboxed and not Path(record['path']).is_relative_to(Path(root).resolve()):
+                    raise NotAvailable()
+                if hasattr(adapter.hooks, 'use_install_path'):
+                    adapter.hooks.use_install_path(record['path'])
+                adapter.hooks.use_installed_command(record['executable'])
             if getattr(adapter, "name", None) != entry.id:
                 raise LookupError("%s reports the name %r" % (entry.adapter, getattr(adapter, "name", None)))
         except ModuleNotFoundError as error:

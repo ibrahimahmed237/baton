@@ -597,3 +597,38 @@ CATALOGUE.update({note.id: note for note in (
     Note('cli.suggestions_summary', 'info', 'Suggest matching chats'),
     Note('cli.mark_seen_summary', 'info', 'Confirm which added turns are visible in the reopened chat'),
 )})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('setup.install_action', 'info', "Install Baton's hooks"),
+    Note('setup.uninstall_action', 'info', "Remove Baton's hooks"),
+    Note('setup.install_review', 'info', "Baton adds its hooks to {tool}. Review the files and entries before installing.", (Button('install_hooks', "Install Baton's hooks", True), 'Cancel')),
+    Note('setup.uninstall_review', 'info', "Baton removes only its own hooks from {tool}.", (Button('uninstall_hooks', "Remove Baton's hooks", True), 'Cancel')),
+    Note('setup.installed', 'ok', "Baton's hooks are installed in {tool}. Check again after the first-use step."),
+    Note('setup.uninstalled', 'ok', "Baton's hooks are removed from {tool}."),
+    Note('setup.install_refused', 'warning', "Baton cannot safely change the hooks file. Check its format and permissions, then check again."),
+    Note('setup.command_missing', 'warning', "Baton's command is missing. Install the baton command and check again."),
+    Note('setup.no_hook_step', 'info', "There is nothing else to do in {tool}."),
+    Note('setup.restart_hooks', 'info', "Restart {tool} after installing Baton's hooks."),
+    Note('setup.category.hooks', 'info', 'Hooks'),
+    Note('setup.category.runner', 'info', 'Background runs'),
+    Note('setup.category.format', 'info', 'How chats are saved'),
+    Note('setup.check_again', 'info', 'Check again'),
+    Note('setup.launcher_installed', 'ok', 'Installed baton at {path}.'),
+    Note('setup.launcher_conflict', 'warning', 'A different baton command already exists at {path}. Leave it in place or remove it yourself before installing Baton.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('setup.global_unverified', 'warning', "Baton has not verified this tool's global hooks location. Use project scope until the live check proves global loading."),
+    Note('setup.scope_project', 'info', 'These hooks apply to project {project}.'),
+    Note('setup.scope_global', 'info', 'These hooks apply globally.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('setup.writers_unverified', 'warning', 'Baton cannot yet exclude other configuration writers. Hook files stay unchanged until configuration coordination is verified.'),
+)})
+
+
+CATALOGUE.update({note.id: note for note in (
+    Note('setup.install_app_running', 'warning', 'The tool app is running or Baton cannot check whether it is closed. Quit the app yourself, then preview again. Baton never quits it to install or remove hooks.'),
+    Note('setup.preview_bookkeeping', 'info', "Before confirmation, only Baton's own folder ({path}) may be touched to create its store and lock. Every file listed here waits for confirmation."),
+)})

@@ -2,14 +2,45 @@
 import json
 import importlib.util
 from ...ports.tool import SetupFinding
+from ..setup_files import checked
 
 class ClaudeHooks:
     """Manage owned hook settings and native prompt-hook output."""
-    COMMANDS = {"UserPromptSubmit": "python3 -m baton.hooks.prompt --tool claude",
-                "Stop": "python3 -m baton.hooks.turn_end --tool claude"}
+    global_location_verified = False
+    install_requires_closed_app = True
+
+    def install_project(self, path):
+        from pathlib import Path
+        return str(Path(path).parents[1])
+
+    def install_path(self, scope, project):
+        from pathlib import Path
+        return Path(project) / '.claude/settings.local.json' if scope == 'project' else self.adapter.root / '.claude/settings.json'
+
+
+    install_defaults = {}
+    install_nested = True
+    install_next_note = 'setup.no_hook_step'
+
+    def install_entries(self, executable):
+        import shlex
+        commands = {'UserPromptSubmit': shlex.quote(executable) + ' catch-up --tool claude',
+                    'Stop': shlex.quote(executable) + ' notify --tool claude'}
+        return {event: {'hooks': [{'type': 'command', 'command': command}]} for event, command in commands.items()}
+
+    def use_install_path(self, path):
+        from pathlib import Path
+        self._install_path = checked(path)
+
+    def use_installed_command(self, executable):
+        entries = self.install_entries(executable)
+        self.commands = {event: entry['hooks'][0]['command'] for event, entry in entries.items()}
+
     def __init__(self, adapter, hook_commands=None, entrypoints_available=None):
         self.adapter = adapter
-        self.commands = hook_commands or self.COMMANDS
+        self.commands = hook_commands or {}
+        if not hook_commands:
+            self.use_installed_command(str(adapter.root / '.local/bin/baton'))
         self.entrypoints_available = entrypoints_available or self._available
     @staticmethod
     def _available():
@@ -20,7 +51,8 @@ class ClaudeHooks:
     @property
     def path(self):
         """Return the settings path confined to the adapter root."""
-        return self.adapter.locator.inside(self.adapter.root / '.claude/settings.json')
+        if hasattr(self, '_install_path'): return self._install_path
+        return self.adapter.locator.inside(checked(self.adapter.root / '.claude/settings.json'))
     def _read(self):
         if not self.path.exists(): return {}
         result = json.loads(self.path.read_text())

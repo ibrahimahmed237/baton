@@ -14,20 +14,49 @@ from typing import Callable
 
 from ...domain.capabilities import HookNeed
 from ...ports.tool import SetupFinding
+from ..setup_files import checked
 
 _EVENTS = ("UserPromptSubmit", "Stop")
 
 
 class CodexHooks:
     """Install, remove and check Baton's hook entries; build what the hooks print."""
+    global_location_verified = False
+    install_requires_closed_app = True
 
-    COMMANDS = {"UserPromptSubmit": "python3 -m baton.hooks.prompt --tool codex",
-                "Stop": "python3 -m baton.hooks.turn_end --tool codex"}
+    def install_project(self, path):
+        from pathlib import Path
+        return str(Path(path).parents[1])
+
+    def install_path(self, scope, project):
+        from pathlib import Path
+        return Path(project) / '.codex/hooks.json' if scope == 'project' else self.adapter.root / '.codex/hooks.json'
+
+
+    install_defaults = {}
+    install_nested = True
+    install_next_note = 'setup.trust_once'
+
+    def install_entries(self, executable):
+        import shlex
+        commands = {'UserPromptSubmit': shlex.quote(executable) + ' catch-up --tool codex',
+                    'Stop': shlex.quote(executable) + ' notify --tool codex'}
+        return {event: {'hooks': [{'type': 'command', 'command': command}]} for event, command in commands.items()}
+
+    def use_install_path(self, path):
+        from pathlib import Path
+        self._install_path = checked(path)
+
+    def use_installed_command(self, executable):
+        entries = self.install_entries(executable)
+        self.commands = {event: entry['hooks'][0]['command'] for event, entry in entries.items()}
 
     def __init__(self, adapter, hook_commands: dict[str, str] | None = None,
                  entrypoints_available: Callable[[], bool] | None = None):
         self.adapter = adapter
-        self.commands = hook_commands or self.COMMANDS
+        self.commands = hook_commands or {}
+        if not hook_commands:
+            self.use_installed_command(str(adapter.root / '.local/bin/baton'))
         self.entrypoints_available = entrypoints_available or self._available
 
     @staticmethod
@@ -41,6 +70,7 @@ class CodexHooks:
     @property
     def path(self) -> Path:
         """The user-level hooks file, confined to the adapter root."""
+        if hasattr(self, '_install_path'): return self._install_path
         return self.adapter.locator.inside(self.adapter.locator.home / "hooks.json")
 
     def _read(self) -> dict:

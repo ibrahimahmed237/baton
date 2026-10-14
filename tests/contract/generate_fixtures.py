@@ -1053,3 +1053,39 @@ def main(argv=None):
 
 if __name__ == '__main__':
     main()
+
+
+def setup_install_recipe(tool, state, root):
+    """Opt-in SI preview/result recipe: real command output on isolated hook files.
+
+    Not part of the published manifest until fixture regeneration is authorized.
+    `root` must be a caller-owned temporary directory, never a real tool home.
+    """
+    import io
+    from contextlib import nullcontext
+    from baton.cli.main import main
+    from baton.adapters.setup_files import SetupFiles
+    from baton.services.setup_install import SetupInstall
+    root = Path(root).resolve()
+    command_path = root / 'home/.local/bin/baton'
+    command_path.parent.mkdir(parents=True, exist_ok=True)
+    command_path.write_text('#!/bin/sh\nexit 0\n')
+    command_path.chmod(0o755)
+
+    def factory():
+        engine = build(root / 'store', tools_home=root / 'home', clock=FixedClock(NOW))
+        engine.setup_install = SetupInstall({t: a.hooks for t, a in engine.adapters.items()},
+                                           SetupFiles(engine.root, coordinate=lambda path: nullcontext()), str(command_path))
+        return engine
+
+    def invoke(words):
+        out = io.StringIO()
+        status = main(words, engine_factory=factory, stdout=out)
+        if status != 0: raise AssertionError(out.getvalue())
+        return json.loads(out.getvalue())
+
+    preview = invoke(['setup', 'install', '--tool', tool, '--json'])
+    if state == 'preview': return preview
+    if state == 'result':
+        return invoke(['setup', 'install', '--confirm', preview['plan_id'], '--json'])
+    raise ValueError('unknown SI recipe state')

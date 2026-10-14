@@ -12,14 +12,46 @@ from ...ports.tool import SetupFinding
 
 class OpenCodeHooks:
     """Plugin installation and readiness remain separate observations."""
+    global_location_verified = False
+    install_requires_closed_app = False
+
+    def install_project(self, path):
+        from pathlib import Path
+        return str(Path(path).parents[2])
+
+    def install_path(self, scope, project):
+        from pathlib import Path
+        return Path(project) / '.opencode/plugins/baton.js' if scope == 'project' else self.adapter.root / '.config/opencode/plugins/baton.js'
+
 
     COMMANDS = ("catch-up", "notify")
+
+    install_next_note = 'setup.restart_once'
+
+    def install_entries(self, executable):
+        previous = self.executable
+        try:
+            self.executable = executable
+            return self.plugin_content()
+        finally:
+            self.executable = previous
+
+    def use_install_path(self, path):
+        path = Path(path)
+        self._install_path = path
+        if path.parts[-3:] != ('.opencode', 'plugins', 'baton.js'):
+            raise NotAvailable()
+        self.plugin_folder = path.parents[2]
+        self.plugin_locator = type(self.adapter.locator)(self.plugin_folder)
+
+    def use_installed_command(self, executable):
+        self.executable = executable
 
     def __init__(self, adapter, entrypoints_available=None, loaded=None, executable="baton", plugin_folder=None):
         self.adapter = adapter
         self.entrypoints_available = entrypoints_available or (lambda: False)
         self.loaded = loaded or (lambda: False)
-        self.executable = executable
+        self.executable = str(adapter.root / ".local/bin/baton") if executable == "baton" else executable
         folder = Path(plugin_folder).absolute() if plugin_folder is not None else adapter.root
         self.plugin_locator = type(adapter.locator)(folder)
         self.plugin_folder = folder
@@ -27,6 +59,7 @@ class OpenCodeHooks:
     @property
     def path(self):
         """Install per project folder, as measured by the spike."""
+        if hasattr(self, '_install_path'): return self._install_path
         return self.plugin_locator.inside(self.plugin_folder / ".opencode/plugins/baton.js")
 
     def plugin_content(self):
