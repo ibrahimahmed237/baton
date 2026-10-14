@@ -58,7 +58,9 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **Orchestrator decision changed 2026-10-15:** command-line help and summaries also come from the catalogue (reviewer's point: no English shown to anyone comes from outside it).
 
-**Now building:** `baton setup install/uninstall --tool T` (preview lists every file, backup first, only Baton's own entries, never writes trust), hook commands call the installed `baton`, and `tools/install/install-baton.sh` (a launcher in ~/.local/bin, written not run). Report `reports/setup-install-2026-10-15.md`.
+**Hook installation committed 2026-10-15** (`4d952e2`, `f140423`) after four review rounds: `baton setup install|uninstall --tool T [--scope project]`, project scope by default (measured paths in the Baton folder), global refused until proven live; a tool's file changes only while that tool is closed, after a backup, with a last check right before the write and before any undo; the launcher `tools/install/install-baton.sh` puts `baton` in `~/.local/bin`. 1378 engine tests, 206 app tests. Orchestrator decisions: install only while the tool is closed (no proof of the tools' own writers is possible); Baton's own store may be created by a preview.
+
+**CP3 live check: waiting for Ibrahim's go** on the step list given in the chat on 2026-10-15 (also in `reports/CP3-live-plan-2026-10-15.md`).
 
 **Then the CP3 live check** (needs Ibrahim): install `baton`, install hooks in the four tools (he approves Codex trust himself), one throwaway chat each in OpenCode and Cursor (plus the two kept ones), then: catch-up at send and sync at turn end in all four; relaunch for Claude and Cursor; create and cut through the adapters.
 
