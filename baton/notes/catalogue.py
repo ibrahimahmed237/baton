@@ -558,3 +558,7 @@ CATALOGUE.update({note.id: note for note in (
 CATALOGUE.update({note.id: note for note in (
     Note('create.close_manually', 'warning', 'Close {tool} before creating this chat. Baton will not close or reopen the app for this action.'),
 )})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('cli.mark_seen_summary', 'info', 'Confirm which added turns are visible in the reopened chat'),
+)})

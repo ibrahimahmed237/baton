@@ -443,7 +443,7 @@ def background_status(value):
         value['result'] = {**value['result'], 'error': {**failure,
             'kind': snake_case(failure['kind']), 'note': note('background.failed')}}
     return {**value, 'applied': False,
-            'notes': [note('background.' + value['state'])]}
+            'notes': [*value.get('notes', ()), note('background.' + value['state'])]}
 
 
 def background_relaunch_plan(value, ident=None):

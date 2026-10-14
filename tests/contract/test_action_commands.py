@@ -850,3 +850,101 @@ class C3ReviewRoundOneTests(unittest.TestCase):
             with self.assertRaises(ChatChanged):
                 service.execute_open(prepared)
             self.assertFalse(any(c[0] == 'open' for c in w.adapters['codex'].app.calls))
+
+
+class ReviewRoundTwoTests(unittest.TestCase):
+    def test_brief_creation_running_destination_disables_link_and_relink(self):
+        for command in ('link', 'relink'):
+            with self.subTest(command=command), world_for('round2-' + command) as w:
+                if command == 'link':
+                    source = w.chat('claude', 'source', [original(1)])
+                    args = {'source': 'claude:' + source, 'to': 'cursor', 'mode': 'brief'}
+                else:
+                    w.pair()
+                    args = {'to': 'cursor', 'keep': 'claude', 'mode': 'brief'}
+                w.adapters['cursor'].app_running = True
+                tasks = []
+                w.engine.background_dispatch = tasks.append
+                preview = run(w, command, **args)
+                accepted = run(w, command, confirm=preview['plan_id'])
+                tasks.pop()()
+                review = run(w, command, status=accepted['request_id'])['result']
+                self.assertEqual(review['stage'], 'create')
+                self.assertIn('create.close_manually', [n['id'] for n in review['notes']])
+                self.assertEqual(review['confirmation']['id'], 'plan.unavailable')
+                self.assertFalse(any(b.get('primary') and b['id'] == 'confirm' for b in review['confirmation']['buttons']))
+                before = deepcopy(w.adapters['cursor'].chats)
+                self.assertFalse(run(w, command, confirm=review['plan_id'])['applied'])
+                self.assertEqual(before, w.adapters['cursor'].chats)
+                self.assertFalse(any(c[0] in ('open', 'close') for c in w.adapters['cursor'].app.calls))
+                w.adapters['cursor'].app_running = False
+                fresh = run(w, command, **args)
+                # Cached artifacts can go directly to creation review.
+                if fresh['stage'] == 'generate':
+                    accepted = run(w, command, confirm=fresh['plan_id']); tasks.pop()()
+                    fresh = run(w, command, status=accepted['request_id'])['result']
+                self.assertEqual(fresh['confirmation']['id'], 'plan.confirm_brief_creation')
+                self.assertTrue(run(w, command, confirm=fresh['plan_id'])['applied'])
+
+    def test_offline_brief_creation_review_also_checks_running_destination(self):
+        for command in ('link', 'relink'):
+            with self.subTest(command=command), world_for('round2-offline') as w:
+                if command == 'link':
+                    source = w.chat('claude', 'source', [original(1)])
+                    args = {'source': 'claude:' + source, 'to': 'cursor', 'mode': 'brief'}
+                else:
+                    w.pair(); args = {'to': 'cursor', 'keep': 'claude', 'mode': 'brief'}
+                for adapter in w.adapters.values(): adapter.runner = None
+                w.adapters['cursor'].app_running = True
+                review = run(w, command, **args)
+                self.assertEqual(review['stage'], 'create')
+                self.assertIn('create.close_manually', [n['id'] for n in review['notes']])
+                self.assertEqual(review['confirmation']['id'], 'plan.unavailable')
+                self.assertFalse(run(w, command, confirm=review['plan_id'])['applied'])
+
+    def test_background_preserves_accepted_notes_on_accept_poll_complete_and_cancel(self):
+        for command in ('link', 'relink'):
+            for cancel in (False, True):
+                with self.subTest(command=command, cancel=cancel), world_for('round2-notes') as w:
+                    if command == 'link':
+                        source = w.chat('claude', 'source', [original(1)])
+                        args = {'source': 'claude:' + source, 'to': 'codex', 'mode': 'brief'}
+                    else:
+                        w.pair(); args = {'to': 'opencode', 'keep': 'claude', 'mode': 'brief'}
+                    tasks = []; w.engine.background_dispatch = tasks.append
+                    preview = run(w, command, **args)
+                    self.assertIn('brief.cost', [n['id'] for n in preview['notes']])
+                    accepted = run(w, command, confirm=preview['plan_id'])
+                    def assert_notes(value):
+                        self.assertEqual(value['notes'][:-1], preview['notes'])
+                        self.assertEqual(value['notes'][-1]['id'], 'background.' + value['state'])
+                    assert_notes(accepted)
+                    assert_notes(run(w, command, status=accepted['request_id']))
+                    if cancel:
+                        from baton.services.background import Background
+                        Background(w.store, w.engine.clock).begin(accepted['request_id'])
+                        running = run(w, command, status=accepted['request_id'])
+                        self.assertEqual(running['state'], 'running')
+                        assert_notes(running)
+                        assert_notes(run(w, command, cancel=accepted['request_id']))
+                    else:
+                        tasks.pop()()
+                        assert_notes(run(w, command, status=accepted['request_id']))
+
+    def test_mark_seen_command_parser_selective_idempotent_and_refuses_other_visibility(self):
+        from baton.cli.main import build_parser
+        from baton.domain.errors import NotAvailable
+        parser = build_parser(REGISTRY)
+        args = parser.parse_args(['mark-seen', '--link', '3', '--tool', 'opencode', '--turns', '42'])
+        self.assertEqual(args.turns, [42])
+        with world_for('round2-seen') as w:
+            w.pair(('claude', 'opencode'), shared=1)
+            w.seed('claude', [original(2), original(3)])
+            w.sync()
+            ids = [t.id for t in w.store.turns(3)][1:]
+            value = run(w, 'mark-seen', tool='opencode', turns=ids[:1])
+            self.assertEqual(value, {'link_id': 3, 'tool': 'opencode', 'marked': 1, 'notes': []})
+            self.assertEqual(run(w, 'mark-seen', tool='opencode', turns=ids[:1])['marked'], 0)
+            self.assertEqual([t.states['opencode'] for t in w.store.turns(3)][1:], ['shown', 'added'])
+            self.assertEqual(run(w, 'mark-seen', tool='opencode', turns=None)['marked'], 1)
+            with self.assertRaises(NotAvailable): run(w, 'mark-seen', tool='claude', turns=None)

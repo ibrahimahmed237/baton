@@ -43,7 +43,6 @@ private struct MergeProjection: Decodable, Sendable {
     public var choices: [Note] { result?.notes.filter { ["merge.keep_choice", "merge.split_choice", "merge.brief_choice"].contains($0.id) } ?? [] }
     public func load(link: Int) async { self.link = link; await refresh(order: nil, preset: nil) }
     private func refresh(order: [Int]?, preset: String?) async {
-        let expectedPreset = preset.flatMap { id in presets.first { $0.id == id } }
         revision += 1; let current = revision; review.invalidate(); result = nil; selectedChoice = nil; errorNote = nil; busy = true
         guard let link else { busy = false; return }
         do {
@@ -55,7 +54,7 @@ private struct MergeProjection: Decodable, Sendable {
             guard current == revision else { return }
             guard Set(response.order) == Set(response.unsynced.map(\.id)), response.order.count == response.unsynced.count,
                   order == nil || response.order == order,
-                  preset == nil || (projection.preset == preset && response.order == expectedPreset?.order) else { busy = false; return }
+                  preset == nil || (projection.preset == preset) else { busy = false; return }
             result = response; busy = false
             selectedChoice = preset.map(MergeChoice.preset) ?? .order(response.order)
             await preview()

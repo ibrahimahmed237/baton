@@ -274,7 +274,13 @@ class SyncStatusScenarios(unittest.TestCase):
         self.seed('codex',turns()[:2])
         self.applier.apply(self.applier.preview(self.link.id))
         ids = [t.id for t in self.store.turns(self.link.id)]
-        self.assertEqual(self.applier.mark_seen(self.link.id,'claude',ids[:1]),1)
+        from types import SimpleNamespace
+        from baton.cli.commands import Context, discover
+        engine = SimpleNamespace(applier=self.applier, adapter=lambda side: self.adapters[side])
+        command = discover().get('mark-seen')
+        value = command.run(Context(engine, 'mark-seen'),
+                            SimpleNamespace(link=self.link.id, tool='claude', turns=ids[:1]))
+        self.assertEqual(value['marked'], 1)
         self.assertEqual([t.states['claude'] for t in self.store.turns(self.link.id)],['shown','added'])
         self.seed('codex',turns()[2:])
         third = self.store.turns(self.link.id)[-1].id

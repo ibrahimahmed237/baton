@@ -16,10 +16,11 @@ private actor D8D9Engine: EngineTransport {
     var wrongLink = false
     var block = false
     var mixedTimes = false
+    var newTurn = false
     var waiting: CheckedContinuation<Void, Never>?
     init(_ state: String) { self.state = state }
-    func configure(state: String? = nil, fail: Bool = false, wrongLink: Bool = false, block: Bool = false, mixedTimes: Bool = false) {
-        if let state { self.state = state }; self.fail = fail; self.wrongLink = wrongLink; self.block = block; self.mixedTimes = mixedTimes
+    func configure(state: String? = nil, fail: Bool = false, wrongLink: Bool = false, block: Bool = false, mixedTimes: Bool = false, newTurn: Bool = false) {
+        if let state { self.state = state }; self.fail = fail; self.wrongLink = wrongLink; self.block = block; self.mixedTimes = mixedTimes; self.newTurn = newTurn
     }
     func isWaiting() -> Bool { waiting != nil }
     func resume() { waiting?.resume(); waiting = nil }
@@ -45,6 +46,19 @@ private actor D8D9Engine: EngineTransport {
             events[1]["at"] = "2026-10-05T14:00:00Z"
             events[2]["at"] = "2026-10-05T14:00:00.000Z"
             object["events"] = events
+        }
+        if newTurn, command == "merge-show", var turns = object["unsynced"] as? [[String: Any]],
+           var turn = turns.last, var order = object["order"] as? [Int] {
+            turn["id"] = 777; turn["seq"] = 99; turn["first_line"] = "New completed turn"
+            turns.append(turn); order.append(777)
+            object["unsynced"] = turns; object["order"] = order
+            if var presets = object["presets"] as? [[String: Any]] {
+                for i in presets.indices { presets[i]["order"] = order }
+                object["presets"] = presets
+            }
+        }
+        if newTurn, command == "merge", var order = object["order"] as? [Int] {
+            order.append(777); object["order"] = order; object["plan_id"] = "p_new_completed_turn"
         }
         if snapshotWrong { object["link_id"] = 999 }
         return try JSONDecoder().decode(type, from: JSONSerialization.data(withJSONObject: object))
@@ -226,6 +240,22 @@ struct MergeHistoryTests {
         #expect(model.review.plan?.applied == true)
         #expect(model.review.buttons.contains { $0.id == "open" })
         #expect(model.review.notes.filter { $0.id == "merge.open" }.allSatisfy { $0.values["chat_id"] != nil })
+    }
+    @MainActor @Test func newCompletedTurnInPresetShowsFreshProjectionAndRequiresFreshDisplay() async throws {
+        let engine = D8D9Engine("d8_u1"); let model = MergeViewModel(engine: engine)
+        await model.load(link: 3)
+        let old = try #require(model.review.displayReceipt)
+        model.review.didDisplay(old); #expect(model.review.canConfirm)
+        let preset = try #require(model.presets.first { $0.id == "by_time" })
+        await engine.configure(newTurn: true)
+        await model.select(preset)
+        #expect(model.result?.order == preset.order + [777])
+        #expect(model.turns.last?.firstLine == "New completed turn")
+        #expect(model.selectedChoice == .preset("by_time"))
+        let fresh = try #require(model.review.displayReceipt)
+        #expect(fresh != old && model.review.plan != nil && !model.review.canConfirm)
+        model.review.didDisplay(old); #expect(!model.review.canConfirm)
+        model.review.didDisplay(fresh); #expect(model.review.canConfirm)
     }
     @MainActor @Test func presetMismatchCannotReviveByTimeProjection() async throws {
         let model = MergeViewModel(engine: D8D9Engine("d8_u1")); await model.load(link: 3)

@@ -1,7 +1,7 @@
 """Brief plan/result data and shared sizing/fingerprint helpers."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from hashlib import sha256
 import json
 from typing import Any
@@ -47,6 +47,16 @@ class BriefPlan:
     needs: tuple[str, ...] = ()
     turn_ids: tuple[int, ...] = ()
 
+    confirmation_available: bool = True
+
+    def with_availability(self, running: bool):
+        """Match native creation's manual-close policy at the creation review."""
+        if self.stage != 'create' or 'app_closed' not in self.needs:
+            return self
+        manual = NoteRef('create.close_manually', {'tool': self.side})
+        notes = self.notes if manual in self.notes else (*self.notes, manual)
+        return replace(self, notes=notes, confirmation_available=not running)
+
     @property
     def steps(self) -> tuple[ApplyStep, ...]:
         """The explicit destination is stable through both approval stages."""
@@ -56,6 +66,8 @@ class BriefPlan:
     @property
     def confirmation(self):
         """Return the catalogue confirmation belonging to this stored stage."""
+        if not self.confirmation_available:
+            return NoteRef('plan.unavailable', {})
         return NoteRef('plan.confirm_brief_generation' if self.stage == 'generate'
                        else 'plan.confirm_brief_creation', {})
 
