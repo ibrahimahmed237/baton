@@ -215,7 +215,7 @@ class OpenCodeReviewTests(unittest.TestCase):
 
     def test_plugin_failure_attaches_nothing_and_logs_once_with_ms_timeout(self):
         content = self.adapter.hooks.plugin_content()
-        self.assertIn("timeout: 5000", content)
+        self.assertIn("timeout: 2000", content)  # the hook deadline of C4
         self.assertEqual(content.count("console.error("), 1)
         self.assertIn('if (error) { console.error(failureNote); resolve(""); return; }', content)
         self.assertIn('if (text.trim()) output.parts.push', content)

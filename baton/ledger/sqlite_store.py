@@ -18,7 +18,8 @@ from .records import now
 class Ledger(LinksRecords, TurnsRecords, HistoryRecords, JournalRecords, UndoRecords, EvidenceRecords, BriefRecords, ReadMetadata):
     """Combine record concerns without introducing per-concern connections or commits."""
     def __init__(self, path: str):
-        self.db = sqlite3.connect(path)
+        from ..ports.budget import sqlite_timeout
+        self.db = sqlite3.connect(path, timeout=sqlite_timeout())
         self.db.row_factory = sqlite3.Row
         self.db.execute("pragma foreign_keys = on")
         self.db.executescript(LINK_SCHEMA)

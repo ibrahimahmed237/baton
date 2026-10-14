@@ -31,40 +31,8 @@ class OpenCodeHooks:
 
     def plugin_content(self):
         """Generate synthetic prompt context and busy/idle notifications with stable IDs."""
-        return '''import { execFile } from "node:child_process";
-import { randomBytes } from "node:crypto";
-const executable = %s;
-const failureNote = %s;
-const run = (args) => new Promise((resolve) => {
-  execFile(executable, args, { timeout: 5000, maxBuffer: 1048576 },
-    (error, stdout) => {
-      if (error) { console.error(failureNote); resolve(""); return; }
-      resolve(stdout);
-    });
-});
-const partId = () => "prt_" + ((BigInt(Date.now()) * 0x1000n + 0xfffn) & 0xffffffffffffn)
-  .toString(16).padStart(12, "0") + randomBytes(14).toString("hex").slice(0, 14);
-export const Baton = async ({ directory }) => ({
-  "chat.message": async (input, output) => {
-    const sessionID = input.sessionID || output.message?.sessionID;
-    const messageID = output.message?.id;
-    if (!sessionID || !messageID) return;
-    const text = await run([%s, "--tool", "opencode", "--chat", sessionID]);
-    if (text.trim()) output.parts.push({ id: partId(), sessionID, messageID,
-      type: "text", synthetic: true, text });
-  },
-  event: async ({ event }) => {
-    const p = event.properties || {};
-    const sessionID = p.sessionID || p.info?.sessionID;
-    const status = p.status?.type;
-    if (sessionID && (event.type === "session.idle" ||
-      (event.type === "session.status" && (status === "busy" || status === "idle")))) {
-      await run([%s, "--tool", "opencode", "--chat", sessionID, "--json"]);
-    }
-  },
-});
-''' % (json.dumps(self.executable), json.dumps(get('hooks.command_failed').template),
-       json.dumps(self.COMMANDS[0]), json.dumps(self.COMMANDS[1]))
+        template = Path(__file__).parents[2] / 'hooks/opencode_plugin.js'
+        return template.read_text().replace('__BATON_FAILURE_NOTE__', json.dumps(get('hooks.command_failed').template)).replace('execFile("baton",', 'execFile(' + json.dumps(self.executable) + ',')
 
     def check(self):
         """Report file installation independently from observed plugin loading."""

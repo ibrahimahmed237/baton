@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import sqlite3
+from ...ports.budget import sqlite_timeout
 import stat
 from contextlib import closing, contextmanager
 from pathlib import Path
@@ -161,7 +162,7 @@ class CodexWriter:
         records = [session_meta_record(receipt.chat_id, folder, now, template["cli_version"], template["base_instructions"])]
         records += turn_records(turns, receipt.chat_id, 1, now)
         row = self._new_row(receipt, name, folder, turns, template, now)
-        with closing(sqlite3.connect(self.adapter.locator.state_db)) as connection:
+        with closing(sqlite3.connect(self.adapter.locator.state_db, timeout=sqlite_timeout())) as connection:
             for column in connection.execute('PRAGMA table_info(threads)'):
                 if column[1] not in row:
                     row[column[1]] = connection.execute('SELECT ' + column[4]).fetchone()[0] if column[4] is not None else None
@@ -285,7 +286,7 @@ class CodexWriter:
     @contextmanager
     def _transaction(self):
         locator = self.adapter.locator
-        with closing(sqlite3.connect(locator.state_db, timeout=5, isolation_level=None)) as connection:
+        with closing(sqlite3.connect(locator.state_db, timeout=sqlite_timeout(), isolation_level=None)) as connection:
             connection.row_factory = sqlite3.Row
             connection.execute('BEGIN IMMEDIATE')
             locator._writer_connection = connection

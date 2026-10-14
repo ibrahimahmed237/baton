@@ -18,6 +18,7 @@ from .commands import Command, CommandRegistry, Context, discover
 from .wiring import Engine, build
 
 logger = logging.getLogger(__name__)
+HOOK_DISPATCH_AVAILABLE = True
 
 
 class UsageError(Exception):
@@ -97,6 +98,11 @@ def main(argv: Sequence[str] | None = None, *, registry: CommandRegistry | None 
          engine_factory: Callable[[], Engine] = build, stdout: TextIO | None = None) -> int:
     """Run one command and return the exit status."""
     out = stdout or sys.stdout
+    if registry is None:
+        from ..hooks.runtime import dispatch
+        hook_status = dispatch(argv, engine_factory=engine_factory, stdout=out)
+        if hook_status is not None:
+            return hook_status
     try:
         registry = discover() if registry is None else registry
         args = build_parser(registry).parse_args(argv)

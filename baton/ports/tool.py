@@ -90,6 +90,13 @@ class ChatState(Protocol):
     def format_version(self) -> FormatCheck: ...
 
 @runtime_checkable
+class ChatActivity(Protocol):
+    """Optional state extension for durable native activity observations."""
+    def observe(self, event: dict[str, Any]) -> None:
+        """Persist chat_id and a busy/idle/turn_end event with native metadata."""
+        ...
+
+@runtime_checkable
 class ChatWriter(Protocol):
     """ChatWriter interface for a chat tool."""
     def prepare(self, chat_id: str | None, kind: str) -> WriteReceipt: ...

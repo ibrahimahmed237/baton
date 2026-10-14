@@ -50,7 +50,8 @@ class CursorLocator:
         path = self.state_db
         for suffix in ('-wal', '-shm', '-journal'):
             self.inside(Path(str(path) + suffix))
-        return sqlite3.connect(path.as_uri() + ('?mode=rw' if writable else '?mode=ro'), uri=True, timeout=5)
+        from ...ports.budget import sqlite_timeout
+        return sqlite3.connect(path.as_uri() + ('?mode=rw' if writable else '?mode=ro'), uri=True, timeout=sqlite_timeout())
 
     def headers(self):
         if not self.state_db.exists():

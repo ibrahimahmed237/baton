@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from ...ports.budget import sqlite_timeout
 import stat
 from contextlib import closing
 from datetime import datetime, timezone
@@ -90,7 +91,7 @@ class CodexLocator:
             return [dict(row) for row in self._writer_connection.execute(sql, params)]
         if not self.state_db.exists():
             return []
-        with closing(sqlite3.connect(self.state_db.as_uri() + "?mode=ro", uri=True, timeout=5)) as connection:
+        with closing(sqlite3.connect(self.state_db.as_uri() + "?mode=ro", uri=True, timeout=sqlite_timeout())) as connection:
             connection.row_factory = sqlite3.Row
             return [dict(row) for row in connection.execute(sql, params)]
 

@@ -15,27 +15,29 @@ class CursorState:
 
     def observations(self):
         path = self.adapter.locator.inside(self.adapter.root / '.baton/cursor-turns.json')
-        if not path.exists():
-            return {}
-        return json.loads(path.read_text())
+        values = json.loads(path.read_text()) if path.exists() else {}
+        for header in self.adapter.locator.headers():
+            values.setdefault(header['composerId'], {'replying': True, 'replying_known': False})
+        return values
 
     def observe(self, payload):
         """Persist native prompt/stop evidence for the later notify entry point."""
         from .writer import save_json
-        ident = payload.get('conversation_id', payload.get('composer_id'))
-        event = payload.get('hook_event_name')
+        ident = payload.get('chat_id', payload.get('conversation_id', payload.get('composer_id')))
+        event = payload.get('hook_event_name') or {'busy': 'beforeSubmitPrompt', 'idle': 'stop', 'turn_end': 'stop'}.get(payload.get('event'))
         if not valid_id(ident) or event not in ('beforeSubmitPrompt', 'stop', 'afterAgentResponse'):
             raise NotAvailable()
         observations = self.observations()
         previous = observations.get(ident, {})
-        observations[ident] = {**previous, 'open': True, 'replying': event == 'beforeSubmitPrompt',
+        observations[ident] = {**previous, 'open': True, 'replying': event == 'beforeSubmitPrompt', 'replying_known': True,
                               'status': payload.get('status', ''),
                               'tokens': payload.get('token_usage', payload.get('tokens', previous.get('tokens')))}
         path = self.adapter.locator.inside(self.adapter.root / '.baton/cursor-turns.json')
         save_json(path, observations)
 
     def replying(self, chat_id):
-        return self.observations().get(chat_id, {}).get('replying', False) is True
+        value = self.observations().get(chat_id, {})
+        return value.get('replying') if value.get('replying_known', 'replying' in value) else 'unknown'
 
     def condition(self, chat_id):
         running = self.adapter.app.running()

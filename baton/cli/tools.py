@@ -60,3 +60,21 @@ def installed_in(entry: ToolEntry, root: Path) -> bool:
     It looks only below `root`; it never asks the machine (no PATH, no /Applications).
     """
     return bool(entry.marker) and (Path(root) / entry.marker).is_dir()
+
+
+def hook_entrypoints_available():
+    """Only claim entry points after their modules and registered commands exist."""
+    from importlib.util import find_spec
+    from importlib import import_module
+    if not getattr(import_module('baton.cli.main'), 'HOOK_DISPATCH_AVAILABLE', False):
+        return False
+    return registered_hook_commands() and all(find_spec(name) is not None for name in (
+        'baton.hooks.prompt', 'baton.hooks.turn_end',
+        'baton.cli.commands.catch_up', 'baton.cli.commands.notify'))
+
+
+def registered_hook_commands():
+    """Readiness reflects registrations, not merely importable files."""
+    from .commands import discover
+    registry = discover()
+    return all(registry.get(name) is not None for name in ('catch-up', 'notify'))

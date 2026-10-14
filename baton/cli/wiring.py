@@ -216,6 +216,9 @@ def load_adapters(entries: Sequence[ToolEntry], tools_home: Path,
             factory = getattr(importlib.import_module(entry.module), entry.adapter)
             options = ({'rollback_root': store_root / 'rollback' / entry.id}
                        if store_root is not None and 'rollback_root' in inspect.signature(factory).parameters else {})
+            if 'hook_entrypoints_available' in inspect.signature(factory).parameters:
+                from .tools import hook_entrypoints_available
+                options['hook_entrypoints_available'] = hook_entrypoints_available
             adapter = (factory if sandboxed else getattr(factory, "on_this_machine", factory))(root, **options)
             if getattr(adapter, "name", None) != entry.id:
                 raise LookupError("%s reports the name %r" % (entry.adapter, getattr(adapter, "name", None)))

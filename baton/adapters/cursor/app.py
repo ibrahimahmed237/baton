@@ -71,12 +71,15 @@ class CursorApp:
             return False
 
     def close(self):
-        if any(value.get('replying') is True for value in self.adapter.state.observations().values()):
-            raise ChatReplying()
-        if self.running() and not self.adapter.hooks.check().ok:
-            error = NotAvailable()
-            error.note_id = 'relaunch.replying_unknown'
-            raise error
+        # Only a running Cursor can be replying. A chat never observed counts as replying
+        # (unknown), so a running app is not closed on a guess.
+        if self.running():
+            if any(value.get('replying') is True for value in self.adapter.state.observations().values()):
+                raise ChatReplying()
+            if not self.adapter.hooks.check().ok:
+                error = NotAvailable()
+                error.note_id = 'relaunch.replying_unknown'
+                raise error
         self.adapter.process.quit()
         deadline = time.monotonic() + 10
         while self.running():

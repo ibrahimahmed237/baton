@@ -41,6 +41,9 @@ class CursorSuite(AdapterSuite, unittest.TestCase):
         # This one shared contract check explicitly simulates future C4 readiness.
         self.adapter.hooks.entrypoints_available = lambda: True
         self.adapter.hooks.install()
+        # And the stop hook having been seen for every chat, so a running Cursor reads as idle.
+        seen = self.adapter.state.observations
+        self.adapter.state.observations = lambda: {chat: {"replying": False, "replying_known": True} for chat in seen()}
         super().test_facts_match_behaviour()
 
     def build_chat(self, values):

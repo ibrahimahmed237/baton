@@ -3,6 +3,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
+from ...ports.budget import sqlite_timeout
 import stat
 
 from ...domain.errors import ChatHeld, NotAvailable
@@ -53,7 +54,7 @@ class OpenCodeLocator:
         mode = "rw" if write else "ro"
         db = None
         try:
-            db = sqlite3.connect(self.database.as_uri() + "?mode=" + mode, uri=True, timeout=0.1)
+            db = sqlite3.connect(self.database.as_uri() + "?mode=" + mode, uri=True, timeout=sqlite_timeout(0.1))
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA foreign_keys=ON")
             yield db
