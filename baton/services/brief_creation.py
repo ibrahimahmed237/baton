@@ -25,16 +25,19 @@ class BriefCreation:
         entry = None
         entries = []
         try:
+            self._check_pause(request)
             self.transcripts.verify(artifact['transcript_path'], artifact['transcript_digest'])
             guard.check_write(adapter, None, action='create')
             entry = journal.begin(link_id, side, None, 'create')
             entries.append(entry)
             self._validate_request(request)
+            self._check_pause(request)
             self.transcripts.verify(artifact['transcript_path'], artifact['transcript_digest'])
             guard.check_write(adapter, None, action='create')
             turns = for_created_chat(decode_turns([artifact['turn'], *artifact['originals']]), adapter.facts)
-            result = adapter.writer.create(turns, self._plan_object(ident, 'create', request, artifact['writer'], [], artifact).name,
-                                           self._plan_object(ident, 'create', request, artifact['writer'], [], artifact).folder)
+            plan = self._plan_object(ident, 'create', request, artifact['writer'], [], artifact)
+            self._check_pause(request)
+            result = adapter.writer.create(turns, plan.name, plan.folder)
             prepared = self.store.journal_entry(entry)
             if (result.chat_id != prepared['chat_id'] and result.receipt.tool == side
                     and result.receipt.chat_id == result.chat_id and result.receipt.kind == 'create'):

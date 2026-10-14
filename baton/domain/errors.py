@@ -81,6 +81,12 @@ class NotAvailable(BatonError):
     note_id = "tool.cannot"
 
 
+class LinkPaused(NotAvailable):
+    """Undo cannot change a link while it is paused."""
+
+    note_id = "undo.paused"
+
+
 class SetupIncomplete(BatonError):
     """A required setup step is missing."""
 

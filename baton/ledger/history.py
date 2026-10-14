@@ -9,6 +9,22 @@ from ..domain.link import Event
 class HistoryRecords:
     """Internal method group; transaction boundaries remain on the shared connection."""
 
+    def complete_rename(self, entry_id: int, receipt: dict, at: str, link_id: int,
+                        side: str, before: str, name: str) -> int:
+        """Record a verified name and its rollback receipt atomically."""
+        entry = self.journal_entry(entry_id)
+        if (entry['state'] != 'begun' or entry['link_id'] != link_id or
+                entry['tool'] != side or entry['action'] != 'rename' or
+                (receipt['tool'], receipt['chat_id'], receipt['kind']) !=
+                (side, entry['chat_id'], 'rename')):
+            raise ValueError('rename_receipt')
+        with self.db:
+            event = self._event(link_id, at, 'renamed', side,
+                                {'before': before, 'name': name})
+            self.db.execute("update journal set state='committed',ended_at=?,post_receipt=? where id=?",
+                            (at, json.dumps(receipt), entry_id))
+        return event
+
     def record_event(self, link_id: int, kind: str, side: str, at: str,
                      turn_ids: Sequence[int] = (), detail: dict[str, Any] | None = None) -> int:
         """Persist a non-delivery action in the link history."""

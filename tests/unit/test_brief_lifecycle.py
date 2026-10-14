@@ -218,6 +218,7 @@ class LifecycleTests(BriefBase):
                     self.assertEqual(journals, fixture.store.journal_entries())
                     reverted = undo.apply(undo.plan(fixture.link.id, created.event_id))
                     self.assertTrue(reverted.applied, reverted)
+                    fixture.store.set_paused(fixture.link.id, False)
                     old_add_undo = undo.apply(undo.plan(fixture.link.id, added.id))
                     self.assertTrue(old_add_undo.applied, old_add_undo)
                 finally: fixture.doCleanups()

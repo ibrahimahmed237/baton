@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 import logging
 
-from ..domain.errors import ChatChanged
+from ..domain.errors import ChatChanged, NotAvailable
 from ..domain.link import Link
 from ..domain.model import Message, PROMPT, Turn
 from ..notes.catalogue import get
@@ -78,7 +78,15 @@ class BriefGeneration:
         flat = replace(self.adapters[request['to']].facts, replays_tool_calls=False)
         return get('brief.prompt').render({'conversation': self._markdown(self._safe_pairs(request, writer), flat)}).template
 
+    def _check_pause(self, request):
+        for link_id in (request.get('link_id'), request.get('replace_link_id')):
+            if link_id is not None:
+                link = self.store.get_link(link_id)
+                if link.paused or link.removed_at:
+                    raise NotAvailable()
+
     def _preview_request(self, request):
+        self._check_pause(request)
         candidates, notes = self._eligible(request)
         estimates = []
         for position, side in enumerate(candidates):
@@ -170,9 +178,11 @@ class BriefGeneration:
             raise ChatChanged()
         if stored['stage'] == 'generate':
             request = payload['request']
+            self._check_pause(request)
             self._validate_request(request)
             notes = [NoteRef(**value) for value in payload['notes']]
             for side in payload['candidates']:
+                self._check_pause(request)
                 prompt, cached, key, prefix, privacy = self._prompt(request, side)
                 estimate = next(e for e in payload['estimates'] if e['writer'] == side)
                 cost_prompt = prompt if cached is None else self._full_prompt(request, side)
@@ -187,6 +197,7 @@ class BriefGeneration:
                         notes.append(NoteRef('brief.written_by', {'tool': side}))
                     return self._artifact(request, side, cached, notes, payload['estimates'])
                 folder = (request['snapshots'].get(side, {}).get('ref') or request['source_ref'])['folder']
+                self._check_pause(request)
                 try:
                     summary = self.adapters[side].runner.ask(prompt, folder, read_only=True).strip()
                 except Exception:
@@ -203,6 +214,7 @@ class BriefGeneration:
             return self._artifact(request, OFFLINE, self._offline_summary(self._safe_pairs(request, OFFLINE)),
                                   notes, payload['estimates'])
         artifact = self.store.brief_artifact(payload['artifact_id'])
+        self._check_pause(artifact['request'])
         self._validate_request(artifact['request'])
         return self._create(ident, artifact)
 

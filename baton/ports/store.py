@@ -10,6 +10,11 @@ from ..domain.model import Turn
 @runtime_checkable
 class RecordStore(Protocol):
     """Keep links, turn states and history."""
+    def complete_rename(self, entry_id: int, receipt: dict, at: str, link_id: int,
+                        side: str, before: str, name: str) -> int:
+        """Atomically commit a verified rename and its rollback receipt."""
+        ...
+
     def close(self) -> None:
         """Close the store."""
         ...

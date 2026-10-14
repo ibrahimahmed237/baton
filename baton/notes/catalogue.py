@@ -270,6 +270,23 @@ CATALOGUE = {note.id: note for note in (
     Note("undo.restore", "info", "Restore", (Button("restore", "Restore", True), Button("cancel", "Cancel"))),
     Note("undo.earlier_chat", "info", "Go back to the earlier chat", (Button("restore", "Go back to the earlier chat", True), Button("cancel", "Cancel"))),
     Note("undo.merge", "warning", "Chats that were created are removed from the link and left in place."),
+    Note("plan.confirm_undo", "warning", "Undo this merge", (Button("undo", "Undo this merge", True), Button("cancel", "Cancel"))),
+    Note("plan.confirm_merge", "danger", "Merge in this order", (Button("confirm", "Merge in this order", True), Button("cancel", "Cancel"))),
+    Note("plan.confirm_keep", "warning", "Keep {tool}'s turns", (Button("confirm", "Keep {tool}'s", True), Button("cancel", "Cancel"))),
+    Note("plan.confirm_split", "warning", "Split into two chats", (Button("confirm", "Split into two chats", True), Button("cancel", "Cancel"))),
+    Note("merge.keep_choice", "info", "Keep {tool}'s", (Button("keep", "Keep {tool}'s"),)),
+    Note("merge.split_choice", "info", "Split into two chats", (Button("split", "Split into two chats"),)),
+    Note("merge.brief_choice", "info", "Brief in a new chat", (Button("brief", "Brief in a new chat"),)),
+    Note("merge.always", "info", "Always merge by time without asking", (Button("always", "Always merge by time without asking"),)),
+    Note("merge.open", "info", "Open {tool}", (Button("open", "Open {tool}"),)),
+    Note("merge.copy_relaunch", "info", "Relaunch {tool} once to see the new chat."),
+    Note("merge.copy_visible", "info", "The new chat appears in {tool} right away."),
+    Note("merge.overlap", "warning", "These turns ran at the same time."),
+    Note("undo.group_added", "info", "Baton added in {tool}"),
+    Note("undo.group_written", "info", "Written afterwards in {tool}"),
+    Note("history.empty", "info", "No history yet. Syncs and changes to this link appear here."),
+    Note("history.undo_action", "info", "Undo", (Button("undo", "Undo"),)),
+    Note("history.restore_action", "info", "Restore", (Button("restore", "Restore"),)),
     Note("merge.header", "warning", "Both chats have new turns. {first_tool} has {first_count} turns {second_tool} never received, and {second_tool} has {second_count} that {first_tool} never received. Nothing has been changed yet."),
     Note("merge.order_help", "info", "Move a turn up or down to change where it goes. Turns from the same app keep their order."),
     Note("merge.dont_reorder", "warning", "Each chat gets the other's turns at its end. No new chat. The two chats will hold the same turns in a different order."),
@@ -352,6 +369,11 @@ CATALOGUE = {note.id: note for note in (
     Note("digest.files_other", "info", "{n} files"),
     Note("digest.commands_one", "info", "{n} command"),
     Note("digest.commands_other", "info", "{n} commands"),
+    Note("cli.catch_up", "info", "Catch up, then send"),
+    Note("cli.notify", "info", "Sync when the reply has finished"),
+    Note("catch_up.turn", "info", "{at}\n{body}"),
+    Note("catch_up.notice_one", "info", 'Baton attached {n} turn from {tool} to this message: {titles}.'),
+    Note("catch_up.notice", "info", 'Baton attached {n} turns from {tool} to this message: {titles}.'),
     Note("catch_up.block", "info", "<baton-catch-up>\n{body}\n</baton-catch-up>"),
     # E10, DESIGN 6 and working-across W4, W15: the brief in a new chat.
     Note("brief.prompt", "info", "Write a brief of the conversation below so that another coding agent can carry on the work. Cover the decisions made, the state of the work, the files touched and what is still open. Only read: do not change any file and do not run anything that changes something.\n\n{conversation}"),
@@ -400,4 +422,56 @@ def get(note_id: str) -> Note:
 # Cursor refuses closure until hooks can supply reply evidence.
 CATALOGUE.update({note.id: note for note in (
     Note("relaunch.replying_unknown", "warning", "Baton cannot tell whether a chat is replying in {tool}, so it cannot close it."),
+)})
+
+
+CATALOGUE.update({note.id: note for note in (
+    Note('rename.at_once', 'info', '{tool} shows the new name "{name}" right away.'),
+    Note('rename.relaunch', 'info', '{tool} shows the new name "{name}" after a relaunch.', (), 'Relaunch {tool} to see the new name'),
+    Note('rename.closed', 'warning', '{tool} is renamed while closed. Baton offers to close {tool}, rename it to "{name}" and reopen.',
+         (Button('close_rename_reopen', 'Close {tool}, rename, reopen', True), Button('cancel', 'Cancel')), 'Relaunch {tool} to see the new name'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('keep.missing_turns', 'warning', '{tool} is missing {n} kept turns the conversation may refer to.'),
+    Note('keep.unchanged', 'info', 'This turn stays in {tool}. No chat is changed.', (), 'Kept in {tool}'),
+    Note('pin.unchanged', 'info', 'This turn is pinned. No chat is changed.', (), 'Pinned'),
+    Note('pause.unchanged', 'info', 'Nothing is delivered either way while this link is paused. No chat is changed.', (), 'Paused'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('setup.not_installed', 'warning', 'Not installed. Install {tool} and check again.'),
+    Note('setup.format_unreadable', 'warning', 'Baton cannot check how {tool} saves chats. Check that its chats can be read and check again.'),
+    Note('relaunch.replying_safe', 'warning', '{tool} is replying in "{title}". Closing now stops that reply.',
+         (Button('when_idle', 'Relaunch when idle', True), Button('cancel', 'Cancel')), 'Will sync when {tool} is idle'),
+    Note('relaunch.wait_reply', 'info', '{tool} is replying in "{title}". Baton waits until no chat in {tool} is replying, then relaunches.',
+         (Button('cancel', 'Cancel'),), 'Will sync when {tool} is idle'),
+    Note('relaunch.order', 'warning', 'Baton closes {tool}, waits until its chats are still, writes, and opens {tool} again.',
+         (Button('confirm', 'Close {tool}, sync, reopen', True), Button('cancel', 'Cancel'))),
+    Note('relaunch.closed_sync', 'info', '{tool} is closed. Baton syncs its waiting turns without asking.'),
+    Note('relaunch.close_timeout', 'warning', '{tool} did not close within a minute. Nothing was written. Close {tool} and try again.'),
+    Note('relaunch.reopen_failed', 'warning', '{tool} could not be reopened. The waiting changes were still written. Open {tool} again.'),
+    Note('relaunch.reopen_failed_no_write', 'warning', '{tool} could not be reopened. Nothing was written. Open {tool} again.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('relaunch.close_failed', 'warning', '{tool} could not be closed. Nothing was written. Close {tool} and try again.'),
+    Note('relaunch.partial', 'warning', 'Baton wrote the waiting changes for {n} links in {tool}, then stopped. Check the remaining links and try again.'),
+    Note('relaunch.reopen_failed_partial', 'warning', '{tool} could not be reopened after some changes were written. Open {tool} again and check the remaining links.'),
+    Note('relaunch.closed_open', 'info', '{tool} is closed. Baton writes its waiting changes and opens {tool}.'),
+)})
+
+
+CATALOGUE.update({note.id: note for note in (
+    Note('relaunch.idle_timeout', 'warning', 'The request to relaunch {tool} when idle expired. Nothing was written. Review a new request to try again.'),
+    Note('relaunch.write_failed', 'warning', 'Baton could not write the waiting changes in {tool}. Check the link and try again.'),
+)})
+
+CATALOGUE.update({note.id: note for note in (
+    Note('undo.paused', 'warning', 'This link is paused. Resume syncing before undoing a change.'),
+    Note('hook.delivery_failed', 'warning', 'Baton could not sync the waiting turns to {tool}. They remain queued. Check the link and try again.'),
+    Note('merge.completed_split', 'ok', 'The link was split. Both chats keep their own turns and no longer sync with each other.'),
+    Note('merge.completed_keep', 'ok', 'The {tool} chat was kept. Its turns for {other_tool} were delivered or queued; the other side’s separate turns stay only in its own chat.'),
+    Note('merge.completed', 'ok', 'The merge decision was applied. Both sides will sync in the chosen order; their delivery status is shown below.'),
+    Note('merge.completed_side', 'ok', '{tool} keeps its current chat. Its missing turns are delivered or queued as shown below.'),
 )})
