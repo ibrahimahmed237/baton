@@ -52,14 +52,16 @@ Reviewed the fifteen commits `dab931c` … `f63725c` made by the Codex orchestra
 
 **CP3 batch 2b committed 2026-10-15:** C5 relaunch + C6 background runs `e8d9ad4`, C3 remaining action commands `db100f1`. 1245 engine tests, app check passes. Committed by the orchestrator before a final review accepted them, to protect the work at a usage limit; open findings below are owed FIRST in the next session.
 
-**Open findings (fix, then have Codex Sol verify, before anything else):**
-1. C3: brief creation offers an enabled confirm even when the destination must be closed and is running (`baton/services/brief_types.py` ~57); apply the availability check and the manual-close note; test link and relink.
-2. C3: background serialisation replaces a plan's notes with one status note (`baton/cli/output.py` ~445); keep the notes and append.
-3. C3 "Done when": selective visibility acknowledgement (`applier.mark_seen`) has no command; `tests/scenarios/test_sync_status.py` ~277 cannot run through commands.
-4. C5/C6 round-2 fixes (privacy intersection in opinions, killpg failure, cleanup of review payloads and snapshots, no real fork in tests, worker orchestration in a service) are built and tested but NOT yet verified by a reviewer.
-5. Merge screen carry-over: a preset response that differs after a new turn leaves the screen blank (`MergeViewModel.swift`).
+**Open findings closed 2026-10-15:** items 1, 2, 3, 5 `0feeab5` (brief confirm disabled when it would be refused, background replies keep notes, `mark-seen` command, merge preview shown again after a new turn); item 4 verified by Codex Sol and its one remaining finding fixed `d922ce8` (the no-process guard now fails a test on exit even when the code swallowed the refusal). 1249 engine tests, app check passes.
 
-**Then batch 3:** E12 notes audit, D10 second-opinion screen, D11 setup and settings screens (their engine routes now exist), then the CP3 live check (hooks in all four tools, relaunch for Claude and Cursor, create and cut through the adapters; needs one throwaway chat each in OpenCode and Cursor and Ibrahim's go).
+**CP3 batch 3 running** (Codex Sol builders):
+
+| Builder | Work | Files |
+|---|---|---|
+| D | D10 second opinion screen, D11 setup and settings screens | `app/Sources/BatonUI/Screens/{SecondOpinion,Setup,Settings}`, tests, new recipes in the fixture generator |
+| N | E12 part 1, notes audit: table of every notes-table row → id → emitter → test; adds missing notes only (no wording changes while D generates fixtures) | `baton/notes/catalogue.py` (additive), emitting services where missing, `tests/unit/test_notes.py` |
+
+Then: E12 part 2 (wording changes from the audit, fixtures regenerated), then the CP3 live check.
 
 **Orchestrator decision 2026-10-15:** a standalone copy from a paused link's side is allowed (it only reads the source and makes a new unlinked chat).
 
