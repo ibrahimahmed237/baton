@@ -12,6 +12,6 @@ Rules that always apply:
 - One branch: `chore/project-setup`. Never commit to `main`. Never push. No pull requests.
 - Commit messages say why, in plain words. Never add `Co-Authored-By` or any tool attribution.
 - Never touch real chats of any tool. Tests run on files built in temporary folders.
-- Engine: Python standard library only. Tests: `python3 -m unittest discover -s tests -t .`
-- App: `app/scripts/check.sh` (builds and tests; picks an SDK that works on this Mac).
+- Engine: Python standard library only. Tests: run only the test modules for the code you changed and what it can affect (`python3 -B -m unittest tests.<module> ...`). Never run the whole suite locally unless Ibrahim asks; say which tests you ran.
+- App: `app/scripts/check.sh` builds and runs the app tests; run it only when app code or fixtures changed.
 - `docs/plan/CONTRACT.md` is frozen: add, never rename or remove.
