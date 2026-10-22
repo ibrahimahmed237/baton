@@ -138,7 +138,7 @@ class CodexState:
         except KeyError:
             return SideCondition(exists=False, app_running=process.running())
         held = self.held(chat_id)
-        check = self.target_format(chat_id)
+        check = self.format_version()
         condition = SideCondition(
             exists=True, open=held, replying=self.replying(chat_id),
             hooks_ready=self.adapter.hooks.check().ok, app_running=process.running(),
@@ -180,13 +180,22 @@ class CodexState:
             newest = locator.scoped_rows()
         except (sqlite3.Error, OSError):
             return FormatCheck(False, "unreadable")
+        newest.sort(key=lambda row: row.get('updated_at_ms') or (row.get('updated_at') or 0) * 1000, reverse=True)
+        readable = []
         for row in newest:
             try:
                 path = locator.rollout_path(row['id'])
             except (KeyError, OSError):
+                candidate = locator.rollout_of(row)
+                if candidate is not None and not candidate.exists():
+                    continue
                 return FormatCheck(False, 'identity')
             if not self._rollout_ok(path):
                 return FormatCheck(False, 'records')
+            readable.append(row)
+            if len(readable) == 5:
+                break
+        newest = readable
         versions = [r['cli_version'] for r in newest if isinstance(r.get('cli_version'), str) and r['cli_version']]
         version = versions[0] if versions else SCHEMA_VERSION
         # checked_versions records database schema evidence, not CLI release pins.
@@ -196,9 +205,9 @@ class CodexState:
     def target_format(self, chat_id: str) -> FormatCheck:
         """Validate the entire particular target before any native mutation."""
         self.adapter.scope.require(chat_id)
-        if not self.format_version().known:
-            return FormatCheck(False, 'schema')
         try:
+            if not self._threads_columns_ok():
+                return FormatCheck(False, 'schema')
             path = self.adapter.locator.rollout_path(chat_id)
             records = parse_strict(path.read_bytes())
             if not records or records[0].get('type') != 'session_meta':
@@ -206,7 +215,7 @@ class CodexState:
             meta = records[0]['payload']
             if meta.get('id', meta.get('session_id')) != chat_id:
                 return FormatCheck(False, 'identity')
-        except (OSError, ValueError, TypeError, KeyError):
+        except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
             return FormatCheck(False, 'records')
         version = meta.get("cli_version") or SCHEMA_VERSION
         new_version = version not in (*self.adapter.facts.checked_versions, *CHECKED_CLI_VERSIONS)

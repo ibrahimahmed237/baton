@@ -46,6 +46,16 @@ def new_adapter(test, root, **options):
     return adapter, process
 
 
+def trust_hooks(root, events=('UserPromptSubmit', 'Stop'), path=None, hash_value='measured-fixture'):
+    hooks = path or fx.home(root) / 'hooks.json'
+    names = {'UserPromptSubmit': 'user_prompt_submit', 'Stop': 'stop'}
+    config = fx.home(root) / 'config.toml'
+    config.write_text('\n'.join(
+        '[hooks.state.' + json.dumps(str(hooks) + ':' + names[event] + ':0:0') + ']\ntrusted_hash = ' + json.dumps(hash_value)
+        for event in events))
+    return config
+
+
 def rollout_bytes(root, chat):
     return fx.rollout_file(root, chat).read_bytes()
 
@@ -144,9 +154,9 @@ class CodexBoundarySafety(unittest.TestCase):
         self.assertEqual(before, self.snapshot())
         self.assertFalse(self.adapter.rollback_root.exists())
 
-    def test_empty_default_scope_denies_direct_content_and_never_lists_working_chats(self):
+    def test_empty_default_scope_lists_metadata_but_denies_direct_content(self):
         adapter = CodexAdapter(self.root, process=self.process)
-        self.assertEqual(adapter.locator.chats(), [])
+        self.assertEqual([ref.id for ref in adapter.locator.chats()], [self.chat])
         for read in (lambda: adapter.reader.read(self.chat), lambda: adapter.reader.usage(self.chat),
                      lambda: adapter.locator.resolve(self.chat), lambda: adapter.writer.rename(self.chat, 'x')):
             with self.assertRaises(NotAvailable): read()
@@ -164,7 +174,7 @@ class CodexBoundarySafety(unittest.TestCase):
             return original(path, *args, **kwargs)
         with patch.object(Path, 'open', safe_open):
             self.assertTrue(self.adapter.state.format_version().known)
-            self.assertEqual([r.id for r in self.adapter.locator.chats()], [self.chat])
+            self.assertEqual([r.id for r in self.adapter.locator.chats()], [outsider, self.chat])
             result = self.adapter.writer.create(turns()[:1], 'Baton test (safe to delete)', '')
             self.assertNotIn('PRIVATE-OUTSIDE', rollout_of(self.root, result.chat_id).read_text())
             self.assertNotIn('OUTSIDE', str(thread_row(self.root, result.chat_id)))
@@ -314,18 +324,13 @@ class CodexBoundarySafety(unittest.TestCase):
         other.writer.take_back(pre)
         self.assertEqual(self.snapshot(),before)
 
-    def test_guessed_trust_hash_never_reports_ready_or_reads_unverified_config(self):
-        self.adapter.hooks.install();fx.trust_hooks(self.root)
-        config=fx.home(self.root)/'config.toml';before=config.read_bytes()
-        original=Path.read_text
-        def protected(path,*a,**k):
-            if Path(path)==config:raise AssertionError('unverified trust config read')
-            return original(path,*a,**k)
-        with patch.object(Path,'read_text',protected):
-            finding=self.adapter.hooks.check()
-            self.assertFalse(finding.ok);self.assertEqual(finding.note_id,'setup.trust_once')
-            self.assertFalse(self.adapter.state.condition(self.chat).hooks_ready)
-        self.assertEqual(config.read_bytes(),before)
+    def test_measured_trust_records_report_ready_without_writing_config(self):
+        self.adapter.hooks.install()
+        config = trust_hooks(self.root)
+        before = config.read_bytes()
+        self.assertTrue(self.adapter.hooks.check().ok)
+        self.assertTrue(self.adapter.state.condition(self.chat).hooks_ready)
+        self.assertEqual(config.read_bytes(), before)
 
     def test_invalid_history_offset_or_ordinal_preserves_native_write_and_intent(self):
         result=self.adapter.writer.add(self.chat,[Turn(Message('more',PROMPT,'more'))])
@@ -369,7 +374,7 @@ class CodexBoundarySafety(unittest.TestCase):
         with patch.object(Path,'open',side_effect=AssertionError('aliased content opened')):
             self.assertFalse(self.adapter.state.format_version().known)
             with self.assertRaises(UnknownFormat):self.adapter.writer.create(turns(),'copy','')
-            self.assertIsNone(self.adapter.writer._template()['base_instructions'])
+            with self.assertRaises(UnknownFormat):self.adapter.writer._template()
 
     def test_changed_manifest_path_cannot_redirect_rollback_to_other_content(self):
         result=self.adapter.writer.add(self.chat,[Turn(Message('more',PROMPT,'more'))])
@@ -823,6 +828,45 @@ class CodexSafety(unittest.TestCase):
 
     # -- the format guard ---------------------------------------------------
 
+    def test_old_odd_target_is_checked_even_outside_recent_status_sample(self):
+        ids = [self.chat]
+        for index in range(5):
+            ident = fx.build(self.root, turns(), thread='recent' + str(index))
+            fx.run_sql(self.root, 'UPDATE threads SET updated_at_ms=? WHERE id=?', (2000000000000 + index, ident))
+            ids.append(ident)
+        missing = fx.build(self.root, turns(), thread='missing-recent')
+        fx.rollout_file(self.root, missing).unlink()
+        fx.run_sql(self.root, 'UPDATE threads SET updated_at_ms=? WHERE id=?', (3000000000000, missing))
+        ids.append(missing)
+        scoped, _ = new_adapter(self, self.root, allowed_chat_ids=ids)
+        fx.append_event(self.root, self.chat, {'type': 'future'}, 'future')
+        self.assertTrue(scoped.state.format_version().known)
+        self.assertTrue(scoped.state.condition(self.chat).format_known)
+        before = rollout_bytes(self.root, self.chat)
+        with self.assertRaises(UnknownFormat):
+            scoped.writer.add(self.chat, [])
+        self.assertEqual(rollout_bytes(self.root, self.chat), before)
+        scoped.writer.rename(ids[1], 'good target')
+        fx.run_sql(self.root, 'UPDATE threads SET updated_at_ms=? WHERE id=?', (4000000000000, self.chat))
+        self.assertFalse(scoped.state.format_version().known)
+        scoped.writer.add(ids[1], [Turn(Message('extra', PROMPT, 'extra'))])
+
+    def test_create_checks_selected_template_instead_of_unrelated_recent_rollouts(self):
+        newer = fx.build(self.root, turns(), thread='newer')
+        fx.run_sql(self.root, 'UPDATE threads SET updated_at_ms=? WHERE id=?', (2000000000000, newer))
+        fx.append_event(self.root, self.chat, {'type': 'future'}, 'future')
+        self.assertFalse(self.adapter.state.format_version().known)
+        created = self.adapter.writer.create([], 'new', '/fixture/project')
+        self.assertTrue(self.adapter.state.target_format(created.chat_id).known)
+
+    def test_unknown_target_metadata_refuses_with_format_note(self):
+        path = rollout_of(self.root, self.chat)
+        before = b'{"type":"future","payload":{}}\n'
+        path.write_bytes(before)
+        with self.assertRaises(UnknownFormat):
+            self.adapter.writer.rename(self.chat, 'refused')
+        self.assertEqual(path.read_bytes(), before)
+
     def test_a_threads_table_missing_a_column_blocks_writes_but_not_reads(self):
         fx.run_sql(self.root, "ALTER TABLE threads DROP COLUMN originator")
         self.assertEqual(self.adapter.state.format_version().known, False)
@@ -856,7 +900,8 @@ class CodexSafety(unittest.TestCase):
         self.assertTrue(self.adapter.state.format_version().known)
         with self.assertRaises(UnknownFormat):
             self.adapter.writer.add(self.chat, [])
-        self.adapter.writer.create([], "elsewhere", "")
+        with self.assertRaises(UnknownFormat):
+            self.adapter.writer.create([], "elsewhere", "")
 
     def test_a_damaged_line_blocks_adding_to_that_chat_only(self):
         path = fx.rollout_file(self.root, self.chat)
@@ -876,7 +921,7 @@ class CodexSafety(unittest.TestCase):
         fx.insert_thread(self.root, "norollout", rollout_path="")
         fx.insert_thread(self.root, "untitled", title="first words", name=None, updated_ms=1_767_225_700_000)
         refs = {r.id: r for r in self.adapter.locator.chats()}
-        self.assertEqual(sorted(refs), ["thread-fixture", "untitled"])
+        self.assertEqual(sorted(refs), ["norollout", "thread-fixture", "untitled"])
         self.assertEqual(refs["thread-fixture"].folder, "/fixture/project")
         self.assertEqual(refs["thread-fixture"].updated_at, "2026-01-01T00:00:00Z")
         self.assertEqual([r.id for r in self.adapter.locator.chats()][0], "untitled")
@@ -971,22 +1016,44 @@ class CodexSafety(unittest.TestCase):
         finding = hooks.check()
         self.assertEqual((finding.ok, finding.note_id, finding.values["trusted"]), (False, "setup.trust_once", False))
         self.assertFalse((self.root / ".codex" / "config.toml").exists())
-        fx.trust_hooks(self.root)
+        trust_hooks(self.root)
         config = (self.root / ".codex" / "config.toml").read_bytes()
-        self.assertEqual((hooks.check().ok, hooks.check().note_id), (False, "setup.trust_once"))
+        self.assertEqual((hooks.check().ok, hooks.check().note_id), (True, ""))
         self.assertEqual((self.root / ".codex" / "config.toml").read_bytes(), config)
 
     def test_trust_for_one_of_the_two_entries_is_not_enough(self):
         self.adapter.hooks.install()
-        fx.trust_hooks(self.root, events=("Stop",))
+        trust_hooks(self.root, events=("Stop",))
         self.assertEqual(self.adapter.hooks.check().note_id, "setup.trust_once")
 
     def test_trust_of_someone_elses_hooks_file_does_not_count(self):
         self.adapter.hooks.install()
         (self.root / ".codex" / "config.toml").write_text(
-            '[hooks.state."/elsewhere/hooks.json:userpromptsubmit:0:0"]\ntrusted_hash = "x"\n'
+            '[hooks.state."/elsewhere/hooks.json:user_prompt_submit:0:0"]\ntrusted_hash = "x"\n'
             '[hooks.state."/elsewhere/hooks.json:stop:0:0"]\ntrusted_hash = "x"\n')
         self.assertFalse(self.adapter.hooks.check().ok)
+
+    def test_trust_needs_both_nonempty_string_hashes_and_exact_recorded_path(self):
+        self.adapter.hooks.install()
+        for value in ('', '   ', None, 3):
+            with self.subTest(value=value):
+                config = trust_hooks(self.root)
+                text = config.read_text()
+                replacement = json.dumps(value) if value is not None else '[]'
+                config.write_text(text.rsplit('trusted_hash = ', 1)[0] + 'trusted_hash = ' + replacement)
+                self.assertFalse(self.adapter.hooks.check().ok)
+        config.write_text('invalid = [')
+        self.assertFalse(self.adapter.hooks.check().ok)
+        project_hooks = self.root / 'project/.codex/hooks.json'
+        project_hooks.parent.mkdir(parents=True)
+        self.adapter.hooks.use_install_path(project_hooks)
+        self.adapter.hooks.install()
+        trust_hooks(self.root)
+        self.assertFalse(self.adapter.hooks.check().ok)
+        config = trust_hooks(self.root, path=project_hooks)
+        before = config.read_bytes()
+        self.assertTrue(self.adapter.hooks.check().ok)
+        self.assertEqual(config.read_bytes(), before)
 
     def test_missing_entry_points_refuse_to_install(self):
         adapter, _ = new_adapter(self, self.root, hook_entrypoints_available=lambda: False)

@@ -191,7 +191,7 @@ class CursorStorage(unittest.TestCase):
                 with self.assertRaises(NotAvailable):
                     call()
 
-    def test_shape_check_covers_hidden_chats_and_reports_any_new_version(self):
+    def test_status_covers_recent_hidden_chats_but_write_checks_only_target(self):
         other = fx.build(self.root, turns(), ident='hidden')
         value = fx.data(self.root, self.chat)
         value['_v'] = 19
@@ -205,5 +205,5 @@ class CursorStorage(unittest.TestCase):
         del value['conversationState']
         fx.put_data(self.root, other, value)
         self.assertNotIn(other, [ref.id for ref in self.adapter.locator.chats()])
-        with self.assertRaises(UnknownFormat):
-            self.adapter.writer.rename(self.chat, 'new')
+        self.assertFalse(self.adapter.state.format_version().known)
+        self.adapter.writer.rename(self.chat, 'new')

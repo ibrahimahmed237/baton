@@ -72,15 +72,16 @@ class CodexWriter:
         state, locator = self.adapter.state, self.adapter.locator
         if chat_id is not None:
             self.adapter.scope.require(chat_id)
-        if not state.format_version().known:
-            raise UnknownFormat()
         if not locator.state_db.exists():
             raise NotAvailable()
         if chat_id is None:
+            if not state._threads_columns_ok():
+                raise UnknownFormat()
+            self._template()
             return
-        locator.rollout_path(chat_id)
         if not state.target_format(chat_id).known:
             raise UnknownFormat()
+        locator.rollout_path(chat_id)
         if self.lease is not None:
             self.lease.check()
         # An unfinished task refuses with or without the lease; what the lease proves is that
@@ -234,6 +235,8 @@ class CodexWriter:
                 if locator.is_chat(row) and row.get("thread_source") == "user"]
         rows.sort(key=lambda row: -(row.get("updated_at_ms") or (row.get("updated_at") or 0) * 1000))
         newest = rows[0] if rows else {}
+        if newest and not self.adapter.state.target_format(newest['id']).known:
+            raise UnknownFormat()
         base_instructions, meta_version = None, ""
         for row in rows[:5]:
             try:
@@ -242,6 +245,8 @@ class CodexWriter:
                     meta = (json.loads(fh.readline()) or {}).get("payload") or {}
             except (OSError, ValueError, AttributeError, KeyError):
                 continue
+            if not self.adapter.state.target_format(row["id"]).known:
+                raise UnknownFormat()
             if meta.get("base_instructions"):
                 base_instructions, meta_version = meta["base_instructions"], meta.get("cli_version") or ""
                 break

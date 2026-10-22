@@ -84,6 +84,39 @@ class CursorSpecific(unittest.TestCase):
         self.process = fx.FixtureProcess(self.root)
         self.adapter = adapter(self.root, process=self.process)
 
+    def test_old_odd_and_missing_composers_do_not_block_good_target(self):
+        odd = fx.build(self.root, turns(), ident='old')
+        value = fx.data(self.root, odd)
+        value['_v'] = 16
+        del value['conversationState']
+        fx.put_data(self.root, odd, value)
+        for index in range(5):
+            ident = fx.build(self.root, turns(), ident='recent' + str(index))
+            value = json.loads(fx.run_sql(self.root, 'SELECT value FROM composerHeaders WHERE composerId=?', (ident,))[0][0])
+            value['lastUpdatedAt'] += index + 1
+            fx.run_sql(self.root, 'UPDATE composerHeaders SET value=? WHERE composerId=?', (json.dumps(value), ident))
+        missing = fx.build(self.root, turns(), ident='missing')
+        fx.run_sql(self.root, 'DELETE FROM cursorDiskKV WHERE key=?', ('composerData:' + missing,))
+        value = json.loads(fx.run_sql(self.root, 'SELECT value FROM composerHeaders WHERE composerId=?', (missing,))[0][0])
+        value['lastUpdatedAt'] = 9999999999999
+        fx.run_sql(self.root, 'UPDATE composerHeaders SET value=? WHERE composerId=?', (json.dumps(value), missing))
+        self.assertTrue(self.adapter.state.format_version().known)
+        self.assertTrue(self.adapter.state.condition(self.chat).format_known)
+        self.adapter.writer.rename(self.chat, 'good target')
+        scoped = adapter(self.root, process=self.process, allowed_chat_ids=(self.chat, odd))
+        before = self.snapshot()
+        with self.assertRaises(UnknownFormat):
+            scoped.writer.rename(odd, 'refused')
+        with self.assertRaises(UnknownFormat):
+            scoped.writer.create([], 'refused template', 'folder')
+        self.assertEqual(self.snapshot(), before)
+        value = json.loads(fx.run_sql(self.root, 'SELECT value FROM composerHeaders WHERE composerId=?', (odd,))[0][0])
+        value['lastUpdatedAt'] = 99999999999999
+        fx.run_sql(self.root, 'UPDATE composerHeaders SET value=? WHERE composerId=?', (json.dumps(value), odd))
+        self.assertFalse(self.adapter.state.format_version().known)
+        self.assertFalse(self.adapter.state.condition(self.chat).format_known)
+        self.adapter.writer.add(self.chat, [Turn(Message('extra', PROMPT, 'extra'))])
+
     def snapshot(self):
         with closing(self.adapter.locator.connect()) as db:
             return (db.execute('SELECT * FROM composerHeaders ORDER BY composerId').fetchall(),

@@ -229,7 +229,9 @@ class ProductionWiringTests(unittest.TestCase):
         with no_processes():
             adapter = CodexAdapter.on_this_machine(root, rollback_root=root / "store")
             self.assertIsInstance(adapter.coordination, NativeCoordination)
-            self.assertEqual(adapter.locator.chats(), [])
+            self.assertEqual([ref.id for ref in adapter.locator.chats()], [chat])
+            self.assertEqual(adapter.scope.original, frozenset())
+            self.assertEqual(adapter.scope.created, set())
             before = rollout_of(root, chat).read_bytes()
             with self.assertRaises(NotAvailable):
                 adapter.writer.add(chat, [Turn(Message("more", PROMPT, "more"))])

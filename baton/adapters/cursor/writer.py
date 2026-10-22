@@ -55,11 +55,15 @@ class CursorWriter:
 
     def _check(self, chat_id=None):
         self._closed()
-        if not self.adapter.state.format_version().known:
+        if chat_id is not None and chat_id not in self.adapter.allowed_chat_ids:
+            raise NotAvailable()
+        # Created chats also reuse role templates from the scoped originals.
+        sources = {chat_id} if chat_id is not None else set()
+        if chat_id not in self.adapter.original_chat_ids:
+            sources.update(self.adapter.original_chat_ids)
+        if any(not self.adapter.state.target_format(ident).known for ident in sources):
             raise UnknownFormat()
         if chat_id is not None:
-            if chat_id not in self.adapter.allowed_chat_ids:
-                raise NotAvailable()
             self.adapter.locator.resolve(chat_id)
         elif not self.adapter.original_chat_ids:
             raise NotAvailable()

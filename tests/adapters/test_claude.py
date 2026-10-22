@@ -67,6 +67,43 @@ class ClaudeSafety(unittest.TestCase):
         self.adapter = ClaudeAdapter(self.root, process=self.process, hook_entrypoints_available=lambda: True)
         self.process.adapter = self.adapter
         self.chat = build(self.root, turns())
+    def test_old_odd_and_missing_chats_do_not_block_good_target_or_recent_status(self):
+        odd = build(self.root, turns(), chat='local_odd', session='odd')
+        self.adapter.locator.session_path(odd).write_text('{"type":"user","message":{}}\n')
+        missing = build(self.root, turns(), chat='local_missing', session='missing')
+        self.adapter.locator.session_path(missing).unlink()
+        path, entry = self.adapter.locator.entry(missing)
+        entry['lastActivityAt'] = 100
+        path.write_text(json.dumps(entry))
+        for index in range(5):
+            chat = build(self.root, turns(), chat='local_recent' + str(index), session='recent' + str(index))
+            path, entry = self.adapter.locator.entry(chat)
+            entry['lastActivityAt'] = index + 1
+            path.write_text(json.dumps(entry))
+        self.assertTrue(self.adapter.state.format_version().known)
+        self.assertTrue(self.adapter.state.condition(self.chat).format_known)
+        self.adapter.writer.rename(self.chat, 'good target')
+        before = self.adapter.locator.session_path(odd).read_bytes()
+        with self.assertRaises(UnknownFormat):
+            self.adapter.writer.rename(odd, 'refused')
+        self.assertEqual(self.adapter.locator.session_path(odd).read_bytes(), before)
+        path, entry = self.adapter.locator.entry(odd)
+        entry['lastActivityAt'] = 200
+        path.write_text(json.dumps(entry))
+        self.assertFalse(self.adapter.state.format_version().known)
+        self.assertFalse(self.adapter.state.condition(self.chat).format_known)
+        self.adapter.writer.add(self.chat, [Turn(Message('extra', PROMPT, 'extra'))])
+
+    def test_create_uses_newest_readable_template_version_not_other_recent_shapes(self):
+        odd = build(self.root, turns(), chat='local_odd', session='odd')
+        self.adapter.locator.session_path(odd).write_text('{"type":"user","message":{}}\n')
+        path, entry = self.adapter.locator.entry(self.chat)
+        entry['lastActivityAt'] = 20
+        path.write_text(json.dumps(entry))
+        self.assertFalse(self.adapter.state.format_version().known)
+        created = self.adapter.writer.create([], 'new', '/fixture/project')
+        self.assertTrue(self.adapter.state.target_format(created.chat_id).known)
+
     def test_restore_native_bytes_and_fresh_receipt_recovery(self):
         path = self.adapter.locator.session_path(self.chat)
         original = path.read_bytes()

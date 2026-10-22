@@ -53,7 +53,7 @@ class CursorState:
                              hooks_ready=self.adapter.hooks.check().ok, format_known=checked.known,
                              format_new_version=checked.new_version)
 
-    def format_version(self):
+    def format_version(self, chat_id=None):
         version = '18'
         new_versions = []
         try:
@@ -63,22 +63,30 @@ class CursorState:
                     columns = {row[1] for row in db.execute('PRAGMA table_info(' + table + ')')}
                     if not required <= columns:
                         return FormatCheck(False, 'schema')
-            headers = self.adapter.locator.headers()
+            headers = ([self.adapter.locator.header(chat_id)] if chat_id is not None
+                       else sorted(self.adapter.locator.headers(), key=self._updated, reverse=True))
             if not self.adapter.locator.state_db.exists():
                 return FormatCheck(False, 'missing')
+            readable = 0
             for header in headers:
-                data = self.adapter.locator.data(header['composerId'])
+                try:
+                    data = self.adapter.locator.data(header['composerId'])
+                except (KeyError, OSError):
+                    if chat_id is not None:
+                        return FormatCheck(False, 'missing')
+                    continue
+                readable += 1
                 version = str(data.get('_v', 'unknown'))
                 if version not in self.adapter.facts.checked_versions:
                     new_versions.append(version)
                 if (type(data.get('_v')) is not int or data['_v'] < 1 or
                         data.get('composerId') != header['composerId'] or
-                        not isinstance(data.get('name'), str) or
+                        not isinstance(data.get('name'), (str, type(None))) or  # untitled chats have no name
                         not isinstance(data.get('fullConversationHeadersOnly'), list) or
                         not isinstance(data.get('conversationState'), str)):
                     return FormatCheck(False, version)
                 value = json.loads(header['value'])
-                if value.get('composerId') != header['composerId'] or not isinstance(value.get('name'), str):
+                if value.get('composerId') != header['composerId'] or not isinstance(value.get('name'), (str, type(None))):
                     return FormatCheck(False, version)
                 ids = set()
                 for head, bubble in zip(data['fullConversationHeadersOnly'], self.adapter.locator.bubbles(header['composerId'], data)):
@@ -89,6 +97,19 @@ class CursorState:
                              and not isinstance(bubble.get('text'), str))):
                         return FormatCheck(False, version)
                     ids.add(ident)
+                if chat_id is None and readable == 5:
+                    break
             return FormatCheck(True, new_versions[0] if new_versions else version, bool(new_versions))
         except (OSError, ValueError, KeyError, TypeError, AttributeError, sqlite3.Error):
             return FormatCheck(False, version)
+
+    @staticmethod
+    def _updated(header):
+        try:
+            value = json.loads(header['value'])
+            return value.get('lastUpdatedAt') or header.get('lastUpdatedAt') or value.get('createdAt') or 0
+        except (ValueError, TypeError, AttributeError):
+            return header.get('lastUpdatedAt') or 0
+
+    def target_format(self, chat_id):
+        return self.format_version(chat_id)

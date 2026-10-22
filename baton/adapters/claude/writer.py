@@ -92,7 +92,8 @@ class ClaudeWriter:
             try: os.fsync(directory)
             finally: os.close(directory)
     def _check(self, chat_id=None, kind=""):
-        if not self.adapter.state.format_version().known: raise UnknownFormat()
+        check = self.adapter.state.target_format(chat_id) if chat_id is not None else self.adapter.state.creation_format()
+        if not check.known: raise UnknownFormat()
         if chat_id is not None:
             c = self.adapter.state.condition(chat_id)
             if not c.exists: raise KeyError(chat_id)
@@ -171,7 +172,7 @@ class ClaudeWriter:
         receipt = self._begin(None, "create")
         sid = receipt.data["session_id"]
         session, entry_path = self.adapter.locator.creation_paths(receipt.chat_id, sid, folder, self.adapter.account)
-        records = native_records(turns, sid, folder, version=self.adapter.state.format_version().version)
+        records = native_records(turns, sid, folder, version=self.adapter.state.creation_format().version)
         records.append({"type": "custom-title", "customTitle": name, "sessionId": sid})
         entry = dict(sessionId=receipt.chat_id, cliSessionId=sid, cwd=folder, originCwd=folder,
             lastFocusedAt=0, createdAt=0, lastActivityAt=0, isArchived=False, title=name, titleSource="auto",
@@ -194,7 +195,7 @@ class ClaudeWriter:
         prompt = next((r for r in reversed(chain) if is_prompt(r)), {})
         prompt_index = (prompt.get("turnPosition") or {}).get("promptIndex", 0)
         appended = native_records(turns, entry["cliSessionId"], entry["cwd"], chain[-1]["uuid"] if chain else None,
-            version=self.adapter.state.format_version().version,
+            version=self.adapter.state.target_format(chat_id).version,
             prompt_index=prompt_index, template=prompt)
         after = dict(receipt.data["before"]); after[str(path)] = encode(data + serialize(appended))
         return self._write(receipt, after, turns)

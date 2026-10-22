@@ -96,17 +96,22 @@ class CodexHooks:
     def _installed(self) -> bool:
         try:
             hooks = self._read().get("hooks", {})
-            return all(any(h.get("type") == "command" and h.get("command") == command
-                           for entry in hooks.get(event, []) for h in entry.get("hooks", []))
+            return all({'hooks': [{'type': 'command', 'command': command}]} in hooks.get(event, [])
                        for event, command in self.commands.items())
         except (OSError, ValueError, TypeError, AttributeError):
             return False
 
     def trusted(self) -> bool:
-        """Refuse readiness until native trust schema and identity are measured."""
-        # The native trust schema and command identity digest have not been
-        # measured. A guessed key or arbitrary nonempty hash is not evidence.
-        return False
+        """Read Codex's measured per-hook trust records without recreating its hash."""
+        import tomllib
+        try:
+            config = self.adapter.locator.inside(self.adapter.locator.home / 'config.toml')
+            with config.open('rb') as stream:
+                state = tomllib.load(stream).get('hooks', {}).get('state', {})
+            return all(isinstance(value := state.get(str(self.path) + ':' + event + ':0:0', {}).get('trusted_hash'), str)
+                       and bool(value.strip()) for event in ('user_prompt_submit', 'stop'))
+        except (OSError, ValueError, TypeError, AttributeError):
+            return False
 
     def check(self) -> SetupFinding:
         """Whether the entries are installed and trusted. Never changes anything."""

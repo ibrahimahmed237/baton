@@ -28,34 +28,70 @@ class ClaudeState:
             app_running=self.adapter.process.running(), app_started_at=self.adapter.process.started_at(),
             hooks_ready=self.adapter.hooks.check().ok, format_known=check.known, format_new_version=check.new_version)
         return condition
-    def format_version(self):
-        """Validate every native sidebar target, including hidden entries."""
+    def format_version(self, limit=5):
+        """Sample the five newest readable sidebar targets, including hidden ones."""
+        checks = []
+        entries = sorted(self.adapter.locator.entries(),
+                         key=lambda pair: pair[1].get('lastActivityAt') or 0, reverse=True)
+        for _, entry in entries:
+            try:
+                text = self.adapter.locator.session_path(entry['sessionId']).read_text()
+            except (OSError, KeyError, ValueError):
+                # Unreadable entries (no session file, or a chat never started) are skipped.
+                continue
+            checks.append(self._text_format(text))
+            if len(checks) == limit:
+                break
+        return self._combined(checks)
+
+    def creation_format(self):
+        """New records use the version of the newest readable native chat."""
+        return self.format_version(limit=1)
+
+    def target_format(self, chat_id):
+        """A missing or unknown target always refuses its own write."""
+        try:
+            return self._text_format(self.adapter.locator.session_path(chat_id).read_text())
+        except (OSError, ValueError, KeyError):
+            return FormatCheck(False, 'unknown')
+
+    def _combined(self, checks):
+        for check in checks:
+            if not check.known:
+                return check
+        latest = max((check.version for check in checks), key=version_key,
+                     default=self.adapter.facts.checked_versions[0])
+        return FormatCheck(True, latest, latest not in self.adapter.facts.checked_versions)
+
+    def _text_format(self, text):
         versions = set()
         try:
-            for _, entry in self.adapter.locator.entries():
-                path = self.adapter.locator.session_path(entry["sessionId"])
-                # Tolerant reads may skip damaged tail lines; writes never may.
-                text = path.read_text()
-                if text and not text.endswith('\n'): return FormatCheck(False, "incomplete")
-                records = [json.loads(line) for line in text.splitlines() if line.strip()]
-                if not all(isinstance(r, dict) for r in records): return FormatCheck(False, "unknown")
-                # Any ancestor can be pulled onto the chain through parentUuid.
-                chained_ids = {r[key] for r in records for key in ("parentUuid", "logicalParentUuid")
-                               if isinstance(r.get(key), str)}
-                for rec in records:
-                    if rec.get("type") in _ON_THE_CHAIN or (isinstance(rec.get("uuid"), str) and rec["uuid"] in chained_ids):
-                        if not chain_shape_known(rec): return FormatCheck(False, "unknown")
-                    if not isinstance(rec.get("type"), str): return FormatCheck(False, "unknown")
-                    if "message" in rec and rec["type"] not in ("user", "assistant", "system"):
-                        return FormatCheck(False, "unknown")
-                    if rec.get("type") in ("user", "assistant"):
-                        version = rec.get("version", "")
-                        if not record_shape_known(rec):
-                            return FormatCheck(False, version if isinstance(version, str) else "unknown")
-                        versions.add(version)
+            if text and not text.endswith('\n'): return FormatCheck(False, "incomplete")
+            records = [json.loads(line) for line in text.splitlines() if line.strip()]
+            if not all(isinstance(r, dict) for r in records): return FormatCheck(False, "unknown")
+            # Any ancestor can be pulled onto the chain through parentUuid.
+            chained_ids = {r[key] for r in records for key in ("parentUuid", "logicalParentUuid")
+                           if isinstance(r.get(key), str)}
+            for rec in records:
+                if rec.get("type") in _ON_THE_CHAIN or (isinstance(rec.get("uuid"), str) and rec["uuid"] in chained_ids):
+                    if not chain_shape_known(rec): return FormatCheck(False, "unknown")
+                if not isinstance(rec.get("type"), str): return FormatCheck(False, "unknown")
+                if "message" in rec and rec["type"] not in ("user", "assistant", "system") + _MESSAGE_BOOKKEEPING:
+                    return FormatCheck(False, "unknown")
+                if rec.get("type") in ("user", "assistant"):
+                    version = rec.get("version", "")
+                    if not record_shape_known(rec):
+                        return FormatCheck(False, version if isinstance(version, str) else "unknown")
+                    versions.add(version)
             latest = max(versions, key=version_key) if versions else self.adapter.facts.checked_versions[0]
             return FormatCheck(True, latest, latest not in self.adapter.facts.checked_versions)
-        except (OSError, ValueError, KeyError): return FormatCheck(False, "unknown")
+        except (ValueError, KeyError, TypeError):
+            return FormatCheck(False, 'unknown')
+
+
+# Records that carry a `message` but are not part of the conversation chain: no uuid,
+# no parent, ignored by the reader. Seen in Claude 2.1.30x on 2026-10-22.
+_MESSAGE_BOOKKEEPING = ("api-request-blob",)
 
 
 def version_key(version):
