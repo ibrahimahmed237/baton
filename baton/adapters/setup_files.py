@@ -78,11 +78,16 @@ def permission_mode(descriptor, name, info):
     finally: os.close(handle)
 
 
+# macOS stamps every file with the writing app's provenance; no app can set or keep
+# it, so it is neither copied nor compared. Every other attribute must survive.
+SYSTEM_ATTRIBUTES = frozenset({'com.apple.provenance', b'com.apple.provenance'})
+
+
 def attributes(descriptor, name):
     handle = os.open(name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=descriptor)
     try:
         if sys.platform != 'darwin':
-            return tuple(sorted((n, os.getxattr(handle, n)) for n in os.listxattr(handle)))
+            return tuple(sorted((n, os.getxattr(handle, n)) for n in os.listxattr(handle) if n not in SYSTEM_ATTRIBUTES))
         import ctypes
         libc = ctypes.CDLL(None, use_errno=True)
         libc.flistxattr.restype = libc.fgetxattr.restype = ctypes.c_ssize_t
@@ -92,7 +97,7 @@ def attributes(descriptor, name):
         if libc.flistxattr(handle, names, size, 0) != size: raise InstallRefused()
         result = []
         for n in names.raw.split(b'\0'):
-            if not n: continue
+            if not n or n in SYSTEM_ATTRIBUTES: continue
             length = libc.fgetxattr(handle, n, None, 0, 0, 0)
             if length < 0: raise InstallRefused()
             value = ctypes.create_string_buffer(length)
@@ -104,7 +109,8 @@ def attributes(descriptor, name):
 
 def copy_attributes(source, destination):
     if sys.platform != 'darwin':
-        for name in os.listxattr(source): os.setxattr(destination, name, os.getxattr(source, name))
+        for name in os.listxattr(source):
+            if name not in SYSTEM_ATTRIBUTES: os.setxattr(destination, name, os.getxattr(source, name))
         return
     import ctypes
     libc = ctypes.CDLL(None, use_errno=True)
@@ -114,7 +120,7 @@ def copy_attributes(source, destination):
     names = ctypes.create_string_buffer(size)
     if libc.flistxattr(source, names, size, 0) != size: raise InstallRefused()
     for name in names.raw.split(b'\0'):
-        if not name: continue
+        if not name or name in SYSTEM_ATTRIBUTES: continue
         length = libc.fgetxattr(source, name, None, 0, 0, 0)
         if length < 0: raise InstallRefused()
         value = ctypes.create_string_buffer(length)

@@ -749,3 +749,20 @@ class LauncherInstallation(unittest.TestCase):
             command.write_text('other baton')
             self.assertNotEqual(subprocess.run(['/bin/sh', str(script)], env=env, capture_output=True).returncode, 0)
             self.assertEqual(command.read_text(), 'other baton')
+
+
+class ProvenanceAttribute(unittest.TestCase):
+    """macOS gives a rewritten file the writer's provenance; that alone must not refuse an install."""
+
+    def test_provenance_is_neither_compared_nor_copied(self):
+        from baton.adapters import setup_files
+        self.assertIn(b'com.apple.provenance', setup_files.SYSTEM_ATTRIBUTES)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'settings.local.json'
+            path.write_text('{}')
+            descriptor = os.open(folder, os.O_RDONLY)
+            try:
+                before = setup_files.attributes(descriptor, path.name)
+                self.assertFalse(any(name in setup_files.SYSTEM_ATTRIBUTES for name, _ in before))
+            finally:
+                os.close(descriptor)
