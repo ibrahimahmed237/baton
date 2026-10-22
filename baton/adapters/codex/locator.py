@@ -162,10 +162,27 @@ class CodexLocator:
         return self.read_rows('SELECT * FROM threads WHERE id IN (' + ','.join('?' for _ in ids) + ')', tuple(ids))
 
     def chats(self) -> list[ChatRef]:
-        """Chats that could be linked."""
-        rows = [row for row in self.scoped_rows() if self.is_chat(row)]
-        rows.sort(key=lambda row: (-(row.get("updated_at_ms") or 0), row["id"]))
-        return [self._ref(row) for row in rows]
+        """Discover metadata across scopes without reading or authorizing native content."""
+        if not self.state_db.exists():
+            return []
+        with closing(sqlite3.connect(self.state_db.as_uri() + "?mode=ro", uri=True, timeout=sqlite_timeout())) as connection:
+            connection.row_factory = sqlite3.Row
+            columns = {row['name'] for row in connection.execute('PRAGMA table_info(threads)')}
+            metadata = ('id', 'name', 'title', 'cwd', 'updated_at_ms', 'updated_at', 'archived')
+            selected = ', '.join(column for column in metadata if column in columns)
+            filters = ['COALESCE(archived, 0) = 0']
+            # Filter native classification in SQL; do not return private row fields.
+            for column, clause in (
+                    ('thread_source', "COALESCE(thread_source, '') != 'subagent'"),
+                    ('agent_role', "COALESCE(agent_role, '') = ''"),
+                    ('source', "instr(COALESCE(source, ''), 'subagent') = 0")):
+                if column in columns:
+                    filters.append(clause)
+            rows = connection.execute('SELECT ' + selected + ' FROM threads WHERE ' + ' AND '.join(filters))
+            refs = [self._ref(dict(row)) for row in rows]
+        refs.sort(key=lambda ref: ref.id)
+        refs.sort(key=lambda ref: ref.updated_at, reverse=True)
+        return refs
 
     def resolve(self, chat_id: str) -> ChatRef:
         """The reference of one chat. A Codex chat keeps its id, so nothing is followed."""

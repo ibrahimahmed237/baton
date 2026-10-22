@@ -39,8 +39,17 @@ class ClaudeLocator:
         return self.inside(matches[0])
     def chats(self):
         """List discoverable native sidebar chats."""
-        return [self.resolve(e["sessionId"]) for _, e in self.entries()
-                if not e.get("isArchived") and not e.get("scriptStarted")]
+        refs = []
+        for _, entry in self.entries():
+            if entry.get("isArchived") or entry.get("scriptStarted"):
+                continue
+            try:
+                refs.append(self.resolve(entry["sessionId"]))
+            except (KeyError, ValueError):
+                # Desktop sidebar entries can outlive their CLI session files, and a chat
+                # that was never started has no session id yet.
+                continue
+        return refs
     def resolve(self, chat_id):
         """Return the current reference for a stable chat identity."""
         _, entry = self.entry(chat_id)

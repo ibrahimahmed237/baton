@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import os
 import stat
+from urllib.parse import unquote, urlsplit
 
 from ...domain.errors import NotAvailable
 from ...ports.tool import ChatRef
@@ -91,19 +92,107 @@ class CursorLocator:
 
     def chats(self):
         refs = []
+        folders = self._folder_index()
         for row in self.headers():
-            value = json.loads(row['value'])
-            if not value.get('isArchived') and not value.get('scriptStarted'):
-                refs.append(self.resolve(row['composerId']))
+            if not valid_id(row.get('composerId')):
+                continue
+            try:
+                value = json.loads(row['value'])
+                if not isinstance(value, dict):
+                    continue
+                if not value.get('isArchived') and not value.get('scriptStarted'):
+                    refs.append(self._reference(row, value, folders))
+            except (KeyError, ValueError, TypeError, OverflowError, OSError):
+                # A damaged composer header must not hide other chats.
+                continue
         return refs
 
     def resolve(self, ident):
         row = self.header(ident)
         value = json.loads(row['value'])
-        ms = value.get('lastUpdatedAt', row.get('lastUpdatedAt', 0))
-        stamp = datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat().replace('+00:00', 'Z')
-        folder = value.get('folder', value.get('workspacePath', ''))
-        return ChatRef(ident, value.get('name', ''), folder, stamp)
+        return self._reference(row, value, self._folder_index())
+
+    def _reference(self, row, value, folders):
+        ms = next((stamp for stamp in (value.get('lastUpdatedAt'), row.get('lastUpdatedAt'),
+                                      value.get('createdAt'), row.get('createdAt'))
+                   if stamp is not None), None)
+        stamp = (datetime.fromtimestamp(ms / 1000, timezone.utc).isoformat().replace('+00:00', 'Z')
+                 if ms is not None else '')
+        # A folder stored on the chat (Baton writes it when it creates one) wins over the index.
+        folder = next((value[key] for key in ('folder', 'workspacePath')
+                       if isinstance(value.get(key), str) and value[key] and '\0' not in value[key]), '')
+        return ChatRef(row['composerId'], value.get('name', ''),
+                       folder or folders.get(row['composerId'], ''), stamp)
+
+    def _directories(self, path):
+        try:
+            path = self.inside(path)
+            children = list(path.iterdir()) if path.is_dir() else []
+        except (OSError, NotAvailable):
+            return
+        for child in children:
+            try:
+                if self.inside(child).is_dir():
+                    yield child
+            except (OSError, NotAvailable):
+                continue
+
+    def _workspace_folders(self):
+        storage = self.root / 'Library/Application Support/Cursor/User/workspaceStorage'
+        for workspace in self._directories(storage):
+            try:
+                metadata = json.loads(self.inside(workspace / 'workspace.json').read_text())
+                if not isinstance(metadata, dict) or not isinstance(metadata.get('folder'), str):
+                    continue
+                uri = urlsplit(metadata['folder'])
+                folder = unquote(uri.path)
+                if (uri.scheme != 'file' or uri.netloc not in ('', 'localhost') or
+                        uri.query or uri.fragment or not folder.startswith('/') or '\0' in folder):
+                    continue
+            except (OSError, ValueError, KeyError, TypeError, NotAvailable):
+                continue
+            ids = []
+            try:
+                path = self.inside(workspace / 'state.vscdb')
+                for suffix in ('-wal', '-shm', '-journal'):
+                    self.inside(Path(str(path) + suffix))
+                from ...ports.budget import sqlite_timeout
+                with closing(sqlite3.connect(path.as_uri() + '?mode=ro', uri=True,
+                                             timeout=sqlite_timeout())) as db:
+                    row = db.execute('SELECT value FROM ItemTable WHERE key=?',
+                                     ('composer.composerData',)).fetchone()
+                if row:
+                    data = json.loads(row[0])
+                    ids = [item['composerId'] for item in data['allComposers']
+                           if isinstance(item, dict) and valid_id(item.get('composerId'))]
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error, NotAvailable):
+                pass
+            yield folder, ids
+
+    def _folder_index(self):
+        """Map workspace membership first, then the app's transcript directory keys."""
+        memberships, keys = {}, {}
+        for folder, ids in self._workspace_folders():
+            keys.setdefault(folder.lstrip('/').replace('/', '-'), set()).add(folder)
+            for ident in ids:
+                memberships.setdefault(ident, set()).add(folder)
+        transcripts = {}
+        for project in self._directories(self.root / '.cursor/projects'):
+            candidates = keys.get(project.name, {'/' + project.name.replace('-', '/')})
+            if len(candidates) != 1:
+                continue
+            folder = next(iter(candidates))
+            for chat in self._directories(project / 'agent-transcripts'):
+                if not valid_id(chat.name):
+                    continue
+                try:
+                    if self.inside(chat / (chat.name + '.jsonl')).is_file():
+                        transcripts.setdefault(chat.name, set()).add(folder)
+                except (OSError, NotAvailable):
+                    continue
+        result = {ident: next(iter(paths)) for ident, paths in transcripts.items() if len(paths) == 1}
+        result.update({ident: next(iter(paths)) for ident, paths in memberships.items() if len(paths) == 1})
+        return result
 
     def name(self, ident):
         return self.resolve(ident).name
