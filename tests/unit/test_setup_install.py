@@ -59,8 +59,10 @@ class SetupInstallation(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='baton-setup-')
         self.addCleanup(self.temporary.cleanup)
-        self.home = Path(self.temporary.name).resolve()
-        self.guard = temporary_home_guard(self.home)
+        temporary_root = Path(self.temporary.name).resolve()
+        self.home = temporary_root / 'project'
+        self.home.mkdir()
+        self.guard = temporary_home_guard(temporary_root)
         self.guard.__enter__(); self.addCleanup(self.guard.__exit__, None, None, None)
         self.process_guard = no_processes()
         self.process_guard.__enter__(); self.addCleanup(self.process_guard.__exit__, None, None, None)
@@ -83,6 +85,155 @@ class SetupInstallation(unittest.TestCase):
         self.engine.setup_install = self.service
         self.assertEqual(status, 0, out.getvalue())
         return json.loads(out.getvalue())
+
+    def test_L1_home_root_and_missing_project_are_refused_for_both_actions(self):
+        self.service.project = None
+        for action in ('install', 'uninstall'):
+            result = self.call('setup', action, '--tool', 'claude')
+            self.assertEqual(result['error']['note']['id'], 'setup.project_required')
+            for project in (Path.home(), Path('/'), Path.home() / 'project/..'):
+                # Test the service too: the CLI sandbox refuses / before dispatch.
+                from baton.services.setup_install import UnsafeProject
+                with self.assertRaises(UnsafeProject):
+                    self.service.preview('claude', removing=action == 'uninstall', project=str(project))
+        self.assertFalse(self.service.files.record_path('claude').exists())
+
+    def test_L1_recorded_project_is_used_without_a_project_argument(self):
+        self.service.apply('claude')
+        self.service.project = None
+        with patch.object(Path, 'cwd', return_value=Path.home()):
+            preview = self.call('setup', 'uninstall', '--tool', 'claude')
+        self.assertEqual(preview['project'], str(self.home))
+        self.assertTrue(self.call('setup', 'uninstall', '--confirm', preview['plan_id'])['applied'])
+
+    def test_L3_invalid_confirmation_notes_for_both_setup_actions(self):
+        import base64
+        import time
+        for action in ('install', 'uninstall'):
+            preview = self.call('setup', action, '--tool', 'claude')
+            token = preview['plan_id'].removeprefix('p_si_')
+            stored = json.loads(base64.urlsafe_b64decode(token + '=' * (-len(token) % 4)))
+            expired = {**stored, 'at': time.time() - 601}
+            malformed = {**stored, 'request': []}
+            ids = ['p_missing', 'p_si_!!!', 'p_si_W10']
+            ids += ['p_si_' + base64.urlsafe_b64encode(json.dumps(v).encode()).decode() for v in (expired, malformed)]
+            for ident in ids:
+                result = self.call('setup', action, '--confirm', ident)
+                self.assertEqual(result['error']['note']['id'], 'plan.invalid', result)
+
+    def test_L2_restore_exact_bytes_and_remove_created_hooks_key(self):
+        for tool in ('claude', 'codex', 'cursor'):
+            hooks = self.engine.adapters[tool].hooks
+            path = hooks.path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            original = '{\r\n  "other" : [1.00, "\\u0061"]\r\n}\r\n'
+            path.write_bytes(original.encode())
+            self.service.apply(tool)
+            self.service.apply(tool)  # Reinstall must retain the original backup.
+            self.service.apply(tool, True)
+            self.assertEqual(path.read_bytes(), original.encode())
+            self.assertNotIn('hooks', json.loads(path.read_bytes()))
+
+    def test_L2_later_edits_and_their_whitespace_survive_uninstall(self):
+        for tool in ('claude', 'codex', 'cursor'):
+            hooks = self.engine.adapters[tool].hooks
+            path = hooks.path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('{\n  "other" : 1.00\n}\n')
+            self.service.apply(tool)
+            source = path.read_text().replace('1.00', '[ 2.00, "\\u0062" ]')
+            path.write_text(source)
+            self.service.apply(tool, True)
+            self.assertEqual(path.read_text(), '{\n  "other" : [ 2.00, "\\u0062" ]\n}\n')
+
+    def test_L2_adopting_existing_entries_still_saves_a_real_backup(self):
+        hooks = self.engine.adapters['claude'].hooks
+        path = hooks.path
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'hooks': {event: [entry] for event, entry in hooks.install_entries(str(self.command)).items()}}))
+        original = path.read_bytes()
+        result = self.service.apply('claude')
+        record = self.service.files.recorded('claude')
+        self.assertEqual(Path(record['backup']).read_bytes(), original)
+        self.assertIn(record['backup'], result['backups'])
+        self.service.apply('claude', True)
+        self.assertEqual(json.loads(path.read_text()), {'hooks': {}})
+
+    def test_L2_legacy_record_recovers_original_backup_bytes(self):
+        path = self.engine.adapters['claude'].hooks.path
+        path.parent.mkdir(parents=True)
+        original = '{\n "untouched" : 1.00\n}\n'
+        path.write_text(original)
+        self.service.apply('claude')
+        record_path = self.service.files.record_path('claude')
+        record = json.loads(record_path.read_text())
+        record.pop('backup')
+        record_path.write_text(json.dumps(record))
+        self.service.apply('claude', True)
+        self.assertEqual(path.read_text(), original)
+
+    def test_L5_setup_uses_recorded_project_and_executable_with_explanations(self):
+        from baton.ports.tool import FormatCheck
+        alternate = self.home / 'bin/baton-custom'
+        alternate.parent.mkdir()
+        alternate.write_text('fixture'); alternate.chmod(0o755)
+        self.service.executable = str(alternate)
+        for tool in self.engine.adapters:
+            self.service.apply(tool)
+        engine = build(self.home / 'store', tools_home=self.home, installation_probe=lambda _: True)
+        try:
+            for adapter in engine.adapters.values():
+                adapter.state.format_version = lambda: FormatCheck(True, 'fixture')
+            out = io.StringIO()
+            with patch.object(engine, 'close'):
+                self.assertEqual(main(['setup', '--json'], engine_factory=lambda: engine, stdout=out), 0)
+            rows = {r['tool']: r for r in json.loads(out.getvalue())['tools']}
+            for tool, row in rows.items():
+                hooks = next(f for f in row['findings'] if f['id'] == 'hooks')
+                if tool == 'codex':
+                    self.assertFalse(row['ready'])
+                    self.assertEqual(hooks['note']['id'], 'setup.trust_once')
+                else: self.assertTrue(row['ready'], row)
+            self.assertFalse(self.service.check('codex').ok)
+            trust_before = (self.home / '.codex/hooks.json').read_bytes()
+            with patch.object(self.engine.adapters['codex'].hooks, 'trusted', return_value=True):
+                self.assertTrue(self.service.check('codex').ok)
+            self.assertEqual((self.home / '.codex/hooks.json').read_bytes(), trust_before)
+            alternate.unlink()
+            for tool in rows:
+                self.assertEqual(self.service.check(tool).note_id, 'setup.command_missing')
+        finally: engine.close()
+
+    def test_L5_unrecorded_global_entries_do_not_establish_readiness(self):
+        hooks = self.engine.adapters['claude'].hooks
+        path = hooks.path
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps({'hooks': {event: [entry] for event, entry in hooks.install_entries(str(self.command)).items()}}))
+        self.assertTrue(hooks.check().ok)
+        finding = self.service.check('claude')
+        self.assertFalse(finding.ok)
+        self.assertEqual(finding.note_id, 'setup.hooks')
+
+    def test_L5_exact_entries_missing_file_and_entrypoints_are_checked(self):
+        for tool in self.engine.adapters:
+            self.service.apply(tool)
+            hooks = self.engine.adapters[tool].hooks
+            path = Path(self.service.files.recorded(tool)['path'])
+            original = path.read_text()
+            if tool != 'opencode':
+                settings = json.loads(original)
+                event = next(iter(hooks.install_entries(str(self.command))))
+                settings['hooks'][event][0]['matcher'] = 'never'
+                path.write_text(json.dumps(settings))
+            else: path.write_text(original + '// changed')
+            finding = self.service.check(tool)
+            self.assertFalse(finding.ok)
+            self.assertEqual(finding.note_id, 'setup.hooks')
+            path.write_text(original)
+            with patch.object(hooks, 'entrypoints_available', return_value=False):
+                self.assertEqual(self.service.check(tool).note_id, 'setup.hooks')
+            path.unlink()
+            self.assertEqual(self.service.check(tool).note_id, 'setup.hooks')
 
     def test_all_preview_paths_entries_and_first_steps_without_writes(self):
         expected = {'claude': '.claude/settings.local.json', 'codex': '.codex/hooks.json',
@@ -128,7 +279,7 @@ class SetupInstallation(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), installed)
                 result = self.call('setup', 'uninstall', '--confirm', preview['plan_id'])
                 self.assertTrue(result['applied'])
-                if before: self.assertEqual(json.loads(path.read_text()), json.loads(before))
+                if before: self.assertEqual(path.read_text(), before)
                 else: self.assertFalse(path.exists())
 
     def test_existing_other_hooks_survive_and_only_own_entries_removed(self):
@@ -173,7 +324,7 @@ class SetupInstallation(unittest.TestCase):
         path = self.home / '.claude/settings.local.json'
         path.parent.mkdir(parents=True); path.write_text('{"other": 7}')
         result = self.call('setup', 'install', '--confirm', preview['plan_id'])
-        self.assertEqual(result['error']['kind'], 'chat_changed')
+        self.assertEqual(result['error']['note']['id'], 'plan.invalid')
         self.assertEqual(path.read_text(), '{"other": 7}')
 
     def test_project_hook_paths_are_recorded_and_restored(self):
@@ -527,7 +678,7 @@ class SetupInstallation(unittest.TestCase):
         self.assertEqual(path.read_text(), '{}')
         self.assertFalse((self.engine.root / 'hook-backups').exists())
 
-    def test_review_production_cli_defaults_to_measured_current_project_paths(self):
+    def test_cli_requires_explicit_project_instead_of_current_folder(self):
         project = self.home / 'project'
         expected = {'claude': '.claude/settings.local.json', 'codex': '.codex/hooks.json',
                     'opencode': '.opencode/plugins/baton.js', 'cursor': '.cursor/hooks.json'}
@@ -536,7 +687,9 @@ class SetupInstallation(unittest.TestCase):
             for tool, relative in expected.items():
                 self.engine.sandboxed = False
                 with patch.object(Path, 'cwd', return_value=project):
-                    preview = self.call('setup', 'install', '--tool', tool)
+                    refused = self.call('setup', 'install', '--tool', tool)
+                    self.assertEqual(refused['error']['note']['id'], 'setup.project_required')
+                    preview = self.call('setup', 'install', '--tool', tool, '--project', str(project))
                 self.assertEqual(preview['files'][0]['path'], str(project / relative))
                 self.assertEqual(preview['project'], str(project))
                 self.assertFalse((project / relative).exists())
@@ -733,7 +886,7 @@ class LauncherInstallation(unittest.TestCase):
             result = subprocess.run([str(command), 'links', '--json'], cwd=folder, env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(result.stdout)['links'], [])
-            result = subprocess.run([str(command), 'setup', 'install', '--tool', 'codex'], cwd=folder, env=env, capture_output=True, text=True)
+            result = subprocess.run([str(command), 'setup', 'install', '--tool', 'codex', '--project', str(home / 'store/tools/project')], cwd=folder, env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             preview = json.loads(result.stdout)
             self.assertEqual(preview['executable'], str(command))

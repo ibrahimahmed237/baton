@@ -291,13 +291,13 @@ class OpenCodeTests(unittest.TestCase):
         self.adapter.app.open(self.chat, "/fixture/a & b")
         self.assertEqual(self.process.calls, [("open_url", "opencode://open-project?directory=%2Ffixture%2Fa+%26+b")])
 
-    def test_plugin_is_rooted_synthetic_and_requires_loaded_evidence(self):
+    def test_plugin_is_rooted_synthetic_and_ready_from_exact_file(self):
         self.adapter.hooks.entrypoints_available = lambda: True
         self.assertFalse(self.adapter.hooks.check().values["installed"])
         finding = self.adapter.hooks.install()
         self.assertTrue(finding.values["installed"])
-        self.assertFalse(finding.ok)
-        self.assertEqual(finding.note_id, "setup.restart_once")
+        self.assertTrue(finding.ok)
+        self.assertEqual(finding.note_id, "")
         content = self.adapter.hooks.path.read_text()
         for text in ('"chat.message"', 'synthetic: true', '"session.status"', '"busy"', '"idle"', '"catch-up"', '"notify"'):
             self.assertIn(text, content)

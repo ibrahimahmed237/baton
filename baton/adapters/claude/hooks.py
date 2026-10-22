@@ -62,8 +62,8 @@ class ClaudeHooks:
         """Report whether the owned hook entries and entry points are ready."""
         try:
             settings = self._read(); hooks = settings.get('hooks', {})
-            ok = all(any(any(h.get('type') == 'command' and h.get('command') == command for h in e.get('hooks', []))
-                for e in hooks.get(event, [])) for event, command in self.commands.items())
+            ok = all({'hooks': [{'type': 'command', 'command': command}]} in hooks.get(event, [])
+                     for event, command in self.commands.items())
         except (OSError, ValueError, TypeError, AttributeError): ok = False
         ok = ok and self.entrypoints_available()
         return SetupFinding('hooks', ok, '' if ok else 'setup.hooks', {'need': 'none', 'tool': 'claude'})

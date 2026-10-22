@@ -14,35 +14,49 @@ def rewrite(source, desired, identities=None):
         pos = skip(pos)
         _, end = decoder.raw_decode(source, pos)
         if old == new: return source[pos:end], end
-        if isinstance(old, dict) and isinstance(new, dict):
-            cursor, parts = skip(pos + 1), []
-            for key, value in old.items():
+        if isinstance(old, (dict, list)) and isinstance(new, type(old)):
+            cursor, items = skip(pos + 1), []
+            pairs = old.items() if isinstance(old, dict) else enumerate(old)
+            for key, value in pairs:
                 start = cursor
-                _, key_end = decoder.raw_decode(source, cursor)
-                value_start = skip(skip(key_end) + 1)
-                text, value_end = render(value_start, value, new.get(key), (*path, key))
-                if key in new: parts.append(source[start:value_start] + text)
-                cursor = skip(value_end)
-                if source[cursor:cursor+1] == ',': cursor = skip(cursor + 1)
-            parts.extend(json.dumps(key) + ': ' + json.dumps(value) for key, value in new.items() if key not in old)
-            return '{' + ', '.join(parts) + '}', end
-        if isinstance(old, list) and isinstance(new, list):
-            cursor, available = skip(pos + 1), []
-            for value in old:
+                if isinstance(old, dict):
+                    _, key_end = decoder.raw_decode(source, cursor)
+                    cursor = skip(skip(key_end) + 1)
+                value_start = cursor
                 _, stop = decoder.raw_decode(source, cursor)
-                available.append((value, cursor, stop, len(available)))
+                items.append((key, value, start, value_start, stop))
                 cursor = skip(stop)
                 if source[cursor:cursor+1] == ',': cursor = skip(cursor + 1)
-            parts = []
-            for value in new:
-                origin = (identities or {}).get(id(value))
-                match = next((i for i, pair in enumerate(available) if origin == (*path, pair[3])), None) if origin is not None else next((i for i, pair in enumerate(available) if pair[0] == value), None)
-                if match is not None:
-                    old_value, start, stop, index = available.pop(match)
-                    parts.append(render(start, old_value, value, (*path, index))[0])
-                else:
-                    parts.append(json.dumps(value))
-            return '[' + ', '.join(parts) + ']', end
+            selected = []
+            if isinstance(old, dict):
+                for item in items:
+                    if item[0] in new: selected.append((item, new[item[0]]))
+                added = [json.dumps(k) + ': ' + json.dumps(v) for k, v in new.items() if k not in old]
+            else:
+                available, added = list(items), []
+                for value in new:
+                    origin = (identities or {}).get(id(value))
+                    if origin is not None:
+                        match = next((i for i, item in enumerate(available) if origin == (*path, item[0])), None)
+                    else:
+                        match = next((i for i, item in enumerate(available) if item[1] == value), None)
+                    if match is None: added.append(json.dumps(value))
+                    else: selected.append((available.pop(match), value))
+            if not items:
+                return source[pos:end-1] + ', '.join(added) + source[end-1:end], end
+            text = source[pos:items[0][2]]
+            previous = None
+            for item, value in selected:
+                key, old_value, start, value_start, stop = item
+                if previous is not None:
+                    index = items.index(previous)
+                    text += source[previous[4]:items[index + 1][2]] if index + 1 < len(items) else ', '
+                text += source[start:value_start] + render(value_start, old_value, value, (*path, key))[0]
+                previous = item
+            if added:
+                if selected: text += ', '
+                text += ', '.join(added)
+            return text + source[items[-1][4]:end], end
         return json.dumps(new), end
 
     if original == desired: return source

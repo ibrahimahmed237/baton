@@ -65,7 +65,7 @@ class CursorHooks:
     def check(self):
         try:
             hooks = self._read().get('hooks', {})
-            installed = all(any(entry.get('command') == command for entry in hooks.get(event, []))
+            installed = all({'command': command} in hooks.get(event, [])
                             for event, command in self.commands.items())
         except (OSError, ValueError, AttributeError, TypeError, NotAvailable):
             installed = False

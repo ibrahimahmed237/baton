@@ -11,7 +11,7 @@ import sys
 import fcntl
 import errno
 from ..domain.errors import ChatChanged, NotAvailable
-from ..ports.setup_install import HookChange, InstallRefused
+from ..ports.setup_install import HookChange, InstallRefused, UnsafeProject
 from .hook_json import read, rewrite
 
 
@@ -185,6 +185,11 @@ class SetupFiles:
     def coordination_verified(self):
         return self.coordinate is not None
 
+    def project_path(self, project):
+        path = Path(project).resolve()
+        if path in (Path('/'), Path.home().resolve()): raise UnsafeProject()
+        return str(path)
+
     def command_available(self, executable):
         if not Path(executable).is_absolute(): return False
         path = checked(executable)
@@ -209,8 +214,9 @@ class SetupFiles:
         if source is None: return None
         try:
             record = read(source)
-            if set(record) != {'executable', 'path'} or not all(isinstance(v, str) and Path(v).is_absolute() for v in record.values()):
+            if not {'executable', 'path'} <= set(record) <= {'executable', 'path', 'backup'} or not all(isinstance(record[k], str) and Path(record[k]).is_absolute() for k in ('executable', 'path')):
                 raise ValueError()
+            if 'backup' in record and record['backup'] is not None and not isinstance(record['backup'], str): raise ValueError()
             return record
         except (OSError, ValueError): raise InstallRefused() from None
 
@@ -272,9 +278,52 @@ class SetupFiles:
                     elif owned not in values:
                         current[event] = [*values, owned]
                     if removing and current.get(event) == []: current.pop(event, None)
+                if removing:
+                    original = self.original(hooks, executable, str(path))
+                    if original is not _UNSET:
+                        baseline = read(original) if original is not None else deepcopy(hooks.install_defaults)
+                        if not baseline.get('hooks') and not settings.get('hooks'):
+                            if 'hooks' not in baseline or original is None:
+                                settings.pop('hooks', None)
+                                baseline.pop('hooks', None)
+                        if settings == baseline:
+                            return HookChange(str(path), before, original, entries)
                 after = rewrite(before, settings, identities) if before is not None else (None if removing else json.dumps(settings, indent=2) + '\n')
             except (ValueError, TypeError, KeyError): raise InstallRefused() from None
         return HookChange(str(path), before, after, entries)
+
+    def original(self, hooks, executable, path):
+        """Read only verified backups for this exact target, including legacy records."""
+        tool = hooks.adapter.name
+        record = self.recorded(tool)
+        if not record or record['path'] != path: return _UNSET
+        if 'backup' in record and record['backup'] is None: return None
+        folder = self.root / 'hook-backups'
+        candidates = [Path(record['backup'])] if 'backup' in record else list(folder.glob(tool + '-*.bak'))
+        originals = []
+        for candidate in candidates:
+            candidate = checked(candidate)
+            if candidate.parent != folder or not candidate.exists(): raise InstallRefused()
+            with directory(candidate.parent) as descriptor:
+                data, _ = snapshot(descriptor, candidate.name)
+            source = data.decode('utf-8')
+            if candidate != self.backup_path(tool, HookChange(path, source, None, [])): continue
+            try:
+                settings = read(source)
+                current = settings.get('hooks', {})
+                entries = hooks.install_entries(executable)
+                if 'backup' not in record and any(owned in current.get(event, []) for event, owned in entries.items()): continue
+            except (ValueError, TypeError, AttributeError): continue
+            originals.append(source)
+        return originals[0] if len(originals) == 1 else _UNSET
+
+    def install_record(self, tool, executable, change, previous):
+        record = {'executable': executable, 'path': change.path}
+        if previous is not None:
+            if 'backup' in previous: record['backup'] = previous['backup']
+        else:
+            record['backup'] = str(self.backup_path(tool, change)) if change.before is not None else None
+        return record
 
     def backup_path(self, tool, change):
         digest = hashlib.sha256((change.path + '\0' + change.before).encode()).hexdigest()
@@ -282,12 +331,12 @@ class SetupFiles:
 
     def details(self, tool, executable, change, removing):
         path = self.record_path(tool)
-        record = {'executable': executable, 'path': change.path}
+        record = self.install_record(tool, executable, change, self.recorded(tool))
         record_source = self.record_source(tool)
         record_after = None if removing else json.dumps(record)
         result = [{'path': str(path), 'action': 'unchanged' if record_source == record_after else
                    'remove' if removing else 'create' if record_source is None else 'change', 'entries': [] if removing else record}]
-        if change.before is not None and change.before != change.after:
+        if change.before is not None and (change.before != change.after or (not removing and record_source is None)):
             backup = self.backup_path(tool, change)
             result.append({'path': str(backup), 'action': 'unchanged' if backup.exists() else 'create', 'entries': []})
         if record_source is not None and record_source != record_after:
@@ -305,7 +354,7 @@ class SetupFiles:
     def _apply(self, tool, executable, change, removing, record_before, record_source=_UNSET, before_write=None):
         path = Path(change.path)
         record = self.record_path(tool)
-        record_text = None if removing else json.dumps({'executable': executable, 'path': change.path})
+        record_text = None if removing else json.dumps(self.install_record(tool, executable, change, record_before))
         backups = []
         with ExitStack() as stack:
             target_fd = stack.enter_context(directory(path.parent, create=True))
@@ -342,7 +391,10 @@ class SetupFiles:
                             except FileNotFoundError: pass
                         stack.callback(cleanup)
                 publications.append((location, descriptor, name, before, after, metadata, replacement, rollback))
-            for location, _, _, before, _, _, _, _ in publications:
+            backup_items = [(item[0], item[3]) for item in publications]
+            if not removing and record_before is None and old is not None and path not in [item[0] for item in backup_items]:
+                backup_items.append((path, old))
+            for location, before in backup_items:
                 if before is not None:
                     backup_change = HookChange(str(location), before.decode(), None, [])
                     backup = self.backup_path(tool, backup_change)

@@ -27,6 +27,11 @@ from typing import Any, Callable, Iterable, Mapping, Protocol
 from ..domain.errors import BatonError, ChatChanged
 from ..ports.clock import Clock
 
+class InvalidPlan(ChatChanged):
+    """The saved preview cannot be confirmed."""
+    note_id = "plan.invalid"
+
+
 class WrongPlanAction(BatonError):
     """The confirmation belongs to a different action."""
     note_id = "plan.wrong_action"
@@ -260,14 +265,16 @@ class PlanBook:
         """
         shown = self.store.load(plan_id)
         if shown is None:
-            raise ChatChanged()
+            raise InvalidPlan()
         if shown.command != command:
             raise WrongPlanAction()
         plan = self.store.claim(plan_id)
         if plan is None or plan.command != command or self._expired(plan):
+            raise InvalidPlan()
+        if plan_again(plan.arguments) != plan.fingerprint:
             raise ChatChanged()
-        if plan_again(plan.arguments) != plan.fingerprint or self._expired(plan):
-            raise ChatChanged()
+        if self._expired(plan):
+            raise InvalidPlan()
         return plan
 
     def purge(self) -> None:

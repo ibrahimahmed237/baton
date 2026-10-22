@@ -8,6 +8,14 @@ class InstallRefused(BatonError):
     note_id = 'setup.install_refused'
 
 
+class ProjectRequired(BatonError):
+    note_id = 'setup.project_required'
+
+
+class UnsafeProject(BatonError):
+    note_id = 'setup.unsafe_project'
+
+
 class CommandMissing(BatonError):
     note_id = 'setup.command_missing'
 
@@ -25,6 +33,7 @@ class InstallFiles(Protocol):
     def root(self): ...
     @property
     def coordination_verified(self) -> bool: ...
+    def project_path(self, project: str) -> str: ...
     def command_available(self, executable: str) -> bool: ...
     def record_source(self, tool: str) -> str | None: ...
     def recorded(self, tool: str) -> dict | None: ...

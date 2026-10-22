@@ -7,11 +7,12 @@ from .noteformat import NoteRef
 
 class SetupCheck:
     """Report independent setup findings for each injected tool."""
-    def __init__(self, adapters, tools=None, *, installation_probe):
+    def __init__(self, adapters, tools=None, *, installation_probe, hook_probe=None):
         """Use injected store, adapters and timing ports."""
         self.adapters = adapters
         self.tool_ids = tuple(adapters if tools is None else tools)
         self.installation_probe = installation_probe
+        self.hook_probe = hook_probe
 
     def _finding(self, ident, ok, note, tool, values=None):
         return {'id': ident, 'ok': ok, 'note': NoteRef(note, {**(values or {}), 'tool': tool})}
@@ -23,6 +24,29 @@ class SetupCheck:
             return self._finding(ident, False, failure_note, tool)
         return self._finding(finding.id, finding.ok, finding.note_id or
                              ('nothing_unusual' if finding.ok else failure_note), tool, finding.values)
+
+    def complete(self, rows):
+        """Complete an existing read projection with recorded hook observations."""
+        for row in rows:
+            tool = row['tool']
+            if not row['installed']:
+                row['ready'] = False
+                if not any(f['id'] == 'installed' and not f['ok'] for f in row['findings']):
+                    row['findings'].append(self._finding('installed', False, 'setup.not_installed', tool))
+            if tool not in self.adapters: continue
+            hooks = self._probe(tool, 'hooks', lambda: self.hook_probe(tool), 'setup.hooks')
+            # Replace the hooks finding in place: the order of findings is part of the contract.
+            if any(f['id'] == 'hooks' for f in row['findings']):
+                row['findings'] = [hooks if f['id'] == 'hooks' else f for f in row['findings']]
+            else:
+                row['findings'] = row['findings'] + [hooks]
+            row['ready'] = row['installed'] and hooks['ok'] and all(
+                f['ok'] for f in row['findings'] if f['id'] == 'format')
+            for mode in row['link_modes']:
+                if mode['mode'] == 'attached_history':
+                    mode['available'] = row['installed'] and hooks['ok']
+                    mode['reason'] = None if mode['available'] else hooks['note'] if row['installed'] else NoteRef('setup.not_installed', {'tool': tool})
+        return rows
 
     def check(self, tool):
         """Check one installed tool without hiding independent failures."""
@@ -46,7 +70,7 @@ class SetupCheck:
                 'nothing_unusual' if check.known else 'format.unknown_version', tool, {'version': check.version})
         except Exception:
             format_finding = self._finding('format', False, 'setup.format_unreadable', tool)
-        hooks = self._probe(tool, 'hooks', adapter.hooks.check, 'setup.hooks')
+        hooks = self._probe(tool, 'hooks', (lambda: self.hook_probe(tool)) if self.hook_probe else adapter.hooks.check, 'setup.hooks')
         runner = self._probe(tool, 'runner', adapter.runner.available, 'setup.runner') if adapter.runner else (
             self._finding('runner', False, 'setup.runner', tool))
         result['findings'] = [self._finding('installed', True, 'nothing_unusual', tool), format_finding, hooks, runner]

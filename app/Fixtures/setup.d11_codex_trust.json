@@ -295,10 +295,10 @@
           "mode": "attached_history",
           "reason": {
             "buttons": [],
-            "id": "setup.hooks",
-            "status_line": null,
-            "text": "Baton's hooks are not ready in Codex. Install Baton's hooks and check again.",
-            "tone": "warning",
+            "id": "setup.trust_once",
+            "status_line": "Setup: 1 step left",
+            "text": "In Codex, type /hooks and trust Baton's two entries.",
+            "tone": "info",
             "values": {
               "tool": "Codex"
             }

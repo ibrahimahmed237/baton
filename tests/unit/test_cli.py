@@ -426,6 +426,12 @@ class ThePlanBook(unittest.TestCase):
         self.assertEqual(self.book.confirm(shown, "sync", plan_again).arguments, {"link": 3})
         self.assertEqual(seen, [{"link": 3}])
 
+    def test_unknown_and_malformed_plan_ids_ask_for_another_preview(self):
+        for ident in ('p_unknown', '../bad', ''):
+            with self.assertRaises(ChatChanged) as caught:
+                self.book.confirm(ident, 'sync', lambda _: self.fail('replanned missing preview'))
+            self.assertEqual(caught.exception.note_id, 'plan.invalid')
+
     def test_a_different_fingerprint_means_the_chats_changed(self):
         shown = self.book.remember("p_1", "sync", {"link": 3})
         with self.assertRaises(ChatChanged):
@@ -473,8 +479,9 @@ class ThePlanBook(unittest.TestCase):
     def test_an_expired_plan_is_not_even_planned_again(self):
         shown = self.book.remember("p_1", "sync", {})
         self.clock.value = "2026-10-05T10:10:00+00:00"
-        with self.assertRaises(ChatChanged):
+        with self.assertRaises(ChatChanged) as caught:
             self.book.confirm(shown, "sync", lambda arguments: self.fail("planned an expired request"))
+        self.assertEqual(caught.exception.note_id, 'plan.invalid')
 
     def test_a_plan_that_runs_out_while_it_is_planned_again_is_refused(self):
         shown = self.book.remember("p_1", "sync", {})
@@ -502,8 +509,9 @@ class ThePlanBook(unittest.TestCase):
             book = PlanBook(FilePlanStore(Path(folder) / "plans"), self.clock)
             shown = book.remember("p_1", "sync", {})
             (Path(folder) / "plans" / (shown + ".json")).write_text(json.dumps({"plan_id": "p_other"}))
-            with self.assertRaises(ChatChanged):
+            with self.assertRaises(ChatChanged) as caught:
                 book.confirm(shown, "sync", lambda arguments: "p_1")
+            self.assertEqual(caught.exception.note_id, 'plan.invalid')
 
 
 class TheCommandLine(Temporary):

@@ -1084,7 +1084,7 @@ def setup_install_recipe(tool, state, root):
         if status != 0: raise AssertionError(out.getvalue())
         return json.loads(out.getvalue())
 
-    preview = invoke(['setup', 'install', '--tool', tool, '--json'])
+    preview = invoke(['setup', 'install', '--tool', tool, '--project', str(root / 'home/project'), '--json'])
     if state == 'preview': return preview
     if state == 'result':
         return invoke(['setup', 'install', '--confirm', preview['plan_id'], '--json'])

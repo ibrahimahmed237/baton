@@ -71,9 +71,9 @@ class OpenCodeHooks:
         """Report file installation independently from observed plugin loading."""
         installed = self.path.is_file() and self.path.read_text() == self.plugin_content()
         entrypoints = self.entrypoints_available()
-        ready = installed and entrypoints and self.loaded()
+        ready = installed and entrypoints
         return SetupFinding("hooks", ready, "" if ready else "setup.restart_once" if installed and entrypoints else "setup.hooks",
-                            {"tool": "opencode", "need": "restart_once", "installed": installed, "loaded": ready})
+                            {"tool": "opencode", "need": "restart_once", "installed": installed, "loaded": self.loaded()})
 
     def install(self):
         """Leave the folder untouched until both CLI entry points are available."""

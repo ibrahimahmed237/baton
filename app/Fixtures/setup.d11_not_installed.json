@@ -484,6 +484,20 @@
             }
           },
           "ok": true
+        },
+        {
+          "id": "installed",
+          "note": {
+            "buttons": [],
+            "id": "setup.not_installed",
+            "status_line": null,
+            "text": "Not installed. Install Cursor and check again.",
+            "tone": "warning",
+            "values": {
+              "tool": "Cursor"
+            }
+          },
+          "ok": false
         }
       ],
       "installed": false,

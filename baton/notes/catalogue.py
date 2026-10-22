@@ -599,6 +599,9 @@ CATALOGUE.update({note.id: note for note in (
 )})
 
 CATALOGUE.update({note.id: note for note in (
+    Note('plan.invalid', 'warning', 'This preview is no longer valid. Preview the action again before confirming.'),
+    Note('setup.project_required', 'warning', 'Choose a project folder with --project, then preview again.'),
+    Note('setup.unsafe_project', 'warning', 'Baton cannot install or remove project hooks in your home folder or /. Choose a project folder with --project, then preview again.'),
     Note('setup.install_action', 'info', "Install Baton's hooks"),
     Note('setup.uninstall_action', 'info', "Remove Baton's hooks"),
     Note('setup.install_review', 'info', "Baton adds its hooks to {tool}. Review the files and entries before installing.", (Button('install_hooks', "Install Baton's hooks", True), 'Cancel')),

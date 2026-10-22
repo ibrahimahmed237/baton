@@ -326,6 +326,7 @@
             "text": "Baton's hooks are not ready in Codex. Install Baton's hooks and check again.",
             "tone": "warning",
             "values": {
+              "need": "trust_once",
               "tool": "Codex"
             }
           },

@@ -3,7 +3,8 @@ import hashlib
 import json
 from copy import copy
 from ..domain.errors import NotAvailable
-from ..ports.setup_install import CommandMissing, InstallRefused, InstallAppRunning
+from ..ports.tool import SetupFinding
+from ..ports.setup_install import CommandMissing, InstallRefused, InstallAppRunning, ProjectRequired, UnsafeProject
 from .noteformat import NoteRef
 
 
@@ -13,6 +14,22 @@ class SetupInstall:
         self.project = project
         self.app_running = app_running if app_running is not None else {
             tool: hooks.adapter.app.running for tool, hooks in hooks.items()}
+
+    def check(self, tool):
+        hooks = copy(self.hooks[tool])
+        if not hasattr(hooks, 'install_entries'):
+            return hooks.check()
+        try:
+            record = self.files.recorded(tool)
+            if not record:
+                return SetupFinding('hooks', False, 'setup.hooks', {'tool': tool})
+            hooks.use_install_path(record['path'])
+            hooks.use_installed_command(record['executable'])
+            if not self.files.command_available(record['executable']):
+                return SetupFinding('hooks', False, 'setup.command_missing', {'tool': tool})
+            return hooks.check()
+        except Exception:
+            return SetupFinding('hooks', False, 'setup.install_refused', {'tool': tool})
 
     def running(self, tool):
         if not self.hooks[tool].install_requires_closed_app: return False
@@ -36,9 +53,12 @@ class SetupInstall:
         record_source = self.files.record_source(tool)
         if record:
             recorded_project = hooks.install_project(record["path"])
-            if project and not removing and str(project) != recorded_project: raise InstallRefused()
+            if project and self.files.project_path(project) != recorded_project: raise InstallRefused()
             project = recorded_project
-        project = project or self.project or str(hooks.adapter.root)
+        project = project or self.project
+        if scope == 'project':
+            if not project: raise ProjectRequired()
+            project = self.files.project_path(project)
         executable = record['executable'] if record else self.executable
         expected_path = hooks.install_path(scope, project)
         if record and record['path'] != str(expected_path): raise InstallRefused()

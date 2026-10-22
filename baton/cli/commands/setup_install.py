@@ -3,9 +3,8 @@ import base64
 import json
 import time
 from pathlib import Path
-from ...domain.errors import ChatChanged
 from ...ports.setup_install import InstallRefused
-from ..plans import WrongPlanAction
+from ..plans import WrongPlanAction, InvalidPlan
 from . import command
 from .. import output
 from ...notes.catalogue import get
@@ -34,20 +33,24 @@ def run(ctx, args, removing):
         try:
             encoded = ctx.confirm.removeprefix('p_si_')
             if not ctx.confirm.startswith('p_si_') or len(encoded) > 12000: raise ValueError()
-            stored = json.loads(base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4)))
+            stored = json.loads(base64.b64decode(encoded + '=' * (-len(encoded) % 4), altchars=b'-_', validate=True))
+            if not isinstance(stored, dict) or set(stored) != {'command', 'at', 'request', 'fingerprint'}: raise ValueError()
+            if not isinstance(stored['command'], str) or not isinstance(stored['fingerprint'], str): raise ValueError()
             if stored['command'] != ctx.command: raise WrongPlanAction()
-            if not 0 <= time.time() - stored['at'] <= 600: raise ChatChanged()
+            if not 0 <= time.time() - stored['at'] <= 600: raise InvalidPlan()
             request = stored['request']
+            if not isinstance(request, dict) or set(request) != {'tool', 'removing', 'scope', 'project'}: raise ValueError()
+            if not isinstance(request['tool'], str) or request['tool'] not in service.hooks: raise ValueError()
+            if not isinstance(request['project'], str) or not Path(request['project']).is_absolute(): raise ValueError()
+            if request['removing'] is not removing or request['scope'] not in ('project', 'global'): raise ValueError()
             result = preview(request)
-            if result['plan_id'] != stored['fingerprint']: raise ChatChanged()
-        except (ValueError, KeyError, TypeError): raise ChatChanged() from None
+            if result['plan_id'] != stored['fingerprint']: raise InvalidPlan()
+        except (ValueError, KeyError, TypeError, OverflowError): raise InvalidPlan() from None
         result = service.apply(**request, preview=result)
         result['plan_id'] = ctx.confirm
         return serialise(result)
     request = {'tool': args.tool, 'removing': removing, 'scope': args.scope,
                'project': str(Path(args.project).absolute()) if args.project else service.project}
-    if request['project'] is None and not ctx.engine.sandboxed:
-        request['project'] = str(Path.cwd().absolute())
     result = preview(request)
     if not result['can_confirm']:
         result['plan_id'] = None

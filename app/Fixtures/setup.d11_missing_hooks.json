@@ -191,6 +191,7 @@
             "text": "Baton's hooks are not ready in Claude. Install Baton's hooks and check again.",
             "tone": "warning",
             "values": {
+              "need": "none",
               "tool": "Claude"
             }
           },
