@@ -18,6 +18,20 @@ import baton.ports.setup_install as port  # noqa: E402
 _init = port.InstallRefused.__init__
 
 
+import baton.adapters.setup_files as files  # noqa: E402
+
+_attributes = files.attributes
+
+
+def _shown_attributes(descriptor, name):
+    found = _attributes(descriptor, name)
+    print("attributes of", name, "->", [n for n, _ in found], file=sys.stderr)
+    return found
+
+
+files.attributes = _shown_attributes
+
+
 def _traced(self, *args, **kwargs):
     print("REFUSED AT:", file=sys.stderr)
     traceback.print_stack(limit=5, file=sys.stderr)

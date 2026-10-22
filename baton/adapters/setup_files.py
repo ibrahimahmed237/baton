@@ -78,9 +78,11 @@ def permission_mode(descriptor, name, info):
     finally: os.close(handle)
 
 
-# macOS stamps every file with the writing app's provenance; no app can set or keep
-# it, so it is neither copied nor compared. Every other attribute must survive.
-SYSTEM_ATTRIBUTES = frozenset({'com.apple.provenance', b'com.apple.provenance'})
+# macOS stamps a file with attributes no app can set or keep: the writing app's
+# provenance, and the privacy record it adds in protected folders such as Desktop.
+# They are neither copied nor compared. Every other attribute must survive.
+SYSTEM_ATTRIBUTES = frozenset({'com.apple.provenance', b'com.apple.provenance',
+                               'com.apple.macl', b'com.apple.macl'})
 
 
 def attributes(descriptor, name):

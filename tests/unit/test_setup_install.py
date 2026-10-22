@@ -757,6 +757,7 @@ class ProvenanceAttribute(unittest.TestCase):
     def test_provenance_is_neither_compared_nor_copied(self):
         from baton.adapters import setup_files
         self.assertIn(b'com.apple.provenance', setup_files.SYSTEM_ATTRIBUTES)
+        self.assertIn(b'com.apple.macl', setup_files.SYSTEM_ATTRIBUTES)
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'settings.local.json'
             path.write_text('{}')
