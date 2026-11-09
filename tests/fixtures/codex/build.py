@@ -176,6 +176,23 @@ def build(root, turns, thread="thread-fixture", folder="/fixture/project", title
     return thread
 
 
+def compress_rollout(root, thread):
+    """Replace a fixture rollout with real zstd bytes, keeping its database path unchanged."""
+    from compression import zstd
+    path = rollout_file(root, thread)
+    compressed = Path(str(path) + '.zst')
+    compressed.write_bytes(zstd.compress(path.read_bytes()))
+    path.unlink()
+    return compressed
+
+
+def build_compressed(root, turns, **options):
+    """Build a compressed chat in a temporary fixture home using stdlib zstd."""
+    thread = build(root, turns, **options)
+    compress_rollout(root, thread)
+    return thread
+
+
 def run_sql(root, sql, params=(), database="state_5.sqlite"):
     with closing(sqlite3.connect(home(root) / database)) as db:
         rows = db.execute(sql, params).fetchall()

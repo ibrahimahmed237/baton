@@ -8,12 +8,14 @@ which are not prompts.
 from __future__ import annotations
 
 import json
+import io
 import re
+from pathlib import Path
 from datetime import datetime, timezone
 
 from ...domain.model import PROMPT, REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Message, Turn
 from ...ports.tool import Usage
-from .records import records_from_end
+from .records import records_from_end, rollout_stream
 
 # Blocks Codex, its plugins or Baton put into a user message. None is typed by the user.
 _INJECTED_PREFIXES = (
@@ -41,7 +43,7 @@ _TOOL_RESULTS = ("function_call_output", "custom_tool_call_output", "tool_search
 
 def read_records(path: str) -> list[dict]:
     records = []
-    with open(path, errors="replace") as fh:
+    with io.TextIOWrapper(rollout_stream(Path(path)), errors="replace") as fh:
         for line in fh:
             try:
                 record = json.loads(line)

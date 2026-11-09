@@ -1226,6 +1226,23 @@ class CodexBuiltWithOnlyARoot(unittest.TestCase):
         self.assertNotIsInstance(explicit.process, SystemProcess)
 
 
+class CodexCommandScope(unittest.TestCase):
+    def test_binding_scope_reloads_only_matching_durable_created_descendants(self):
+        root = new_home(self)
+        chat = fx.build(root, turns())
+        adapter, _ = new_adapter(self, root, allowed_chat_ids=(chat,))
+        created = adapter.writer.create(turns(), 'copy', '/fixture/project')
+        fresh = CodexAdapter(root)
+        with self.assertRaises(NotAvailable):
+            fresh.reader.read(chat)
+        fresh.scope_chats((chat,))
+        self.assertEqual(len(fresh.reader.read(created.chat_id)), len(turns()))
+        fresh.scope_chats(())
+        with self.assertRaises(NotAvailable):
+            fresh.reader.read(chat)
+        self.assertEqual(len(fresh.reader.read(created.chat_id)), len(turns()))
+
+
 class CodexThroughTheEngine(unittest.TestCase):
     """The engine's services drive the adapter: linking, delivery, and undo where Codex cannot cut."""
 
@@ -1272,6 +1289,24 @@ class CodexThroughTheEngine(unittest.TestCase):
         self.assertTrue(undone.applied, undone)
         self.assertEqual(rollout_bytes(self.root, chat), before)
         self.assertEqual(len(self.codex.locator.chats()), 2)
+
+
+class CodexPlainStorageCompatibility(unittest.TestCase):
+    def test_plain_chat_ignores_zstd_availability_and_compressed_size_limit(self):
+        from baton.adapters.codex import records
+        with no_processes():
+            root = new_home(self)
+            chat = fx.build(root, turns())
+            adapter, _ = new_adapter(self, root)
+            expected = adapter.reader.read(chat)
+            with patch.object(records, '_zstd', None), patch.object(records, 'MAX_ROLLOUT_BYTES', 1):
+                self.assertFalse(adapter.locator.compressed(chat))
+                self.assertEqual(adapter.reader.read(chat), expected)
+                self.assertTrue(adapter.state.target_format(chat).known)
+                self.assertTrue(adapter.state.format_version().known)
+                result = adapter.writer.rename(chat, 'plain remains writable')
+                adapter.writer.take_back(result.receipt)
+                self.assertEqual(adapter.locator.name(chat), 'fixture')
 
 
 if __name__ == "__main__":

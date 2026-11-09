@@ -25,7 +25,7 @@ from uuid import uuid4
 from ...domain.errors import ChatChanged, ChatHeld, ChatReplying, NotAvailable, UnknownFormat
 from ...domain.model import Turn
 from ...ports.tool import WriteReceipt, WriteResult
-from .records import message_ids, next_ordinal, parse_strict, serialize, session_meta_record, turn_records
+from .records import message_ids, next_ordinal, parse_strict, serialize, session_meta_record, turn_records, read_rollout
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,7 @@ class CodexWriter:
         state, locator = self.adapter.state, self.adapter.locator
         if chat_id is not None:
             self.adapter.scope.require(chat_id)
+            self._refuse_compressed(chat_id)
         if not locator.state_db.exists():
             raise NotAvailable()
         if chat_id is None:
@@ -90,6 +91,16 @@ class CodexWriter:
             raise ChatReplying()
         if self.lease is None and state.held(chat_id):
             raise ChatHeld()
+
+    def _refuse_compressed(self, chat_id: str) -> None:
+        try:
+            compressed = self.adapter.locator.compressed(chat_id)
+        except KeyError:
+            return
+        if compressed:
+            error = NotAvailable()
+            error.note_id = 'write.codex_compressed'
+            raise error
 
     def _intent_path(self, token: str) -> Path:
         if not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
@@ -241,8 +252,7 @@ class CodexWriter:
         for row in rows[:5]:
             try:
                 path = locator.rollout_path(row["id"])
-                with path.open("rb") as fh:
-                    meta = (json.loads(fh.readline()) or {}).get("payload") or {}
+                meta = (json.loads(read_rollout(path).splitlines()[0]) or {}).get("payload") or {}
             except (OSError, ValueError, AttributeError, KeyError):
                 continue
             if not self.adapter.state.target_format(row["id"]).known:
@@ -468,6 +478,8 @@ class CodexWriter:
         """Undo one write of this adapter, unless something else has changed what it wrote."""
         if receipt.tool != self.adapter.name:
             raise ValueError("wrong adapter")
+        if self.adapter.scope.contains(receipt.chat_id):
+            self._refuse_compressed(receipt.chat_id)
         token = receipt.data['token']
         if not isinstance(token, str) or len(token) != 32 or any(c not in '0123456789abcdef' for c in token):
             raise ValueError('receipt_token')
@@ -543,6 +555,7 @@ class CodexWriter:
         chat_id, spec = manifest["chat_id"], manifest["rollout"]
         state = self.adapter.state
         self.adapter.scope.require(chat_id)
+        self._refuse_compressed(chat_id)
         self.lease.check()
         if not state._threads_columns_ok():
             raise UnknownFormat()

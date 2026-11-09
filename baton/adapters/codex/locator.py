@@ -12,6 +12,7 @@ from typing import Any
 
 from ...domain.errors import NotAvailable
 from ...ports.tool import ChatRef
+from . import records
 
 
 def iso_from_ms(milliseconds: Any) -> str:
@@ -111,7 +112,11 @@ class CodexLocator:
         info = path.lstat()
         if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
             raise KeyError(chat_id)
-        with path.open('rb') as stream:
+        # Older Python can still resolve/list compressed chats; identity is checked
+        # when content can be decoded. Writes are refused regardless of Python.
+        if path.suffix == '.zst' and records._zstd is None:
+            return path
+        with records.rollout_stream(path) as stream:
             try:
                 meta = json.loads(stream.readline())
             except (ValueError, UnicodeError):
@@ -121,6 +126,11 @@ class CodexLocator:
                 meta['payload'].get('id', meta['payload'].get('session_id')) != chat_id):
             raise KeyError(chat_id)
         return path
+
+    def compressed(self, chat_id: str) -> bool:
+        """Whether the safely located rollout is stored compressed, without decoding it."""
+        path = self.rollout_of(self.row(chat_id))
+        return path is not None and path.suffix == '.zst'
 
     def rollout_of(self, row: dict[str, Any]) -> Path | None:
         """The rollout path a thread row names, confined to the root; None when the row names none or one outside."""
@@ -133,8 +143,12 @@ class CodexLocator:
             raw_path = path if path.is_absolute() else self.home / path
             resolved = self.inside(raw_path)
             if (resolved != raw_path.absolute() or not resolved.is_relative_to(self.sessions) or
-                    not resolved.name.endswith('-' + row['id'] + '.jsonl')):
+                    not resolved.name.endswith(('-' + row['id'] + '.jsonl', '-' + row['id'] + '.jsonl.zst'))):
                 return None
+            if not resolved.exists() and resolved.suffix == '.jsonl':
+                compressed = self.inside(Path(str(resolved) + '.zst'))
+                if compressed.is_file():
+                    return compressed
             return resolved
         except (ValueError, NotAvailable):
             return None

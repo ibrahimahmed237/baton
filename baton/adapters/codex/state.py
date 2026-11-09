@@ -8,9 +8,10 @@ from contextlib import closing
 from pathlib import Path
 
 from ...domain.conditions import SideCondition
+from ...domain.errors import NotAvailable, UnknownFormat
 from ...ports.tool import FormatCheck
 from .facts import SCHEMA_VERSION, CHECKED_CLI_VERSIONS
-from .records import KNOWN_RECORD_TYPES, TASK_CLOSE, TASK_OPEN, records_from_end, parse_strict, record_shape_known
+from .records import KNOWN_RECORD_TYPES, TASK_CLOSE, TASK_OPEN, records_from_end, parse_strict, record_shape_known, read_rollout
 
 # Columns of `threads` that the writer reads or sets (spike/m0_create.py). All must exist.
 REQUIRED_COLUMNS = frozenset({
@@ -185,13 +186,15 @@ class CodexState:
         for row in newest:
             try:
                 path = locator.rollout_path(row['id'])
+                if not self._rollout_ok(path):
+                    return FormatCheck(False, 'records')
+            except (UnknownFormat, NotAvailable):
+                return FormatCheck(False, 'records')
             except (KeyError, OSError):
                 candidate = locator.rollout_of(row)
                 if candidate is not None and not candidate.exists():
                     continue
                 return FormatCheck(False, 'identity')
-            if not self._rollout_ok(path):
-                return FormatCheck(False, 'records')
             readable.append(row)
             if len(readable) == 5:
                 break
@@ -209,13 +212,13 @@ class CodexState:
             if not self._threads_columns_ok():
                 return FormatCheck(False, 'schema')
             path = self.adapter.locator.rollout_path(chat_id)
-            records = parse_strict(path.read_bytes())
+            records = parse_strict(read_rollout(path))
             if not records or records[0].get('type') != 'session_meta':
                 return FormatCheck(False, 'session')
             meta = records[0]['payload']
             if meta.get('id', meta.get('session_id')) != chat_id:
                 return FormatCheck(False, 'identity')
-        except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
+        except (OSError, ValueError, TypeError, KeyError, sqlite3.Error, UnknownFormat, NotAvailable):
             return FormatCheck(False, 'records')
         version = meta.get("cli_version") or SCHEMA_VERSION
         new_version = version not in (*self.adapter.facts.checked_versions, *CHECKED_CLI_VERSIONS)

@@ -73,6 +73,8 @@ class Note:
 
 
 CATALOGUE = {note.id: note for note in (
+    Note("write.codex_compressed", "warning", "This Codex chat is stored compressed; open it in Codex once, then Baton can add to it."),
+    Note("read.codex_compressed_python", "warning", "This Codex chat is stored compressed. Baton needs Python 3.14 or newer to read it."),
     Note('screen.settings', "info", 'Settings'),
     Note('screen.open_window', "info", 'Open Baton'),
     Note('screen.quit', "info", 'Quit Baton…'),
@@ -141,6 +143,9 @@ CATALOGUE = {note.id: note for note in (
     Note("link.remove", "warning", 'Remove the link between "{name}" and "{other_name}"? Both chats stay exactly as they are. Baton stops syncing them. The {n} turns still waiting for {tool} will not be delivered.', ("Remove link", "Keep link")),
     Note("link.full_copy", "info", "A new {tool} chat shows the full history. The link moves to it; your current chat stays exactly as it is."),
     Note("link.copy", "info", "A new chat is created in {tool} with all {n} turns. The two chats will not be kept in sync.", ("Copy to {tool}", "Copy and link", "Cancel")),
+    Note("scope.chats_only", "info", "Baton can only use the chats you chose or linked."),
+    Note("tool.unspecified", "info", "This tool"),
+    Note("tool.unsupported_reason", "info", "The tool cannot perform this action"),
     Note("tool.cannot", "info", "{action} is not available: {reason}."),
     Note("setup.missing", "warning", "{missing}. {effect}. {fix}.", ("{fix}", "Check again"), "Setup: 1 step left"),
     Note("setup.trust_once", "info", "In {tool}, type /hooks and trust Baton's two entries.", (), "Setup: 1 step left"),

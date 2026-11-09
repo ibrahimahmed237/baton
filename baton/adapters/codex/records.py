@@ -6,6 +6,7 @@ format has one home (shapes from spike/m0_append.py and spike/m0_create.py).
 from __future__ import annotations
 
 import json
+import io
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,42 @@ from typing import Iterator, Sequence
 from uuid import uuid4
 
 from ...domain.model import REPLY, TOOL_CALL, TOOL_RESULT, TOOL_TEXT, Turn
+from ...domain.errors import NotAvailable, UnknownFormat
+
+try:
+    from compression import zstd as _zstd
+except ImportError:
+    _zstd = None
+
+# Bound both the decoded rollout and the decoder's window to 64 MiB.
+MAX_ROLLOUT_BYTES = 64 << 20
+
+
+def read_rollout(path: Path) -> bytes:
+    """Read plain or bounded zstd bytes without publishing a decompressed file."""
+    path = Path(path)
+    if path.suffix != '.zst':
+        return path.read_bytes()
+    if _zstd is None:
+        error = NotAvailable()
+        error.note_id = 'read.codex_compressed_python'
+        raise error
+    try:
+        if path.stat().st_size > MAX_ROLLOUT_BYTES:
+            raise UnknownFormat()
+        with _zstd.open(path, options={_zstd.DecompressionParameter.window_log_max: 26}) as stream:
+            raw = stream.read(MAX_ROLLOUT_BYTES + 1)
+        if len(raw) > MAX_ROLLOUT_BYTES:
+            raise UnknownFormat()
+        return raw
+    except (_zstd.ZstdError, EOFError) as error:
+        raise UnknownFormat() from error
+
+
+def rollout_stream(path: Path):
+    """Open plain bytes or an in-memory decoded rollout for record scans."""
+    path = Path(path)
+    return io.BytesIO(read_rollout(path)) if path.suffix == '.zst' else path.open('rb')
 
 # Top-level record types Codex is known to write. A rollout holding another one
 # was written by a version nobody has checked.
@@ -95,7 +132,7 @@ def records_from_end(path: Path, budget: int | None = None, chunk: int = 1 << 18
     Lines that do not parse (a line Codex is still writing) are skipped. With a
     budget the walk stops after about that many bytes.
     """
-    with path.open("rb") as fh:
+    with rollout_stream(path) as fh:
         size = fh.seek(0, os.SEEK_END)
         position, carry, floor = size, b"", 0 if budget is None else max(0, size - budget)
         while position > 0:
