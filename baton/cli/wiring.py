@@ -114,6 +114,60 @@ class Engine:
     tool_ids: tuple[str, ...] = tuple(entry.id for entry in TOOLS)
     sandboxed: bool = False
 
+    def scope_for(self, arguments=None, *, command=None, confirm=None):
+        """Authorize only command identities and recorded links, separately per tool."""
+        request = dict(arguments or {})
+        if confirm:
+            stored = self.plans.store.load(confirm)
+            if stored is not None and stored.command == command:
+                # Confirmation arguments are the original user selection, not new flags.
+                request = stored.arguments
+        selected = {tool: set() for tool in self.adapters}
+        for link in self.store.links():
+            for tool, ident in link.chats.items():
+                if tool in selected:
+                    selected[tool].add(ident)
+
+        def collect(data):
+            if not isinstance(data, Mapping):
+                return
+            for key in ('source', 'to', 'chat'):
+                value = data.get(key)
+                if isinstance(value, str) and ':' in value:
+                    tool, ident = value.split(':', 1)
+                    if tool in selected and ident:
+                        selected[tool].add(ident)
+            tool = data.get('tool') or data.get('source')
+            ident = data.get('chat_id') or data.get('chat')
+            if tool in selected and isinstance(ident, str) and ':' not in ident:
+                selected[tool].add(ident)
+            for tool, ident in data.get('chats', {}).items():
+                if tool in selected and isinstance(ident, str):
+                    selected[tool].add(ident)
+            artifact = data.get('artifact_id')
+            if artifact:
+                collect(self.store.brief_artifact(artifact))
+            for key in ('request', 'answer', 'snapshot'):
+                collect(data.get(key))
+            token = data.get('action_plan_id')
+            if token:
+                stored = self.plans.store.load(token)
+                if stored is not None:
+                    collect(stored.arguments)
+            token = data.get('service_plan') or data.get('brief_creation') or data.get('brief_create_only')
+            if token:
+                from ..domain.errors import ChatChanged
+                try:
+                    collect(self.store.brief_plan(token)['payload'])
+                except ChatChanged:
+                    pass
+
+        collect(request)
+        for tool, adapter in self.adapters.items():
+            bind = getattr(adapter, 'scope_chats', None)
+            if bind is not None:
+                bind(selected[tool])
+
     def command_lock(self):
         """Exclude other CLI commands before interpreting pending writes as abandoned."""
         return command_lock(self.root)
@@ -123,7 +177,9 @@ class Engine:
         try:
             return self.adapters[tool]
         except KeyError:
-            raise NotAvailable(tool) from None
+            failure = NotAvailable(tool)
+            failure.values = {'tool': tool}
+            raise failure from None
 
     @cached_property
     def settings_read(self):
@@ -300,5 +356,7 @@ def build(root: Path | str | None = None, *, clock: Clock | None = None,
     engine = Engine(folder, store, clock, loaded, plans, home, unavailable, installation_probe,
                     tuple(dict.fromkeys([entry.id for entry in entries] + list(loaded))), sandboxed)
     with engine.command_lock():
+        if adapters is None:
+            engine.scope_for()
         engine.clear_verified_intents()
     return engine

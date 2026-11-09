@@ -51,6 +51,12 @@ class CodexAdapter:
         self.runner = CodexRunner(command, binary) if command is not None else InertRunner()
         self.app = CodexApp(self)
 
+    def scope_chats(self, chat_ids):
+        """Bind this command's explicit IDs, retaining only verified descendants."""
+        scope = ChatScope(self.root, chat_ids, self.rollback_root)
+        scope.created.update(self.scope.created)
+        self.scope = self.locator.scope = scope
+
     @classmethod
     def on_this_machine(cls, root, **options) -> "CodexAdapter":
         """The adapter for the real machine: the one place that picks the real process control, CLI launcher and thread lock.

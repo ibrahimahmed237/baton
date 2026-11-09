@@ -90,16 +90,22 @@ class CursorWriter:
             raise ValueError(kind)
         if chat_id is None:
             chat_id = str(uuid4())
-        token = uuid4().hex
-        with closing(self.adapter.locator.connect()) as db:
-            before = self._snapshot(db, chat_id)
-        data = {'token': token, 'before': before, 'after': None,
-                'scope': sorted(self.adapter.original_chat_ids)}
-        receipt = WriteReceipt('cursor', chat_id, kind, data)
-        save_json(self.adapter.rollback_locator.inside(self.receipts / (token + '.json')), self._manifest(receipt))
-        self.prepared = receipt
-        if kind == 'create':
+            # The generated destination must be scoped before snapshotting its
+            # absence through the same guarded locator used by content readers.
             self.adapter.allowed_chat_ids.add(chat_id)
+        token = uuid4().hex
+        try:
+            with closing(self.adapter.locator.connect()) as db:
+                before = self._snapshot(db, chat_id)
+            data = {'token': token, 'before': before, 'after': None,
+                    'scope': sorted(self.adapter.original_chat_ids)}
+            receipt = WriteReceipt('cursor', chat_id, kind, data)
+            save_json(self.adapter.rollback_locator.inside(self.receipts / (token + '.json')), self._manifest(receipt))
+        except BaseException:
+            if kind == 'create':
+                self.adapter.allowed_chat_ids.discard(chat_id)
+            raise
+        self.prepared = receipt
         return receipt
 
     @staticmethod

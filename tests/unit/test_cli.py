@@ -687,8 +687,8 @@ class TheCommandRegistry(unittest.TestCase):
         registry.add(command)
         with self.assertRaises(ValueError):
             registry.add(command)
-        self.assertIs(registry.get("x"), command)
-        self.assertEqual(list(registry), [command])
+        self.assertIs(registry.get("x").run.__wrapped__, command.run)
+        self.assertEqual(list(registry), [registry.get("x")])
 
     def test_discovery_registers_the_commands_in_the_folder(self):
         registry = discover()

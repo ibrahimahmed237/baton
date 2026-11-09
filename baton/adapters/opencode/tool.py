@@ -13,6 +13,11 @@ from .state import OpenCodeState
 from .writer import OpenCodeWriter
 
 
+class ScopedWriter(OpenCodeWriter):
+    def _require(self, chat_id):
+        self.adapter.require_chat(chat_id)
+
+
 class OpenCodeAdapter:
     """Default construction never observes or launches real apps or commands."""
 
@@ -39,15 +44,27 @@ class OpenCodeAdapter:
         self.hooks = OpenCodeHooks(self, hook_entrypoints_available, plugin_loaded, hook_executable, plugin_folder)
         self.reader = OpenCodeReader(self)
         self.state = OpenCodeState(self)
-        self.writer = OpenCodeWriter(self)
+        self.writer = ScopedWriter(self)
         self.runner = OpenCodeRunner(command, binary, self.root)
         self.app = OpenCodeApp(self, close_timeout, monotonic, sleep)
+
+    def scope_chats(self, chat_ids):
+        """Bind command IDs and reload descendants under the matching receipt scope."""
+        ids = frozenset(chat_ids)
+        if ids == self.allowed_chat_ids:
+            return
+        created = self.writer.created.copy()
+        self.allowed_chat_ids = ids
+        self.writer = ScopedWriter(self)
+        self.writer.created.update(created)
 
     def require_chat(self, chat_id):
         from ...domain.errors import NotAvailable
         created = self.writer.created if hasattr(self, "writer") else set()
         if chat_id not in self.allowed_chat_ids | created:
-            raise NotAvailable()
+            failure = NotAvailable()
+            failure.values = {'tool': self.name, 'reason_note': 'scope.chats_only'}
+            raise failure
 
     def _existing_project(self, folder):
         with self.locator.connect() as db:

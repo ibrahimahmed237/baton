@@ -61,7 +61,9 @@ class ChatScope:
     def require(self, ident: str) -> None:
         """Refuse an ID outside the original scope or verified created descendants."""
         if ident not in self.original and ident not in self.created:
-            raise NotAvailable()
+            failure = NotAvailable()
+            failure.values = {'tool': 'codex', 'reason_note': 'scope.chats_only'}
+            raise failure
 
     def contains(self, ident: str) -> bool:
         """Whether this adapter may access the native content of this ID."""

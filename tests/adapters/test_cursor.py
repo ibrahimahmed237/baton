@@ -246,6 +246,53 @@ class CursorSpecific(unittest.TestCase):
         restarted.writer.add(result.chat_id, [Turn(Message('next', PROMPT, 'more'))])
         self.assertEqual(len(restarted.reader.read(result.chat_id)), 1)
 
+    def test_command_scoped_create_prepare_and_restart_keep_descendant_readable(self):
+        self.adapter.scope_chats((self.chat,))
+        prepared = self.adapter.writer.prepare(None, 'create')
+        self.assertIn(prepared.chat_id, self.adapter.allowed_chat_ids)
+        result = self.adapter.writer.create(turns(), 'command copy', '/copy')
+        self.assertEqual(result.chat_id, prepared.chat_id)
+        restarted = adapter(self.root, process=self.process)
+        restarted.scope_chats((self.chat,))
+        self.assertEqual(restarted.reader.read(result.chat_id), turns())
+        restarted.writer.rename(result.chat_id, 'renamed copy')
+        restarted.scope_chats(())
+        self.assertEqual(restarted.reader.read(result.chat_id), turns())
+        with self.assertRaises(NotAvailable):
+            restarted.reader.read(self.chat)
+
+    def test_failed_create_preparation_drops_generated_authorization(self):
+        self.adapter.scope_chats((self.chat,))
+        before = set(self.adapter.allowed_chat_ids)
+        with patch('baton.adapters.cursor.writer.save_json', side_effect=OSError('fixture')):
+            with self.assertRaises(OSError):
+                self.adapter.writer.prepare(None, 'create')
+        self.assertEqual(self.adapter.allowed_chat_ids, before)
+        self.assertIsNone(self.adapter.writer.prepared)
+
+    def test_command_scope_guards_content_and_samples_only_selected_formats(self):
+        other = fx.build(self.root, turns(), ident='unselected')
+        value = fx.data(self.root, other)
+        del value['conversationState']
+        fx.put_data(self.root, other, value)
+        self.assertFalse(self.adapter.state.format_version().known)
+        self.adapter.scope_chats((self.chat,))
+        self.assertTrue(self.adapter.state.format_version().known)
+        self.assertIn(other, [ref.id for ref in self.adapter.locator.chats()])
+        for operation in (self.adapter.locator.data, self.adapter.locator.bubbles,
+                          self.adapter.locator.transcript, self.adapter.reader.read,
+                          self.adapter.reader.usage, self.adapter.state.target_format,
+                          lambda chat: self.adapter.writer.prepare(chat, 'rename')):
+            with self.subTest(operation=operation), self.assertRaises(NotAvailable):
+                operation(other)
+
+    def test_machine_adapter_guards_content_before_command_binding(self):
+        with patch('subprocess.run', side_effect=AssertionError('real process')):
+            value = CursorAdapter.on_this_machine(self.root, rollback_root=self.root / 'receipts')
+            self.assertIn(self.chat, [ref.id for ref in value.locator.chats()])
+            with self.assertRaises(NotAvailable):
+                value.reader.read(self.chat)
+
     def test_symlink_database_transcript_and_hook_config_refused(self):
         path = self.adapter.locator.transcript(self.chat)
         original = path.read_bytes()

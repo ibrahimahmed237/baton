@@ -20,10 +20,12 @@ from __future__ import annotations
 import argparse
 import importlib
 import pkgutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from functools import wraps
 from typing import Any, Callable, Iterator, Mapping
 
 from ..wiring import Engine
+from ...domain.errors import NotAvailable
 
 Run = Callable[["Context", argparse.Namespace], "dict[str, Any] | str"]
 Arguments = Callable[[argparse.ArgumentParser], None]
@@ -79,7 +81,20 @@ class CommandRegistry:
         """Register a command; two commands may not share a name."""
         if command.name in self._commands:
             raise ValueError("command registered twice: " + command.name)
-        self._commands[command.name] = command
+        run = command.run
+        @wraps(run)
+        def scoped(ctx, args):
+            ctx.engine.scope_for(vars(args), command=ctx.command, confirm=ctx.confirm)
+            try:
+                return run(ctx, args)
+            except NotAvailable as failure:
+                values = dict(getattr(failure, 'values', {}))
+                tool = getattr(args, 'tool', None) or getattr(args, 'source', None)
+                if tool:
+                    values.setdefault('tool', tool.split(':', 1)[0])
+                failure.values = values
+                raise
+        self._commands[command.name] = replace(command, run=scoped)
         return command
 
     def command(self, name: str, summary: str, *, arguments: Arguments = lambda parser: None,

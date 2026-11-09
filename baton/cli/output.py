@@ -175,6 +175,11 @@ def error(failure: BatonError, values: Mapping[str, Any] | None = None) -> dict[
     shown = {**getattr(failure, "values", {}), **(values or {})}
     if getattr(failure, "side", None):
         shown.setdefault("tool", failure.side)
+    if failure.note_id == 'tool.cannot':
+        shown['tool'] = shown.get('tool') or note('tool.unspecified')['text']
+        shown['action'] = shown.get('action') or label(shown['tool'])
+        reason_id = shown.get('reason_note', 'tool.unsupported_reason')
+        shown['reason'] = shown.get('reason') or note(reason_id)['text'].rstrip('.')
     if hasattr(failure, 'at') and failure.note_id == 'keep.too_late':
         shown.update(other_tool=failure.side, at=failure.at)
     try:

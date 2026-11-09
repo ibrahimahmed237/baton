@@ -58,6 +58,10 @@ def invoke(args, *, prompt, engine_factory=None, stdin=None, seconds=2.0, locked
                     from ..cli.wiring import build
                     engine_factory = build
                 engine = engine_factory()
+                # A hook may use only the chat in its payload and chats already linked.
+                scope_for = getattr(engine, 'scope_for', None)
+                if scope_for is not None:
+                    scope_for({'tool': args.tool, 'chat': call.chat})
                 with nullcontext() if locked else engine.command_lock():
                     observe = getattr(engine.adapter(args.tool).state, 'observe', None)
                     if observe is not None:
